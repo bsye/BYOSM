@@ -9,6 +9,7 @@ byojl build vad        # data → self-supervised pretraining → training → e
 byojl board vad        # how it compares to the alternatives, on real test sets
 byojl improve vad      # what to change next, and why
 byojl export vad       # a 0.4 MB ONNX bundle that needs only numpy + onnxruntime
+byojl publish vad --repo you/byojl-vad    # Hugging Face: bundle + model card with eval, comparison, lineage
 ```
 
 ---
@@ -47,6 +48,7 @@ against real competitors, deciding what to fix next, and shipping something you 
    ⑦  IMPROVE     diagnosis → proposed spec edits (with evidence) → new experiment → back to ②
         │
    ⑧  SHIP        export/: model.onnx + stream.onnx + manifest.json + byojl_rt.py  →  encode / predict / stream / serve
+   ⑨  PUBLISH     Hugging Face repo: bundle + generated model card (test eval, baseline comparison, lineage, limitations)
 ```
 
 ### ① Define: the spec
@@ -198,6 +200,27 @@ POST /v1/vad/encode   {...}           → {"embedding": [...]}
 POST /v1/predict      {...}           → every model's answer at once
 ```
 
+### ⑨ Publish to Hugging Face
+
+```bash
+huggingface-cli login                      # once
+byojl publish vad --repo you/byojl-vad --license cc-by-nc-4.0 [--public] [--dry-run]
+```
+
+This pushes the exported bundle plus `spec.yaml`, `board.json` and `lineage.json`, and a **model card generated from the
+project's own artifacts**, so it can't drift from what was measured:
+
+- **What it does**: description, labels and definitions, size, decision policy.
+- **Comparison**: every experiment and baseline on every suite, scored identically.
+- **Test evaluation**: per-suite objective, precision/recall, ROC‑AUC, AP and calibrated threshold, also written as
+  `model-index` metadata, which the Hub renders as an evaluation widget.
+- **How it was built**: data sources, LeJEPA, training, and the `improve` lineage with the evidence behind each step.
+- **Limitations**, generated automatically: in-domain caveats (trained on a partition of an eval source), non-commercial
+  datasets, small suites.
+- **Usage**: `snapshot_download` + `byojl_rt`, streaming, HTTP server.
+
+Repos are private unless you pass `--public`. `--dry-run` stages everything under `specialists/<name>/hub/` for review.
+
 ---
 
 ## Results: a 0.1M-param VAD vs LiveKit's Silero
@@ -272,6 +295,7 @@ anything else with `byojl.llm.register_provider(name, factory)`.
 | `byojl improve <name> [--apply ids --run]` | diagnose, propose, run the next experiment |
 | `byojl promote <name> <exp>` | choose what ships |
 | `byojl export <name>` · `byojl serve <names…>` · `byojl predict <name> <input>` | ship and run |
+| `byojl publish <name> --repo <id> [--public] [--dry-run]` | push to Hugging Face with a generated model card |
 | `byojl bench <a> <b> …` | the thesis test: N specialists vs one shared-backbone generalist on the same data |
 
 ---
@@ -301,6 +325,7 @@ byojl/
   pipeline.py      experiment pipeline
   export.py        ONNX bundle + parity check
   rt.py            portable runtime (copied into every bundle as byojl_rt.py)
+  hub.py           Hugging Face publishing + model card
   bench.py         specialists vs generalist
 benchmarks/        standalone comparisons (vad_vs_silero.py)
 specialists/<name>/spec.yaml, experiments/*/{spec.yaml,meta.json,results/}, board.json
