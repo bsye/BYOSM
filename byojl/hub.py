@@ -133,7 +133,7 @@ for chunk in mic_chunks():         # float32 mono, any size
 
 **{spec.description}**
 
-A tiny, single-purpose *System 1* model built with [BYOJL](https://github.com/alberto-marc/BYOJL): a JEPA-style
+A tiny, single-purpose *System 1* model built with [BYOJL](https://github.com/bsye/BYOJL): a JEPA-style
 encoder trained only for this task, with a calibrated decision policy, shipped as a {m['params'] / 1e6:.2f}M-parameter ONNX
 bundle that runs on any CPU with just `numpy` + `onnxruntime`.
 
@@ -206,7 +206,7 @@ python byojl_rt.py serve . --port 8800
 ## Reproduce
 
 ```bash
-git clone https://github.com/alberto-marc/BYOJL && cd BYOJL && pip install -e .
+git clone https://github.com/bsye/BYOJL && cd BYOJL && pip install -e .
 # put spec.yaml from this repo at specialists/{spec.name}/spec.yaml, then:
 byojl build {spec.name} && byojl board {spec.name} && byojl export {spec.name}
 ```

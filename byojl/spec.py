@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from .llm import get_llm
 
-Modality = Literal["text", "audio", "image"]
+Modality = Literal["text", "audio", "image", "document"]
 TaskType = Literal["classify", "frame"]  # frame = one label per timestep/token (VAD, tagging)
 Metric = Literal["f1", "macro_f1", "accuracy", "recall_at_precision", "precision_at_recall"]
 
@@ -26,6 +26,9 @@ BACKBONES: dict[str, list[dict]] = {
     "audio": [
         {"id": "tiny-crnn", "params_m": 0.2, "langs": "any", "note": "log-mel conv+GRU, causal, 10ms frames, streaming-ready; trained from scratch (JEPA pretraining helps a lot)"},
         {"id": "hf:facebook/wav2vec2-base", "params_m": 95, "langs": "en-pretrained", "note": "20ms frames, strong speech features, heavy"},
+    ],
+    "document": [
+        {"id": "doc", "params_m": 44, "langs": "en", "note": "PDF/scan pages: text route (MiniLM on text layer/OCR) + visual route (DINOv2-small on the rendered page), fused per page, attention over pages; see `document:` in spec"},
     ],
     "image": [
         {"id": "tiny-cnn", "params_m": 0.4, "langs": "-", "note": "small CNN from scratch, <1ms"},
@@ -61,6 +64,10 @@ class HFSource(BaseModel):
     # (train) and an eval suite (calib/test) with zero overlap.
     partition: Literal["train", "calib", "test", "all"] = "all"
     max_files: int = 40
+    # stream: read rows in order. balanced: random access through the Hub's dataset viewer, `per_label` rows per
+    # label (for label-sorted datasets such as RVL-CDIP).
+    sampling: Literal["stream", "balanced"] = "stream"
+    per_label: int = 100
     config: Optional[str] = None
     split: str = "train"
     input_column: Optional[str] = None
@@ -79,6 +86,21 @@ class AudioCfg(BaseModel):
     label_by_energy: bool = True
     # Gaps shorter than this inside an event stay positive. ~60ms = word-level labels, ~300ms = utterance-level.
     fill_ms: int = 60
+
+
+class DocumentCfg(BaseModel):
+    """Documents (PDF or page images) = pages; each page has a text view and a visual view."""
+
+    route: Literal["text", "visual", "fused"] = "fused"
+    text_backbone: str = "hf:sentence-transformers/all-MiniLM-L6-v2"
+    image_backbone: str = "hf:facebook/dinov2-small"
+    max_pages: int = 8  # first pages are kept (most document types are decided early)
+    max_len: int = 256  # tokens per page
+    image_size: int = 224
+    dpi: int = 100  # PDF render resolution
+    ocr: Literal["auto", "always", "never"] = "auto"  # auto = OCR pages without a text layer (scans)
+    dim: int = 256  # fused page embedding
+    modality_dropout: float = 0.2  # fused route: randomly drop one view per page while training
 
 
 class DataPlan(BaseModel):
@@ -129,6 +151,7 @@ class TrainCfg(BaseModel):
     max_len: int = 128  # text tokens
     refine_rounds: int = 2
     refine_examples: int = 300
+    pool: Literal["mean", "attention"] = "mean"  # how classify heads pool positions (pages, frames, tokens)
 
 
 class TaskSpec(BaseModel):
@@ -150,6 +173,7 @@ class TaskSpec(BaseModel):
     data: DataPlan = Field(default_factory=DataPlan)
     train: TrainCfg = Field(default_factory=TrainCfg)
     decision: Decision = Field(default_factory=Decision)
+    document: DocumentCfg = Field(default_factory=DocumentCfg)
     evals: list[EvalSuite] = Field(default_factory=lambda: [EvalSuite(name="builtin", primary=True)])
     baselines: list[str] = Field(default_factory=list)  # e.g. ["silero"], ["llm"]
 

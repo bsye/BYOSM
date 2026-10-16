@@ -249,12 +249,49 @@ size, same speed, ahead of Silero on real audio.
 the model to its domain), not a claim that v2 is better everywhere. It's also slightly *worse* on the synthetic suite,
 whose labels use the convention v2 was moved away from.
 
+## Documents: PDFs and scans, with multimodal fusion
+
+`modality: document` treats a PDF (or a page image) as a list of **pages**. Each page has two views:
+
+- **text**: the PDF's text layer, or OCR for scanned pages (RapidOCR, ONNX, cached next to the file)
+- **visual**: the rendered page image
+
+`document.route` picks `text`, `visual` or **`fused`**. Fused pages combine both views with a learned per-dimension gate,
+and a random view is dropped during training so a page with no text, or a blank render, still works. A small attention
+block then mixes information across pages, and attention pooling decides the document label. `frame` tasks label every
+page instead (e.g. finding where one document ends and the next begins in a merged scan).
+
+RVL-CDIP (16 document types), scored on 768 documents from the **original test split**:
+
+| | params | accuracy | CPU/doc | trained on |
+|---|---|---|---|---|
+| DiT-base (`microsoft/dit-base-finetuned-rvlcdip`, baseline) | 85.8M | **94.8%** | 51 ms | 320k labelled + 42M unlabelled documents |
+| **BYOJL fused** (MiniLM text + DINOv2-small visual) | 45.7M | **80.9%** | 26 ms | 2,400 documents (from the val split) |
+| BYOJL text (OCR → MiniLM) | 23.4M | 72.1% | 15 ms | same |
+| BYOJL visual (DINOv2-small) | 22.8M | 66.5% | 17 ms | same |
+
+Fusion adds nearly 9 points over the best single view, because the views fail on different classes. Visual is strong on
+`handwritten`, `advertisement` and `file_folder`; text is strong on `questionnaire`, `memo` and `invoice`.
+
+DiT is still well ahead. It has 130× more labelled data, and its image encoder was pretrained on documents, while
+DINOv2 was pretrained on natural photos. The obvious next experiments are a document-pretrained visual encoder, more
+labelled data, and distillation to shrink the result. A clean, born-digital invoice PDF is also out of distribution for a
+model trained on 1990s scans (it predicted `budget` 0.73 / `invoice` 0.27); add an eval suite of your own PDFs to see
+that gap on the board.
+
+```bash
+byojl exp create doctype fused --set document.route=fused     # ablations are one line each
+byojl build doctype --exp fused
+python specialists/doctype/export/byojl_rt.py predict specialists/doctype/export invoice.pdf
+curl -X POST localhost:8800/v1/doctype/predict -d '{"pdf_b64": "..."}'
+```
+
 ---
 
 ## Quickstart
 
 ```bash
-git clone https://github.com/alberto-marc/BYOJL && cd BYOJL
+git clone https://github.com/bsye/BYOJL && cd BYOJL
 python3.11 -m venv .venv && .venv/bin/pip install -e '.[dev,silero]'
 byojl init                                   # writes byojl.yaml: which LLM to use for each role
 byojl new eot "decide if a voice-agent user finished their turn or is mid-thought; en/es/it"
@@ -307,7 +344,8 @@ anything else with `byojl.llm.register_provider(name, factory)`.
 - **New modality**: one file in `byojl/modalities/` implementing `load`, `build_backbone`, `collate`, `views` (the JEPA
   augmentations) and `example_input`, decorated with `@register`. Training, LeJEPA, evaluation and export are all
   modality-agnostic.
-- **New baseline**: subclass `Predictor` in `byojl/predictors.py` with `@register_baseline("name")`.
+- **New baseline**: subclass `Predictor` in `byojl/predictors.py` with `@register_baseline("name")`, or use any
+  Hugging Face classifier directly as `hf:<repo>` (its labels are matched to yours by name).
 - **New LLM provider**: `register_provider`.
 
 ## Layout

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 import itertools
 from typing import Any, Callable, Iterator
 
@@ -130,7 +131,7 @@ def _decode(v: Any, modality: str, sr: int) -> Any:
 
             wav = torchaudio.functional.resample(torch.from_numpy(wav), file_sr, sr).numpy()
         return wav.astype(np.float32)
-    if modality == "image":
+    if modality in ("image", "document"):
         from PIL import Image
 
         if isinstance(v, dict) and v.get("bytes"):
@@ -139,9 +140,72 @@ def _decode(v: Any, modality: str, sr: int) -> Any:
     raise ValueError(modality)
 
 
+def _norm(s: str) -> str:
+    return " ".join(str(s).lower().replace("_", " ").replace("-", " ").split())
+
+
+def balanced_rows(src: HFSource, spec: TaskSpec, seed: int = 0) -> list[tuple[Any, str]]:
+    """`per_label` random rows per label from the split's parquet files (downloaded once, cached), reading only the
+    label column to index and only the chosen rows' inputs. Works on label-sorted datasets where streaming can't."""
+    import random
+
+    import pyarrow.parquet as pq
+    from huggingface_hub import HfApi, hf_hub_download
+
+    files = sorted(f for f in HfApi().list_repo_files(src.dataset, repo_type="dataset")
+                   if f.endswith(".parquet") and (f.split("/")[-1].startswith(f"{src.split}-") or f"/{src.split}/" in f))
+    if not files:
+        raise ValueError(f"{src.dataset}: no parquet files for split {src.split!r}")
+    names: list[str] | None = None
+    lmap = {_norm(a): b for a, b in src.label_map}
+    ours = {_norm(n): n for n in spec.label_names}
+    by_label: dict[str, list[tuple[str, int]]] = {}
+    for f in files:
+        path = hf_hub_download(src.dataset, f, repo_type="dataset")
+        pf = pq.ParquetFile(path)
+        if names is None:  # ClassLabel names: parquet metadata if present, else the dataset card
+            meta = json.loads((pf.schema_arrow.metadata or {}).get(b"huggingface", b"{}"))
+            names = meta.get("info", {}).get("features", {}).get(src.label_column, {}).get("names") or []
+            if not names:
+                from datasets import ClassLabel, load_dataset_builder
+
+                feat = (load_dataset_builder(src.dataset, src.config).info.features or {}).get(src.label_column)
+                names = feat.names if isinstance(feat, ClassLabel) else []
+        for i, v in enumerate(pf.read(columns=[src.label_column]).column(src.label_column).to_pylist()):
+            raw = names[v] if names and isinstance(v, int) and v < len(names) else str(v)
+            lab = lmap.get(_norm(raw)) or lmap.get(str(v)) or (ours.get(_norm(raw)) if not lmap else None)
+            if lab is None:
+                continue
+            if src.partition != "all":
+                from .segments import partition_of
+
+                if partition_of(f"{f}:{i}") != src.partition:
+                    continue
+            by_label.setdefault(lab, []).append((path, i))
+    rng = random.Random(seed)
+    chosen: dict[str, list[tuple[int, str]]] = {}
+    for lab, items in by_label.items():
+        for path, i in rng.sample(items, min(src.per_label, len(items))):
+            chosen.setdefault(path, []).append((i, lab))
+    out = []
+    for path, rows in chosen.items():
+        col = pq.read_table(path, columns=[src.input_column]).column(src.input_column)
+        for i, lab in rows:
+            try:
+                out.append((_decode(col[i].as_py(), spec.modality, spec.data.audio.sample_rate), lab))
+            except Exception:
+                continue
+    rng.shuffle(out)
+    return out
+
+
 def iter_rows(src: HFSource, spec: TaskSpec) -> Iterator[tuple[Any, str | None]]:
     """Yield (decoded_input, our_label_or_None). Rows whose label is not in label_map are skipped."""
     from datasets import ClassLabel, load_dataset
+
+    if src.sampling == "balanced":
+        yield from balanced_rows(src, spec)
+        return
 
     ds = load_dataset(src.dataset, src.config, split=src.split, streaming=True)
     names = None
@@ -169,4 +233,6 @@ def iter_rows(src: HFSource, spec: TaskSpec) -> Iterator[tuple[Any, str | None]]
 
 
 def take(src: HFSource, spec: TaskSpec, n: int | None = None) -> list[tuple[Any, str | None]]:
+    if src.sampling == "balanced":
+        return balanced_rows(src, spec)
     return list(itertools.islice(iter_rows(src, spec), n or src.max_rows))

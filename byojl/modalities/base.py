@@ -33,6 +33,10 @@ class Modality:
         """Record from data/*.jsonl -> raw input (str, waveform, PIL image...)."""
         raise NotImplementedError
 
+    def load_many(self, rows: list[dict]) -> list[Any]:
+        """Load many records (override to parallelize expensive loading such as OCR)."""
+        return [self.load(r) for r in rows]
+
     def frame_labels(self, ex: dict) -> list[int] | None:
         """For frame tasks: label index per native step (word / hop). None for classify."""
         return None
@@ -65,7 +69,7 @@ def register(cls: type[Modality]) -> type[Modality]:
 
 
 def get_modality(spec: TaskSpec, data_dir: str | None = None) -> Modality:
-    from . import audio, image, text  # noqa: F401  (populate registry)
+    from . import audio, document, image, text  # noqa: F401  (populate registry)
 
     if spec.modality not in REGISTRY:
         raise KeyError(f"no modality plugin {spec.modality!r}; known: {sorted(REGISTRY)}")

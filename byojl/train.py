@@ -92,7 +92,7 @@ def evaluate_rows(model: SpecialistModel, mod: Modality, spec: TaskSpec, rows: l
 
 
 def build_model(spec: TaskSpec, mod: Modality) -> SpecialistModel:
-    return SpecialistModel(mod.build_backbone(), {spec.name: (len(spec.labels), spec.task_type)})
+    return SpecialistModel(mod.build_backbone(), {spec.name: (len(spec.labels), spec.task_type, spec.train.pool)})
 
 
 def fit(spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None] = print, seed: int = 0) -> dict[str, Any]:
@@ -107,8 +107,8 @@ def fit(spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None
         k = max(1, len(train_rows) // 10)
         dev_rows, train_rows = train_rows[:k], train_rows[k:]
     log(f"  loading {len(train_rows)} train / {len(dev_rows)} dev examples")
-    train_raw = [mod.load(r) for r in train_rows]
-    dev_raw = [mod.load(r) for r in dev_rows]
+    train_raw = mod.load_many(train_rows)
+    dev_raw = mod.load_many(dev_rows)
     train_t = targets_of(spec, mod, train_rows)
 
     model = build_model(spec, mod)
@@ -120,7 +120,7 @@ def fit(spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None
     # Stage 1: LeJEPA on unlabeled in-domain inputs.
     jepa_hist: list[dict] = []
     if tc.pretrain_steps > 0:
-        unl = [mod.load(r) for r in ds.unlabeled()] or train_raw
+        unl = mod.load_many(ds.unlabeled()) or train_raw
         log(f"  LeJEPA: {tc.pretrain_steps} steps on {len(unl)} unlabeled inputs (lambda={tc.pretrain_lambda})")
         jepa_hist = jepa.pretrain(model, mod, unl, tc.pretrain_steps, tc.batch_size, tc.lr_backbone, tc.pretrain_lambda, dev, log, seed)
 

@@ -127,6 +127,49 @@ class LogMel:
 # --------------------------------------------------------------------------------------------- model
 
 
+_OCR = None
+_PDFIUM = __import__("threading").Lock()  # PDFium is not thread-safe (the HTTP server is threaded)
+
+
+def _ocr(img: Any) -> str:
+    global _OCR
+    try:
+        from rapidocr_onnxruntime import RapidOCR
+    except ImportError:
+        return ""
+    if _OCR is None:
+        _OCR = RapidOCR()
+    res, _ = _OCR(np.asarray(img.convert("RGB")))
+    return " ".join(r[1] for r in (res or []))
+
+
+def read_document(path: str | Path, fe: dict) -> list[tuple[str, Any]]:
+    """PDF (text layer + rendered pages) or a page image -> [(text, PIL image)], OCR for pages without text."""
+    from PIL import Image
+
+    path = Path(path)
+    pages = []
+    if path.suffix.lower() == ".pdf":
+        import pypdfium2 as pdfium
+
+        with _PDFIUM:
+            pdf = pdfium.PdfDocument(str(path))
+            for i in range(min(len(pdf), fe["max_pages"])):
+                pg = pdf[i]
+                pages.append((pg.get_textpage().get_text_range() or "", pg.render(scale=fe["dpi"] / 72).to_pil().convert("RGB")))
+            pdf.close()
+    else:
+        pages.append(("", Image.open(path).convert("RGB")))
+    if fe["route"] != "visual" and fe["ocr"] != "never":
+        cache = path.with_name(path.name + ".ocr.json")
+        cached = json.loads(cache.read_text()) if cache.exists() else {}
+        for i, (t, img) in enumerate(pages):
+            if fe["ocr"] == "always" or len(t.strip()) < 20:
+                pages[i] = (cached.get(str(i)) if str(i) in cached else _ocr(img), img)
+    s = fe["image_size"]
+    return [(t, img.resize((s, s))) for t, img in pages]
+
+
 class Specialist:
     def __init__(self, path: str | Path, threads: int = 1):
         import onnxruntime as ort
@@ -140,11 +183,13 @@ class Specialist:
         self.stream_sess = ort.InferenceSession(str(self.dir / "stream.onnx"), so, providers=prov) if (self.dir / "stream.onnx").exists() else None
         fe = self.m["frontend"]
         self.tok = None
-        if fe["type"] == "tokenizer":
+        if fe["type"] == "tokenizer" or (fe["type"] == "document" and fe["route"] != "visual"):
             from tokenizers import Tokenizer
 
             self.tok = Tokenizer.from_file(str(self.dir / "tokenizer.json"))
             self.tok.enable_truncation(fe["max_len"])
+            if fe["type"] == "document":
+                self.tok.enable_padding()
         self.mel = LogMel(fe, self.dir) if fe["type"] == "logmel" else None
 
     # -- metadata
@@ -164,6 +209,19 @@ class Specialist:
             feeds = {"input_ids": np.array([enc.ids], np.int64), "attention_mask": np.array([enc.attention_mask], np.int64)}
             if "token_type_ids" in fe.get("inputs", []):
                 feeds["token_type_ids"] = np.array([enc.type_ids], np.int64)
+            return feeds
+        if fe["type"] == "document":
+            pages = x if isinstance(x, list) else read_document(x, fe)
+            feeds: dict[str, np.ndarray] = {}
+            if fe["route"] != "visual":
+                encs = self.tok.encode_batch([t or "" for t, _ in pages])
+                feeds["input_ids"] = np.array([e.ids for e in encs], np.int64)
+                feeds["attention_mask"] = np.array([e.attention_mask for e in encs], np.int64)
+                if "token_type_ids" in fe["inputs"]:
+                    feeds["token_type_ids"] = np.array([e.type_ids for e in encs], np.int64)
+            if fe["route"] != "text":
+                mean, std = np.array(fe["mean"], np.float32), np.array(fe["std"], np.float32)
+                feeds["pixel_values"] = np.stack([((np.asarray(im, np.float32) / 255 - mean) / std).transpose(2, 0, 1) for _, im in pages]).astype(np.float32)
             return feeds
         if fe["type"] == "logmel":
             return {"mel": self.mel(np.asarray(x, np.float32))[None]}
@@ -188,6 +246,9 @@ class Specialist:
 
     def predict(self, x: Any) -> dict:
         _, p = self._run(x)
+        if self.m["task_type"] == "frame" and self.m["modality"] == "document":
+            idx = decide(self.m, p)
+            return {"pages": [self.labels[i] for i in idx], "probs": [{l: round(float(v), 5) for l, v in zip(self.labels, pi)} for pi in p]}
         if self.m["task_type"] == "frame":
             idx = decide(self.m, p)
             frames = [self.labels[i] for i in idx]
@@ -252,7 +313,7 @@ def serve(models: list[Specialist], host: str = "127.0.0.1", port: int = 8800) -
     POST /v1/<name>/predict  {"input": ...}  -> prediction   (text, or a file path / base64 wav for audio, path for images)
     POST /v1/<name>/encode   {"input": ...}  -> {"embedding": [...]}
     POST /v1/predict         {"input": ...}  -> every model's prediction (broadcast)
-    Audio may also be sent as {"pcm16_b64": "...", "sample_rate": 16000}.
+    Audio may also be sent as {"pcm16_b64": "...", "sample_rate": 16000}; documents as {"pdf_b64": "..."}.
     """
     import base64
     from concurrent.futures import ThreadPoolExecutor
@@ -263,6 +324,13 @@ def serve(models: list[Specialist], host: str = "127.0.0.1", port: int = 8800) -
 
     def prep(m: Specialist, body: dict) -> Any:
         mod = m.m["modality"]
+        if mod == "document" and "pdf_b64" in body:  # upload: write to a temp file
+            import tempfile
+
+            f = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+            f.write(base64.b64decode(body["pdf_b64"]))
+            f.close()
+            return f.name
         if mod == "audio":
             if "pcm16_b64" in body:
                 return np.frombuffer(base64.b64decode(body["pcm16_b64"]), np.int16).astype(np.float32) / 32768

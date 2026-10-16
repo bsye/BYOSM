@@ -9,7 +9,7 @@ from ..spec import TaskSpec
 from . import audio_mix, hf_source, segments, synth_text
 from .store import Dataset, dedupe, record, write
 
-MEDIA_EXT = {"audio": ".wav", "image": ".png"}
+MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
 
 
 def _split3(items: list, rng: random.Random, dev: float = 0.1, test: float = 0.15) -> dict[str, list]:
@@ -142,11 +142,10 @@ def build(spec: TaskSpec, data_dir: Path, cfg: dict | None = None, log: Callable
         splits["test"] = dedupe(splits["test"], against=splits["train"] + splits["dev"])
         splits["dev"] = dedupe(splits["dev"], against=splits["train"])
 
+    if not splits["train"]:  # fail before writing anything, so an empty dataset is never cached
+        raise RuntimeError("data stage produced no training examples - check the data plan in spec.yaml (sources, synthetic, local_dir)")
     for s, rows in splits.items():
         ds.save(s, rows)
     unlabeled += [record(r["input"], None, "train-inputs") for r in splits["train"]]
     write(data_dir / "unlabeled.jsonl", unlabeled)
-    summary = ds.summary()
-    if not summary["train"]["n"]:
-        raise RuntimeError("data stage produced no training examples - check the data plan in spec.yaml (sources, synthetic, local_dir)")
-    return summary
+    return ds.summary()

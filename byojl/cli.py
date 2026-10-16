@@ -225,6 +225,34 @@ def board(name: str, detail: bool = typer.Option(False, help="also show precisio
     log("* = promoted (used by predict / export / serve)")
 
 
+exp_app = typer.Typer(no_args_is_help=True, help="Create experiment variants (ablations) by editing spec paths.")
+app.add_typer(exp_app, name="exp")
+
+
+@exp_app.command("create")
+def exp_create(name: str, exp: str, set_: list[str] = typer.Option(..., "--set", help="path=value (YAML value), e.g. document.route=visual"),
+               base: Optional[str] = typer.Option(None, help="start from this experiment's spec (default: base spec.yaml)")) -> None:
+    """e.g. byojl exp create doctype visual --set document.route=visual"""
+    import yaml
+
+    from .improve import apply_ops
+    from .spec import TaskSpec
+
+    p, spec = _spec(name)
+    if base:
+        spec = TaskSpec.load(p.exp_dir(base) / "spec.yaml")
+    ops = []
+    for kv in set_:
+        k, v = kv.split("=", 1)
+        ops.append({"op": "set", "path": k, "value": yaml.safe_load(v)})
+    new = apply_ops(spec, ops)
+    d = p.exp_dir(exp)
+    d.mkdir(parents=True, exist_ok=True)
+    new.save(d / "spec.yaml")
+    (d / "proposal.json").write_text(json.dumps({"parent": base or "spec.yaml", "applied": [{"id": "manual", "why": " ".join(set_), "ops": ops}]}, indent=2))
+    log(f"created {name}/{exp} ({', '.join(set_)}); data key {new.data_key()} -> byojl build {name} --exp {exp}")
+
+
 @app.command()
 def promote(name: str, exp: str) -> None:
     """Choose which experiment ships."""

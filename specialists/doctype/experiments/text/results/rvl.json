@@ -1,0 +1,118 @@
+{
+  "predictor": "text",
+  "kind": "experiment",
+  "params": 23410321,
+  "metrics": {
+    "n": 768,
+    "accuracy": 0.7213541666666666,
+    "macro_f1": 0.7190683323632399,
+    "per_label": {
+      "advertisement": {
+        "precision": 0.7115384615384616,
+        "recall": 0.7115384615384616,
+        "f1": 0.7115384615384616,
+        "support": 52
+      },
+      "budget": {
+        "precision": 0.8,
+        "recall": 0.7843137254901961,
+        "f1": 0.7920792079207921,
+        "support": 51
+      },
+      "email": {
+        "precision": 0.9555555555555556,
+        "recall": 0.8775510204081632,
+        "f1": 0.9148936170212766,
+        "support": 49
+      },
+      "file_folder": {
+        "precision": 0.6727272727272727,
+        "recall": 0.8043478260869565,
+        "f1": 0.7326732673267327,
+        "support": 46
+      },
+      "form": {
+        "precision": 0.65,
+        "recall": 0.5531914893617021,
+        "f1": 0.5977011494252874,
+        "support": 47
+      },
+      "handwritten": {
+        "precision": 0.5636363636363636,
+        "recall": 0.6326530612244898,
+        "f1": 0.5961538461538461,
+        "support": 49
+      },
+      "invoice": {
+        "precision": 0.723404255319149,
+        "recall": 0.7555555555555555,
+        "f1": 0.7391304347826086,
+        "support": 45
+      },
+      "letter": {
+        "precision": 0.75,
+        "recall": 0.574468085106383,
+        "f1": 0.6506024096385542,
+        "support": 47
+      },
+      "memo": {
+        "precision": 0.7,
+        "recall": 0.7924528301886793,
+        "f1": 0.7433628318584071,
+        "support": 53
+      },
+      "news_article": {
+        "precision": 0.7105263157894737,
+        "recall": 0.54,
+        "f1": 0.6136363636363636,
+        "support": 50
+      },
+      "presentation": {
+        "precision": 0.46,
+        "recall": 0.5476190476190477,
+        "f1": 0.5,
+        "support": 42
+      },
+      "questionnaire": {
+        "precision": 0.875,
+        "recall": 0.8076923076923077,
+        "f1": 0.84,
+        "support": 52
+      },
+      "resume": {
+        "precision": 0.9318181818181818,
+        "recall": 0.9111111111111111,
+        "f1": 0.9213483146067416,
+        "support": 45
+      },
+      "scientific_publication": {
+        "precision": 0.7884615384615384,
+        "recall": 0.803921568627451,
+        "f1": 0.7961165048543689,
+        "support": 51
+      },
+      "scientific_report": {
+        "precision": 0.4782608695652174,
+        "recall": 0.4888888888888889,
+        "f1": 0.4835164835164835,
+        "support": 45
+      },
+      "specification": {
+        "precision": 0.82,
+        "recall": 0.9318181818181818,
+        "f1": 0.8723404255319149,
+        "support": 44
+      }
+    },
+    "threshold": null,
+    "objective": 0.7213541666666666,
+    "roc_auc": 0.990111752887996,
+    "avg_precision": 0.9397534958158025
+  },
+  "objective": 0.7213541666666666,
+  "n_test": 768,
+  "n_calib": 192,
+  "seconds": 481.0,
+  "latency_ms": 6.577,
+  "fingerprint": "ea4d5d60dc"
+}

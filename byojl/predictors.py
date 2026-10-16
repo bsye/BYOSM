@@ -134,6 +134,8 @@ def register_baseline(name: str) -> Callable[[type[Predictor]], type[Predictor]]
 
 
 def get_baseline(name: str, spec: TaskSpec) -> Predictor:
+    if name.startswith("hf:"):
+        return HFClassifier(spec, name[3:])
     if name not in BASELINES:
         raise KeyError(f"unknown baseline {name!r}; available: {sorted(BASELINES)}")
     cls = BASELINES[name]
@@ -225,3 +227,54 @@ class ZeroShotLLM(Predictor):
         for i, l in enumerate(labs):
             out[i, names.index(l) if l in names else 0] = 1.0
         return out
+
+
+def _norm(s: str) -> str:
+    return " ".join(str(s).lower().replace("_", " ").replace("-", " ").split())
+
+
+class HFClassifier(Predictor):
+    """Any Hugging Face classifier as a baseline: `hf:<repo>`. Image/document models see the (first) page image,
+    text models the text. Its labels are matched to ours by name; probability on unmatched labels is dropped."""
+
+    def __init__(self, spec: TaskSpec, repo: str):
+        super().__init__(spec)
+        from transformers import AutoConfig
+
+        self.id = f"hf:{repo}"
+        cfg = AutoConfig.from_pretrained(repo)
+        self.visual = spec.modality in ("image", "document")
+        if self.visual:
+            from transformers import AutoImageProcessor, AutoModelForImageClassification
+
+            self.proc = AutoImageProcessor.from_pretrained(repo)
+            self.model = AutoModelForImageClassification.from_pretrained(repo).eval()
+        else:
+            from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+            self.proc = AutoTokenizer.from_pretrained(repo)
+            self.model = AutoModelForSequenceClassification.from_pretrained(repo).eval()
+        ours = {_norm(n): i for i, n in enumerate(spec.label_names)}
+        self.map = {int(k): ours[_norm(v)] for k, v in cfg.id2label.items() if _norm(v) in ours}
+        missing = set(range(len(spec.labels))) - set(self.map.values())
+        if not self.map:
+            raise ValueError(f"{repo}: none of its labels {list(cfg.id2label.values())[:8]} match ours {spec.label_names}")
+        self.missing = [spec.label_names[i] for i in sorted(missing)]
+        self.params = sum(p.numel() for p in self.model.parameters())
+
+    @torch.no_grad()
+    def probs_batch(self, raws: list[Any]) -> np.ndarray:
+        out = []
+        for i in range(0, len(raws), 32):
+            chunk = raws[i : i + 32]
+            if self.visual:
+                imgs = [r[0].image if isinstance(r, list) else r for r in chunk]  # documents: first page
+                inputs = self.proc(images=imgs, return_tensors="pt")
+            else:
+                inputs = self.proc(chunk, padding=True, truncation=True, return_tensors="pt")
+            p = torch.softmax(self.model(**inputs).logits.float(), -1).numpy()
+            q = np.zeros((len(chunk), len(self.spec.labels)), np.float32)
+            for src, dst in self.map.items():
+                q[:, dst] += p[:, src]
+            out.append(q / np.maximum(q.sum(1, keepdims=True), 1e-9))
+        return np.concatenate(out)

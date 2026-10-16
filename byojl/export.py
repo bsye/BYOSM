@@ -26,6 +26,7 @@ from .config import Project
 from .data.store import Dataset
 from .modalities import get_modality, masked_mean
 from .modalities.audio import TinyCRNN
+from .modalities.image import MEAN as MEAN_, STD as STD_
 from .runtime import Specialist
 
 
@@ -39,9 +40,14 @@ class _Full(nn.Module):
     def _out(self, feats: torch.Tensor, mask: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         if self.frame:
             return feats, self.head.net(feats)
-        return masked_mean(feats, mask), self.head(feats, mask)
+        return self.head.pooled(feats, mask), self.head(feats, mask)
 
     def forward(self, *xs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        if self.kind == "document":  # one document: pages are the batch dimension of the page encoders
+            views = dict(zip(self.doc_inputs, xs))
+            pe = self.bb.pages(**views)
+            mask = torch.ones(1, pe.shape[0], dtype=torch.bool)
+            return self._out(self.bb.mix_pages(pe[None], mask), mask)
         if self.kind == "text":
             ids, am = xs[0], xs[1]
             extra = {"token_type_ids": xs[2]} if len(xs) > 2 else {}
@@ -110,7 +116,29 @@ def export(name: str, exp: str | None = None, out: Path | None = None, log: Call
     mod = sp.mod
     bb = sp.model.backbone
     frontend: dict[str, Any]
-    if spec.modality == "text":
+    if spec.modality == "document":
+        kind = "document"
+        dc = spec.document
+        names, example, dyn = [], [], {}
+        if dc.route in ("text", "fused"):
+            mod.tokenizer.save_pretrained(out / "_tok")
+            shutil.copy(out / "_tok" / "tokenizer.json", out / "tokenizer.json")
+            shutil.rmtree(out / "_tok")
+            n_ex = min(2, dc.max_pages)  # example page count must fit the page-position table
+            enc = mod.tokenizer(["page one text", "page two"][:n_ex], padding=True, return_tensors="pt")
+            for k in ("input_ids", "attention_mask", "token_type_ids"):
+                if k in enc:
+                    names.append(k)
+                    example.append(enc[k])
+                    dyn[k] = {0: "pages", 1: "seq"}
+        if dc.route in ("visual", "fused"):
+            names.append("pixel_values")
+            example.append(torch.randn(min(2, dc.max_pages), 3, dc.image_size, dc.image_size))
+            dyn["pixel_values"] = {0: "pages"}
+        example = tuple(example)
+        frontend = {"type": "document", "route": dc.route, "inputs": names, "max_pages": dc.max_pages, "max_len": dc.max_len,
+                    "image_size": dc.image_size, "dpi": dc.dpi, "ocr": dc.ocr, "mean": list(MEAN_), "std": list(STD_)}
+    elif spec.modality == "text":
         kind = "text"
         mod.tokenizer.save_pretrained(out / "_tok")
         shutil.copy(out / "_tok" / "tokenizer.json", out / "tokenizer.json")
@@ -141,6 +169,7 @@ def export(name: str, exp: str | None = None, out: Path | None = None, log: Call
         names, example, dyn = ["pixel_values"], (torch.randn(1, 3, mod.size, mod.size),), {"pixel_values": {0: "batch"}}
 
     full = _Full(sp, kind).eval()
+    full.doc_inputs = names if kind == "document" else []
     out_dyn = {"embedding": {0: "batch", 1: "frames"} if spec.task_type == "frame" else {0: "batch"}, "logits": {0: "batch", 1: "frames"} if spec.task_type == "frame" else {0: "batch"}}
     torch.onnx.export(full, example, str(out / "model.onnx"), input_names=names, output_names=["embedding", "logits"], dynamic_axes={**dyn, **out_dyn}, opset_version=17, dynamo=False)
     log(f"  model.onnx ({(out / 'model.onnx').stat().st_size / 1e6:.2f} MB)")
@@ -165,7 +194,7 @@ def export(name: str, exp: str | None = None, out: Path | None = None, log: Call
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
     shutil.copy(Path(__file__).with_name("rt.py"), out / "byojl_rt.py")
-    reqs = ["numpy", "onnxruntime"] + (["tokenizers"] if kind == "text" else []) + (["pillow"] if kind == "image" else []) + (["soundfile  # only for reading audio files"] if spec.modality == "audio" else [])
+    reqs = ["numpy", "onnxruntime"] + (["tokenizers"] if kind == "text" or (kind == "document" and spec.document.route != "visual") else []) + (["pillow"] if kind in ("image", "document") else []) + (["pypdfium2", "rapidocr_onnxruntime  # OCR for scanned pages"] if kind == "document" else []) + (["soundfile  # only for reading audio files"] if spec.modality == "audio" else [])
     (out / "requirements.txt").write_text("\n".join(reqs) + "\n")
     (out / "README.md").write_text(_readme(manifest, kind))
 
@@ -187,7 +216,7 @@ def _verify(out: Path, sp: Specialist, p: Project, kind: str, log: Callable[[str
     worst = 0.0
     for r in rows:
         x = mod.load(r)
-        _, pr = m._run(x)
+        _, pr = m._run(str(mod._path(r)) if kind == "document" else x)
         with torch.no_grad():
             inputs, _ = mod.collate([x])
             logits, mask = sp.model(inputs)
@@ -208,7 +237,7 @@ def _verify(out: Path, sp: Specialist, p: Project, kind: str, log: Callable[[str
 
 
 def _readme(m: dict, kind: str) -> str:
-    ex = {"text": 'm.predict("so what I wanted to ask was")', "logmel": "m.predict(wav)  # float32 mono @ 16kHz",
+    ex = {"text": 'm.predict("so what I wanted to ask was")', "logmel": "m.predict(wav)  # float32 mono @ 16kHz", "document": 'm.predict("invoice.pdf")  # PDF or page image',
           "waveform": "m.predict(wav)", "image": 'm.predict("photo.jpg")'}[kind]
     stream = """
 ## Streaming (realtime audio)

@@ -7,26 +7,43 @@ from torch import nn
 from .modalities import IGNORE, Backbone, masked_mean
 
 
+class AttentionPool(nn.Module):
+    """Learned attention over positions (pages / frames / tokens): weights the parts that decide the label."""
+
+    def __init__(self, dim: int):
+        super().__init__()
+        self.score = nn.Sequential(nn.Linear(dim, dim), nn.Tanh(), nn.Linear(dim, 1))
+
+    def forward(self, feats: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        w = self.score(feats).squeeze(-1).masked_fill(~mask, -1e4).softmax(-1)
+        return (w.unsqueeze(-1) * feats).sum(1)
+
+
 class Head(nn.Module):
-    def __init__(self, dim: int, n_labels: int, task_type: str):
+    def __init__(self, dim: int, n_labels: int, task_type: str, pool: str = "mean"):
         super().__init__()
         self.task_type = task_type
+        self.pool = AttentionPool(dim) if pool == "attention" and task_type == "classify" else None
         self.net = nn.Sequential(nn.LayerNorm(dim), nn.Dropout(0.1), nn.Linear(dim, n_labels))
+
+    def pooled(self, feats: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        return self.pool(feats, mask) if self.pool is not None else masked_mean(feats, mask)
 
     def forward(self, feats: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         if self.task_type == "frame":
             return self.net(feats)  # [B, T, C]
-        return self.net(masked_mean(feats, mask))  # [B, C]
+        return self.net(self.pooled(feats, mask))  # [B, C]
 
 
 class SpecialistModel(nn.Module):
     """One backbone, one or more heads. A specialist has exactly one head; the `bench` generalist has one per task."""
 
-    def __init__(self, backbone: Backbone, heads: dict[str, tuple[int, str]], proj_dim: int = 128):
+    def __init__(self, backbone: Backbone, heads: dict[str, tuple], proj_dim: int = 128):
+        """heads: {name: (n_labels, task_type[, pool])}"""
         super().__init__()
         self.backbone = backbone
         d = backbone.dim
-        self.heads = nn.ModuleDict({k: Head(d, n, t) for k, (n, t) in heads.items()})
+        self.heads = nn.ModuleDict({k: Head(d, *h) for k, h in heads.items()})
         self.proj = nn.Sequential(nn.Linear(d, 512), nn.BatchNorm1d(512), nn.GELU(), nn.Linear(512, proj_dim))
 
     def embed(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:

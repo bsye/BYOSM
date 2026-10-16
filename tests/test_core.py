@@ -148,3 +148,60 @@ def test_crnn_streaming_matches_offline():
         f, state = m.stream(wav[:, i : i + 480], state)
         outs.append(f)
     assert torch.allclose(torch.cat(outs, 1), full, atol=1e-4)
+
+
+def _make_pdf(path, pages):
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+
+    c = canvas.Canvas(str(path), pagesize=letter)
+    for title, lines in pages:
+        c.setFont("Helvetica-Bold", 22)
+        c.drawString(72, 720, title)
+        c.setFont("Helvetica", 11)
+        for i, l in enumerate(lines):
+            c.drawString(72, 690 - 16 * i, l)
+        c.showPage()
+    c.save()
+
+
+def test_document_fused_pipeline_and_export(ws):
+    from byojl.config import Project
+    from byojl.data.store import Dataset, record
+    from byojl.export import export
+    from byojl.pipeline import build
+    from byojl.spec import DocumentCfg, EvalSuite, TaskSpec, TrainCfg
+
+    p = Project("doc").ensure()
+    spec = TaskSpec(name="doc", description="invoice vs letter", modality="document", backbone="doc",
+                    labels=[Label(name="invoice", definition=""), Label(name="letter", definition="")],
+                    document=DocumentCfg(route="fused", text_backbone=TINY_BERT, image_backbone="tiny-cnn", max_pages=3, image_size=64, dim=64, ocr="never"),
+                    train=TrainCfg(epochs=3, pretrain_steps=5, batch_size=8, lr_backbone=1e-4, pool="attention"), evals=[EvalSuite(name="builtin", primary=True)])
+    spec.data.synthetic = False
+    spec.save(p.spec_path)
+    dd = p.data_dir_for(spec)
+    (dd / "pdf").mkdir(parents=True)
+    rng = random.Random(0)
+    splits = {"train": [], "dev": [], "test": []}
+    for i in range(60):
+        lab = "invoice" if i % 2 else "letter"
+        pages = [("INVOICE #%d" % i, ["Qty  Item  Price", "Total due: $%d" % rng.randint(10, 999)])] if lab == "invoice" else [("Dear Sir or Madam,", ["I am writing to you about", "Kind regards"])]
+        pages += [("Appendix", ["terms and conditions"])] * rng.randint(0, 2)
+        f = dd / "pdf" / f"{i}.pdf"
+        _make_pdf(f, pages)
+        splits["train" if i < 40 else ("dev" if i < 50 else "test")].append(record(f"pdf/{i}.pdf", lab, "test"))
+    for s, rows in splits.items():
+        Dataset(dd).save(s, rows)
+    build("doc", log=lambda m: None)
+    board = json.loads((p.root / "board.json").read_text())
+    assert board["v1"]["builtin"]["objective"] > 0.8
+
+    out = export("doc", log=lambda m: None)
+    import importlib.util
+
+    s = importlib.util.spec_from_file_location("byojl_rt", out / "byojl_rt.py")
+    rt = importlib.util.module_from_spec(s)
+    s.loader.exec_module(rt)
+    m = rt.load(out)
+    pred = m.predict(str(dd / "pdf" / "45.pdf"))
+    assert pred["label"] in ("invoice", "letter") and m.encode(str(dd / "pdf" / "45.pdf")).shape == (64,)

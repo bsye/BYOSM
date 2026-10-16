@@ -102,7 +102,7 @@ def _collect(pred: Predictor, spec: TaskSpec, rows: list[dict], root: Path) -> t
             n = min(len(pr), len(y))
             per.append((pr[:n], y[:n]))
         return np.concatenate([a for a, _ in per]), np.concatenate([b for _, b in per]), per
-    raws = [mod.load(r) for r in rows]
+    raws = mod.load_many(rows)
     idx = {n: i for i, n in enumerate(spec.label_names)}
     return pred.probs_batch(raws), np.array([idx[r["label"]] for r in rows]), []
 

@@ -1,0 +1,16 @@
+{
+  "parent": "spec.yaml",
+  "applied": [
+    {
+      "id": "manual",
+      "why": "document.route=visual",
+      "ops": [
+        {
+          "op": "set",
+          "path": "document.route",
+          "value": "visual"
+        }
+      ]
+    }
+  ]
+}

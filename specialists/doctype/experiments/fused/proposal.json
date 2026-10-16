@@ -1,0 +1,16 @@
+{
+  "parent": "spec.yaml",
+  "applied": [
+    {
+      "id": "manual",
+      "why": "document.route=fused",
+      "ops": [
+        {
+          "op": "set",
+          "path": "document.route",
+          "value": "fused"
+        }
+      ]
+    }
+  ]
+}
