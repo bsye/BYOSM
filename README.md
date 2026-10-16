@@ -225,6 +225,8 @@ Repos are private unless you pass `--public`. `--dry-run` stages everything unde
 
 ## Results: a 0.1M-param VAD vs LiveKit's Silero
 
+Published with `byojl publish`: **[huggingface.co/bsye/byojl-vad](https://huggingface.co/bsye/byojl-vad)** (model card, eval widget, ONNX bundle).
+
 Frozen AVA‑Speech suite: 20 real film/TV recordings, ~5 h, labelled by humans, never trained on. Every model goes
 through LiveKit's own hysteresis logic, calibrated on 4 separate recordings, on one CPU thread.
 
