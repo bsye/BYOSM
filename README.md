@@ -305,9 +305,14 @@ RVL-CDIP (16 document types), scored on 768 documents from the **original test s
 | | params | accuracy | CPU/doc | trained on |
 |---|---|---|---|---|
 | DiT-base (`microsoft/dit-base-finetuned-rvlcdip`, baseline) | 85.8M | **94.8%** | 51 ms | 320k labelled + 42M unlabelled documents |
-| **BYOJL fused** (MiniLM text + DINOv2-small visual) | 45.7M | **80.9%** | 26 ms | 2,400 documents (from the val split) |
+| **BYOJL fused-dit** (MiniLM text + DiT-base visual, *proposed by `byojl improve`*) | 109.6M | **89.7%** | 45 ms | 9,600 documents (from the val split) |
+| BYOJL fused (MiniLM text + DINOv2-small visual) | 45.7M | 80.9% | 26 ms | 2,400 documents (from the val split) |
 | BYOJL text (OCR → MiniLM) | 23.4M | 72.1% | 15 ms | same |
 | BYOJL visual (DINOv2-small) | 22.8M | 66.5% | 17 ms | same |
+
+`fused` → `fused-dit` applied three proposals from `byojl improve`: 4× data, a document-pretrained visual encoder
+(`microsoft/dit-base`, self-supervised on unlabelled scans) and longer training. Together they cut the gap to DiT from
+14 points to 5.
 
 Fusion adds nearly 9 points over the best single view, because the views fail on different classes. Visual is strong on
 `handwritten`, `advertisement` and `file_folder`; text is strong on `questionnaire`, `memo` and `invoice`.
