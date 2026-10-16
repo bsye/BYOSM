@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.DS_Store
+
+# Specialist workspaces: keep specs, experiment metadata and results; not data, weights or exports.
+specialists/*/data/
+specialists/*/cache/
+specialists/*/evals/
+specialists/*/export/
+specialists/*/hub/
+specialists/*/experiments/*/model.pt
+specialists/*/experiments/*/*errors.json
+specialists/*/experiments/*/report.json

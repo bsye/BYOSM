@@ -1,0 +1,37 @@
+{
+  "predictor": "energy",
+  "kind": "baseline",
+  "params": 0,
+  "metrics": {
+    "n": 1800000,
+    "accuracy": 0.6361133333333333,
+    "macro_f1": 0.5900240945463997,
+    "per_label": {
+      "non_speech": {
+        "precision": 0.8465259234708873,
+        "recall": 0.3088352048475336,
+        "f1": 0.4525632732068621,
+        "support": 876652
+      },
+      "speech": {
+        "precision": 0.5906488021002936,
+        "recall": 0.946840194596187,
+        "f1": 0.7274849158859373,
+        "support": 923348
+      }
+    },
+    "threshold": 0.55,
+    "precision": 0.5906488021002936,
+    "recall": 0.946840194596187,
+    "f1": 0.7274849158859373,
+    "roc_auc": 0.6944161669424549,
+    "objective": 0.7274849158859373,
+    "avg_precision": 0.6881793937962827
+  },
+  "objective": 0.7274849158859373,
+  "n_test": 20,
+  "n_calib": 4,
+  "seconds": 3.0,
+  "latency_ms": null,
+  "fingerprint": "92cde75bf4"
+}

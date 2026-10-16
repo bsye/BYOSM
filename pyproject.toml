@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "byojl"
+version = "0.1.0"
+description = "BYOJL - Build Your Own JEPA-Like: from one sentence to a tiny, measured, locally-runnable System-1 model."
+requires-python = ">=3.10"
+dependencies = [
+  "torch>=2.3",
+  "torchaudio>=2.3",
+  "torchvision>=0.18",
+  "transformers>=4.44",
+  "datasets>=2.20",
+  "huggingface_hub>=0.24",
+  "numpy",
+  "scikit-learn",
+  "soundfile",
+  "pydantic>=2",
+  "pyyaml",
+  "typer>=0.12",
+  "rich",
+  "anthropic>=1.0",
+  "openai>=1.40",
+  "onnx",
+  "onnxruntime",
+  "tokenizers",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+silero = ["livekit-plugins-silero"]  # LiveKit's VAD as a baseline
+
+[project.scripts]
+byojl = "byojl.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["byojl*"]

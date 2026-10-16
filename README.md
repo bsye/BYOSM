@@ -1,0 +1,315 @@
+# BYOJL: Build Your Own JEPA‑Like
+
+**Describe a perception task in one sentence. Get a tiny, measured model that does exactly that task and runs on any
+computer.**
+
+```bash
+byojl new vad "voice activity detection for a voice agent; ignore coughs, laughter and keyboards"
+byojl build vad        # data → self-supervised pretraining → training → evaluation → promotion
+byojl board vad        # how it compares to the alternatives, on real test sets
+byojl improve vad      # what to change next, and why
+byojl export vad       # a 0.4 MB ONNX bundle that needs only numpy + onnxruntime
+```
+
+---
+
+## Why
+
+Fast, intuitive, *System 1* perception (is someone speaking? did they finish their turn? is this message toxic?) is
+usually handled by one general model, or by a large LLM called for every decision. BYOJL bets the other way: **many small
+specialists, each trained for exactly one job on exactly its own data, beat one generalist**. They're more accurate on
+their task, a fraction of the size, and fast enough to run side by side on a laptop CPU.
+
+Each specialist is a small encoder (JEPA‑style: it learns to *represent* its inputs, not to generate them) with a tiny task
+head on top. BYOJL automates everything around that model: defining the task, getting data, training, honest evaluation
+against real competitors, deciding what to fix next, and shipping something you can run anywhere.
+
+---
+
+## How it works
+
+```
+ "voice activity detection for a voice agent…"
+        │
+   ①  DEFINE      spec.yaml ◀─ you review / edit
+        │           labels + definitions, objective, data plan, backbone, decision policy, eval suites, baselines
+        │
+   ②  DATA        data/<hash>/  train · dev · test · unlabeled
+        │           LLM-written text (double-labelled) · Hugging Face datasets · procedural audio · real labelled audio
+        │
+   ③  PRETRAIN    LeJEPA self-supervised adaptation on unlabeled in-domain inputs
+   ④  TRAIN       tiny head (+ backbone fine-tune), checkpoint chosen on dev
+        │
+   ⑤  EVALUATE    every eval suite × (every experiment + every baseline), same scorer, same calibration
+        │
+   ⑥  BOARD       leaderboard → best experiment on the primary suite is promoted
+        │
+   ⑦  IMPROVE     diagnosis → proposed spec edits (with evidence) → new experiment → back to ②
+        │
+   ⑧  SHIP        export/: model.onnx + stream.onnx + manifest.json + byojl_rt.py  →  encode / predict / stream / serve
+```
+
+### ① Define: the spec
+
+`byojl new <name> "<sentence>"` sends your sentence to an LLM acting as a *task compiler*, which writes
+`specialists/<name>/spec.yaml`. The spec is the single source of truth, and you're expected to read and edit it:
+
+- **Labels with definitions** that settle borderline cases ("a cough is non‑speech"; "a 40 ms gap between words is
+  still speech"). Vague labels cap precision, so this is where most quality is won.
+- **Objective**: what the deployer actually cares about, e.g. `f1`, `macro_f1`, or `recall_at_precision` with
+  `constraint: 0.99` (as many detections as possible while keeping 99% precision).
+- **Hard cases and diversity axes**: the confusers a naive model gets wrong, and the dimensions real inputs vary along
+  (speaker, noise, domain, language…). Both drive data generation.
+- **Backbone**: the smallest model from the catalog that can plausibly hit the target within the latency budget.
+- **Data plan, decision policy, eval suites, baselines**: covered below.
+
+### ② Data: build the training set
+
+The data plan is turned into `train / dev / test / unlabeled` splits. Every source is optional; mix as needed.
+
+| source | how it works |
+|---|---|
+| **LLM-written text** | A *generator* prompt writes batches of examples for each label under sampled diversity axes and hard cases, including near‑misses labelled with their true label. A separate **judge** relabels everything blind, and disagreements are dropped. The **dev and test** sets come from an independent *evaluator* prompt (ideally a different model family), deduplicated against train with 5‑gram overlap so they can't leak. |
+| **Hugging Face datasets** | The LLM searches the Hub from the spec's queries, picks datasets, and maps their columns and label values onto your labels. Values that don't map cleanly are dropped, because precision beats coverage. |
+| **Procedural audio** | Clean positive events (e.g. LibriSpeech speech) are placed over negative backgrounds (ESC‑50 coughs, laughter, rain, keyboards…) at random SNRs. Frame labels come from the clean event's own energy envelope, so they're exact by construction. `fill_ms` sets the label convention (60 ms = word-level, 300 ms = utterance-level). |
+| **Real segment-labelled audio** | Repos of recordings with onset/offset sidecars (e.g. AVA‑Speech), chopped into training clips with frame labels. |
+| **Local files** | `local_dir/<label>/*`. |
+
+The data directory is named by a **hash of the data plan**. Experiments that only change training settings share the same
+data; changing the data plan builds a new set.
+
+### ③ Pretrain: LeJEPA
+
+JEPA (Joint‑Embedding Predictive Architecture) models learn by predicting the *representation* of one view of an input
+from another view, rather than reconstructing pixels or samples. That teaches them what's invariant and meaningful, which
+is exactly what a perception model needs. The classic failure mode is **collapse**: every input maps to the same vector,
+which makes prediction trivially perfect.
+
+BYOJL uses **LeJEPA** (Balestriero & LeCun, 2025), which removes the usual anti-collapse tricks (EMA teachers,
+stop‑gradients) and replaces them with one principled regulariser:
+
+- Each unlabeled input produces **2 global views** (most of the input) and **4 local views** (small crops), made by the
+  modality plugin's augmentations: text masking and crops; audio crops, gain, noise and time masks; image crops, flips and
+  colour jitter.
+- **Prediction loss**: every view's embedding is pulled toward the mean embedding of the global views.
+- **SIGReg**: the batch's embeddings are projected onto 256 random directions. Along each one, the *empirical
+  characteristic function* is compared with a standard Gaussian's (an Epps–Pulley test). Minimising it pushes the
+  embedding distribution toward an isotropic Gaussian, which provably can't collapse.
+- `loss = (1 − λ)·prediction + λ·SIGReg` with λ = 0.05. BYOJL logs the embedding spread (`emb_std`) every few steps so
+  collapse is visible immediately.
+
+This matters most for backbones trained from scratch (`tiny-crnn`, `tiny-cnn`). Pretrained Hugging Face encoders get a short
+adaptation pass.
+
+### ④ Train
+
+A tiny head (LayerNorm → Linear) goes on top of the backbone: mean-pooled for `classify` tasks, per position for `frame`
+tasks (one label per 10 ms of audio or per word). Training is class‑weighted cross-entropy with cosine schedules and early
+stopping, and the checkpoint is chosen on the **dev** set. For text, a **refine loop** can run: an analyst LLM reads the
+dev errors, names the systematic failure patterns, writes targeted training data for them (judged and deduplicated like
+everything else), and the model retrains.
+
+### ⑤ Evaluate: eval suites and baselines
+
+An **eval suite** is a named, frozen test set with a `calib` part and a `test` part:
+
+- `builtin`: the specialist's own adversarial dev/test.
+- `hf`: a real benchmark from Hugging Face (rows, or segment-labelled audio such as AVA‑Speech).
+- `local`: your own jsonl.
+
+Items from Hugging Face sources are assigned to `train / calib / test` by a **stable hash of their file name**. The same
+dataset can therefore be a training source (train partition) and an eval suite (calib + test) with zero overlap, no matter
+the order you add them in.
+
+A **baseline** is any competitor: `silero` (LiveKit's VAD, using the exact ONNX file LiveKit ships), `energy` (a sanity
+floor), or `llm` (the zero‑shot LLM itself, the "System 2" bar for text). Experiments and baselines go through **the same
+scorer**:
+
+1. Run on the suite's `calib` part and **calibrate the decision policy** on it: a threshold, or for streaming audio the
+   LiveKit-style **hysteresis** (smoothing, start/stop thresholds, 50 ms minimum speech, 550 ms minimum silence).
+2. Run on the `test` part and report the objective, precision/recall, threshold-free ROC‑AUC and average precision,
+   parameters, and streaming CPU cost per chunk.
+
+Results are cached by a fingerprint of the suite, so re-scoring is free until something changes.
+
+### ⑥ Board and promotion
+
+`byojl board <name>` is the leaderboard: experiments × baselines × suites. The experiment with the best objective on the
+**primary** suite is promoted, and promotion decides what `export` and `serve` use. You can override it with
+`byojl promote`.
+
+### ⑦ Improve
+
+`byojl improve <name>` reads the board and proposes the next experiment as **explicit edits to the spec**, each with the
+evidence behind it:
+
+| rule | triggers when | proposes |
+|---|---|---|
+| `real-data-<suite>` | a real-world suite lags the builtin suite or loses to a baseline, and the model never saw that domain | train on the suite source's train partition (hash-disjoint from its test files) |
+| `utterance-labels` | calibration had to move the threshold to an extreme, meaning a label-convention mismatch | change how training labels are made (e.g. `fill_ms: 300`) |
+| `train-longer` | dev was still improving at the last epoch | more epochs |
+| `refine-more` | text dev score below target | more error-driven data rounds |
+| `llm-*` | an LLM is configured (role `analyze`) | its own proposals, limited to allowed spec paths |
+
+`byojl improve <name> --apply a,b --run` writes `experiments/vN/spec.yaml` and builds and scores it. Every experiment
+records which proposal created it.
+
+### ⑧ Ship: runs on most computers
+
+`byojl export <name>` writes a self-contained folder that needs **no PyTorch and no GPU**, just
+`pip install numpy onnxruntime` (+ `tokenizers` for text, Pillow for images), on macOS, Linux or Windows:
+
+```
+export/vad/
+  model.onnx       inputs → embedding (the learned representation) + logits
+  stream.onnx      stateful streaming step (causal audio backbones)
+  manifest.json    labels, calibrated decision policy, preprocessing config, metrics per suite, provenance
+  byojl_rt.py      the runtime: one file
+  mel_fb.npy, window.npy | tokenizer.json
+```
+
+Preprocessing (log-mel spectrogram, tokenisation, image normalisation) runs in numpy or `tokenizers`, so the ONNX graph
+is just the network. Before writing the bundle, export checks it against PyTorch, and streaming against offline inference
+(max difference ≈ 5·10⁻⁵).
+
+**The API is the same for every modality:**
+
+```python
+from byojl_rt import load
+m = load("export/vad")
+
+m.encode(x)        # the representation: [D] pooled, or [T, D] per frame (feed it to probes, retrieval, other heads)
+m.predict(x)       # {"label", "probs"}  |  {"segments": [{"label", "start_s", "end_s"}], "frames", "probs"}
+
+s = m.stream()     # realtime: feed chunks of any size (float32 mono, 16 kHz)
+s.step(chunk)      # {"probs": [...per 10 ms...], "speaking": bool, "events": [{"type": "start"|"end", "t_s": ...}]}
+```
+
+**Or as a local HTTP server**, with many specialists in one process:
+
+```bash
+python export/vad/byojl_rt.py serve export/vad export/eot --port 8800
+```
+
+```
+GET  /v1/models                       → manifests (labels, metrics)
+POST /v1/vad/predict  {"input": "clip.wav"} | {"pcm16_b64": "..."}
+POST /v1/vad/encode   {...}           → {"embedding": [...]}
+POST /v1/predict      {...}           → every model's answer at once
+```
+
+---
+
+## Results: a 0.1M-param VAD vs LiveKit's Silero
+
+Frozen AVA‑Speech suite: 20 real film/TV recordings, ~5 h, labelled by humans, never trained on. Every model goes
+through LiveKit's own hysteresis logic, calibrated on 4 separate recordings, on one CPU thread.
+
+| | params | CPU per chunk | builtin F1 | **AVA F1** | AVA AUC |
+|---|---|---|---|---|---|
+| **BYOJL vad v2** | **0.10M** | 0.070 ms / 30 ms ¹ | 0.879 | **0.876** | **0.939** |
+| Silero (LiveKit) | 0.55M | 0.068 ms / 32 ms | 0.885 | 0.856 | 0.923 |
+| BYOJL vad v1 | 0.10M | 0.070 ms / 30 ms ¹ | 0.894 | 0.849 | 0.900 |
+| energy floor | – | – | 0.728 | 0.728 | 0.694 |
+
+¹ the exported ONNX bundle (`byojl board` reports the slower PyTorch timing).
+
+**How v1 became v2.** v1 was trained only on synthetic mixtures (LibriSpeech over ESC‑50) and lost to Silero on real audio.
+`byojl improve` read the board and proposed two changes. `real-data-ava`: the model had never heard film audio, so train
+on AVA's train partition (hash-disjoint from the test files). `utterance-labels`: calibration pushed the threshold down to
+0.20, a sign that AVA labels whole utterances while our labels covered only voiced frames. Applying both produced v2: same
+size, same speed, ahead of Silero on real audio.
+
+**The caveat:** v2 has seen film audio and Silero hasn't. This is an *in‑domain* win, which is exactly the thesis (tailor
+the model to its domain), not a claim that v2 is better everywhere. It's also slightly *worse* on the synthetic suite,
+whose labels use the convention v2 was moved away from.
+
+---
+
+## Quickstart
+
+```bash
+git clone https://github.com/alberto-marc/BYOJL && cd BYOJL
+python3.11 -m venv .venv && .venv/bin/pip install -e '.[dev,silero]'
+byojl init                                   # writes byojl.yaml: which LLM to use for each role
+byojl new eot "decide if a voice-agent user finished their turn or is mid-thought; en/es/it"
+byojl build eot
+byojl board eot
+byojl export eot && python specialists/eot/export/byojl_rt.py predict specialists/eot/export "so what I wanted to ask was"
+```
+
+The VAD example is reproducible without any LLM. `specialists/vad/spec.yaml` lists every data source explicitly:
+
+```bash
+byojl build vad && byojl board vad
+```
+
+### LLMs: any provider, per role
+
+An LLM is only used to compile specs, write and label text data, analyse errors, and serve as the `llm` baseline. Each role
+is configured in `byojl.yaml`:
+
+```yaml
+llm:
+  default:  {provider: anthropic, model: claude-opus-5-5, effort: medium}     # ANTHROPIC_API_KEY
+  generate: {provider: openai, model: qwen3:14b, base_url: http://localhost:11434/v1, api_key: ollama}
+  eval:     {provider: openai, model: gpt-5, api_key_env: OPENAI_API_KEY}     # different family for held-out data
+  # spec / judge / analyze / baseline fall back to default
+```
+
+`provider: openai` means any OpenAI-compatible server: OpenAI, Ollama, vLLM, LM Studio, OpenRouter… You can register
+anything else with `byojl.llm.register_provider(name, factory)`.
+
+### Commands
+
+| | |
+|---|---|
+| `byojl new <name> "<task>"` | compile a spec from a sentence |
+| `byojl suite add <name> <suite> --hf <id> [--format segment_files] [--primary]` | add a frozen eval suite |
+| `byojl baseline add <name> silero\|energy\|llm` | add a competitor |
+| `byojl build <name> [--exp vN]` | data → pretrain → train → evaluate → promote |
+| `byojl eval <name>` · `byojl board <name> [--detail]` | score and compare |
+| `byojl improve <name> [--apply ids --run]` | diagnose, propose, run the next experiment |
+| `byojl promote <name> <exp>` | choose what ships |
+| `byojl export <name>` · `byojl serve <names…>` · `byojl predict <name> <input>` | ship and run |
+| `byojl bench <a> <b> …` | the thesis test: N specialists vs one shared-backbone generalist on the same data |
+
+---
+
+## Extending
+
+- **New modality**: one file in `byojl/modalities/` implementing `load`, `build_backbone`, `collate`, `views` (the JEPA
+  augmentations) and `example_input`, decorated with `@register`. Training, LeJEPA, evaluation and export are all
+  modality-agnostic.
+- **New baseline**: subclass `Predictor` in `byojl/predictors.py` with `@register_baseline("name")`.
+- **New LLM provider**: `register_provider`.
+
+## Layout
+
+```
+byojl/
+  spec.py          TaskSpec, spec compiler, backbone catalog
+  llm.py           provider-agnostic structured-JSON LLM calls
+  data/            synth_text · hf_source · audio_mix · segments · store (dedupe, leakage control)
+  modalities/      text · audio (tiny-crnn, streaming) · image
+  jepa.py          LeJEPA (multi-view prediction + SIGReg)
+  model.py         backbone + heads + projector
+  train.py         supervised training, dev selection
+  predictors.py    experiments and baselines behind one interface
+  evals.py         suites, scoring, calibration, board
+  improve.py       diagnosis and proposals
+  pipeline.py      experiment pipeline
+  export.py        ONNX bundle + parity check
+  rt.py            portable runtime (copied into every bundle as byojl_rt.py)
+  bench.py         specialists vs generalist
+benchmarks/        standalone comparisons (vad_vs_silero.py)
+specialists/<name>/spec.yaml, experiments/*/{spec.yaml,meta.json,results/}, board.json
+```
+
+Datasets, model weights and exports aren't committed. The VAD's training data includes ESC‑50 (CC BY‑NC), so check data
+licences before shipping a model commercially.
+
+## Status
+
+Working end to end: the full loop on audio (the VAD above) and on text (tested with a stub LLM). Text specialists on real
+tasks and the `bench` thesis experiment need an LLM key or a local model.

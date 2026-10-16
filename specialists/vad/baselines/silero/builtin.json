@@ -1,0 +1,38 @@
+{
+  "predictor": "silero",
+  "kind": "baseline",
+  "params": 545601,
+  "metrics": {
+    "n": 240000,
+    "accuracy": 0.90175,
+    "macro_f1": 0.8996150776053216,
+    "per_label": {
+      "non_speech": {
+        "precision": 0.945187969924812,
+        "recall": 0.8852816901408451,
+        "f1": 0.9142545454545454,
+        "support": 142000
+      },
+      "speech": {
+        "precision": 0.8477570093457943,
+        "recall": 0.9256122448979592,
+        "f1": 0.8849756097560976,
+        "support": 98000
+      }
+    },
+    "threshold": 0.625,
+    "precision": 0.8477570093457943,
+    "recall": 0.9256122448979592,
+    "f1": 0.8849756097560976,
+    "roc_auc": 0.9805848345429722,
+    "objective": 0.8849756097560976,
+    "avg_precision": 0.9724439121988763
+  },
+  "objective": 0.8849756097560976,
+  "n_test": 600,
+  "n_calib": 400,
+  "seconds": 9.6,
+  "stream_ms_per_chunk": 0.0677,
+  "chunk_ms": 32.0,
+  "fingerprint": "72e8f9c564"
+}

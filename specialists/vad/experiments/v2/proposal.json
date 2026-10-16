@@ -1,0 +1,39 @@
+{
+  "parent": "v1",
+  "applied": [
+    {
+      "id": "real-data-ava",
+      "ops": [
+        {
+          "op": "append",
+          "path": "data.hf_sources",
+          "value": {
+            "dataset": "nccratliri/vad-human-ava-speech",
+            "role": "labeled",
+            "format": "segment_files",
+            "partition": "train",
+            "max_files": 60,
+            "config": null,
+            "split": "train",
+            "input_column": null,
+            "label_column": null,
+            "label_map": [],
+            "max_rows": 6000
+          }
+        }
+      ],
+      "why": "ava: objective 0.848 vs silero 0.855, 0.046 below builtin. The model has never seen this domain; train on the source's train partition (hash-disjoint from the suite's calib/test files)."
+    },
+    {
+      "id": "utterance-labels",
+      "ops": [
+        {
+          "op": "set",
+          "path": "data.audio.fill_ms",
+          "value": 300
+        }
+      ],
+      "why": "ava: calibration had to move the decision threshold to 0.20 (P=0.824, R=0.875) -> the suite's label convention differs from training's. Training labels only voiced frames (gaps > 60ms are negative); segment suites usually label whole utterances. Fill gaps up to 300ms in synthetic labels."
+    }
+  ]
+}

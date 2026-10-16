@@ -1,0 +1,38 @@
+{
+  "predictor": "v1",
+  "kind": "experiment",
+  "params": 101458,
+  "metrics": {
+    "n": 1800000,
+    "accuracy": 0.8396861111111111,
+    "macro_f1": 0.839147374101417,
+    "per_label": {
+      "non_speech": {
+        "precision": 0.8589498972749479,
+        "recall": 0.8026354813540607,
+        "f1": 0.8298383858278163,
+        "support": 876652
+      },
+      "speech": {
+        "precision": 0.823597122008762,
+        "recall": 0.8748629985660877,
+        "f1": 0.8484563623750178,
+        "support": 923348
+      }
+    },
+    "threshold": 0.2,
+    "precision": 0.823597122008762,
+    "recall": 0.8748629985660877,
+    "f1": 0.8484563623750178,
+    "roc_auc": 0.900326826389107,
+    "objective": 0.8484563623750178,
+    "avg_precision": 0.9197057339476767
+  },
+  "objective": 0.8484563623750178,
+  "n_test": 20,
+  "n_calib": 4,
+  "seconds": 18.7,
+  "stream_ms_per_chunk": 0.352,
+  "chunk_ms": 30.0,
+  "fingerprint": "92cde75bf4"
+}
