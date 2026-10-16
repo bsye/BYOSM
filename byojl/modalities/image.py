@@ -13,6 +13,20 @@ from .base import Backbone, Modality, register
 MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
 
 
+def norm_for(backbone: str) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Pixel mean/std the encoder was pretrained with (from its HF image processor); ImageNet stats otherwise."""
+    if backbone.startswith("hf:"):
+        try:
+            from transformers import AutoImageProcessor
+
+            pr = AutoImageProcessor.from_pretrained(backbone[3:])
+            if getattr(pr, "image_mean", None) and getattr(pr, "image_std", None):
+                return tuple(pr.image_mean), tuple(pr.image_std)
+        except Exception:
+            pass
+    return MEAN, STD
+
+
 class TinyCNN(Backbone):
     def __init__(self, width: int = 32):
         super().__init__()
@@ -69,10 +83,16 @@ class Image(Modality):
             return HFImageBackbone(bb[3:])
         raise ValueError(f"unknown image backbone {bb!r}")
 
+    @property
+    def norm(self) -> tuple[tuple[float, ...], tuple[float, ...]]:
+        if not hasattr(self, "_norm"):
+            self._norm = norm_for(self.spec.backbone)
+        return self._norm
+
     def _tensor(self, img: Any, size: int) -> torch.Tensor:
         from torchvision.transforms import v2 as T
 
-        return T.Compose([T.ToImage(), T.Resize((size, size), antialias=True), T.ToDtype(torch.float32, scale=True), T.Normalize(MEAN, STD)])(img)
+        return T.Compose([T.ToImage(), T.Resize((size, size), antialias=True), T.ToDtype(torch.float32, scale=True), T.Normalize(*self.norm)])(img)
 
     def collate(self, raws: list[Any], frame_labels: Any = None) -> tuple[dict[str, torch.Tensor], None]:
         return {"pixel_values": torch.stack([r if isinstance(r, torch.Tensor) else self._tensor(r, self.size) for r in raws])}, None
@@ -86,7 +106,7 @@ class Image(Modality):
         def tf(size: int, scale: tuple[float, float]) -> Any:
             return T.Compose([T.ToImage(), T.RandomResizedCrop(size, scale=scale, antialias=True), T.RandomHorizontalFlip(),
                               T.RandomApply([T.ColorJitter(0.4, 0.4, 0.2, 0.1)], p=0.8), T.RandomGrayscale(0.2),
-                              T.ToDtype(torch.float32, scale=True), T.Normalize(MEAN, STD)])
+                              T.ToDtype(torch.float32, scale=True), T.Normalize(*self.norm)])
 
         return [tf(g, (0.3, 1.0))(raw) for _ in range(2)], [tf(l, (0.05, 0.3))(raw) for _ in range(4)]
 

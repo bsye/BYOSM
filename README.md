@@ -145,13 +145,22 @@ Results are cached by a fingerprint of the suite, so re-scoring is free until so
 `byojl improve <name>` reads the board and proposes the next experiment as **explicit edits to the spec**, each with the
 evidence behind it:
 
+It first prints a diagnosis: per-suite objective, the gap to the best baseline, the dev training curve, the weakest
+labels and the most confused label pairs. Then each rule proposes edits only when the evidence supports them:
+
 | rule | triggers when | proposes |
 |---|---|---|
-| `real-data-<suite>` | a real-world suite lags the builtin suite or loses to a baseline, and the model never saw that domain | train on the suite source's train partition (hash-disjoint from its test files) |
-| `utterance-labels` | calibration had to move the threshold to an extreme, meaning a label-convention mismatch | change how training labels are made (e.g. `fill_ms: 300`) |
-| `train-longer` | dev was still improving at the last epoch | more epochs |
+| `real-data-<suite>` | a real-world suite lags (behind a baseline or the builtin suite), and the model never trained on that source | train on the source's train partition (hash-disjoint from the suite's files) |
+| `more-data` | losing to a baseline or below target | ~4× more rows from the labelled source (or 2× synthetic). The explanation says whether the curve was still rising (data-limited) or had plateaued. |
+| `domain-encoder` | losing to a baseline with an encoder pretrained on another domain (e.g. photos for documents) | a domain-pretrained encoder (e.g. `microsoft/dit-base` for document scans) |
+| `train-longer` | the best dev epoch is in the last quarter of a run that wasn't early-stopped | ~1.6× more epochs |
+| `utterance-labels` | frame audio, and calibration pushed the threshold to an extreme (label-convention mismatch) | change how training labels are made (`fill_ms: 300`) |
+| `hard-pairs` | systematic confusions, with LLM-written data | those pairs as hard cases + an extra refine round |
 | `refine-more` | text dev score below target | more error-driven data rounds |
-| `llm-*` | an LLM is configured (role `analyze`) | its own proposals, limited to allowed spec paths |
+| `llm-*` | an LLM is configured (role `analyze`) | its own proposals, given the board, curve and confusions, limited to allowed spec paths |
+
+Edits address list items by index (`data.hf_sources.0.per_label`). Adding a rule means writing one function decorated
+with `@rule` in `byojl/improve.py`.
 
 `byojl improve <name> --apply a,b --run` writes `experiments/vN/spec.yaml` and builds and scores it. Every experiment
 records which proposal created it.

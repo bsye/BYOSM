@@ -205,3 +205,30 @@ def test_document_fused_pipeline_and_export(ws):
     m = rt.load(out)
     pred = m.predict(str(dd / "pdf" / "45.pdf"))
     assert pred["label"] in ("invoice", "letter") and m.encode(str(dd / "pdf" / "45.pdf")).shape == (64,)
+
+
+def _dg(spec, objective, baseline, curve, best_epoch):
+    return {"spec": spec, "base": spec, "primary": "builtin", "n_train": 100, "dev": curve[best_epoch], "binary": False,
+            "curve": curve, "best_epoch": best_epoch, "epochs_run": len(curve), "epochs_cfg": spec.train.epochs,
+            "late_best": best_epoch >= int(0.75 * len(curve)) and len(curve) >= spec.train.epochs,
+            "suites": {"builtin": {"objective": objective, "best_baseline": ("hf:x", baseline) if baseline else None, "threshold": None,
+                                   "confusions": [("form", "specification", 5)], "weakest": []}}, "board": {}}
+
+
+def test_improve_rules_and_list_paths():
+    from byojl.improve import apply_ops, rule_proposals
+    from byojl.spec import DocumentCfg, HFSource, TrainCfg
+
+    spec = TaskSpec(name="d", description="", modality="document", labels=[Label(name="form", definition=""), Label(name="specification", definition="")],
+                    document=DocumentCfg(image_backbone="hf:facebook/dinov2-small"), train=TrainCfg(epochs=8))
+    spec.data.synthetic = False
+    spec.data.hf_sources = [HFSource(dataset="x/y", role="labeled", sampling="balanced", per_label=100, input_column="image", label_column="label")]
+    # losing to a baseline, still rising -> more data + domain encoder + train longer
+    ids = {p["id"]: p for p in rule_proposals(_dg(spec, 0.80, 0.95, [0.6, 0.7, 0.75, 0.78, 0.79, 0.8, 0.82, 0.83], 7))}
+    assert {"more-data", "domain-encoder", "train-longer"} <= set(ids)
+    assert "still rising" in ids["more-data"]["why"]
+    new = apply_ops(spec, [o for k in ("more-data", "domain-encoder") for o in ids[k]["ops"]])
+    assert new.data.hf_sources[0].per_label == 400 and new.document.image_backbone == "hf:microsoft/dit-base"
+    # beating the baseline, at target, plateaued and early-stopped -> nothing to do
+    spec.objective.target = 0.8
+    assert rule_proposals(_dg(spec, 0.97, 0.95, [0.9, 0.95, 0.96, 0.96], 2)) == []

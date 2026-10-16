@@ -26,7 +26,6 @@ from .config import Project
 from .data.store import Dataset
 from .modalities import get_modality, masked_mean
 from .modalities.audio import TinyCRNN
-from .modalities.image import MEAN as MEAN_, STD as STD_
 from .runtime import Specialist
 
 
@@ -137,7 +136,7 @@ def export(name: str, exp: str | None = None, out: Path | None = None, log: Call
             dyn["pixel_values"] = {0: "pages"}
         example = tuple(example)
         frontend = {"type": "document", "route": dc.route, "inputs": names, "max_pages": dc.max_pages, "max_len": dc.max_len,
-                    "image_size": dc.image_size, "dpi": dc.dpi, "ocr": dc.ocr, "mean": list(MEAN_), "std": list(STD_)}
+                    "image_size": dc.image_size, "dpi": dc.dpi, "ocr": dc.ocr, "mean": list(mod.norm[0]), "std": list(mod.norm[1])}
     elif spec.modality == "text":
         kind = "text"
         mod.tokenizer.save_pretrained(out / "_tok")
@@ -163,9 +162,7 @@ def export(name: str, exp: str | None = None, out: Path | None = None, log: Call
         names, example, dyn = ["waveform"], (torch.randn(1, 16000) * 0.1,), {"waveform": {0: "batch", 1: "samples"}}
     else:
         kind = "image"
-        from .modalities.image import MEAN, STD
-
-        frontend = {"type": "image", "size": mod.size, "mean": list(MEAN), "std": list(STD)}
+        frontend = {"type": "image", "size": mod.size, "mean": list(mod.norm[0]), "std": list(mod.norm[1])}
         names, example, dyn = ["pixel_values"], (torch.randn(1, 3, mod.size, mod.size),), {"pixel_values": {0: "batch"}}
 
     full = _Full(sp, kind).eval()

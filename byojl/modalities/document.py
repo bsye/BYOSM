@@ -23,7 +23,7 @@ import torch
 from torch import nn
 
 from .base import IGNORE, Backbone, Modality, masked_mean, pad_labels, register
-from .image import MEAN, STD, TinyCNN
+from .image import TinyCNN, norm_for
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
 
@@ -197,6 +197,10 @@ class Document(Modality):
     def image_size(self) -> int:
         return self.cfg.image_size
 
+    @cached_property
+    def norm(self) -> tuple[tuple[float, ...], tuple[float, ...]]:
+        return norm_for(self.cfg.image_backbone)
+
     def _path(self, ex: dict) -> Path:
         p = Path(ex["input"])
         return p if p.is_absolute() or not self.data_dir else Path(self.data_dir) / p
@@ -222,7 +226,7 @@ class Document(Modality):
     def _pixels(self, imgs: list[Any]) -> torch.Tensor:
         from torchvision.transforms import v2 as T
 
-        tf = T.Compose([T.ToImage(), T.Resize((self.image_size, self.image_size), antialias=True), T.ToDtype(torch.float32, scale=True), T.Normalize(MEAN, STD)])
+        tf = T.Compose([T.ToImage(), T.Resize((self.image_size, self.image_size), antialias=True), T.ToDtype(torch.float32, scale=True), T.Normalize(*self.norm)])
         return torch.stack([im if isinstance(im, torch.Tensor) else tf(im) for im in imgs])
 
     def collate(self, raws: list[list[Page]], frame_labels: list[list[int]] | None = None) -> tuple[dict[str, torch.Tensor], torch.Tensor | None]:

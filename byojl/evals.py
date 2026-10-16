@@ -143,7 +143,6 @@ def score(pred: Predictor, spec: TaskSpec, calib: list[dict], test: list[dict], 
     if 0 < binary.sum() < len(binary):
         m["roc_auc"] = float(roc_auc_score(binary, pt[:, spec.pos_index]))
         m["avg_precision"] = float(average_precision_score(binary, pt[:, spec.pos_index]))
-    m.pop("confusion", None)
     out.update(metrics=m, objective=m["objective"], n_test=len(test), n_calib=len(calib), seconds=round(time.time() - t0, 1))
     ck = pred.stream_chunk_ms()
     if ck is not None:

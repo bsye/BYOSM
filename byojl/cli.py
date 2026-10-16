@@ -278,10 +278,16 @@ def improve(name: str, apply: Optional[str] = typer.Option(None, help="comma-sep
             log(f"next: byojl build {name} --exp {exp}")
         return
     dg, props = imp.propose(name, not no_llm, log)
-    log(f"diagnosis of {dg['experiment']}:")
+    log(f"diagnosis of {dg['experiment']} ({dg['n_train']} train examples; dev curve {', '.join(f'{c:.2f}' for c in dg['curve'])}; best epoch {dg['best_epoch'] + 1}):")
     for s, r in dg["suites"].items():
         bb = r["best_baseline"]
-        log(f"  {s:10s} objective={r['objective']:.4f} P={r['precision'] or 0:.3f} R={r['recall'] or 0:.3f} thr={r['threshold']}" + (f"  best baseline {bb[0]}={bb[1]:.4f}" if bb else ""))
+        stats = f"P={r['precision']:.3f} R={r['recall']:.3f}" if dg["binary"] and r["precision"] is not None else f"acc={r['accuracy']:.3f} macro_f1={r['macro_f1']:.3f}"
+        thr = f" thr={r['threshold']:.2f}" if r["threshold"] is not None else ""
+        log(f"  {s:10s} objective={r['objective']:.4f} {stats}{thr}" + (f"  | best baseline {bb[0]}={bb[1]:.4f} (gap {bb[1] - r['objective']:+.4f})" if bb else ""))
+        if not dg["binary"] and r["weakest"]:
+            log(f"             weakest: {', '.join(f'{n} {f:.2f}' for n, f in r['weakest'])}")
+        if not dg["binary"] and r["confusions"]:
+            log(f"             confused: {', '.join(f'{g}->{p} ({c})' for g, p, c in r['confusions'][:5])}")
     if not props:
         log("no proposals - the board has no obvious gap to act on")
         return
