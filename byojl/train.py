@@ -16,7 +16,7 @@ from . import jepa, metrics
 from .config import device as pick_device
 from .data.store import Dataset
 from .modalities import IGNORE, Modality, get_modality
-from .model import SpecialistModel, align_targets, count_params, task_loss
+from .model import SpecialistModel, align_probs, align_targets, count_params, distill_loss, task_loss
 from .spec import TaskSpec
 
 
@@ -95,6 +95,27 @@ def build_model(spec: TaskSpec, mod: Modality) -> SpecialistModel:
     return SpecialistModel(mod.build_backbone(), {spec.name: (len(spec.labels), spec.task_type, spec.train.pool)})
 
 
+def _teacher_targets(spec: TaskSpec, mod: Modality, teacher_dir: Path, train_rows: list[dict], ds: Dataset, data_dir: Path, dev: str,
+                     log: Callable[[str], None]) -> tuple[list[Any], list[Any], list[Any]]:
+    """Teacher probabilities for every training input, plus extra unlabeled inputs (targets: IGNORE + teacher only)."""
+    from .predictors import ExperimentPredictor
+
+    tspec = TaskSpec.load(teacher_dir / "spec.yaml")
+    teacher = ExperimentPredictor(tspec, teacher_dir, teacher_dir.name, device=dev if spec.task_type == "classify" else "cpu")
+    tmod = get_modality(tspec, str(data_dir))
+    seen = {str(r["input"]) for r in train_rows}
+    extra = [r for r in ds.unlabeled() if r.get("source") != "train-inputs" and str(r["input"]) not in seen][: spec.train.distill_unlabeled]
+    rows = train_rows + extra
+    log(f"  distill: teacher {teacher_dir.name} ({teacher.params / 1e6:.1f}M) labels {len(train_rows)} train + {len(extra)} unlabeled inputs")
+    if spec.task_type == "frame":
+        soft = [teacher.frame_probs(tmod.load(r)) for r in rows]
+        extra_t = [[IGNORE] * len(s) for s in soft[len(train_rows):]]
+    else:
+        soft = list(teacher.probs_batch(tmod.load_many(rows)))
+        extra_t = [IGNORE] * len(extra)
+    return soft, mod.load_many(extra), extra_t
+
+
 def fit(spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None] = print, seed: int = 0) -> dict[str, Any]:
     torch.manual_seed(seed)
     rng = random.Random(seed)
@@ -124,9 +145,18 @@ def fit(spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None
         log(f"  LeJEPA: {tc.pretrain_steps} steps on {len(unl)} unlabeled inputs (lambda={tc.pretrain_lambda})")
         jepa_hist = jepa.pretrain(model, mod, unl, tc.pretrain_steps, tc.batch_size, tc.lr_backbone, tc.pretrain_lambda, dev, log, seed)
 
+    # Distillation: teacher soft targets on the training inputs + extra unlabeled inputs (teacher-only targets).
+    soft: list[Any] | None = None
+    n_labeled = len(train_raw)
+    if tc.distill_from:
+        soft, extra_raw, extra_t = _teacher_targets(spec, mod, run_dir.parent / tc.distill_from, train_rows, ds, data_dir, dev, log)
+        train_raw += extra_raw
+        train_t += extra_t
+
     # Stage 2: supervised head (+ backbone fine-tune).
     model.to(dev)
-    counts = np.bincount(np.concatenate([np.asarray(t).ravel() for t in train_t]) if spec.task_type == "frame" else np.array(train_t), minlength=len(spec.labels)).astype(float)
+    gold = train_t[:n_labeled]
+    counts = np.bincount(np.concatenate([np.asarray(t).ravel() for t in gold]) if spec.task_type == "frame" else np.array(gold), minlength=len(spec.labels)).astype(float)
     weight = torch.tensor((counts.sum() / np.maximum(counts, 1) / len(counts)) ** 0.5, dtype=torch.float32, device=dev)
     for p in model.backbone.parameters():
         p.requires_grad = not tc.freeze_backbone
@@ -149,7 +179,17 @@ def fit(spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None
             inputs, ft = mod.collate([train_raw[i] for i in b], fl)
             logits, mask = model(to_device(inputs, dev))
             y = ft.to(dev) if ft is not None else torch.tensor([train_t[i] for i in b], device=dev)
-            loss = task_loss(logits, y, mask, weight)
+            has_gold = bool((y != IGNORE).any())
+            loss = task_loss(logits, y, mask, weight) * (tc.distill_alpha if soft is not None else 1.0) if has_gold else logits.sum() * 0
+            if soft is not None:
+                if spec.task_type == "frame":
+                    tp = torch.nn.utils.rnn.pad_sequence([torch.as_tensor(soft[i]) for i in b], batch_first=True).to(dev)
+                    lens = torch.tensor([len(soft[i]) for i in b], device=dev)
+                    valid = (torch.arange(tp.shape[1], device=dev)[None] < lens[:, None]).float()
+                    tp, valid = align_probs(tp, logits.shape[1]), align_probs(valid[..., None], logits.shape[1])[..., 0] * mask.float()
+                else:
+                    tp, valid = torch.as_tensor(np.stack([soft[i] for i in b])).to(dev), torch.ones(len(b), device=dev)
+                loss = loss + (1 - tc.distill_alpha) * distill_loss(logits.float(), tp.float(), valid, tc.distill_temperature)
             opt.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -177,6 +217,7 @@ def fit(spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None
         "name": spec.name, "labels": spec.label_names, "threshold": best["threshold"], "best_epoch": best["epoch"],
         "dev": best["dev"]["metrics"], "params": n_params, "device": dev, "train_seconds": round(time.time() - t0, 1),
         "n_train": len(train_rows), "n_dev": len(dev_rows), "history": history, "jepa": jepa_hist[:: max(1, len(jepa_hist) // 50)],
+        "distilled_from": tc.distill_from, "n_teacher_only": len(train_raw) - n_labeled,
     }
     (run_dir / "meta.json").write_text(json.dumps(meta, indent=2))
     (run_dir / "dev_errors.json").write_text(json.dumps(best["dev"]["errors"], indent=2, ensure_ascii=False, default=str))

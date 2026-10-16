@@ -57,11 +57,12 @@ class Predictor:
 class ExperimentPredictor(Predictor):
     kind = "experiment"
 
-    def __init__(self, spec: TaskSpec, run_dir: Path, name: str):
+    def __init__(self, spec: TaskSpec, run_dir: Path, name: str, device: str = "cpu"):
         super().__init__(spec)
         from .runtime import Specialist
 
-        self.sp = Specialist(run_dir, "cpu")
+        self.sp = Specialist(run_dir, device)
+        self.device = device
         self.id = name
         self.params = int(self.sp.meta["params"])
         self.bb = self.sp.model.backbone
@@ -73,8 +74,8 @@ class ExperimentPredictor(Predictor):
         out = []
         for i in range(0, len(raws), 64):
             inputs, _ = self.sp.mod.collate(raws[i : i + 64])
-            logits, _ = self.sp.model(inputs)
-            out.append(torch.softmax(logits.float(), -1).numpy())
+            logits, _ = self.sp.model({k: v.to(self.device) for k, v in inputs.items()})
+            out.append(torch.softmax(logits.float(), -1).cpu().numpy())
         return np.concatenate(out)
 
     @torch.no_grad()
@@ -136,6 +137,8 @@ def register_baseline(name: str) -> Callable[[type[Predictor]], type[Predictor]]
 def get_baseline(name: str, spec: TaskSpec) -> Predictor:
     if name.startswith("hf:"):
         return HFClassifier(spec, name[3:])
+    if name.startswith("llm:"):  # another LLM role from byojl.yaml, e.g. llm:gpt -> llm.gpt
+        return ZeroShotLLM(spec, role=name[4:])
     if name not in BASELINES:
         raise KeyError(f"unknown baseline {name!r}; available: {sorted(BASELINES)}")
     cls = BASELINES[name]
@@ -203,30 +206,82 @@ class EnergyVAD(Predictor):
 
 @register_baseline("llm")
 class ZeroShotLLM(Predictor):
-    """The LLM itself, zero-shot, given the label definitions (role `baseline` in byojl.yaml). The 'big System 2' bar."""
+    """The LLM itself, zero-shot, given the label definitions (role `baseline` in byojl.yaml): the System-2 bar.
+    Text: the input. Documents: each page as a readable image (~1000px) + its text layer / OCR. Images: the image."""
 
-    modalities, task_types = ("text",), ("classify",)
+    modalities, task_types = ("text", "document", "image"), ("classify",)
+    wants_rows = True  # needs the original files (full resolution), not the model's preprocessed inputs
+    batch = {"text": 40, "document": 4, "image": 6}
 
-    def probs_batch(self, raws: list[Any]) -> np.ndarray:
-        from .data.synth_text import JUDGE_SYSTEM, _context
-        from .llm import get_llm, pmap
+    def __init__(self, spec: TaskSpec, role: str = "baseline"):
+        super().__init__(spec)
+        from .llm import get_llm
 
-        llm = get_llm("baseline")
-        self.id = f"llm:{llm.name}"
+        self.llm = get_llm(role)
+        self.id = "llm" if role == "baseline" else f"llm:{role}"
+        self.name = self.llm.name
+
+    def _item(self, row: dict, mod: Any) -> tuple[str, list[bytes]]:
+        import io
+
+        if self.spec.modality == "text":
+            return str(row["input"]), []
+        path = Path(row["input"])
+        if not path.is_absolute() and getattr(mod, "data_dir", None):
+            path = Path(mod.data_dir) / path
+        if self.spec.modality == "document":
+            from .modalities.document import read_pages
+
+            pages = read_pages(Path(path), self.spec.document.max_pages, max(self.spec.document.dpi, 100), self.spec.document.ocr)
+        else:
+            from PIL import Image
+
+            pages = [("", Image.open(path).convert("RGB"))]
+        imgs = []
+        for _, im in pages:
+            im = im.copy()
+            im.thumbnail((1000, 1000))
+            buf = io.BytesIO()
+            im.save(buf, format="PNG")
+            imgs.append(buf.getvalue())
+        text = "\n".join(f"[page {i + 1} text] {t[:1500]}" for i, (t, _) in enumerate(pages) if t.strip())
+        return text, imgs
+
+    def probs_rows(self, rows: list[dict], mod: Any) -> np.ndarray:
+        from .data.synth_text import _context
+        from .llm import pmap
+
         names = self.spec.label_names
-        schema = {"type": "object", "properties": {"labels": {"type": "array", "items": {"type": "string", "enum": [*names, "__drop__"]}}}}
-        chunks = [raws[i : i + 40] for i in range(0, len(raws), 40)]
+        schema = {"type": "object", "properties": {"labels": {"type": "array", "items": {"type": "string", "enum": names}}}}
+        system = ("You are an expert annotator. Classify each item strictly according to the label definitions. "
+                  "Return exactly one label per item, in order.")
+        bs = self.batch[self.spec.modality]
+        chunks = [rows[i : i + bs] for i in range(0, len(rows), bs)]
 
-        def run(chunk: list[str]) -> list[str]:
-            listing = "\n".join(f"{i + 1}. {r}" for i, r in enumerate(chunk))
-            labs = llm.json(JUDGE_SYSTEM, f"{_context(self.spec)}\n\nInputs:\n{listing}\n\nReturn {len(chunk)} labels.", schema).get("labels", [])
+        def run(chunk: list[dict]) -> list[str]:
+            items, images = [], []
+            for j, r in enumerate(chunk):
+                text, imgs = self._item(r, mod)
+                first = len(images) + 1
+                images += imgs
+                ref = f" (images {first}-{len(images)})" if len(imgs) > 1 else (f" (image {first})" if imgs else "")
+                items.append(f"Item {j + 1}{ref}:" + (f"\n{text}" if text else ""))
+            prompt = f"{_context(self.spec)}\n\n" + "\n\n".join(items) + f"\n\nReturn {len(chunk)} labels, one per item, in order."
+            kw = {"images": images} if images else {}  # text-only providers needn't accept `images`
+            labs = self.llm.json(system, prompt, schema, **kw).get("labels", [])
             return (labs + [names[0]] * len(chunk))[: len(chunk)]
 
         labs = [l for part in pmap(run, chunks, 8) for l in part]
-        out = np.full((len(raws), len(names)), 0.0, np.float32)
+        out = np.zeros((len(rows), len(names)), np.float32)
         for i, l in enumerate(labs):
             out[i, names.index(l) if l in names else 0] = 1.0
         return out
+
+    def probs_batch(self, raws: list[Any]) -> np.ndarray:  # text inputs only (latency checks)
+        return self.probs_rows([{"input": r} for r in raws], None)
+
+    def latency_ms(self, x: Any) -> float:
+        return float("nan")  # network-bound; not comparable to local models
 
 
 def _norm(s: str) -> str:

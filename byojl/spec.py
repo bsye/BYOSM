@@ -152,6 +152,11 @@ class TrainCfg(BaseModel):
     refine_rounds: int = 2
     refine_examples: int = 300
     pool: Literal["mean", "attention"] = "mean"  # how classify heads pool positions (pages, frames, tokens)
+    # Distillation: learn from another experiment (the teacher) as well as from labels.
+    distill_from: Optional[str] = None  # teacher experiment name
+    distill_alpha: float = 0.3  # weight of the gold-label loss; (1 - alpha) on the teacher's soft targets
+    distill_temperature: float = 2.0
+    distill_unlabeled: int = 20000  # extra unlabeled inputs labelled only by the teacher
 
 
 class TaskSpec(BaseModel):
@@ -175,7 +180,9 @@ class TaskSpec(BaseModel):
     decision: Decision = Field(default_factory=Decision)
     document: DocumentCfg = Field(default_factory=DocumentCfg)
     evals: list[EvalSuite] = Field(default_factory=lambda: [EvalSuite(name="builtin", primary=True)])
-    baselines: list[str] = Field(default_factory=list)  # e.g. ["silero"], ["llm"]
+    baselines: list[str] = Field(default_factory=list)  # e.g. ["silero"], ["llm"], ["llm:gpt"], ["hf:<repo>"]
+    # Hub search terms used by discovery: {"benchmark": [...], "baseline": [...]}
+    search: dict[str, list[str]] = Field(default_factory=dict)
 
     @property
     def label_names(self) -> list[str]:
@@ -229,6 +236,8 @@ _SPEC_SCHEMA = {
         "hf_candidates": {"type": "array", "items": {"type": "object", "properties": {"dataset": {"type": "string"}, "role": {"type": "string", "enum": ["labeled", "positive", "negative", "unlabeled"]}}}},
         "train_size": {"type": "integer"},
         "test_size": {"type": "integer"},
+        "benchmark_queries": {"type": "array", "items": {"type": "string"}},
+        "baseline_queries": {"type": "array", "items": {"type": "string"}},
     },
 }
 
@@ -254,7 +263,9 @@ Multilingual needs -> multilingual backbone.
 negative/background sources, hard negatives). hf_candidates: specific dataset repo ids you are confident exist \
 (role: labeled = already has our labels after mapping; positive/negative = raw material for mixing; unlabeled = in-domain inputs \
 for self-supervised pretraining).
-- train_size / test_size: enough for a very precise model (typically 2000-8000 train, 400-1000 test)."""
+- train_size / test_size: enough for a very precise model (typically 2000-8000 train, 400-1000 test).
+- benchmark_queries: Hub search terms for an established public benchmark of exactly this task (used as the held-out evaluation; e.g. "rvl-cdip", "banking77", "speech commands").
+- baseline_queries: Hub search terms for existing open models that solve this task (they become baselines to beat)."""
 
 
 def compile_spec(name: str, description: str, modality: str | None = None, cfg: dict | None = None) -> TaskSpec:
@@ -289,6 +300,7 @@ def compile_spec(name: str, description: str, modality: str | None = None, cfg: 
             hf_queries=out.get("hf_queries", []),
             hf_sources=[HFSource(dataset=c["dataset"], role=c["role"]) for c in out.get("hf_candidates", [])],
         ),
+        search={"benchmark": out.get("benchmark_queries") or [], "baseline": out.get("baseline_queries") or []},
         train=TrainCfg(
             pretrain_steps=1500 if from_scratch else 200,
             lr_backbone=2e-3 if from_scratch else 5e-5,

@@ -69,7 +69,24 @@ def task_loss(logits: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, w
         t = align_targets(targets, logits.shape[1]).clone()
         t[~mask] = IGNORE
         return nn.functional.cross_entropy(logits.flatten(0, 1), t.flatten(), weight=weight, ignore_index=IGNORE, label_smoothing=0.02)
-    return nn.functional.cross_entropy(logits, targets, weight=weight, label_smoothing=0.02)
+    return nn.functional.cross_entropy(logits, targets, weight=weight, ignore_index=IGNORE, label_smoothing=0.02)
+
+
+def align_probs(p: torch.Tensor, n: int) -> torch.Tensor:
+    """Nearest-resample per-frame soft targets [B, T0, C] to n frames."""
+    if p.shape[1] == n:
+        return p
+    idx = (torch.arange(n, device=p.device).float() * p.shape[1] / n).long().clamp(max=p.shape[1] - 1)
+    return p[:, idx]
+
+
+def distill_loss(logits: torch.Tensor, teacher: torch.Tensor, valid: torch.Tensor, T: float) -> torch.Tensor:
+    """T^2 * KL(teacher_T || student_T), averaged over valid positions. teacher holds probabilities (at T=1)."""
+    tt = teacher.clamp_min(1e-8) ** (1.0 / T)
+    tt = tt / tt.sum(-1, keepdim=True)
+    ls = nn.functional.log_softmax(logits / T, -1)
+    kl = (tt * (tt.log() - ls)).sum(-1)
+    return (kl * valid).sum() / valid.sum().clamp_min(1) * T * T
 
 
 def count_params(m: nn.Module) -> int:

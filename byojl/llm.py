@@ -25,7 +25,9 @@ class LLMError(RuntimeError):
 class LLM(Protocol):
     name: str
 
-    def json(self, system: str, prompt: str, schema: dict) -> dict: ...
+    def json(self, system: str, prompt: str, schema: dict, images: list[bytes] | None = None) -> dict:
+        """images: PNG/JPEG bytes shown before the prompt (multimodal models only)."""
+        ...
 
 
 def _strict(schema: dict) -> dict:
@@ -71,6 +73,12 @@ def _retry(fn: Callable[[], T], tries: int = 4) -> T:
     raise AssertionError("unreachable")
 
 
+def _b64(img: bytes) -> tuple[str, str]:
+    import base64
+
+    return ("image/png" if img[:4] == b"\x89PNG" else "image/jpeg"), base64.b64encode(img).decode()
+
+
 class AnthropicLLM:
     # Models that accept server-side refusal fallbacks (`fallbacks: "default"`).
     _FALLBACK_PREFIXES = ("claude-opus-5", "claude-fable-5", "claude-sonnet-5-5")
@@ -87,15 +95,18 @@ class AnthropicLLM:
         self.model, self.effort, self.max_tokens = model, effort, max_tokens
         self.name = f"anthropic:{model}"
 
-    def json(self, system: str, prompt: str, schema: dict) -> dict:
+    def json(self, system: str, prompt: str, schema: dict, images: list[bytes] | None = None) -> dict:
         output_config: dict[str, Any] = {"format": {"type": "json_schema", "schema": _strict(schema)}}
+        content: Any = prompt
+        if images:
+            content = [{"type": "image", "source": {"type": "base64", "media_type": mt, "data": d}} for mt, d in map(_b64, images)] + [{"type": "text", "text": prompt}]
         if self.effort:
             output_config["effort"] = self.effort
         kwargs: dict[str, Any] = dict(
             model=self.model,
             max_tokens=self.max_tokens,
             system=system,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": content}],
             output_config=output_config,
         )
 
@@ -124,16 +135,23 @@ class OpenAICompatLLM:
         self.name = f"openai:{model}@{base_url or 'api.openai.com'}"
         self._schema_mode = True  # fall back to json_object if the server rejects json_schema
 
-    def json(self, system: str, prompt: str, schema: dict) -> dict:
+    def json(self, system: str, prompt: str, schema: dict, images: list[bytes] | None = None) -> dict:
         def call() -> dict:
-            messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+            user: Any = prompt
+            if images:
+                user = [{"type": "image_url", "image_url": {"url": f"data:{mt};base64,{d}"}} for mt, d in map(_b64, images)] + [{"type": "text", "text": prompt}]
+            messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
             kwargs: dict[str, Any] = dict(model=self.model, messages=messages, max_tokens=self.max_tokens)
             if self.temperature is not None:
                 kwargs["temperature"] = self.temperature
             if self._schema_mode:
                 kwargs["response_format"] = {"type": "json_schema", "json_schema": {"name": "output", "schema": _strict(schema), "strict": True}}
             else:
-                messages[1]["content"] = f"{prompt}\n\nRespond with only a JSON object matching this JSON schema:\n{json.dumps(schema)}"
+                suffix = f"\n\nRespond with only a JSON object matching this JSON schema:\n{json.dumps(schema)}"
+                if isinstance(messages[1]["content"], list):
+                    messages[1]["content"][-1]["text"] += suffix
+                else:
+                    messages[1]["content"] = prompt + suffix
                 kwargs["response_format"] = {"type": "json_object"}
             try:
                 resp = self.client.chat.completions.create(**kwargs)

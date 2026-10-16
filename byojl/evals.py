@@ -102,9 +102,11 @@ def _collect(pred: Predictor, spec: TaskSpec, rows: list[dict], root: Path) -> t
             n = min(len(pr), len(y))
             per.append((pr[:n], y[:n]))
         return np.concatenate([a for a, _ in per]), np.concatenate([b for _, b in per]), per
-    raws = mod.load_many(rows)
     idx = {n: i for i, n in enumerate(spec.label_names)}
-    return pred.probs_batch(raws), np.array([idx[r["label"]] for r in rows]), []
+    y = np.array([idx[r["label"]] for r in rows])
+    if getattr(pred, "wants_rows", False):
+        return pred.probs_rows(rows, mod), y, []
+    return pred.probs_batch(mod.load_many(rows)), y, []
 
 
 def _hyst(spec: TaskSpec, per: list, act: float) -> tuple[np.ndarray, np.ndarray]:
@@ -149,7 +151,8 @@ def score(pred: Predictor, spec: TaskSpec, calib: list[dict], test: list[dict], 
         out["stream_ms_per_chunk"], out["chunk_ms"] = round(ck, 4), pred.chunk_ms
     else:
         mod = get_modality(spec, str(root))
-        out["latency_ms"] = round(pred.latency_ms(mod.load(test[0])), 3) if spec.task_type == "classify" else None
+        lat = pred.latency_ms(mod.load(test[0])) if spec.task_type == "classify" and not getattr(pred, "wants_rows", False) else None
+        out["latency_ms"] = round(lat, 3) if lat is not None and lat == lat else None
     return out
 
 

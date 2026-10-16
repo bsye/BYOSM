@@ -3,6 +3,17 @@
 **Describe a perception task in one sentence. Get a tiny, measured model that does exactly that task and runs on any
 computer.**
 
+**One command:**
+
+```bash
+byojl auto doctype "classify business documents (PDF or scan) into invoice, letter, memo, form, ..." --budget 6h
+```
+
+The autopilot compiles the spec, **discovers** a public benchmark and existing models to beat (and always adds the
+zero-shot **LLM** as a baseline), builds experiments until the specialist **beats every baseline** and meets the target
+(or the budget ends), distills a large winner into a tiny student if the student still wins, and exports it. Every
+decision and its evidence lands in `specialists/<name>/auto.md`. The same steps can also be run by hand:
+
 ```bash
 byojl new vad "voice activity detection for a voice agent; ignore coughs, laughter and keyboards"
 byojl build vad        # data → self-supervised pretraining → training → evaluation → promotion
@@ -232,6 +243,25 @@ Repos are private unless you pass `--public`. `--dry-run` stages everything unde
 
 ---
 
+### Autopilot: how it decides
+
+| stage | decision | rule |
+|---|---|---|
+| define | task, labels, objective, backbone | spec compiler (LLM) from the prompt |
+| discover | primary eval suite | a public benchmark found on the Hub (its held-out split), with its train split as training data |
+| discover | baselines | the zero-shot LLM (`llm`, or `llm:<role>` for each extra LLM in `byojl.yaml`; multimodal for documents and images) + existing Hub models whose labels cover ≥60% of ours |
+| loop | next experiment | the untried `improve` proposal with the highest prior (domain data/encoder > label convention > more data > hard pairs > train longer), **one change per round** so every gain is attributable |
+| loop | keep or revert | promoted only if it beats the current best on the primary suite |
+| stop | when | **won** (beats every baseline by `--margin` and meets the target), time or experiment budget, 2 rounds without gain, or nothing left to try |
+| distill | shrink? | if the winner has more than `--max-params` M parameters: distill into a tiny student (soft targets on train + unlabeled inputs); promoted only if it still beats every baseline |
+| ship | export / publish | ONNX bundle; `--publish <repo>` pushes it with a model card |
+
+## Distillation
+
+`byojl distill <name> [--teacher exp] --run` trains a tiny student on `α·CE(gold) + (1−α)·T²·KL(teacher ‖ student)`,
+over the training inputs plus up to `distill_unlabeled` extra unlabeled inputs that only the teacher labels. Default
+students: tiny-BERT (text), tiny-crnn (audio), tiny-cnn (image), tiny-BERT + tiny-cnn (document).
+
 ## Results: a 0.1M-param VAD vs LiveKit's Silero
 
 Published with `byojl publish`: **[huggingface.co/bsye/byojl-vad](https://huggingface.co/bsye/byojl-vad)** (model card, eval widget, ONNX bundle).
@@ -335,6 +365,7 @@ anything else with `byojl.llm.register_provider(name, factory)`.
 
 | | |
 |---|---|
+| `byojl auto <name> "<task>" [--budget 6] [--margin 0] [--publish repo]` | **everything, decided automatically** |
 | `byojl new <name> "<task>"` | compile a spec from a sentence |
 | `byojl suite add <name> <suite> --hf <id> [--format segment_files] [--primary]` | add a frozen eval suite |
 | `byojl baseline add <name> silero\|energy\|llm` | add a competitor |
@@ -342,6 +373,7 @@ anything else with `byojl.llm.register_provider(name, factory)`.
 | `byojl eval <name>` · `byojl board <name> [--detail]` | score and compare |
 | `byojl improve <name> [--apply ids --run]` | diagnose, propose, run the next experiment |
 | `byojl promote <name> <exp>` | choose what ships |
+| `byojl distill <name> [--teacher exp] [--run]` | shrink a teacher into a tiny student |
 | `byojl export <name>` · `byojl serve <names…>` · `byojl predict <name> <input>` | ship and run |
 | `byojl publish <name> --repo <id> [--public] [--dry-run]` | push to Hugging Face with a generated model card |
 | `byojl bench <a> <b> …` | the thesis test: N specialists vs one shared-backbone generalist on the same data |
@@ -374,6 +406,9 @@ byojl/
   pipeline.py      experiment pipeline
   export.py        ONNX bundle + parity check
   rt.py            portable runtime (copied into every bundle as byojl_rt.py)
+  auto.py          autopilot: define → discover → experiment loop → distill → ship
+  discover.py      benchmark + baseline discovery on the Hub
+  distill.py       teacher → tiny student
   hub.py           Hugging Face publishing + model card
   bench.py         specialists vs generalist
 benchmarks/        standalone comparisons (vad_vs_silero.py)

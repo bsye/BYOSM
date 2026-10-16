@@ -1,0 +1,38 @@
+{
+  "parent": "fused",
+  "applied": [
+    {
+      "id": "more-data",
+      "ops": [
+        {
+          "op": "set",
+          "path": "data.hf_sources.0.per_label",
+          "value": 800
+        }
+      ],
+      "why": "rvl: 0.809, 0.139 behind hf:microsoft/dit-base-finetuned-rvlcdip (0.948), with 2400 training examples; dev was still rising at the end (0.61 -> 0.84), consistent with being data-limited. chainyo/rvl-cdip (val) has more rows per label: 200 -> 800."
+    },
+    {
+      "id": "domain-encoder",
+      "ops": [
+        {
+          "op": "set",
+          "path": "document.image_backbone",
+          "value": "hf:microsoft/dit-base"
+        }
+      ],
+      "why": "rvl: 0.139 behind hf:microsoft/dit-base-finetuned-rvlcdip. `hf:facebook/dinov2-small` was pretrained on a different domain; hf:microsoft/dit-base is self-supervised (masked image modelling) on 42M unlabelled document scans; never saw RVL-CDIP labels."
+    },
+    {
+      "id": "train-longer",
+      "ops": [
+        {
+          "op": "set",
+          "path": "train.epochs",
+          "value": 13
+        }
+      ],
+      "why": "best dev epoch was 7 of 8 (curve 0.77, 0.81, 0.84, 0.83): still converging."
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 """byojl - tiny System-1 specialists, from a sentence to a local model.
 
+  auto       byojl auto doctype "classify business documents into invoice, letter, ..."   -> everything below, decided automatically
   define     byojl new vad "voice activity detection for a voice agent..."      -> spec.yaml (labels, objective, data plan)
              byojl suite add vad ava --hf nccratliri/vad-human-ava-speech --format segment_files
              byojl baseline add vad silero
@@ -297,6 +298,44 @@ def improve(name: str, apply: Optional[str] = typer.Option(None, help="comma-sep
             v = json.dumps(o["value"])
             log(f"    {o['op']} {o['path']} = {v[:160]}")
     log(f"\napply: byojl improve {name} --apply {','.join(p['id'] for p in props)} --run")
+
+
+@app.command()
+def auto(
+    name: str,
+    prompt: Optional[str] = typer.Argument(None, help="the task in plain language (needed the first time)"),
+    modality: Optional[str] = typer.Option(None, help="text | audio | image | document (inferred if omitted)"),
+    budget: float = typer.Option(6.0, help="wall-clock budget in hours"),
+    max_experiments: int = typer.Option(8),
+    margin: float = typer.Option(0.0, help="must beat the best baseline by this much"),
+    no_distill: bool = typer.Option(False, "--no-distill"),
+    max_params: float = typer.Option(25.0, help="distill if the winner has more params (M) than this"),
+    publish_repo: Optional[str] = typer.Option(None, "--publish", help="also publish to this Hugging Face repo (private)"),
+    license: str = typer.Option("other"),
+    no_llm: bool = typer.Option(False, help="rule-based proposals only"),
+) -> None:
+    """One command: prompt -> spec -> benchmark + baselines -> experiments until it wins (or the budget ends) -> distill -> export."""
+    from .auto import run
+
+    final = run(name, prompt, modality, budget, max_experiments, margin, not no_distill, max_params, publish_repo, license, not no_llm, log)
+    board(name)
+    p = Project(name)
+    log(f"\n{'WON' if final['won'] else 'did not win'}: {final['stop_reason']} ({final['hours']} h). Report: {p.root / 'auto.md'}")
+
+
+@app.command()
+def distill(name: str, teacher: Optional[str] = typer.Option(None, help="teacher experiment (default: promoted)"),
+            run: bool = typer.Option(False, "--run", help="build it now")) -> None:
+    """Create a tiny student experiment that learns from a teacher experiment (and its labels)."""
+    from .distill import STUDENTS, create
+
+    exp = create(name, teacher)
+    p, spec = _spec(name)
+    log(f"created {name}/{exp}: {STUDENTS[spec.modality][1]} student of {teacher or p.promoted}")
+    if run:
+        build(name, exp)
+    else:
+        log(f"next: byojl build {name} --exp {exp}")
 
 
 # --------------------------------------------------------------------------------------------- ship

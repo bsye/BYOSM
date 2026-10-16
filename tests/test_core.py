@@ -76,9 +76,13 @@ class FakeLLM:
                     "languages": ["en"], "diversity_axes": [{"name": "topic", "values": ["food", "travel", "code"]}],
                     "hard_cases": ["rhetorical question"], "backbone": TINY_BERT, "latency_budget_ms": 5, "synthetic": True,
                     "hf_queries": [], "hf_candidates": [], "train_size": 120, "test_size": 60}
-        if "labels" in props:  # judge
+        if "labels" in props:  # judge ("1. text") or zero-shot baseline ("Item 1:\ntext"), the latter ~75% accurate
             items = re.findall(r"^\d+\. (.*)$", prompt, re.M)
-            return {"labels": ["question" if s.endswith("?") else "statement" for s in items]}
+            if items:
+                return {"labels": ["question" if s.endswith("?") else "statement" for s in items]}
+            items = re.findall(r"^Item \d+:\n(.*)$", prompt, re.M)
+            truth = ["question" if s.endswith("?") else "statement" for s in items]
+            return {"labels": [t if self.rng.random() < 0.75 else ("statement" if t == "question" else "question") for t in truth]}
         if "patterns" in props:
             return {"patterns": [{"name": "short", "explanation": "short inputs", "data_recipe": "very short inputs", "share": 1.0}], "suspect_gold_ids": []}
         k = int(re.search(r"Write (\d+)", prompt).group(1))
@@ -232,3 +236,29 @@ def test_improve_rules_and_list_paths():
     # beating the baseline, at target, plateaued and early-stopped -> nothing to do
     spec.objective.target = 0.8
     assert rule_proposals(_dg(spec, 0.97, 0.95, [0.9, 0.95, 0.96, 0.96], 2)) == []
+
+
+def test_autopilot_end_to_end(ws):
+    from byojl.auto import run
+    from byojl.config import Project
+    from byojl.spec import TaskSpec
+
+    llm._cache.clear()
+    p = Project("auto")
+    # keep it fast: compile normally, then shrink the plan before the first build
+    from byojl.discover import discover
+    from byojl.spec import compile_spec
+
+    spec = compile_spec("auto", "detect questions")
+    spec.data.train_size, spec.data.dev_size, spec.data.test_size, spec.data.per_call = 120, 40, 60, 20
+    spec.train.epochs, spec.train.pretrain_steps, spec.train.refine_rounds = 2, 0, 0
+    spec, _ = discover(spec, {}, None, lambda m: None)
+    p.ensure()
+    spec.save(p.spec_path)
+    final = run("auto", budget_h=1, max_experiments=4, max_params_m=1.0, echo=lambda m: None)
+    report = (p.root / "auto.md").read_text()
+    steps = [d["step"] for d in json.loads((p.root / "auto.json").read_text())["decisions"]]
+    assert "llm" in TaskSpec.load(p.spec_path).baselines          # discovery added the LLM bar
+    assert final["won"] and final["ours"] > final["best_baseline"][1]  # beat the (75%-accurate) LLM
+    assert "distill" in steps and "export" in steps and "WON" in report
+    assert (p.root / "export" / "manifest.json").exists()
