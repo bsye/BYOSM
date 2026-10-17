@@ -171,7 +171,7 @@ def read_document(path: str | Path, fe: dict) -> list[tuple[str, Any]]:
 
 
 class Specialist:
-    def __init__(self, path: str | Path, threads: int = 1):
+    def __init__(self, path: str | Path, threads: int = 1, model_file: str | None = None):
         import onnxruntime as ort
 
         self.dir = Path(path)
@@ -179,7 +179,7 @@ class Specialist:
         so = ort.SessionOptions()
         so.intra_op_num_threads = so.inter_op_num_threads = threads
         prov = ["CPUExecutionProvider"]
-        self.sess = ort.InferenceSession(str(self.dir / "model.onnx"), so, providers=prov)
+        self.sess = ort.InferenceSession(str(self.dir / (model_file or self.m.get("model_file", "model.onnx"))), so, providers=prov)
         self.stream_sess = ort.InferenceSession(str(self.dir / "stream.onnx"), so, providers=prov) if (self.dir / "stream.onnx").exists() else None
         fe = self.m["frontend"]
         self.tok = None

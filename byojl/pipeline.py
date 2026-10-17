@@ -91,14 +91,20 @@ def build(name: str, exp: str | None = None, log: Callable[[str], None] = print,
 
 
 def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> dict[str, Any]:
+    """Promote exp if it beats the promoted experiment on the primary suite's calib split (test is only reported)."""
     base = TaskSpec.load(p.spec_path)
     prim = base.primary_suite()
     board = json.loads((p.root / "board.json").read_text())
-    mine = board.get(exp, {}).get(prim, {}).get("objective", -1)
-    cur = board.get(p.promoted or "", {}).get(prim, {}).get("objective", -1) if p.promoted else -1
+    a, b = board.get(exp, {}).get(prim), board.get(p.promoted or "", {}).get(prim) if p.promoted else None
+    mine, cur = evals.selection_value(a), evals.selection_value(b)
+    mine = -1 if mine is None else mine
+    cur = -1 if cur is None else cur
+    cmp = evals.compare(base, a, b) if b else None
+    sig = f", P(better)={cmp['p_better']:.2f}" if cmp else ""
+    test = f"; test {a['objective']:.4f}" if a else ""
     if mine > cur:
         p.promote(exp)
-        log(f"  promoted {exp}: {prim} {base.objective.metric} {mine:.4f} (was {cur:.4f})")
+        log(f"  promoted {exp}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{sig}){test}")
     else:
-        log(f"  kept {p.promoted}: {prim} {cur:.4f} >= {exp} {mine:.4f}")
+        log(f"  kept {p.promoted}: {prim} calib {cur:.4f} >= {exp} {mine:.4f}{sig}{test}")
     return board.get(exp, {})

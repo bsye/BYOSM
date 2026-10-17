@@ -1,0 +1,31 @@
+{
+  "parent": "spec.yaml",
+  "applied": [
+    {
+      "id": "manual",
+      "why": "train.layer_decay_floor=0.5 train.probe_epochs=0 train.ema=false train.seed=0",
+      "ops": [
+        {
+          "op": "set",
+          "path": "train.layer_decay_floor",
+          "value": 0.5
+        },
+        {
+          "op": "set",
+          "path": "train.probe_epochs",
+          "value": 0
+        },
+        {
+          "op": "set",
+          "path": "train.ema",
+          "value": false
+        },
+        {
+          "op": "set",
+          "path": "train.seed",
+          "value": 0
+        }
+      ]
+    }
+  ]
+}

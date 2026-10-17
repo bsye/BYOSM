@@ -1,0 +1,273 @@
+name: intent
+description: Route a banking customer's message to one of 77 intents (Banking77).
+modality: text
+task_type: classify
+summary: 77-way banking intent classification
+input_description: ''
+labels:
+- name: Refund_not_showing_up
+  definition: Refund not showing up
+- name: activate_my_card
+  definition: activate my card
+- name: age_limit
+  definition: age limit
+- name: apple_pay_or_google_pay
+  definition: apple pay or google pay
+- name: atm_support
+  definition: atm support
+- name: automatic_top_up
+  definition: automatic top up
+- name: balance_not_updated_after_bank_transfer
+  definition: balance not updated after bank transfer
+- name: balance_not_updated_after_cheque_or_cash_deposit
+  definition: balance not updated after cheque or cash deposit
+- name: beneficiary_not_allowed
+  definition: beneficiary not allowed
+- name: cancel_transfer
+  definition: cancel transfer
+- name: card_about_to_expire
+  definition: card about to expire
+- name: card_acceptance
+  definition: card acceptance
+- name: card_arrival
+  definition: card arrival
+- name: card_delivery_estimate
+  definition: card delivery estimate
+- name: card_linking
+  definition: card linking
+- name: card_not_working
+  definition: card not working
+- name: card_payment_fee_charged
+  definition: card payment fee charged
+- name: card_payment_not_recognised
+  definition: card payment not recognised
+- name: card_payment_wrong_exchange_rate
+  definition: card payment wrong exchange rate
+- name: card_swallowed
+  definition: card swallowed
+- name: cash_withdrawal_charge
+  definition: cash withdrawal charge
+- name: cash_withdrawal_not_recognised
+  definition: cash withdrawal not recognised
+- name: change_pin
+  definition: change pin
+- name: compromised_card
+  definition: compromised card
+- name: contactless_not_working
+  definition: contactless not working
+- name: country_support
+  definition: country support
+- name: declined_card_payment
+  definition: declined card payment
+- name: declined_cash_withdrawal
+  definition: declined cash withdrawal
+- name: declined_transfer
+  definition: declined transfer
+- name: direct_debit_payment_not_recognised
+  definition: direct debit payment not recognised
+- name: disposable_card_limits
+  definition: disposable card limits
+- name: edit_personal_details
+  definition: edit personal details
+- name: exchange_charge
+  definition: exchange charge
+- name: exchange_rate
+  definition: exchange rate
+- name: exchange_via_app
+  definition: exchange via app
+- name: extra_charge_on_statement
+  definition: extra charge on statement
+- name: failed_transfer
+  definition: failed transfer
+- name: fiat_currency_support
+  definition: fiat currency support
+- name: get_disposable_virtual_card
+  definition: get disposable virtual card
+- name: get_physical_card
+  definition: get physical card
+- name: getting_spare_card
+  definition: getting spare card
+- name: getting_virtual_card
+  definition: getting virtual card
+- name: lost_or_stolen_card
+  definition: lost or stolen card
+- name: lost_or_stolen_phone
+  definition: lost or stolen phone
+- name: order_physical_card
+  definition: order physical card
+- name: passcode_forgotten
+  definition: passcode forgotten
+- name: pending_card_payment
+  definition: pending card payment
+- name: pending_cash_withdrawal
+  definition: pending cash withdrawal
+- name: pending_top_up
+  definition: pending top up
+- name: pending_transfer
+  definition: pending transfer
+- name: pin_blocked
+  definition: pin blocked
+- name: receiving_money
+  definition: receiving money
+- name: request_refund
+  definition: request refund
+- name: reverted_card_payment?
+  definition: reverted card payment?
+- name: supported_cards_and_currencies
+  definition: supported cards and currencies
+- name: terminate_account
+  definition: terminate account
+- name: top_up_by_bank_transfer_charge
+  definition: top up by bank transfer charge
+- name: top_up_by_card_charge
+  definition: top up by card charge
+- name: top_up_by_cash_or_cheque
+  definition: top up by cash or cheque
+- name: top_up_failed
+  definition: top up failed
+- name: top_up_limits
+  definition: top up limits
+- name: top_up_reverted
+  definition: top up reverted
+- name: topping_up_by_card
+  definition: topping up by card
+- name: transaction_charged_twice
+  definition: transaction charged twice
+- name: transfer_fee_charged
+  definition: transfer fee charged
+- name: transfer_into_account
+  definition: transfer into account
+- name: transfer_not_received_by_recipient
+  definition: transfer not received by recipient
+- name: transfer_timing
+  definition: transfer timing
+- name: unable_to_verify_identity
+  definition: unable to verify identity
+- name: verify_my_identity
+  definition: verify my identity
+- name: verify_source_of_funds
+  definition: verify source of funds
+- name: verify_top_up
+  definition: verify top up
+- name: virtual_card_not_working
+  definition: virtual card not working
+- name: visa_or_mastercard
+  definition: visa or mastercard
+- name: why_verify_identity
+  definition: why verify identity
+- name: wrong_amount_of_cash_received
+  definition: wrong amount of cash received
+- name: wrong_exchange_rate_for_cash_withdrawal
+  definition: wrong exchange rate for cash withdrawal
+positive_label: null
+objective:
+  metric: accuracy
+  target: 0.94
+  constraint: 0.99
+languages:
+- en
+diversity_axes: []
+hard_cases: []
+backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+latency_budget_ms: 10.0
+frame_hop_ms: 10.0
+data:
+  synthetic: false
+  train_size: 0
+  dev_size: 0
+  test_size: 0
+  per_call: 25
+  judge: true
+  hf_queries: []
+  hf_sources:
+  - dataset: mteb/banking77
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: balanced
+    per_label: 400
+    config: null
+    split: train
+    input_column: text
+    label_column: label_text
+    label_map: []
+    max_rows: 5000
+  local_dir: null
+  audio:
+    sample_rate: 16000
+    clip_seconds: 4.0
+    snr_db:
+    - -5.0
+    - 30.0
+    max_events: 3
+    label_by_energy: true
+    fill_ms: 60
+train:
+  pretrain_steps: 0
+  pretrain_lambda: 0.05
+  epochs: 10
+  batch_size: 32
+  lr_backbone: 0.0001
+  lr_head: 0.001
+  freeze_backbone: false
+  max_len: 64
+  refine_rounds: 0
+  refine_examples: 300
+  pool: mean
+  layer_decay_floor: 0.5
+  probe_epochs: 0
+  ema: true
+  seed: 1
+  holdout_test: keep
+  precision: auto
+  distill_from: null
+  distill_alpha: 0.3
+  distill_temperature: 2.0
+  distill_unlabeled: 20000
+decision:
+  kind: threshold
+  threshold: null
+  deactivation_offset: 0.15
+  min_on_ms: 50.0
+  min_off_ms: 550.0
+  smooth_alpha_per_32ms: 0.35
+document:
+  route: fused
+  text_backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+  image_backbone: hf:facebook/dinov2-small
+  max_pages: 8
+  max_len: 256
+  image_size: 224
+  dpi: 100
+  ocr: auto
+  dim: 256
+  modality_dropout: 0.2
+evals:
+- name: builtin
+  kind: builtin
+  source: null
+  path: null
+  max_items: 400
+  primary: false
+- name: b77
+  kind: hf
+  source:
+    dataset: mteb/banking77
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: balanced
+    per_label: 1000
+    config: null
+    split: test
+    input_column: text
+    label_column: label_text
+    label_map: []
+    max_rows: 5000
+  path: null
+  max_items: 4000
+  primary: true
+baselines: []
+search: {}

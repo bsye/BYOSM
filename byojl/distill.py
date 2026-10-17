@@ -12,13 +12,15 @@ from .config import Project
 from .spec import TaskSpec
 
 TINY_TEXT = "hf:google/bert_uncased_L-4_H-256_A-4"
+TINY_VISION = "hf:facebook/deit-tiny-patch16-224"  # 5.7M, ImageNet-pretrained: a pretrained small student beats a from-scratch CNN on small data
 
 # Default students per modality: (spec edits, short description)
 STUDENTS: dict[str, tuple[dict[str, Any], str]] = {
     "text": ({"backbone": TINY_TEXT, "train.lr_backbone": 1e-4}, "4-layer BERT, 11M params"),
     "audio": ({"backbone": "tiny-crnn", "train.lr_backbone": 2e-3, "train.lr_head": 2e-3}, "causal conv+GRU, 0.1M params"),
-    "image": ({"backbone": "tiny-cnn", "train.lr_backbone": 2e-3}, "small CNN, 0.4M params"),
-    "document": ({"document.text_backbone": TINY_TEXT, "document.image_backbone": "tiny-cnn", "train.lr_backbone": 3e-4}, "tiny-BERT text + small CNN visual"),
+    "image": ({"backbone": TINY_VISION, "train.lr_backbone": 1e-4}, "DeiT-tiny, 5.7M params"),
+    "document": ({"document.text_backbone": TINY_TEXT, "document.image_backbone": TINY_VISION, "train.lr_backbone": 1e-4},
+                 "tiny-BERT text + DeiT-tiny visual, ~17M params"),
 }
 
 

@@ -90,10 +90,12 @@ def model_card(name: str, repo_id: str, license: str) -> str:
     comparison = "\n".join(lines)
 
     # ---- detailed test eval for this model
-    det = ["| suite | dataset | test items | " + base.objective.metric + " | precision | recall | ROC-AUC | avg precision | decision threshold |", "|---|---|---|---|---|---|---|---|---|"]
+    det = ["| suite | dataset | test items | " + base.objective.metric + " | 95% CI | precision | recall | ROC-AUC | avg precision | decision threshold |", "|---|---|---|---|---|---|---|---|---|---|"]
     for suite, r in board.get(exp, {}).items():
         mm = r["metrics"]
-        det.append(f"| {suite} | {_suite_dataset(base, suite)[0]} | {r['n_test']} | {_f(r['objective'])} | {_f(mm.get('precision'))} | {_f(mm.get('recall'))} | {_f(mm.get('roc_auc'))} | {_f(mm.get('avg_precision'))} | {_f(mm.get('threshold'), 3)} |")
+        ci = mm.get("ci95")
+        ci_s = f"{ci['lo']:.3f}-{ci['hi']:.3f}" if ci else ""
+        det.append(f"| {suite} | {_suite_dataset(base, suite)[0]} | {r['n_test']} | {_f(r['objective'])} | {ci_s} | {_f(mm.get('precision'))} | {_f(mm.get('recall'))} | {_f(mm.get('roc_auc'))} | {_f(mm.get('avg_precision'))} | {_f(mm.get('threshold'), 3)} |")
     detail = "\n".join(det)
 
     labels = "\n".join(f"- **`{l.name}`**: {l.definition}" for l in spec.labels)
@@ -141,7 +143,7 @@ bundle that runs on any CPU with just `numpy` + `onnxruntime`.
 |---|---|
 | task | `{spec.modality}` / `{spec.task_type}`{f" (one decision every {spec.frame_hop_ms:g} ms)" if spec.task_type == "frame" else ""} |
 | labels | {", ".join(f"`{l}`" for l in spec.label_names)} |
-| parameters | {m['params']:,} |
+| parameters | {m['params']:,}{f" (shipped as int8 ONNX, {m['quantization']['tried']['+'.join(m['quantization']['ops'])]['mb']:.0f} MB)" if m.get('precision') == 'int8' else ""} |
 | backbone | `{spec.backbone}` · embedding dim {m['embedding_dim']} |
 | objective | `{base.objective.metric}`, primary suite `{prim}` |
 | decision policy | `{m['decision']['kind']}`, threshold {_f(m['decision'].get('threshold'), 3)} (calibrated on `{prim}`'s calib split) |

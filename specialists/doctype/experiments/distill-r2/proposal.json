@@ -1,0 +1,10 @@
+{
+  "parent": "r2",
+  "applied": [
+    {
+      "id": "distill",
+      "why": "distill r2 into tiny-BERT text + DeiT-tiny visual, ~17M params",
+      "ops": []
+    }
+  ]
+}

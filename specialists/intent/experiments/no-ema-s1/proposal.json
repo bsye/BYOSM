@@ -1,0 +1,21 @@
+{
+  "parent": "spec.yaml",
+  "applied": [
+    {
+      "id": "manual",
+      "why": "train.ema=false train.seed=1",
+      "ops": [
+        {
+          "op": "set",
+          "path": "train.ema",
+          "value": false
+        },
+        {
+          "op": "set",
+          "path": "train.seed",
+          "value": 1
+        }
+      ]
+    }
+  ]
+}

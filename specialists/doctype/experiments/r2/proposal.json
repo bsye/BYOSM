@@ -1,0 +1,16 @@
+{
+  "parent": "fused-dit",
+  "applied": [
+    {
+      "id": "manual",
+      "why": "train.holdout_test=auto",
+      "ops": [
+        {
+          "op": "set",
+          "path": "train.holdout_test",
+          "value": "auto"
+        }
+      ]
+    }
+  ]
+}

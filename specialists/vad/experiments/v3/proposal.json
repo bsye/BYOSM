@@ -1,0 +1,21 @@
+{
+  "parent": "v2",
+  "applied": [
+    {
+      "id": "manual",
+      "why": "train.ema=true train.holdout_test=auto",
+      "ops": [
+        {
+          "op": "set",
+          "path": "train.ema",
+          "value": true
+        },
+        {
+          "op": "set",
+          "path": "train.holdout_test",
+          "value": "auto"
+        }
+      ]
+    }
+  ]
+}

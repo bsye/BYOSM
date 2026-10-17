@@ -21,7 +21,8 @@ from .spec import TaskSpec
 ALLOWED = [
     r"data\.hf_sources", r"data\.hf_sources\.\d+\.(per_label|max_rows|max_files|partition)", r"data\.hf_queries", r"data\.(train_size|dev_size|test_size)",
     r"data\.audio\.(snr_db|fill_ms|max_events|label_by_energy|clip_seconds)", r"data\.(synthetic|per_call|judge)", r"hard_cases", r"diversity_axes",
-    r"backbone", r"train\.(epochs|pretrain_steps|pretrain_lambda|lr_backbone|lr_head|batch_size|freeze_backbone|refine_rounds|refine_examples|pool)",
+    r"backbone", r"train\.(epochs|pretrain_steps|pretrain_lambda|lr_backbone|lr_head|batch_size|freeze_backbone|refine_rounds|refine_examples|pool"
+    r"|layer_decay_floor|probe_epochs|ema|precision|seed)",
     r"document\.(route|text_backbone|image_backbone|max_pages|max_len|image_size|ocr|dim|modality_dropout)",
 ]
 ALLOWED_PATHS = ALLOWED  # kept for the LLM prompt
@@ -79,9 +80,10 @@ def diagnose(name: str) -> dict[str, Any]:
                      "confusions": _confusions(p, exp, s, spec)}
     hist = meta.get("history", [])
     curve = [h["dev_objective"] for h in hist]
+    losses = [h["loss"] for h in hist]
     best_ep = meta.get("best_epoch", len(curve) - 1)
     return {"experiment": exp, "spec": spec, "base": base, "suites": suites, "dev": meta["dev"].get("objective"), "binary": binary,
-            "curve": curve, "best_epoch": best_ep, "epochs_run": len(curve), "epochs_cfg": spec.train.epochs, "n_train": meta.get("n_train"),
+            "curve": curve, "losses": losses, "best_epoch": best_ep, "train_seconds": meta.get("train_seconds"), "epochs_run": len(curve), "epochs_cfg": spec.train.epochs, "n_train": meta.get("n_train"),
             # converging late = the best epoch is in the last quarter of a run that wasn't early-stopped
             "late_best": len(curve) >= 4 and len(curve) >= spec.train.epochs and best_ep >= int(0.75 * len(curve)),
             "board": board, "primary": base.primary_suite()}
@@ -147,8 +149,7 @@ def more_data(dg: dict) -> list[dict]:
         if s.role != "labeled":
             continue
         if s.sampling == "balanced":
-            out.append({"id": "more-data", "ops": [{"op": "set", "path": f"data.hf_sources.{i}.per_label", "value": s.per_label * 4}],
-                        "why": ev + f". {s.dataset} ({s.split}) has more rows per label: {s.per_label} -> {s.per_label * 4}."})
+            out += _more_balanced(dg, i, s, ev)
         elif s.format == "segment_files":
             out.append({"id": "more-data", "ops": [{"op": "set", "path": f"data.hf_sources.{i}.max_files", "value": s.max_files * 2},
                                                    {"op": "set", "path": f"data.hf_sources.{i}.max_rows", "value": s.max_rows * 2}],
@@ -160,6 +161,49 @@ def more_data(dg: dict) -> list[dict]:
     if not out and spec.data.synthetic:
         out.append({"id": "more-data", "ops": [{"op": "set", "path": "data.train_size", "value": spec.data.train_size * 2}], "why": ev + ". Generate 2x more training data."})
     return out
+
+
+def _more_balanced(dg: dict, i: int, s: Any, ev: str) -> list[dict]:
+    """4x more rows per label - capped at what the split really has; when it is exhausted, add the dataset's largest split
+    that no eval suite reads (e.g. RVL-CDIP train, 320k rows, while training on val)."""
+    from .data import hf_source
+
+    spec, base = dg["spec"], dg["base"]
+    want = s.per_label * 4
+    try:
+        have = min(hf_source.availability(s, spec).values() or [0])
+    except Exception:  # noqa: BLE001
+        have = None
+    if have is None or want <= have:
+        return [{"id": "more-data", "ops": [{"op": "set", "path": f"data.hf_sources.{i}.per_label", "value": want}],
+                 "why": ev + f". {s.dataset} ({s.split}) has more rows per label: {s.per_label} -> {want}."}]
+    if have >= s.per_label * 1.5:
+        return [{"id": "more-data", "ops": [{"op": "set", "path": f"data.hf_sources.{i}.per_label", "value": have}],
+                 "why": ev + f". {s.dataset} ({s.split}) has {have} rows for its rarest label: {s.per_label} -> {have} per label (all of it)."}]
+    used = {e.source.split for e in base.evals if e.source and e.source.dataset == s.dataset} | {x.split for x in spec.data.hf_sources if x.dataset == s.dataset}
+    sizes = hf_source.split_sizes(s.dataset, s.config)
+    alt = max((k for k in sizes if k not in used), key=lambda k: sizes[k], default=None)
+    if not alt or sizes[alt] // len(spec.labels) <= s.per_label // 2:
+        return []
+    per = min(want, sizes[alt] // len(spec.labels))
+    return [{"id": "new-split", "ops": [{"op": "append", "path": "data.hf_sources", "value": s.model_copy(update={"split": alt, "per_label": per}).model_dump(mode="json")}],
+             "why": ev + f". {s.split} is used up ({have} per label, {s.per_label} taken); `{alt}` has {sizes[alt]} rows that no eval suite reads: add {per} per label from it."}]
+
+
+@rule
+def regularize(dg: dict) -> list[dict]:
+    """Overfitting: dev peaked early and stopped improving while the training loss kept falling."""
+    spec, curve, losses, best = dg["spec"], dg["curve"], dg["losses"], dg["best_epoch"]
+    if len(curve) < 4 or best >= len(curve) - 2 or not losses or losses[-1] > 0.75 * losses[best]:
+        return []
+    ops = [{"op": "set", "path": "train.lr_backbone", "value": spec.train.lr_backbone / 2}]
+    extra = ""
+    if spec.modality == "document" and spec.document.route == "fused" and spec.document.modality_dropout < 0.4:
+        ops.append({"op": "set", "path": "document.modality_dropout", "value": round(spec.document.modality_dropout + 0.15, 2)})
+        extra = " and drop a view more often"
+    return [{"id": "regularize", "ops": ops,
+             "why": f"dev peaked at epoch {best + 1} ({curve[best]:.3f}) and never improved after, while training loss fell {losses[best]:.3f} -> {losses[-1]:.3f}: "
+                    f"overfitting. Halve the encoder LR ({spec.train.lr_backbone:g} -> {spec.train.lr_backbone / 2:g}){extra}."}]
 
 
 @rule
@@ -227,6 +271,34 @@ def refine_more(dg: dict) -> list[dict]:
         return [{"id": "refine-more", "ops": [{"op": "set", "path": "train.refine_rounds", "value": spec.train.refine_rounds + 2}],
                  "why": f"dev {dg['dev']:.3f} < target {spec.objective.target}; run more analyze->generate->retrain rounds."}]
     return []
+
+
+# Ingest cost per new labelled item (seconds), measured on an M5 Max: OCR ~0.55 s/page (RapidOCR, CPU-bound), media decode otherwise.
+INGEST_S = {"document": 0.55, "image": 0.02, "audio": 0.05, "text": 0.0}
+
+
+def _items(spec: TaskSpec) -> int:
+    n = 0
+    for s in spec.data.hf_sources:
+        if s.role == "labeled":
+            n += s.per_label * len(spec.labels) if s.sampling == "balanced" and s.format == "rows" else s.max_rows
+    return n + (spec.data.train_size if spec.data.synthetic else 0)
+
+
+def estimate(dg: dict, pr: dict) -> dict[str, float]:
+    """Rough cost of a proposal: ingest of the new data + training time scaled by data size and epochs."""
+    old = dg["spec"]
+    try:
+        new = apply_ops(old, pr["ops"])
+    except Exception:  # noqa: BLE001
+        return {"minutes": float("nan"), "new_items": 0}
+    a, b = max(1, _items(old)), _items(new)
+    scale = (b / a) * (new.train.epochs / max(1, old.train.epochs))
+    if new.backbone != old.backbone or new.document.image_backbone != old.document.image_backbone or new.document.text_backbone != old.document.text_backbone:
+        scale *= 1.5  # a different encoder: unknown speed, assume somewhat slower
+    ocr = new.modality == "document" and new.document.route != "visual"
+    ingest = max(0, b - a) * (INGEST_S["document"] if ocr else INGEST_S["image"] if new.modality == "document" else INGEST_S.get(new.modality, 0))
+    return {"minutes": round(((dg.get("train_seconds") or 0) * scale + ingest) / 60, 1), "new_items": max(0, b - a)}
 
 
 def rule_proposals(dg: dict[str, Any]) -> list[dict]:
@@ -298,6 +370,8 @@ def apply_ops(spec: TaskSpec, ops: list[dict]) -> TaskSpec:
 def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print) -> tuple[dict, list[dict]]:
     dg = diagnose(name)
     props = rule_proposals(dg) + (llm_proposals(dg, log) if use_llm else [])
+    for pr in props:
+        pr["cost"] = estimate(dg, pr)
     p = Project(name)
     (p.root / "proposals.json").write_text(json.dumps({"from": dg["experiment"], "proposals": props}, indent=2))
     return dg, props

@@ -20,8 +20,8 @@ from typing import Any, Callable
 from .config import Project, load_config
 
 # Prior expected gain per proposal kind (higher first). Ties keep the rule order.
-PRIORS = {"real-data": 3.0, "domain-encoder": 3.0, "utterance-labels": 2.5, "more-data": 2.0, "hard-pairs": 1.5, "llm-": 1.5,
-          "train-longer": 1.0, "refine-more": 1.0}
+PRIORS = {"real-data": 3.0, "domain-encoder": 3.0, "utterance-labels": 2.5, "new-split": 2.0, "more-data": 2.0, "regularize": 1.5,
+          "hard-pairs": 1.5, "llm-": 1.5, "train-longer": 1.0, "refine-more": 1.0}
 
 
 def _prior(pid: str) -> float:
@@ -33,20 +33,25 @@ def _key(pr: dict) -> str:
 
 
 def standing(name: str, margin: float) -> dict[str, Any]:
-    """Where the promoted experiment stands on the primary suite."""
+    """Where the promoted experiment stands on the primary suite. Decisions use the calib split; test is reported."""
+    from . import evals
     from .spec import TaskSpec
 
     p = Project(name)
     base = TaskSpec.load(p.spec_path)
     prim = base.primary_suite()
     board = json.loads((p.root / "board.json").read_text()) if (p.root / "board.json").exists() else {}
-    ours = board.get(p.promoted or "", {}).get(prim, {}).get("objective")
-    bls = {k: v[prim]["objective"] for k, v in board.items() if prim in v and v[prim]["kind"] == "baseline"}
+    mine = board.get(p.promoted or "", {}).get(prim)
+    ours = evals.selection_value(mine)
+    bls = {k: evals.selection_value(v[prim]) for k, v in board.items() if prim in v and v[prim]["kind"] == "baseline"}
     best_bl = max(bls.items(), key=lambda kv: kv[1]) if bls else None
     beats = ours is not None and (best_bl is None or ours > best_bl[1] + margin)
     meets = ours is not None and ours >= base.objective.target
+    test = {"ours": mine.get("objective") if mine else None, "ci95": (mine or {}).get("metrics", {}).get("ci95"),
+            "baselines": {k: v[prim]["objective"] for k, v in board.items() if prim in v and v[prim]["kind"] == "baseline"},
+            "vs_best_baseline": evals.compare(base, mine, board[best_bl[0]][prim], "test") if best_bl and mine else None}
     return {"suite": prim, "ours": ours, "exp": p.promoted, "baselines": bls, "best_baseline": best_bl, "beats": beats, "meets": meets,
-            "won": beats and meets, "metric": base.objective.metric, "target": base.objective.target}
+            "won": beats and meets, "metric": base.objective.metric, "target": base.objective.target, "test": test}
 
 
 class Log:
@@ -71,7 +76,7 @@ def run(name: str, prompt: str | None = None, modality: str | None = None, budge
         margin: float = 0.0, distill: bool = True, max_params_m: float = 25.0, publish: str | None = None, license: str = "other",
         use_llm: bool = True, echo: Callable[[str], None] = print) -> dict[str, Any]:
     from . import distill as dst
-    from . import improve
+    from . import evals, improve
     from .discover import discover
     from .pipeline import build
     from .spec import TaskSpec, compile_spec
@@ -125,7 +130,13 @@ def run(name: str, prompt: str | None = None, modality: str | None = None, budge
         if not fresh:
             reason = "no untried proposals left"
             break
-        pick = max(fresh, key=lambda pr: (_prior(pr["id"]), -fresh.index(pr)))
+        left_min = (deadline - time.time()) / 60
+        fits = [pr for pr in fresh if not (pr.get("cost", {}).get("minutes", 0) > left_min)]  # NaN (unknown) fits
+        if not fits:
+            reason = f"time budget: {left_min:.0f} min left, cheapest untried proposal needs ~{min(pr['cost']['minutes'] for pr in fresh):.0f} min"
+            break
+        # Highest prior first; among equals the cheaper one (gain per minute).
+        pick = max(fits, key=lambda pr: (_prior(pr["id"]), -(pr.get("cost", {}).get("minutes") or 0), -fits.index(pr)))
         tried.add(_key(pick))
         before = st["ours"]
         exp = improve.apply(name, [pick["id"]])
@@ -139,14 +150,19 @@ def run(name: str, prompt: str | None = None, modality: str | None = None, budge
         durations.append(time.time() - ts)
         after = standing(name, margin)
         board = json.loads((p.root / "board.json").read_text())
-        mine = board.get(exp, {}).get(st["suite"], {}).get("objective")
+        res = board.get(exp, {}).get(st["suite"])
+        mine = evals.selection_value(res)
+        cmp = evals.compare(base, res, board.get(st["exp"] or "", {}).get(st["suite"]))
         kept = after["exp"] == exp
-        log("experiment", exp, f"{pick['id']}: {st['suite']} {mine:.4f} vs {before:.4f} -> {'kept (promoted)' if kept else 'reverted'}. Evidence: {pick['why']}",
-            proposal=pick, delta=None if mine is None or before is None else round(mine - before, 4),
+        # A gain counts only if it is unlikely to be split noise: P(better on calib) >= 0.9 under a paired bootstrap.
+        real = kept and (cmp["p_better"] >= 0.9 if cmp else mine is not None and before is not None and mine - before > 0.002)
+        log("experiment", exp, f"{pick['id']}: {st['suite']} calib {mine:.4f} vs {before:.4f}" + (f" (P(better)={cmp['p_better']:.2f})" if cmp else "")
+            + f" -> {'kept (promoted)' if kept else 'reverted'}. Evidence: {pick['why']}",
+            proposal=pick, delta=None if mine is None or before is None else round(mine - before, 4), p_better=cmp and cmp["p_better"],
             alternatives=[pr["id"] for pr in fresh if pr is not pick])
-        stale = 0 if kept and mine is not None and before is not None and mine - before > 0.002 else stale + 1
+        stale = 0 if real else stale + 1
         if stale >= 2:
-            reason = "plateau: 2 rounds without a meaningful gain"
+            reason = "plateau: 2 rounds without a significant gain"
             break
     log("stop", reason, "")
 
@@ -194,10 +210,16 @@ def _report(p: Project, decisions: list[dict], final: dict) -> None:
     from . import evals
 
     suites, rows = evals.board_rows(p.name)
+    t = final.get("test") or {}
+    ci = t.get("ci95")
+    vs = t.get("vs_best_baseline")
+    bb = final["best_baseline"]
     lines = [f"# {p.name}: autopilot report", "",
-             f"**Result:** {final['exp']} scores {final['ours']:.4f} {final['metric']} on `{final['suite']}`"
-             + (f" vs best baseline {final['best_baseline'][0]} {final['best_baseline'][1]:.4f}" if final["best_baseline"] else "")
-             + f": **{'WON' if final['won'] else 'did not win'}** ({final['stop_reason']}, {final['hours']} h).", "",
+             f"**Result:** {final['exp']}: **{'WON' if final['won'] else 'did not win'}** ({final['stop_reason']}, {final['hours']} h).", "",
+             f"- selection (`{final['suite']}` calib split): {final['ours']:.4f} {final['metric']}" + (f" vs best baseline {bb[0]} {bb[1]:.4f}" if bb else ""),
+             f"- held-out test: {t['ours']:.4f}" + (f" (95% CI {ci['lo']:.4f}-{ci['hi']:.4f})" if ci else "")
+             + (f" vs {bb[0]} {t['baselines'][bb[0]]:.4f}: delta {vs['delta']:+.4f}, P(better) {vs['p_better']:.2f}" if vs and bb else "") if t.get("ours") is not None else "- held-out test: n/a",
+             "",
              "## Board", "", "| | params | " + " | ".join(suites) + " |", "|---|---|" + "---|" * len(suites)]
     for r in rows:
         lines.append(f"| {r['id']}{' *' if r['promoted'] else ''} | {(r['params'] or 0) / 1e6:.2f}M | " + " | ".join("–" if r.get(s) is None else f"{r[s]:.4f}" for s in suites) + " |")

@@ -211,15 +211,16 @@ def test_document_fused_pipeline_and_export(ws):
     assert pred["label"] in ("invoice", "letter") and m.encode(str(dd / "pdf" / "45.pdf")).shape == (64,)
 
 
-def _dg(spec, objective, baseline, curve, best_epoch):
+def _dg(spec, objective, baseline, curve, best_epoch, losses=None):
     return {"spec": spec, "base": spec, "primary": "builtin", "n_train": 100, "dev": curve[best_epoch], "binary": False,
-            "curve": curve, "best_epoch": best_epoch, "epochs_run": len(curve), "epochs_cfg": spec.train.epochs,
+            "curve": curve, "losses": losses or [1.0] * len(curve), "train_seconds": 60, "best_epoch": best_epoch, "epochs_run": len(curve), "epochs_cfg": spec.train.epochs,
             "late_best": best_epoch >= int(0.75 * len(curve)) and len(curve) >= spec.train.epochs,
             "suites": {"builtin": {"objective": objective, "best_baseline": ("hf:x", baseline) if baseline else None, "threshold": None,
                                    "confusions": [("form", "specification", 5)], "weakest": []}}, "board": {}}
 
 
-def test_improve_rules_and_list_paths():
+def test_improve_rules_and_list_paths(monkeypatch):
+    from byojl.data import hf_source
     from byojl.improve import apply_ops, rule_proposals
     from byojl.spec import DocumentCfg, HFSource, TrainCfg
 
@@ -236,6 +237,55 @@ def test_improve_rules_and_list_paths():
     # beating the baseline, at target, plateaued and early-stopped -> nothing to do
     spec.objective.target = 0.8
     assert rule_proposals(_dg(spec, 0.97, 0.95, [0.9, 0.95, 0.96, 0.96], 2)) == []
+    # the split only has 150/label -> cap; exhausted -> add the biggest split no eval reads
+    spec.objective.target = 0.95
+    monkeypatch.setattr(hf_source, "availability", lambda src, sp: {"form": 150 if src.per_label == 100 else 110, "specification": 900})
+    monkeypatch.setattr(hf_source, "split_sizes", lambda ds, cfg=None: {"train": 50000, "val": 300})
+    ids = {p["id"]: p for p in rule_proposals(_dg(spec, 0.80, 0.95, [0.6, 0.7, 0.75, 0.78, 0.79, 0.8, 0.82, 0.83], 7))}
+    assert ids["more-data"]["ops"][0]["value"] == 150
+    spec.data.hf_sources[0].per_label = 100 + 1  # availability 110 < 1.5x -> exhausted
+    ids = {p["id"]: p for p in rule_proposals(_dg(spec, 0.80, 0.95, [0.6, 0.7, 0.75, 0.78, 0.79, 0.8, 0.82, 0.83], 7))}
+    assert ids["new-split"]["ops"][0]["value"]["split"] in ("train", "val") and "more-data" not in ids
+    # overfitting: dev peaked at epoch 2, loss kept falling -> regularize
+    ids = {p["id"] for p in rule_proposals(_dg(spec, 0.80, 0.95, [0.7, 0.8, 0.79, 0.78, 0.78], 1, [1.0, 0.6, 0.4, 0.3, 0.2]))}
+    assert "regularize" in ids
+
+
+def test_paired_bootstrap():
+    from byojl.metrics import bootstrap, units
+
+    spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="a", definition=""), Label(name="b", definition=""), Label(name="c", definition="")],
+                    objective=Objective(metric="accuracy"))
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 3, 600)
+    good = np.where(rng.random(600) < 0.9, y, (y + 1) % 3)
+    bad = np.where(rng.random(600) < 0.8, y, (y + 1) % 3)
+    a, b = units(3, y, good), units(3, y, bad)
+    assert bootstrap(spec, a, b)["p_better"] > 0.99 and bootstrap(spec, b, a)["p_better"] < 0.01
+    assert abs(bootstrap(spec, a, a)["p_better"] - 0.5) < 1e-9
+    ci = bootstrap(spec, a)
+    assert ci["lo"] < (good == y).mean() < ci["hi"]
+    # frame tasks: units are files (one confusion matrix each); same objective as the flat computation
+    from byojl.metrics import _cms, objective_from_cm
+    fu = units(3, y, good, groups=[100, 200, 300])
+    assert len(fu["cm"]) == 3 and abs(objective_from_cm(spec, _cms(fu, 3).sum(0)) - (good == y).mean()) < 1e-9
+
+
+def test_param_groups_layer_decay():
+    from byojl.modalities import get_modality
+    from byojl.spec import TrainCfg
+    from byojl.train import build_model, param_groups
+
+    spec = TaskSpec(name="t", description="", modality="text", backbone=TINY_BERT, labels=[Label(name="a", definition=""), Label(name="b", definition="")],
+                    train=TrainCfg(lr_backbone=1e-4, lr_head=1e-3, layer_decay_floor=0.1))
+    model = build_model(spec, get_modality(spec))
+    lr = {id(p): g["lr"] for g in param_groups(model, spec.train) for p in g["params"]}
+    named = dict(model.backbone.named_parameters())
+    emb = lr[id(named["model.embeddings.word_embeddings.weight"])]
+    l0, l3 = lr[id(named["model.encoder.layer.0.attention.self.query.weight"])], lr[id(named["model.encoder.layer.3.output.dense.weight"])]
+    assert abs(emb - 1e-5) < 1e-12 and emb < l0 < l3 < 1e-4  # embeddings at the floor, rising with depth
+    assert all(lr[id(p)] == 1e-3 for h in model.heads.values() for p in h.parameters())
+    assert len(lr) == sum(1 for _ in model.backbone.parameters()) + sum(1 for h in model.heads.values() for _ in h.parameters())
 
 
 def test_autopilot_end_to_end(ws):
@@ -252,6 +302,7 @@ def test_autopilot_end_to_end(ws):
     spec = compile_spec("auto", "detect questions")
     spec.data.train_size, spec.data.dev_size, spec.data.test_size, spec.data.per_call = 120, 40, 60, 20
     spec.train.epochs, spec.train.pretrain_steps, spec.train.refine_rounds = 2, 0, 0
+    spec.objective.target = 0.9  # 40 calib items, cross-fitted: 0.99 is not a fair bar for a toy run
     spec, _ = discover(spec, {}, None, lambda m: None)
     p.ensure()
     spec.save(p.spec_path)

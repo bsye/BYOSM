@@ -28,6 +28,8 @@ from .spec import EvalSuite, TaskSpec
 
 # --------------------------------------------------------------------------------------------- suites
 
+SCORE_VERSION = "3"  # bump when score() output changes, so cached results are recomputed
+
 
 def suite_dir(p: Project, suite: EvalSuite) -> Path:
     return p.evals_dir / suite.name
@@ -38,7 +40,7 @@ def fingerprint(p: Project, spec: TaskSpec, suite: EvalSuite) -> str:
     blob = suite.model_dump_json() + "".join(f.read_text()[:100000] for f in sorted(d.glob("*.jsonl"))) if d.exists() else suite.model_dump_json()
     if suite.kind == "builtin":
         blob += spec.data_key()
-    blob += spec.decision.model_dump_json()
+    blob += spec.decision.model_dump_json() + SCORE_VERSION
     return hashlib.sha1(blob.encode()).hexdigest()[:10]
 
 
@@ -62,7 +64,7 @@ def materialize(p: Project, base: TaskSpec, suite: EvalSuite, log: Callable[[str
 
         src = suite.source
         hop = int(base.data.audio.sample_rate * base.frame_hop_ms / 1000)
-        n_cal = max(1, src.max_files // 5)
+        n_cal = max(8, src.max_files // 4)  # frame tasks: the calib objective is per-file, few files = noisy selection
         for part, n, rows in (("calib", n_cal, calib), ("test", src.max_files, test)):
             for f in segments.fetch(src, (part,), n, p.root / "cache"):
                 n_frames = len(load_wav(f, base.data.audio.sample_rate)) // hop
@@ -129,20 +131,44 @@ def score(pred: Predictor, spec: TaskSpec, calib: list[dict], test: list[dict], 
     pt, yt, pert = _collect(pred, spec, test, root)
     d = spec.decision
     out: dict[str, Any] = {"predictor": pred.id, "kind": pred.kind, "params": pred.params}
+    C = len(spec.labels)
+    groups_t = [len(y) for _, y in pert] if pert else None
+    groups_c = [len(y) for _, y in perc] if perc else None
     if d.kind == "hysteresis" and spec.task_type == "frame":
-        act = d.threshold
-        if act is None and perc:
-            ycal = np.concatenate([y for _, y in perc]) == spec.pos_index
-            act = float(max(np.linspace(0.1, 0.9, 33), key=lambda a: metrics._prf_at(ycal, _hyst(spec, perc, a)[0].astype(float), 0.5)[2]))
-        act = 0.5 if act is None else act
+        def fit_act(per):
+            if d.threshold is not None or not per:
+                return 0.5 if d.threshold is None else d.threshold
+            ycal = np.concatenate([y for _, y in per]) == spec.pos_index
+            return float(max(np.linspace(0.1, 0.9, 33), key=lambda a: metrics._prf_at(ycal, _hyst(spec, per, a)[0].astype(float), 0.5)[2]))
+
+        act = fit_act(perc)
         dec, _ = _hyst(spec, pert, act)
         m = metrics.compute(spec, yt, _onehot(spec, dec), 0.5)
         m["threshold"] = act
+        dec_t = _onehot(spec, dec).argmax(-1)
+        dec_c = None
+        if perc:  # cross-fitted: each half of the calib files is decided with the activation fitted on the other half
+            folds = [perc[0::2], perc[1::2]] if len(perc) > 1 else [perc, perc]
+            acts = [fit_act(folds[1]), fit_act(folds[0])]
+            dec_c = _onehot(spec, np.concatenate([_hyst(spec, [f], acts[i % 2])[0] for i, f in enumerate(perc)])).argmax(-1)
     else:
         thr = d.threshold if d.threshold is not None else (metrics.calibrate(spec, yc, pc) if pc is not None else None)
         m = metrics.compute(spec, yt, pt, thr)
+        dec_t = metrics.predict(spec, pt, thr)
+        dec_c = None
+        if pc is not None:  # cross-fitted like above: even rows decided with the threshold fitted on odd rows, and vice versa
+            dec_c = metrics.predict(spec, pc, thr)
+            if d.threshold is None and metrics._binary(spec) is not None and len(pc) > 1:
+                for a, b in ((0, 1), (1, 0)):
+                    dec_c[a::2] = metrics.predict(spec, pc[a::2], metrics.calibrate(spec, yc[b::2], pc[b::2]))
+    # Units for paired comparisons; the calib objective is what selection (promotion, autopilot) uses - test is only reported.
+    out["units"] = {"test": metrics.units(C, yt, dec_t, groups_t)}
+    m["ci95"] = metrics.bootstrap(spec, out["units"]["test"], n=500)
+    if dec_c is not None:
+        out["units"]["calib"] = metrics.units(C, yc, dec_c, groups_c)
+        out["calib_objective"] = metrics.objective_from_cm(spec, metrics._cms(out["units"]["calib"], C).sum(0))
     binary = yt == spec.pos_index
-    if 0 < binary.sum() < len(binary):
+    if metrics._binary(spec) is not None and 0 < binary.sum() < len(binary):  # threshold-free scores only mean something for binary tasks
         m["roc_auc"] = float(roc_auc_score(binary, pt[:, spec.pos_index]))
         m["avg_precision"] = float(average_precision_score(binary, pt[:, spec.pos_index]))
     out.update(metrics=m, objective=m["objective"], n_test=len(test), n_calib=len(calib), seconds=round(time.time() - t0, 1))
@@ -181,6 +207,9 @@ def run(name: str, experiments: list[str] | None = None, baselines: list[str] | 
         fp = fingerprint(p, base, suite)
         jobs: list[tuple[str, str, Callable[[], Predictor]]] = []
         for e in exps:
+            meta_f = p.exp_dir(e) / "meta.json"
+            if suite.kind == "builtin" and meta_f.exists() and json.loads(meta_f.read_text()).get("n_test_folded"):
+                continue  # trained on this split
             jobs.append(("experiment", e, lambda e=e: ExperimentPredictor(TaskSpec.load(p.exp_dir(e) / "spec.yaml").model_copy(update={"decision": base.decision}), p.exp_dir(e), e)))
         for b in bls:
             jobs.append(("baseline", b, lambda b=b: get_baseline(b, base)))
@@ -215,7 +244,30 @@ def board_rows(name: str) -> tuple[list[str], list[dict]]:
                      "stream_ms": any_r.get("stream_ms_per_chunk"), "chunk_ms": any_r.get("chunk_ms"), "latency_ms": any_r.get("latency_ms"),
                      **{s: by_suite.get(s, {}).get("objective") for s in suites},
                      **{f"{s}:auc": by_suite.get(s, {}).get("metrics", {}).get("roc_auc") for s in suites},
+                     **{f"{s}:calib": by_suite.get(s, {}).get("calib_objective") for s in suites},
+                     **{f"{s}:ci": by_suite.get(s, {}).get("metrics", {}).get("ci95") for s in suites},
                      **{f"{s}:p/r": (by_suite[s]["metrics"].get("precision"), by_suite[s]["metrics"].get("recall")) if s in by_suite else None for s in suites}})
     prim = base.primary_suite()
     rows.sort(key=lambda r: -(r.get(prim) or -1))
     return suites, rows
+
+
+# --------------------------------------------------------------------------------------------- selection
+
+
+def selection_value(r: dict | None) -> float | None:
+    """What selection decides on: the calib split (test is reported, never selected on). Old caches: test."""
+    if not r:
+        return None
+    return r.get("calib_objective", r.get("objective"))
+
+
+def compare(spec: TaskSpec, a: dict | None, b: dict | None, split: str = "calib") -> dict[str, float] | None:
+    """Paired bootstrap of a vs b (two results on the same suite): delta, 95% CI, P(a better)."""
+    ua, ub = (a or {}).get("units", {}).get(split), (b or {}).get("units", {}).get(split)
+    if not ua or not ub:
+        return None
+    try:
+        return metrics.bootstrap(spec, ua, ub)
+    except ValueError:
+        return None

@@ -199,13 +199,17 @@ def board(name: str, detail: bool = typer.Option(False, help="also show precisio
 
     p, spec = _spec(name)
     suites, rows = evals.board_rows(name)
-    t = Table(title=f"{name} - {spec.objective.metric} per suite (primary: {spec.primary_suite()})")
+    prim = spec.primary_suite()
+    t = Table(title=f"{name} - test {spec.objective.metric} per suite (primary: {prim}; selection uses its calib split)")
     t.add_column("")
     t.add_column("params", justify="right")
     t.add_column("cpu", justify="right")
     for s in suites:
         t.add_column(s, justify="right")
+        if s == prim:
+            t.add_column("calib", justify="right", style="dim")
         if detail:
+            t.add_column("95% CI", justify="right", style="dim")
             t.add_column("P/R", justify="right", style="dim")
         t.add_column("auc", justify="right", style="dim")
     best = {s: max((r[s] for r in rows if r.get(s) is not None), default=None) for s in suites}
@@ -218,7 +222,12 @@ def board(name: str, detail: bool = typer.Option(False, help="also show precisio
             pr = r.get(f"{s}:p/r")
             auc = r.get(f"{s}:auc")
             cells.append("-" if v is None else (f"[bold]{v:.4f}[/]" if v == best[s] else f"{v:.4f}"))
+            if s == prim:
+                c = r.get(f"{s}:calib")
+                cells.append("-" if c is None else f"{c:.4f}")
             if detail:
+                ci = r.get(f"{s}:ci")
+                cells.append(f"{ci['lo']:.3f}-{ci['hi']:.3f}" if ci else "")
                 cells.append(f"{pr[0]:.3f}/{pr[1]:.3f}" if pr and pr[0] is not None else "")
             cells.append(f"{auc:.3f}" if auc else "")
         t.add_row(*cells)
@@ -297,6 +306,9 @@ def improve(name: str, apply: Optional[str] = typer.Option(None, help="comma-sep
         for o in pr["ops"]:
             v = json.dumps(o["value"])
             log(f"    {o['op']} {o['path']} = {v[:160]}")
+        c = pr.get("cost") or {}
+        if c.get("minutes") == c.get("minutes") and c.get("minutes") is not None:
+            log(f"    est. cost ~{c['minutes']:.0f} min" + (f" ({c['new_items']} new items to ingest)" if c.get("new_items") else ""))
     log(f"\napply: byojl improve {name} --apply {','.join(p['id'] for p in props)} --run")
 
 
@@ -342,11 +354,12 @@ def distill(name: str, teacher: Optional[str] = typer.Option(None, help="teacher
 
 
 @app.command()
-def export(name: str, exp: Optional[str] = None, out: Optional[Path] = None) -> None:
+def export(name: str, exp: Optional[str] = None, out: Optional[Path] = None,
+           precision: str = typer.Option("auto", help="auto (int8 if it costs <= 0.5 pt on calib) | int8 | fp32")) -> None:
     """Export to a torch-free bundle: ONNX + manifest + byojl_rt.py (encode / predict / stream().step / serve)."""
     from .export import export as run
 
-    d = run(name, exp, out, log)
+    d = run(name, exp, out, log, precision)
     log(f"exported to {d}\n  python {d / 'byojl_rt.py'} predict {d} <input>\n  python {d / 'byojl_rt.py'} serve {d}")
 
 

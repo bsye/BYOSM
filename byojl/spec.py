@@ -152,6 +152,14 @@ class TrainCfg(BaseModel):
     refine_rounds: int = 2
     refine_examples: int = 300
     pool: Literal["mean", "attention"] = "mean"  # how classify heads pool positions (pages, frames, tokens)
+    # Fine-tuning recipe for pretrained encoders (see train.param_groups). Defaults are on; each has an off value.
+    layer_decay_floor: float = 0.5  # layer-wise LR decay: the embedding layer trains at this fraction of lr_backbone (1 = off)
+    probe_epochs: int = 0  # linear probe first: train only the new layers while pretrained encoders stay frozen (0 = off)
+    ema: bool = True  # select and ship an exponential moving average of the weights
+    seed: int = 0
+    # The builtin test split is only a report when the primary suite is external; auto folds it into training then.
+    holdout_test: Literal["auto", "keep", "train"] = "auto"
+    precision: Literal["auto", "fp32", "bf16", "fp16"] = "auto"  # auto: fp16 (MPS) / bf16 (CUDA) when fine-tuning a pretrained encoder
     # Distillation: learn from another experiment (the teacher) as well as from labels.
     distill_from: Optional[str] = None  # teacher experiment name
     distill_alpha: float = 0.3  # weight of the gold-label loss; (1 - alpha) on the teacher's soft targets
@@ -205,6 +213,12 @@ class TaskSpec(BaseModel):
 
     def primary_suite(self) -> str:
         return next((e.name for e in self.evals if e.primary), self.evals[0].name if self.evals else "builtin")
+
+    def trains_on_test_split(self) -> bool:
+        """Whether training also uses the data's own test split (then the builtin suite no longer measures anything)."""
+        h = self.train.holdout_test
+        prim = next((e for e in self.evals if e.name == self.primary_suite()), None)
+        return h == "train" or (h == "auto" and prim is not None and prim.kind != "builtin")
 
     def save(self, path: Path) -> None:
         path.write_text(yaml.safe_dump(self.model_dump(mode="json"), sort_keys=False, allow_unicode=True, width=110))

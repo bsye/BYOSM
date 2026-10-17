@@ -96,7 +96,8 @@ def _calibrated_decision(p: Project, exp: str, spec_decision: dict) -> tuple[dic
     return d, metrics
 
 
-def export(name: str, exp: str | None = None, out: Path | None = None, log: Callable[[str], None] = print) -> Path:
+def export(name: str, exp: str | None = None, out: Path | None = None, log: Callable[[str], None] = print, precision: str = "auto") -> Path:
+    """precision: auto (int8 weights when the model is large enough to benefit and the calib objective drops <= 0.5 pt) | int8 | fp32"""
     p = Project(name)
     exp = exp or p.promoted
     if not exp:
@@ -196,7 +197,67 @@ def export(name: str, exp: str | None = None, out: Path | None = None, log: Call
     (out / "README.md").write_text(_readme(manifest, kind))
 
     _verify(out, sp, p, kind, log)
+    if precision != "fp32" and kind != "logmel" and (out / "model.onnx").stat().st_size > 4e6:
+        _quantize(out, sp, p, base, log, force=precision == "int8")
     return out
+
+
+def _quantize(out: Path, sp: Specialist, p: Project, base: Any, log: Callable[[str], None], force: bool = False) -> None:
+    """Dynamic int8 weights (transformers: ~4x smaller, faster on CPU). Tries the most compressed variant first - MatMul/Gemm
+    plus embedding tables (Gather) - then MatMul/Gemm only; the first whose primary-suite calib objective (never test) drops by
+    at most 0.5 pt ships: the manifest points at model.int8.onnx and the fp32 file is removed."""
+    import importlib.util
+
+    from onnxruntime.quantization import QuantType, quantize_dynamic
+
+    from . import evals, metrics
+
+    evaluate = None
+    if sp.spec.task_type == "classify":
+        suite = next(s for s in base.evals if s.name == base.primary_suite())
+        calib, _, root = evals.materialize(p, base, suite, log)
+        rows = calib[:400]
+        mod = get_modality(sp.spec, str(root))
+        rt_spec = importlib.util.spec_from_file_location("byojl_rt", out / "byojl_rt.py")
+        rt = importlib.util.module_from_spec(rt_spec)
+        rt_spec.loader.exec_module(rt)
+        idx = {n: i for i, n in enumerate(sp.spec.label_names)}
+        y = np.array([idx[r["label"]] for r in rows])
+        thr = json.loads((out / "manifest.json").read_text())["decision"].get("threshold")
+        xs = [str(mod._path(r)) if sp.spec.modality == "document" else mod.load(r) for r in rows]
+
+        def evaluate(f: str) -> dict:
+            m = rt.Specialist(out, threads=4, model_file=f)
+            m._run(xs[0])
+            t0 = time.time()
+            probs = np.stack([m._run(x)[1] for x in xs])
+            return {"objective": metrics.compute(sp.spec, y, probs, thr)["objective"], "ms": (time.time() - t0) / len(xs) * 1000}
+
+    fp = evaluate("model.onnx") if evaluate else None
+    mb = {"model.onnx": (out / "model.onnx").stat().st_size / 1e6}
+    tried: dict[str, dict] = {}
+    q, ops = None, None
+    for ops in (["MatMul", "Gemm", "Gather"], ["MatMul", "Gemm"]):
+        quantize_dynamic(str(out / "model.onnx"), str(out / "model.int8.onnx"), weight_type=QuantType.QInt8, per_channel=True, op_types_to_quantize=ops)
+        q = evaluate("model.int8.onnx") if evaluate else None
+        tried["+".join(ops)] = {**(q or {}), "mb": (out / "model.int8.onnx").stat().st_size / 1e6}
+        if force or (fp is not None and q["objective"] >= fp["objective"] - 0.005):
+            break
+    else:
+        q = None
+    man = json.loads((out / "manifest.json").read_text())
+    info = {"fp32": {**(fp or {}), "mb": mb["model.onnx"]}, "tried": tried}
+    if force or q is not None:
+        (out / "model.onnx").unlink()
+        man.update(model_file="model.int8.onnx", precision="int8", quantization={**info, "ops": ops})
+        t = tried["+".join(ops)]
+        detail = f"calib {base.objective.metric} {fp['objective']:.4f} -> {q['objective']:.4f}, {fp['ms']:.0f} -> {q['ms']:.0f} ms/item, " if fp and q else ""
+        log(f"  int8 ({'+'.join(ops)}): {detail}{mb['model.onnx']:.0f} -> {t['mb']:.0f} MB -> shipping int8")
+    else:
+        (out / "model.int8.onnx").unlink()
+        man.update(precision="fp32", quantization={**info, "rejected": True})
+        log("  int8 rejected (every variant loses more than 0.5 pt on calib) -> shipping fp32")
+    (out / "manifest.json").write_text(json.dumps(man, indent=2))
 
 
 def _verify(out: Path, sp: Specialist, p: Project, kind: str, log: Callable[[str], None]) -> None:

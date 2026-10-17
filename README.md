@@ -116,11 +116,27 @@ adaptation pass.
 
 ### ④ Train
 
-A tiny head (LayerNorm → Linear) goes on top of the backbone: mean-pooled for `classify` tasks, per position for `frame`
-tasks (one label per 10 ms of audio or per word). Training is class‑weighted cross-entropy with cosine schedules and early
-stopping, and the checkpoint is chosen on the **dev** set. For text, a **refine loop** can run: an analyst LLM reads the
-dev errors, names the systematic failure patterns, writes targeted training data for them (judged and deduplicated like
-everything else), and the model retrains.
+A tiny head (LayerNorm → Linear) goes on top of the backbone: mean- or attention-pooled for `classify` tasks, per position
+for `frame` tasks (one label per 10 ms of audio or per word). Training is class‑weighted cross-entropy with a cosine
+schedule and early stopping, and the checkpoint is chosen on the **dev** set. For text, a **refine loop** can run: an
+analyst LLM reads the dev errors, names the systematic failure patterns, writes targeted training data for them (judged
+and deduplicated like everything else), and the model retrains.
+
+Fine-tuning a pretrained encoder uses one fixed recipe. Each part has a switch in `train:`, and the defaults are what
+measured best (see [the recipe, measured](#the-training-recipe-measured)):
+
+| | default | what | why |
+|---|---|---|---|
+| parameter groups | on | new layers (head, projections, fusion) at `lr_head`; pretrained encoders at `lr_backbone` | layers trained from scratch need a far higher LR than pretrained ones |
+| EMA weights | on | an exponential moving average over ~half an epoch is what's selected and shipped | smooths SGD noise at no cost: **+0.5 pt** |
+| layer-wise LR decay | floor 0.5 | encoder LR falls with depth, to `layer_decay_floor` × at the embeddings | low layers hold general features worth keeping; a floor of 0.1 was too strong for small encoders |
+| mixed precision | auto | fp16 (MPS) / bf16 (CUDA), only when a pretrained encoder is fine-tuned | no accuracy cost; 2.1× faster per step on DiT-base + MiniLM (no gain on a 22M encoder alone) |
+| linear probe first | off | `probe_epochs` with the encoders frozen (in eval mode) | didn't help in-domain; available for out-of-domain transfer |
+
+Backbones trained from scratch (`tiny-crnn`, `tiny-cnn`) keep plain fp32 at `lr_backbone`, with EMA.
+
+When the primary suite is external (a public benchmark or your own files), the builtin test split isn't needed for
+anything, so it is folded into training (`train.holdout_test: auto`): about 20% more labelled data, for free.
 
 ### ⑤ Evaluate: eval suites and baselines
 
@@ -139,17 +155,26 @@ floor), or `llm` (the zero‑shot LLM itself, the "System 2" bar for text). Expe
 scorer**:
 
 1. Run on the suite's `calib` part and **calibrate the decision policy** on it: a threshold, or for streaming audio the
-   LiveKit-style **hysteresis** (smoothing, start/stop thresholds, 50 ms minimum speech, 550 ms minimum silence).
-2. Run on the `test` part and report the objective, precision/recall, threshold-free ROC‑AUC and average precision,
-   parameters, and streaming CPU cost per chunk.
+   LiveKit-style **hysteresis** (smoothing, start/stop thresholds, 50 ms minimum speech, 550 ms minimum silence). The
+   calib score that selection uses is **cross-fitted**: each half of calib is decided with the policy fitted on the other
+   half, so a model doesn't look better just because its threshold was tuned on the items it is scored on.
+2. Run on the `test` part and report the objective with a **95% bootstrap CI**, precision/recall, threshold-free ROC‑AUC and
+   average precision (binary tasks), parameters, and streaming CPU cost per chunk.
+
+Per-item outcomes are kept (one confusion matrix per file for frame tasks, since frames of a file aren't independent). That
+makes every comparison a **paired bootstrap**: "B beats A with P = 0.97" instead of "B is 0.4 points higher".
 
 Results are cached by a fingerprint of the suite, so re-scoring is free until something changes.
 
 ### ⑥ Board and promotion
 
 `byojl board <name>` is the leaderboard: experiments × baselines × suites. The experiment with the best objective on the
-**primary** suite is promoted, and promotion decides what `export` and `serve` use. You can override it with
+primary suite's **calib** split is promoted, and promotion decides what `export` and `serve` use. You can override it with
 `byojl promote`.
+
+Selection never looks at test. Promotion, the autopilot's keep/revert, its stopping rule and the int8 check all decide on
+calib; test is only reported. Otherwise, after ten experiments, the "best" one is partly the one that got lucky on the
+test set.
 
 ### ⑦ Improve
 
@@ -162,7 +187,9 @@ labels and the most confused label pairs. Then each rule proposes edits only whe
 | rule | triggers when | proposes |
 |---|---|---|
 | `real-data-<suite>` | a real-world suite lags (behind a baseline or the builtin suite), and the model never trained on that source | train on the source's train partition (hash-disjoint from the suite's files) |
-| `more-data` | losing to a baseline or below target | ~4× more rows from the labelled source (or 2× synthetic). The explanation says whether the curve was still rising (data-limited) or had plateaued. |
+| `more-data` | losing to a baseline or below target | ~4× more rows from the labelled source (or 2× synthetic), **capped at what the split actually has**. The explanation says whether the curve was still rising (data-limited) or had plateaued. |
+| `new-split` | `more-data` would help but the split is used up | add the dataset's largest split that no eval suite reads (e.g. RVL-CDIP `train`, 320k rows, while training on `val`) |
+| `regularize` | dev peaked early and never recovered while the training loss kept falling (overfitting) | half the encoder LR; for fused documents, drop a view more often |
 | `domain-encoder` | losing to a baseline with an encoder pretrained on another domain (e.g. photos for documents) | a domain-pretrained encoder (e.g. `microsoft/dit-base` for document scans) |
 | `train-longer` | the best dev epoch is in the last quarter of a run that wasn't early-stopped | ~1.6× more epochs |
 | `utterance-labels` | frame audio, and calibration pushed the threshold to an extreme (label-convention mismatch) | change how training labels are made (`fill_ms: 300`) |
@@ -172,6 +199,10 @@ labels and the most confused label pairs. Then each rule proposes edits only whe
 
 Edits address list items by index (`data.hf_sources.0.per_label`). Adding a rule means writing one function decorated
 with `@rule` in `byojl/improve.py`.
+
+Every proposal comes with an **estimated cost**: ingest time for the new data (OCR is ~0.55 s per page and dominates for
+documents) plus training time scaled from the last run. The autopilot uses it to skip proposals that don't fit the
+remaining budget.
 
 `byojl improve <name> --apply a,b --run` writes `experiments/vN/spec.yaml` and builds and scores it. Every experiment
 records which proposal created it.
@@ -250,33 +281,60 @@ Repos are private unless you pass `--public`. `--dry-run` stages everything unde
 | define | task, labels, objective, backbone | spec compiler (LLM) from the prompt |
 | discover | primary eval suite | a public benchmark found on the Hub (its held-out split), with its train split as training data |
 | discover | baselines | the zero-shot LLM (`llm`, or `llm:<role>` for each extra LLM in `byojl.yaml`; multimodal for documents and images) + existing Hub models whose labels cover ≥60% of ours |
-| loop | next experiment | the untried `improve` proposal with the highest prior (domain data/encoder > label convention > more data > hard pairs > train longer), **one change per round** so every gain is attributable |
-| loop | keep or revert | promoted only if it beats the current best on the primary suite |
-| stop | when | **won** (beats every baseline by `--margin` and meets the target), time or experiment budget, 2 rounds without gain, or nothing left to try |
+| loop | next experiment | among untried `improve` proposals that fit the remaining time budget, the highest prior (domain data/encoder > label convention > more data / new split > regularize, hard pairs > train longer), cheaper first on ties; **one change per round** so every gain is attributable |
+| loop | keep or revert | promoted only if it beats the current best on the primary suite's calib split; it counts as progress only if a paired bootstrap gives P(better) ≥ 0.9 |
+| stop | when | **won** (beats every baseline by `--margin` on calib and meets the target), time or experiment budget, 2 rounds without a significant gain, or nothing left to try |
 | distill | shrink? | if the winner has more than `--max-params` M parameters: distill into a tiny student (soft targets on train + unlabeled inputs); promoted only if it still beats every baseline |
-| ship | export / publish | ONNX bundle; `--publish <repo>` pushes it with a model card |
+| ship | export / publish | ONNX bundle with int8 weights: tries MatMul/Gemm + embedding tables, then MatMul/Gemm only, and ships the first that costs ≤ 0.5 pt on calib (else fp32); `--publish <repo>` pushes it with a model card |
+
+## The training recipe, measured
+
+Banking77 (77 intents, official test split, 2,460 items after the calib split), MiniLM-L6 (22M), 3 seeds each, same data:
+
+| recipe | test accuracy (mean ± sd) | vs old |
+|---|---|---|
+| old: one LR for the encoder, fp32, last-step weights | 92.52 ± 0.21 | |
+| + mixed precision | 92.53 ± 0.25 | +0.01 |
+| + mixed precision + EMA | 93.01 ± 0.17 | +0.49 |
+| + mixed precision + layer decay 0.5 | 92.59 ± 0.34 | +0.07 |
+| **+ mixed precision + EMA + layer decay 0.5 (default)** | **93.14 ± 0.17** | **+0.62** |
+| + linear probe epoch | 92.97 ± 0.24 | +0.45 |
+| **default + builtin test split folded into training** (`holdout_test: auto`) | **93.44 ± 0.22** | **+0.92** |
+
+An earlier round with a layer-decay floor of 0.1 and a probe epoch was worse than this default on every seed, which is
+why the floor is 0.5 and the probe is off.
 
 ## Distillation
 
 `byojl distill <name> [--teacher exp] --run` trains a tiny student on `α·CE(gold) + (1−α)·T²·KL(teacher ‖ student)`,
 over the training inputs plus up to `distill_unlabeled` extra unlabeled inputs that only the teacher labels. Default
-students: tiny-BERT (text), tiny-crnn (audio), tiny-cnn (image), tiny-BERT + tiny-cnn (document).
+students are small *pretrained* encoders, which beat from-scratch ones on small data: tiny-BERT (text, 11M), tiny-crnn
+(audio, 0.1M), DeiT-tiny (image, 5.7M), tiny-BERT + DeiT-tiny (document, ~17M).
+
+On RVL-CDIP the 17M document student keeps 96% of its 110M teacher's accuracy at 1/6 the size and 4× the speed:
+
+| | params | RVL-CDIP test | CPU/doc (PyTorch) | ONNX bundle (int8, calib accuracy unchanged) |
+|---|---|---|---|---|
+| teacher `r2` (MiniLM + DiT-base) | 109.6M | 90.6% | 42 ms | 438 → **113 MB** (incl. embeddings) |
+| student `distill-r2` (tiny-BERT + DeiT-tiny) | 17.2M | 87.0% | 10 ms | 70 → **43 MB** (embeddings stay fp32: quantising them cost 2 of 384 calib docs) |
 
 ## Results: a 0.1M-param VAD vs LiveKit's Silero
 
 Published with `byojl publish`: **[huggingface.co/bsye/byojl-vad](https://huggingface.co/bsye/byojl-vad)** (model card, eval widget, ONNX bundle).
 
 Frozen AVA‑Speech suite: 20 real film/TV recordings, ~5 h, labelled by humans, never trained on. Every model goes
-through LiveKit's own hysteresis logic, calibrated on 4 separate recordings, on one CPU thread.
+through LiveKit's own hysteresis logic, calibrated on 8 separate recordings, on one CPU thread.
 
 | | params | CPU per chunk | builtin F1 | **AVA F1** | AVA AUC |
 |---|---|---|---|---|---|
-| **BYOJL vad v2** | **0.10M** | 0.070 ms / 30 ms ¹ | 0.879 | **0.876** | **0.939** |
-| Silero (LiveKit) | 0.55M | 0.068 ms / 32 ms | 0.885 | 0.856 | 0.923 |
+| **BYOJL vad v3** (v2 + new trainer) | **0.10M** | 0.070 ms / 30 ms ¹ | – ² | **0.882** | **0.942** |
+| BYOJL vad v2 | 0.10M | 0.070 ms / 30 ms ¹ | 0.879 | 0.876 | 0.939 |
+| Silero (LiveKit) | 0.55M | 0.068 ms / 32 ms | 0.885 | 0.865 | 0.923 |
 | BYOJL vad v1 | 0.10M | 0.070 ms / 30 ms ¹ | 0.894 | 0.849 | 0.900 |
 | energy floor | – | – | 0.728 | 0.728 | 0.694 |
 
-¹ the exported ONNX bundle (`byojl board` reports the slower PyTorch timing).
+¹ the exported ONNX bundle (`byojl board` reports the slower PyTorch timing). ² v3 trains on the builtin test split
+(`holdout_test: auto`), so it isn't scored there. The published model is v2.
 
 **How v1 became v2.** v1 was trained only on synthetic mixtures (LibriSpeech over ESC‑50) and lost to Silero on real audio.
 `byojl improve` read the board and proposed two changes. `real-data-ava`: the model had never heard film audio, so train
@@ -305,21 +363,23 @@ RVL-CDIP (16 document types), scored on 768 documents from the **original test s
 | | params | accuracy | CPU/doc | trained on |
 |---|---|---|---|---|
 | DiT-base (`microsoft/dit-base-finetuned-rvlcdip`, baseline) | 85.8M | **94.8%** | 51 ms | 320k labelled + 42M unlabelled documents |
-| **BYOJL fused-dit** (MiniLM text + DiT-base visual, *proposed by `byojl improve`*) | 109.6M | **89.7%** | 45 ms | 9,600 documents (from the val split) |
+| **BYOJL r2** (fused-dit + new trainer + builtin test folded in) | 109.6M | **90.6%** | 42 ms | 11,520 documents (from the val split) |
+| BYOJL fused-dit (MiniLM text + DiT-base visual, *proposed by `byojl improve`*) | 109.6M | 89.7% | 45 ms | 9,600 documents (from the val split) |
+| BYOJL distill-r2 (tiny-BERT + DeiT-tiny student of r2) | 17.2M | 87.0% | 10 ms | same + r2's soft labels |
 | BYOJL fused (MiniLM text + DINOv2-small visual) | 45.7M | 80.9% | 26 ms | 2,400 documents (from the val split) |
 | BYOJL text (OCR → MiniLM) | 23.4M | 72.1% | 15 ms | same |
 | BYOJL visual (DINOv2-small) | 22.8M | 66.5% | 17 ms | same |
 
 `fused` → `fused-dit` applied three proposals from `byojl improve`: 4× data, a document-pretrained visual encoder
 (`microsoft/dit-base`, self-supervised on unlabelled scans) and longer training. Together they cut the gap to DiT from
-14 points to 5.
+14 points to 5; the new trainer (EMA, layer decay, fp16) and folding in the builtin test split took it to 4.
 
 Fusion adds nearly 9 points over the best single view, because the views fail on different classes. Visual is strong on
 `handwritten`, `advertisement` and `file_folder`; text is strong on `questionnaire`, `memo` and `invoice`.
 
-DiT is still well ahead. It has 130× more labelled data, and its image encoder was pretrained on documents, while
-DINOv2 was pretrained on natural photos. The obvious next experiments are a document-pretrained visual encoder, more
-labelled data, and distillation to shrink the result. A clean, born-digital invoice PDF is also out of distribution for a
+DiT is still ahead: it was fine-tuned on 28× more labelled documents. `byojl improve` now proposes `more-data` capped at
+what the val split still holds (~2,400 per label, est. ~6 h of OCR) and `regularize`, since train loss keeps falling
+after dev accuracy peaks. A clean, born-digital invoice PDF is also out of distribution for a
 model trained on 1990s scans (it predicted `budget` 0.73 / `invoice` 0.27); add an eval suite of your own PDFs to see
 that gap on the board.
 
@@ -425,5 +485,6 @@ licences before shipping a model commercially.
 
 ## Status
 
-Working end to end: the full loop on audio (the VAD above) and on text (tested with a stub LLM). Text specialists on real
-tasks and the `bench` thesis experiment need an LLM key or a local model.
+Working end to end: audio (the VAD above), documents (RVL-CDIP above), and text on a real benchmark (Banking77, 93.4%
+with a 22M encoder). The autopilot's LLM-driven steps (spec compiling, synthetic data, the `llm` baseline) are tested with
+a stub; a real `byojl auto` run and the `bench` thesis experiment need an LLM key or a local model.

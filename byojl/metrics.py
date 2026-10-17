@@ -89,3 +89,61 @@ def objective_value(spec: TaskSpec, m: dict[str, Any]) -> float:
     if o.metric == "f1":
         return m.get("f1", m["macro_f1"])
     return float(m[o.metric])
+
+
+# ------------------------------------------------------------------ units + paired bootstrap
+# A scored split is kept as units: one (gold, decision) pair per item for classify, one confusion matrix per file for frame
+# tasks (frames of one file are not independent). Every objective is a function of the summed confusion matrix, so
+# resampling units gives confidence intervals and paired "is A really better than B" tests.
+
+
+def units(n_labels: int, y: np.ndarray, pred: np.ndarray, groups: list[int] | None = None) -> dict[str, Any]:
+    if groups is None:
+        return {"y": np.asarray(y).astype(int).tolist(), "pred": np.asarray(pred).astype(int).tolist()}
+    cms, s = [], 0
+    for n in groups:
+        cms.append(confusion_matrix(y[s : s + n], pred[s : s + n], labels=list(range(n_labels))).ravel().tolist())
+        s += n
+    return {"cm": cms}
+
+
+def _cms(u: dict[str, Any], n_labels: int) -> np.ndarray:
+    """-> [n_units, C, C]"""
+    if "cm" in u:
+        return np.asarray(u["cm"], dtype=np.int64).reshape(-1, n_labels, n_labels)
+    out = np.zeros((len(u["y"]), n_labels, n_labels), np.int64)
+    out[np.arange(len(u["y"])), u["y"], u["pred"]] = 1
+    return out
+
+
+def objective_from_cm(spec: TaskSpec, cm: np.ndarray) -> float:
+    tp = np.diag(cm).astype(float)
+    p = tp / np.maximum(cm.sum(0), 1)
+    r = tp / np.maximum(cm.sum(1), 1)
+    f = 2 * p * r / np.maximum(p + r, 1e-9)
+    m: dict[str, Any] = {"accuracy": tp.sum() / max(1, cm.sum()), "macro_f1": float(f.mean())}
+    pos = _binary(spec)
+    if pos is not None:
+        m.update(precision=p[pos], recall=r[pos], f1=f[pos])
+    return objective_value(spec, m)
+
+
+def bootstrap(spec: TaskSpec, a: dict[str, Any], b: dict[str, Any] | None = None, n: int = 1000, seed: int = 0) -> dict[str, float]:
+    """CI of objective(a); with b (same units, same order): paired test of objective(a) - objective(b)."""
+    C = len(spec.labels)
+    A = _cms(a, C)
+    B = _cms(b, C) if b is not None else None
+    if B is not None and len(B) != len(A):
+        raise ValueError("paired bootstrap needs the same units")
+    rng = np.random.default_rng(seed)
+    vals = []
+    for _ in range(n):
+        idx = rng.integers(0, len(A), len(A))
+        va = objective_from_cm(spec, A[idx].sum(0))
+        vals.append(va - objective_from_cm(spec, B[idx].sum(0)) if B is not None else va)
+    v = np.asarray(vals)
+    lo, hi = np.quantile(v, [0.025, 0.975])
+    out = {"lo": float(lo), "hi": float(hi)}
+    if B is not None:
+        out.update(delta=objective_from_cm(spec, A.sum(0)) - objective_from_cm(spec, B.sum(0)), p_better=float((v > 0).mean() + 0.5 * (v == 0).mean()))
+    return out

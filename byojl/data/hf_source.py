@@ -144,11 +144,8 @@ def _norm(s: str) -> str:
     return " ".join(str(s).lower().replace("_", " ").replace("-", " ").split())
 
 
-def balanced_rows(src: HFSource, spec: TaskSpec, seed: int = 0) -> list[tuple[Any, str]]:
-    """`per_label` random rows per label from the split's parquet files (downloaded once, cached), reading only the
-    label column to index and only the chosen rows' inputs. Works on label-sorted datasets where streaming can't."""
-    import random
-
+def _label_index(src: HFSource, spec: TaskSpec) -> dict[str, list[tuple[str, int]]]:
+    """{our label: [(parquet path, row)]} for the split, reading only the label column (files downloaded once, cached)."""
     import pyarrow.parquet as pq
     from huggingface_hub import HfApi, hf_hub_download
 
@@ -182,6 +179,33 @@ def balanced_rows(src: HFSource, spec: TaskSpec, seed: int = 0) -> list[tuple[An
                 if partition_of(f"{f}:{i}") != src.partition:
                     continue
             by_label.setdefault(lab, []).append((path, i))
+    return by_label
+
+
+def availability(src: HFSource, spec: TaskSpec) -> dict[str, int]:
+    """Rows available per label in the source's split (what `more data` can actually get)."""
+    return {k: len(v) for k, v in _label_index(src, spec).items()}
+
+
+def split_sizes(dataset: str, config: str | None = None) -> dict[str, int]:
+    """{split: n_rows} from the dataset card metadata (no download); {} if unknown."""
+    try:
+        from datasets import load_dataset_builder
+
+        splits = load_dataset_builder(dataset, config).info.splits or {}
+        return {k: int(v.num_examples) for k, v in splits.items() if v.num_examples}
+    except Exception:
+        return {}
+
+
+def balanced_rows(src: HFSource, spec: TaskSpec, seed: int = 0) -> list[tuple[Any, str]]:
+    """`per_label` random rows per label from the split's parquet files, reading only the label column to index and only
+    the chosen rows' inputs. Works on label-sorted datasets where streaming can't."""
+    import random
+
+    import pyarrow.parquet as pq
+
+    by_label = _label_index(src, spec)
     rng = random.Random(seed)
     chosen: dict[str, list[tuple[int, str]]] = {}
     for lab, items in by_label.items():
