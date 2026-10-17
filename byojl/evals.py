@@ -226,10 +226,23 @@ def run(name: str, experiments: list[str] | None = None, baselines: list[str] | 
                     continue
                 r["fingerprint"] = fp
                 cache.parent.mkdir(parents=True, exist_ok=True)
-                cache.write_text(json.dumps(r, indent=2))
+                cache.write_text(_dumps(r))
             results.setdefault(pid, {})[suite.name] = r
-    (p.root / "board.json").write_text(json.dumps(results, indent=2))
+    (p.root / "board.json").write_text(_dumps(results))
     return results
+
+
+def _dumps(o: Any, ind: int = 0) -> str:
+    """Indented JSON whose numeric arrays (confusion matrices, per-item outcomes) stay on one line: diffable, not 1 number/line."""
+    pad = "  " * (ind + 1)
+    if isinstance(o, dict) and o:
+        return "{\n" + ",\n".join(f"{pad}{json.dumps(str(k))}: {_dumps(v, ind + 1)}" for k, v in o.items()) + "\n" + "  " * ind + "}"
+    def numeric(x: Any) -> bool:
+        return isinstance(x, (int, float)) and not isinstance(x, bool) or isinstance(x, list) and all(map(numeric, x))
+
+    if isinstance(o, list) and o and not numeric(o):
+        return "[\n" + ",\n".join(pad + _dumps(v, ind + 1) for v in o) + "\n" + "  " * ind + "]"
+    return json.dumps(o, separators=(",", ":")) if isinstance(o, list) else json.dumps(o)
 
 
 def board_rows(name: str) -> tuple[list[str], list[dict]]:
