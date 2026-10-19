@@ -232,7 +232,7 @@ class ZeroShotLLM(Predictor):
         if self.spec.modality == "document":
             from .modalities.document import read_pages
 
-            pages = read_pages(Path(path), self.spec.document.max_pages, max(self.spec.document.dpi, 100), self.spec.document.ocr)
+            pages = read_pages(Path(path), self.spec.document.max_pages, max(self.spec.document.dpi, 100), self.spec.document.ocr)[0]
         else:
             from PIL import Image
 

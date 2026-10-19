@@ -274,7 +274,8 @@ def refine_more(dg: dict) -> list[dict]:
 
 
 # Ingest cost per new labelled item (seconds), measured on an M5 Max: OCR ~0.55 s/page (RapidOCR, CPU-bound), media decode otherwise.
-INGEST_S = {"document": 0.55, "image": 0.02, "audio": 0.05, "text": 0.0}
+INGEST_S = {"document": 0.36,  # OCR, one engine per core (M5 Max, RVL-CDIP scans)
+            "image": 0.02, "audio": 0.05, "text": 0.0}
 
 
 def _items(spec: TaskSpec) -> int:

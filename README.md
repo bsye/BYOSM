@@ -200,8 +200,8 @@ labels and the most confused label pairs. Then each rule proposes edits only whe
 Edits address list items by index (`data.hf_sources.0.per_label`). Adding a rule means writing one function decorated
 with `@rule` in `byojl/improve.py`.
 
-Every proposal comes with an **estimated cost**: ingest time for the new data (OCR is ~0.55 s per page and dominates for
-documents) plus training time scaled from the last run. The autopilot uses it to skip proposals that don't fit the
+Every proposal comes with an **estimated cost**: ingest time for the new data (OCR is ~0.36 s per new page, zero for pages
+already in the OCR store) plus training time scaled from the last run. The autopilot uses it to skip proposals that don't fit the
 remaining budget.
 
 `byojl improve <name> --apply a,b --run` writes `experiments/vN/spec.yaml` and builds and scores it. Every experiment
@@ -350,7 +350,10 @@ whose labels use the convention v2 was moved away from.
 
 `modality: document` treats a PDF (or a page image) as a list of **pages**. Each page has two views:
 
-- **text**: the PDF's text layer, or OCR for scanned pages (RapidOCR, ONNX, cached next to the file)
+- **text**: the PDF's text layer, or OCR for scanned pages (RapidOCR, ONNX). OCR text goes into a content-addressed
+  store (`~/.cache/byojl/ocr`, or `$BYOJL_CACHE`), keyed by a hash of the page's pixels and the OCR version, so a page is
+  OCR'd once per machine, across every specialist and data rebuild. Uncached pages run one single-threaded OCR engine
+  per core: 0.26 s/page on an 18-core M5 Max, 7× faster than one engine using all cores.
 - **visual**: the rendered page image
 
 `document.route` picks `text`, `visual` or **`fused`**. Fused pages combine both views with a learned per-dimension gate,
@@ -378,7 +381,7 @@ Fusion adds nearly 9 points over the best single view, because the views fail on
 `handwritten`, `advertisement` and `file_folder`; text is strong on `questionnaire`, `memo` and `invoice`.
 
 DiT is still ahead: it was fine-tuned on 28× more labelled documents. `byojl improve` now proposes `more-data` capped at
-what the val split still holds (~2,400 per label, est. ~6 h of OCR) and `regularize`, since train loss keeps falling
+what the val split still holds (~2,400 per label; est. ~5.6 h, of which ~2.6 h OCR) and `regularize`, since train loss keeps falling
 after dev accuracy peaks. A clean, born-digital invoice PDF is also out of distribution for a
 model trained on 1990s scans (it predicted `budget` 0.73 / `invoice` 0.27); add an eval suite of your own PDFs to see
 that gap on the board.

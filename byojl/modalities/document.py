@@ -1,6 +1,6 @@
 """Documents: PDFs or page images. A document is a list of pages; every page has two views:
 
-  text    the PDF text layer, or OCR for scans (RapidOCR, ONNX; cached next to the file)
+  text    the PDF text layer, or OCR for scans (RapidOCR, ONNX; cached per page in a content-addressed store)
   visual  the rendered page image
 
 route=text|visual|fused picks which views are encoded. Fused pages combine both with a learned per-dimension gate
@@ -35,7 +35,14 @@ class Page:
 
 
 _ocr_engine = None
+_ocr_pool = None
 _PDFIUM = __import__("threading").Lock()  # PDFium is not thread-safe; OCR is, so only rendering is serialized
+
+
+def _engine(threads: int = -1) -> Any:
+    from rapidocr_onnxruntime import RapidOCR
+
+    return RapidOCR(intra_op_num_threads=threads) if threads > 0 else RapidOCR()
 
 
 def ocr(img: Any) -> str:
@@ -43,17 +50,94 @@ def ocr(img: Any) -> str:
     global _ocr_engine
     try:
         import numpy as np
-        from rapidocr_onnxruntime import RapidOCR
+        if _ocr_engine is None:
+            _ocr_engine = _engine()
     except ImportError:
         return ""
-    if _ocr_engine is None:
-        _ocr_engine = RapidOCR()
     res, _ = _ocr_engine(np.asarray(img.convert("RGB")))
     return " ".join(r[1] for r in (res or []))
 
 
-def read_pages(path: Path, max_pages: int, dpi: int, ocr_mode: str) -> list[tuple[str, Any]]:
-    """-> [(text, full-resolution PIL image)] for the first max_pages pages."""
+def _pool_init() -> None:
+    global _ocr_engine
+    _ocr_engine = _engine(threads=1)
+
+
+def ocr_many(imgs: list[Any]) -> list[str]:
+    """OCR a batch. One single-threaded engine per core beats one engine using every core by ~2.3x (the models are
+    small: intra-op threads mostly synchronize). Small batches stay in-process, where pool start-up would dominate."""
+    global _ocr_pool
+    import os
+
+    n = os.cpu_count() or 1
+    if len(imgs) < 2 * n or n == 1:
+        return [ocr(im) for im in imgs]
+    try:
+        import rapidocr_onnxruntime  # noqa: F401
+    except ImportError:
+        return [""] * len(imgs)
+    if _ocr_pool is None:
+        import multiprocessing as mp
+        from concurrent.futures import ProcessPoolExecutor
+
+        _ocr_pool = ProcessPoolExecutor(n, mp_context=mp.get_context("spawn"), initializer=_pool_init)
+        __import__("atexit").register(_ocr_pool.shutdown, cancel_futures=True)
+    return list(_ocr_pool.map(ocr, imgs, chunksize=4))
+
+
+class OCRStore:
+    """OCR text, content-addressed: key = hash(page pixels) + engine version. Shared by every specialist and every data
+    build (media files get new names when a dataset is rebuilt; their pixels don't), so a page is OCR'd once per machine.
+    Location: $BYOJL_CACHE/ocr (default ~/.cache/byojl/ocr), one small file per page, written atomically."""
+
+    def __init__(self, root: Path | None = None):
+        import os
+
+        base = Path(os.environ.get("BYOJL_CACHE") or Path.home() / ".cache" / "byojl")
+        self.root = root or base / "ocr"
+
+    @cached_property
+    def tag(self) -> str:
+        try:
+            from importlib.metadata import version
+
+            return "rapidocr-" + version("rapidocr_onnxruntime")
+        except Exception:  # noqa: BLE001
+            return "rapidocr"
+
+    def key(self, img: Any) -> str:
+        import hashlib
+
+        h = hashlib.sha256(f"{self.tag}|{img.mode}|{img.size}|".encode())
+        h.update(img.tobytes())
+        return h.hexdigest()[:40]
+
+    def _file(self, key: str) -> Path:
+        return self.root / key[:2] / f"{key}.txt"
+
+    def get(self, key: str) -> str | None:
+        f = self._file(key)
+        return f.read_text() if f.exists() else None
+
+    def put(self, key: str, text: str) -> None:
+        import os
+
+        f = self._file(key)
+        try:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            tmp = f.with_suffix(f".{os.getpid()}.tmp")
+            tmp.write_text(text)
+            tmp.replace(f)
+        except OSError:
+            pass
+
+
+STORE = OCRStore()
+
+
+def read_pages(path: Path, max_pages: int, dpi: int, ocr_mode: str, run_ocr: bool = True) -> tuple[list[tuple[str, Any]], list[tuple[int, str]]]:
+    """-> ([(text, full-resolution PIL image)] for the first max_pages pages, [(page index, store key)] still needing OCR).
+    With run_ocr, pages missing from the store are OCR'd here (and the second list is empty)."""
     from PIL import Image
 
     out = []
@@ -68,23 +152,26 @@ def read_pages(path: Path, max_pages: int, dpi: int, ocr_mode: str) -> list[tupl
             pdf.close()
     else:
         out.append(("", Image.open(path).convert("RGB")))
+    pending: list[tuple[int, str]] = []
     if ocr_mode == "never":
-        return out
-    cache = path.with_name(path.name + ".ocr.json")
-    cached = json.loads(cache.read_text()) if cache.exists() else {}
-    changed = False
+        return out, pending
+    legacy = path.with_name(path.name + ".ocr.json")  # pre-store sidecar: migrated into the store on first read
+    legacy = json.loads(legacy.read_text()) if legacy.exists() else {}
     for i, (txt, img) in enumerate(out):
         if ocr_mode == "always" or len(txt.strip()) < 20:
-            if str(i) not in cached:
-                cached[str(i)] = ocr(img)
-                changed = True
-            out[i] = (cached[str(i)], img)
-    if changed:
-        try:
-            cache.write_text(json.dumps(cached))
-        except OSError:
-            pass
-    return out
+            k = STORE.key(img)
+            t = STORE.get(k)
+            if t is None and str(i) in legacy:
+                t = legacy[str(i)]
+                STORE.put(k, t)
+            if t is None and run_ocr:
+                t = ocr(img)
+                STORE.put(k, t)
+            if t is None:
+                pending.append((i, k))
+            else:
+                out[i] = (t, img)
+    return out, pending
 
 
 class AttnBlock(nn.Module):
@@ -205,14 +292,27 @@ class Document(Modality):
         p = Path(ex["input"])
         return p if p.is_absolute() or not self.data_dir else Path(self.data_dir) / p
 
-    def load(self, ex: dict) -> list[Page]:
-        pages = read_pages(self._path(ex), self.cfg.max_pages, self.cfg.dpi, self.cfg.ocr if self.cfg.route != "visual" else "never")
+    def _read(self, ex: dict, run_ocr: bool = True) -> tuple[list[tuple[str, Any]], list[tuple[int, str]]]:
+        return read_pages(self._path(ex), self.cfg.max_pages, self.cfg.dpi, self.cfg.ocr if self.cfg.route != "visual" else "never", run_ocr)
+
+    def _pages(self, pages: list[tuple[str, Any]]) -> list[Page]:
         s = self.image_size
         return [Page(t, img.resize((s, s))) for t, img in pages]
 
+    def load(self, ex: dict) -> list[Page]:
+        return self._pages(self._read(ex)[0])
+
     def load_many(self, rows: list[dict]) -> list[list[Page]]:
-        with ThreadPoolExecutor(max_workers=8) as ex:  # OCR + rendering release the GIL
-            return list(ex.map(self.load, rows))
+        """Render/decode in threads, then OCR every page missing from the store in one process-parallel batch."""
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            read = list(ex.map(lambda r: self._read(r, run_ocr=False), rows))
+        todo = [(d, i, k) for d, (_, pend) in enumerate(read) for i, k in pend]
+        if todo:
+            texts = ocr_many([read[d][0][i][1] for d, i, _ in todo])
+            for (d, i, k), t in zip(todo, texts):
+                STORE.put(k, t)
+                read[d][0][i] = (t, read[d][0][i][1])
+        return [self._pages(pages) for pages, _ in read]
 
     def frame_labels(self, ex: dict) -> list[int] | None:
         if self.spec.task_type != "frame":

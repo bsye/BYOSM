@@ -1,5 +1,5 @@
 {
-  "from": "fused-dit",
+  "from": "r2",
   "proposals": [
     {
       "id": "more-data",
@@ -10,30 +10,10 @@
           "value": 2426
         }
       ],
-      "why": "rvl: 0.897, 0.051 behind hf:microsoft/dit-base-finetuned-rvlcdip (0.948), with 9600 training examples; dev plateaued at 0.89, so more of the same data may help less than new data or a new recipe. chainyo/rvl-cdip (val) has 2426 rows for its rarest label: 800 -> 2426 per label (all of it).",
+      "why": "rvl: 0.906, 0.042 behind hf:microsoft/dit-base-finetuned-rvlcdip (0.948), with 11520 training examples; dev plateaued at 0.90, so more of the same data may help less than new data or a new recipe. chainyo/rvl-cdip (val) has 2426 rows for its rarest label: 800 -> 2426 per label (all of it).",
       "cost": {
-        "minutes": 353.9,
+        "minutes": 336.8,
         "new_items": 26016
-      }
-    },
-    {
-      "id": "regularize",
-      "ops": [
-        {
-          "op": "set",
-          "path": "train.lr_backbone",
-          "value": 1.5e-05
-        },
-        {
-          "op": "set",
-          "path": "document.modality_dropout",
-          "value": 0.35
-        }
-      ],
-      "why": "dev peaked at epoch 4 (0.885) and never improved after, while training loss fell 0.490 -> 0.280: overfitting. Halve the encoder LR (3e-05 -> 1.5e-05) and drop a view more often.",
-      "cost": {
-        "minutes": 38.1,
-        "new_items": 0
       }
     }
   ]
