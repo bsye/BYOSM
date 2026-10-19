@@ -63,15 +63,25 @@ def _pool_init() -> None:
     _ocr_engine = _engine(threads=1)
 
 
-def ocr_many(imgs: list[Any]) -> list[str]:
-    """OCR a batch. One single-threaded engine per core beats one engine using every core by ~2.3x (the models are
-    small: intra-op threads mostly synchronize). Small batches stay in-process, where pool start-up would dominate."""
+def _ocr_store(job: tuple[Any, str | None]) -> str:
+    img, key = job
+    t = ocr(img)
+    if key is not None:
+        STORE.put(key, t)  # saved as soon as it exists: an interrupted run keeps every page done so far
+    return t
+
+
+def ocr_many(imgs: list[Any], keys: list[str] | None = None) -> list[str]:
+    """OCR a batch (each result stored under keys[i] the moment it is done). One single-threaded engine per core beats
+    one engine using every core by ~2.3x (the models are small: intra-op threads mostly synchronize). Small batches stay
+    in-process, where pool start-up would dominate."""
     global _ocr_pool
     import os
 
     n = os.cpu_count() or 1
+    jobs = list(zip(imgs, keys or [None] * len(imgs)))
     if len(imgs) < 2 * n or n == 1:
-        return [ocr(im) for im in imgs]
+        return [_ocr_store(j) for j in jobs]
     try:
         import rapidocr_onnxruntime  # noqa: F401
     except ImportError:
@@ -82,7 +92,7 @@ def ocr_many(imgs: list[Any]) -> list[str]:
 
         _ocr_pool = ProcessPoolExecutor(n, mp_context=mp.get_context("spawn"), initializer=_pool_init)
         __import__("atexit").register(_ocr_pool.shutdown, cancel_futures=True)
-    return list(_ocr_pool.map(ocr, imgs, chunksize=4))
+    return list(_ocr_pool.map(_ocr_store, jobs, chunksize=4))
 
 
 class OCRStore:
@@ -308,9 +318,8 @@ class Document(Modality):
             read = list(ex.map(lambda r: self._read(r, run_ocr=False), rows))
         todo = [(d, i, k) for d, (_, pend) in enumerate(read) for i, k in pend]
         if todo:
-            texts = ocr_many([read[d][0][i][1] for d, i, _ in todo])
-            for (d, i, k), t in zip(todo, texts):
-                STORE.put(k, t)
+            texts = ocr_many([read[d][0][i][1] for d, i, _ in todo], [k for _, _, k in todo])
+            for (d, i, _), t in zip(todo, texts):
                 read[d][0][i] = (t, read[d][0][i][1])
         return [self._pages(pages) for pages, _ in read]
 
