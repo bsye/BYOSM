@@ -233,8 +233,6 @@ byosm/
   report/       README result tables from the boards (byosm report)
   config.py  discover.py  distill.py  jepa.py  metrics.py  model.py  pipeline.py  rt.py  runtime.py  text.py
 specialists/<name>/  spec.yaml, experiments/*/, baselines/, board.json, promoted
-benchmarks/   vad_vs_silero.py, an older standalone VAD vs Silero script, not used for the results above
-bench/        its saved output
 ```
 
 Datasets, weights and exports are not committed.
