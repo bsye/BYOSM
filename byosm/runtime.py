@@ -44,7 +44,12 @@ class Specialist:
 
     @classmethod
     def from_project(cls, name: str, device: str = "cpu") -> Specialist:
-        return cls(Project(name).best_dir, device)
+        from .evals.selection import calibrated_threshold
+
+        p = Project(name)
+        sp = cls(p.best_dir, device)
+        sp.threshold = calibrated_threshold(p, p.promoted)
+        return sp
 
     @property
     def name(self) -> str:

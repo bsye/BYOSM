@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .. import metrics
+from ..config import Project
 from ..spec import TaskSpec
 
 
@@ -18,3 +19,9 @@ def compare(spec: TaskSpec, a: dict | None, b: dict | None, split: str = "calib"
         return metrics.bootstrap(spec, ua, ub)
     except ValueError:
         return None
+
+
+def calibrated_threshold(p: Project, exp: str) -> float | None:
+    r = p.board().get(exp, {}).get(TaskSpec.load(p.spec_path).primary_suite()) or {}
+    t = r.get("metrics", {}).get("threshold")
+    return t if t is not None else p.meta(exp).get("threshold")
