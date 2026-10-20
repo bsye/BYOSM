@@ -61,4 +61,5 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 .venv/bin/python -m pytest -q tests     # tests
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
 .venv/bin/byosm report                  # regenerate the README result tables from specialists/*/board.json
+.venv/bin/byosm report --check          # fails if the README result tables are stale
 ```
