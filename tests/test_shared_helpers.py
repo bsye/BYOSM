@@ -31,3 +31,11 @@ def test_board_is_empty_until_written(tmp_path):
     assert not p.board_path.exists() and p.board() == {}
     p.board_path.write_text(json.dumps({"v1": {"builtin": {"objective": 0.5}}}))
     assert p.board() == {"v1": {"builtin": {"objective": 0.5}}}
+
+
+def test_search_terms_drop_filler_words_and_keep_the_id():
+    from byosm.data.hf_source.hub import search_terms
+
+    terms = search_terms(["dair-ai/emotion dataset", "go-emojis benchmark"])
+    assert terms[:2] == ["dair-ai/emotion dataset", "dair-ai/emotion"]
+    assert "go-emojis" in terms and "dataset" not in terms and "benchmark" not in terms

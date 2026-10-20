@@ -40,11 +40,34 @@ def _hit(d: Any) -> dict:
     return {"id": d.id, "downloads": getattr(d, "downloads", 0), "tags": [t for t in (d.tags or []) if ":" in t][:8]}
 
 
+SEARCH_FILLER = {
+    "dataset",
+    "datasets",
+    "benchmark",
+    "benchmarks",
+    "model",
+    "models",
+    "huggingface",
+    "hf",
+    "classification",
+}
+
+
+def search_terms(queries: list[str]) -> list[str]:
+    terms = []
+    for q in queries:
+        words = [w for w in q.split() if w.lower() not in SEARCH_FILLER]
+        for t in [q, " ".join(words), *words]:
+            if t and t not in terms:
+                terms.append(t)
+    return terms
+
+
 def search(queries: list[str], limit: int = 8) -> list[dict]:
     from huggingface_hub import HfApi
 
     api, seen, out = HfApi(), set(), []
-    for q in queries:
+    for q in search_terms(queries):
         try:
             for d in api.list_datasets(search=q, sort="downloads", limit=limit):
                 if d.id not in seen:

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .data import hf_source
+from .data.hf_source.hub import search_terms
 from .llm import get_llm
 from .spec import EvalSuite, HFSource, TaskSpec
 from .text import normalize
@@ -47,7 +48,7 @@ def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap:
         return []
     ours = {normalize(n) for n in spec.label_names}
     seen, found = set(), []
-    for q in queries:
+    for q in search_terms(queries):
         for m in _search_models(q, tag):
             if m.id in seen:
                 continue
