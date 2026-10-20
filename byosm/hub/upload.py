@@ -6,6 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..config import PUBLISH_LICENSE, Project
+from ..export.bundle import is_exported
 from .card import model_card
 from .facts import lineage
 
@@ -33,7 +34,7 @@ def publish(
 ) -> Path:
     p = Project(name)
     manifest = p.root / "export" / "manifest.json"
-    if not manifest.exists():
+    if not is_exported(p.root / "export"):
         raise RuntimeError(f"export first: byosm export {name}")
     experiment = json.loads(manifest.read_text())["experiment"]
     stage = _stage(p, repo_id, license, experiment)
@@ -45,6 +46,8 @@ def publish(
 
     api = HfApi()
     api.create_repo(repo_id, private=private, exist_ok=True)
+    if private and not api.model_info(repo_id).private:
+        raise RuntimeError(f"{repo_id} already exists and is public; pass --public to publish to it")
     api.upload_folder(folder_path=str(stage), repo_id=repo_id, commit_message=f"BYOSM publish {name}/{experiment}")
     log(f"  published https://huggingface.co/{repo_id} ({'private' if private else 'public'})")
     return stage

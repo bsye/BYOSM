@@ -20,7 +20,10 @@ def export(
     """Export to a torch-free bundle: ONNX + manifest + byosm_rt.py (encode / predict / stream().step / serve)."""
     from ..export import export as run
 
-    d = run(name, exp, out, log, precision)
+    try:
+        d = run(name, exp, out, log, precision)
+    except FileExistsError as e:
+        raise typer.BadParameter(str(e), param_hint="--out") from e
     log(f"exported to {d}\n  python {d / 'byosm_rt.py'} predict {d} <input>\n  python {d / 'byosm_rt.py'} serve {d}")
 
 
@@ -48,9 +51,10 @@ def publish(
 def predict(name: str, input: str) -> None:
     """Run the exported (or promoted) specialist on one input: text, or a path to an audio/image file."""
     from .. import rt
+    from ..export.bundle import is_exported
 
     p, _ = _spec(name)
-    if not (p.root / "export" / "manifest.json").exists():
+    if not is_exported(p.root / "export"):
         raise typer.BadParameter(f"export first: byosm export {name}")
     rt._main(["predict", str(p.root / "export"), input])
 
@@ -69,12 +73,13 @@ def ls() -> None:
     t = Table()
     for c in ("name", "modality", "backbone", "experiments", "promoted", "exported"):
         t.add_column(c)
+    from ..export.bundle import is_exported
     from ..spec import TaskSpec
 
     for n in list_projects():
         p = Project(n)
         s = TaskSpec.load(p.spec_path)
-        exported = "yes" if (p.root / "export" / "manifest.json").exists() else "-"
+        exported = "yes" if is_exported(p.root / "export") else "-"
         t.add_row(n, f"{s.modality}/{s.task_type}", s.backbone, ", ".join(p.experiments()), p.promoted or "-", exported)
     console.print(t)
     log(f"workspace: {find_workspace()}")

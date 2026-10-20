@@ -78,7 +78,9 @@ def suite_add(
     split: str = "train",
     input_column: str | None = None,
     label_column: str | None = None,
-    local: Annotated[Path | None, typer.Option(help="local jsonl with input/label[/split=calib|test]")] = None,
+    local: Annotated[
+        Path | None, typer.Option(help="local jsonl with input, label and optional split (calib | test)")
+    ] = None,
     max_items: int = 400,
     max_files: int = 20,
     primary: Annotated[bool, typer.Option(help="promotion is decided on this suite")] = False,

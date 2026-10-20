@@ -4,6 +4,7 @@ import importlib.util
 import json
 import shutil
 import time
+from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -11,6 +12,8 @@ from typing import Any
 from ..runtime import Specialist
 
 RT_SOURCE = Path(__file__).parent.parent / "rt.py"
+BUNDLE_FORMAT = "byosm/1"
+BUNDLE_MARKER = ".byosm-bundle"
 
 EXAMPLES = {
     "text": 'm.predict("so what I wanted to ask was")',
@@ -38,11 +41,45 @@ def load_runtime(out: Path) -> ModuleType:
     return rt
 
 
+def _is_bundle(out: Path) -> bool:
+    if (out / BUNDLE_MARKER).exists():
+        return True
+    try:
+        return json.loads((out / "manifest.json").read_text()).get("format") == BUNDLE_FORMAT
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
+def is_exported(out: Path) -> bool:
+    return (out / "manifest.json").exists() and not (out / BUNDLE_MARKER).exists()
+
+
+def check_out_dir(out: Path) -> None:
+    if out.exists() and not (out.is_dir() and (_is_bundle(out) or not any(out.iterdir()))):
+        raise FileExistsError(f"{out} exists and is not a byosm bundle or an empty directory; refusing to overwrite it")
+
+
+def clear_out_dir(out: Path) -> None:
+    check_out_dir(out)
+    shutil.rmtree(out, ignore_errors=True)
+    out.mkdir(parents=True)
+    (out / BUNDLE_MARKER).touch()
+
+
+def seal(out: Path, check: Callable[[], None]) -> None:
+    try:
+        check()
+    except BaseException:
+        (out / "manifest.json").unlink(missing_ok=True)
+        raise
+    (out / BUNDLE_MARKER).unlink()
+
+
 def manifest_for(sp: Specialist, exp: str, decision: dict, frontend: dict[str, Any], metrics: dict) -> dict[str, Any]:
     spec = sp.spec
     neg = next(i for i in range(len(spec.labels)) if i != spec.pos_index) if len(spec.labels) > 1 else 0
     return {
-        "format": "byosm/1",
+        "format": BUNDLE_FORMAT,
         "name": spec.name,
         "experiment": exp,
         "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
