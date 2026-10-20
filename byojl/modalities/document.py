@@ -35,7 +35,6 @@ class Page:
 
 
 _ocr_engine = None
-_ocr_pool = None
 _PDFIUM = __import__("threading").Lock()  # PDFium is not thread-safe; OCR is, so only rendering is serialized
 
 
@@ -75,7 +74,6 @@ def ocr_many(imgs: list[Any], keys: list[str] | None = None) -> list[str]:
     """OCR a batch (each result stored under keys[i] the moment it is done). One single-threaded engine per core beats
     one engine using every core by ~2.3x (the models are small: intra-op threads mostly synchronize). Small batches stay
     in-process, where pool start-up would dominate."""
-    global _ocr_pool
     import os
 
     n = os.cpu_count() or 1
@@ -86,13 +84,12 @@ def ocr_many(imgs: list[Any], keys: list[str] | None = None) -> list[str]:
         import rapidocr_onnxruntime  # noqa: F401
     except ImportError:
         return [""] * len(imgs)
-    if _ocr_pool is None:
-        import multiprocessing as mp
-        from concurrent.futures import ProcessPoolExecutor
+    import multiprocessing as mp
+    from concurrent.futures import ProcessPoolExecutor
 
-        _ocr_pool = ProcessPoolExecutor(n, mp_context=mp.get_context("spawn"), initializer=_pool_init)
-        __import__("atexit").register(_ocr_pool.shutdown, cancel_futures=True)
-    return list(_ocr_pool.map(_ocr_store, jobs, chunksize=4))
+    # a pool per batch: start-up is seconds, while idle workers would hold ~GBs of RAM through training
+    with ProcessPoolExecutor(n, mp_context=mp.get_context("spawn"), initializer=_pool_init) as pool:
+        return list(pool.map(_ocr_store, jobs, chunksize=4))
 
 
 class OCRStore:

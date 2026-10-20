@@ -84,7 +84,8 @@ def benchmark(spec: TaskSpec, queries: list[str], cfg: dict | None, log: Callabl
         return None, None, f"{ds}: could not map its columns/labels onto ours"
     src = mapped[0]
     n_lab = len(spec.labels)
-    ev = src.model_copy(update={"split": held, "sampling": "balanced", "per_label": max(30, 800 // n_lab)})
+    # ~4000 items -> ~800 calib: selection compares models on calib, and ~200 items can't separate a 2-pt difference
+    ev = src.model_copy(update={"split": held, "sampling": "balanced", "per_label": max(50, 4000 // n_lab)})
     train_split = next((s for s in ("train",) if s in splits and s != held), None)
     tr = src.model_copy(update={"split": train_split, "sampling": "balanced", "per_label": max(100, spec.data.train_size // n_lab)}) if train_split else None
     return ev, tr, f"{ds}: {out.get('why', '')} (eval on `{held}`" + (f", train on `{train_split}`)" if tr else ")")

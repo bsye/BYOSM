@@ -128,7 +128,7 @@ evals:
     partition: all
     max_files: 40
     sampling: balanced
-    per_label: 60
+    per_label: 250
     config: null
     split: test
     input_column: image
@@ -136,7 +136,7 @@ evals:
     label_map: []
     max_rows: 5000
   path: null
-  max_items: 2000
+  max_items: 4000
   primary: true
 baselines:
 - hf:microsoft/dit-base-finetuned-rvlcdip

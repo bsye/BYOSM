@@ -311,12 +311,12 @@ over the training inputs plus up to `distill_unlabeled` extra unlabeled inputs t
 students are small *pretrained* encoders, which beat from-scratch ones on small data: tiny-BERT (text, 11M), tiny-crnn
 (audio, 0.1M), DeiT-tiny (image, 5.7M), tiny-BERT + DeiT-tiny (document, ~17M).
 
-On RVL-CDIP the 17M document student keeps 96% of its 110M teacher's accuracy at 1/6 the size and 4× the speed:
+On RVL-CDIP the 17.6M document student keeps 97% of its 110M teacher's accuracy at 1/6 the size and 4× the speed:
 
 | | params | RVL-CDIP test | CPU/doc (PyTorch) | ONNX bundle (int8, calib accuracy unchanged) |
 |---|---|---|---|---|
-| teacher `r2` (MiniLM + DiT-base) | 109.6M | 90.6% | 42 ms | 438 → **113 MB** (incl. embeddings) |
-| student `distill-r2` (tiny-BERT + DeiT-tiny) | 17.2M | 87.0% | 10 ms | 70 → **43 MB** (embeddings stay fp32: quantising them cost 2 of 384 calib docs) |
+| teacher `r2` (MiniLM + DiT-base) | 109.6M | 90.5% | 48 ms | 438 → **113 MB** (incl. embeddings) |
+| student `distill-r2` (tiny-BERT + DeiT-tiny) | 17.6M | 88.2% | 11 ms | 70 → **43 MB** (embeddings stay fp32: quantising them cost 2 of 384 docs in the int8 check) |
 
 ## Results: a 0.1M-param VAD vs LiveKit's Silero
 
@@ -361,28 +361,32 @@ and a random view is dropped during training so a page with no text, or a blank 
 block then mixes information across pages, and attention pooling decides the document label. `frame` tasks label every
 page instead (e.g. finding where one document ends and the next begins in a merged scan).
 
-RVL-CDIP (16 document types), scored on 768 documents from the **original test split**:
+RVL-CDIP (16 document types), scored on 3,200 documents from the **original test split** (95% CI about ±1 pt; another
+800 from that split form the calib part that selection uses):
 
 | | params | accuracy | CPU/doc | trained on |
 |---|---|---|---|---|
-| DiT-base (`microsoft/dit-base-finetuned-rvlcdip`, baseline) | 85.8M | **94.8%** | 51 ms | 320k labelled + 42M unlabelled documents |
-| **BYOJL r2** (fused-dit + new trainer + builtin test folded in) | 109.6M | **90.6%** | 42 ms | 11,520 documents (from the val split) |
-| BYOJL fused-dit (MiniLM text + DiT-base visual, *proposed by `byojl improve`*) | 109.6M | 89.7% | 45 ms | 9,600 documents (from the val split) |
-| BYOJL distill-r2 (tiny-BERT + DeiT-tiny student of r2) | 17.2M | 87.0% | 10 ms | same + r2's soft labels |
-| BYOJL fused (MiniLM text + DINOv2-small visual) | 45.7M | 80.9% | 26 ms | 2,400 documents (from the val split) |
-| BYOJL text (OCR → MiniLM) | 23.4M | 72.1% | 15 ms | same |
-| BYOJL visual (DINOv2-small) | 22.8M | 66.5% | 17 ms | same |
+| DiT-base (`microsoft/dit-base-finetuned-rvlcdip`, baseline) | 85.8M | **94.0%** | 37 ms | 320k labelled + 42M unlabelled documents |
+| **BYOJL v1** (r2 + all of the val split, *proposed by `byojl improve`*) | 109.6M | **91.8%** | 45 ms | 34,935 documents (val split + builtin test) |
+| BYOJL r2 (fused-dit + new trainer + builtin test folded in) | 109.6M | 90.5% | 48 ms | 11,520 documents |
+| BYOJL fused-dit (MiniLM text + DiT-base visual, *proposed by `byojl improve`*) | 109.6M | 88.4% | 47 ms | 9,600 documents |
+| BYOJL distill-r2 (tiny-BERT + DeiT-tiny student of r2) | 17.6M | 88.2% | 11 ms | same as r2 + r2's soft labels |
+| BYOJL fused (MiniLM text + DINOv2-small visual) | 45.7M | 80.1% | 24 ms | 2,400 documents |
+| BYOJL text (OCR → MiniLM) | 23.4M | 74.1% | 7 ms | same |
+| BYOJL visual (DINOv2-small) | 22.8M | 64.5% | 19 ms | same |
 
 `fused` → `fused-dit` applied three proposals from `byojl improve`: 4× data, a document-pretrained visual encoder
-(`microsoft/dit-base`, self-supervised on unlabelled scans) and longer training. Together they cut the gap to DiT from
-14 points to 5; the new trainer (EMA, layer decay, fp16) and folding in the builtin test split took it to 4.
+(`microsoft/dit-base`, self-supervised on unlabelled scans) and longer training. The new trainer (EMA, layer decay,
+fp16) and folding in the builtin test split gave r2; `more-data` (every val document, ~2,400 per type) gave v1. The gap
+to DiT went 14 → 6 → 3.5 → **2.2 points**, with 9× fewer labelled documents than DiT was fine-tuned on.
 
-Fusion adds nearly 9 points over the best single view, because the views fail on different classes. Visual is strong on
+Fusion adds 6 points over the best single view, because the views fail on different classes. Visual is strong on
 `handwritten`, `advertisement` and `file_folder`; text is strong on `questionnaire`, `memo` and `invoice`.
 
-DiT is still ahead: it was fine-tuned on 28× more labelled documents. `byojl improve` now proposes `more-data` capped at
-what the val split still holds (~2,400 per label; est. ~5.6 h, of which ~2.6 h OCR) and `regularize`, since train loss keeps falling
-after dev accuracy peaks. A clean, born-digital invoice PDF is also out of distribution for a
+The first, 768-document version of this suite had a 192-document calib part, on which v1 and r2 tied exactly despite a
+2-point test gap: too small to select on. Benchmark suites now default to ~4,000 items (~800 calib). The next step
+`byojl improve` proposes is `new-split`: the val split is used up, and RVL-CDIP's 320k-document `train` split is unused.
+A clean, born-digital invoice PDF is also out of distribution for a
 model trained on 1990s scans (it predicted `budget` 0.73 / `invoice` 0.27); add an eval suite of your own PDFs to see
 that gap on the board.
 
@@ -488,6 +492,6 @@ licences before shipping a model commercially.
 
 ## Status
 
-Working end to end: audio (the VAD above), documents (RVL-CDIP above), and text on a real benchmark (Banking77, 93.4%
+Working end to end: audio (the VAD above), documents (RVL-CDIP above, 91.8%), and text on a real benchmark (Banking77, 93.4%
 with a 22M encoder). The autopilot's LLM-driven steps (spec compiling, synthetic data, the `llm` baseline) are tested with
 a stub; a real `byojl auto` run and the `bench` thesis experiment need an LLM key or a local model.

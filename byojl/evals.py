@@ -196,7 +196,10 @@ def run(name: str, experiments: list[str] | None = None, baselines: list[str] | 
     base = TaskSpec.load(p.spec_path)
     exps = experiments if experiments is not None else p.experiments()
     bls = baselines if baselines is not None else base.baselines
-    results: dict[str, dict[str, dict]] = {}
+    # a partial run (some suites / experiments / baselines) updates the board instead of replacing it
+    old = json.loads((p.root / "board.json").read_text()) if (p.root / "board.json").exists() else {}
+    keep_ids, keep_suites = set(p.experiments()) | set(base.baselines), {s.name for s in base.evals}
+    results: dict[str, dict[str, dict]] = {pid: {s: r for s, r in by.items() if s in keep_suites} for pid, by in old.items() if pid in keep_ids}
     for suite in base.evals:
         if suites and suite.name not in suites:
             continue
