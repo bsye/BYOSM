@@ -21,6 +21,8 @@ from .sections import (
     TrainCfg,
 )
 
+SYNTH_FIELDS = ("name", "summary", "input_description", "languages", "diversity_axes", "hard_cases")
+
 
 class TaskSpec(BaseModel):
     name: str
@@ -60,16 +62,17 @@ class TaskSpec(BaseModel):
         return names.index(self.positive_label) if self.positive_label in names else len(self.labels) - 1
 
     def data_key(self) -> str:
-        synthetic = self.data.synthetic
-        labels = self.model_dump(mode="json")["labels"] if synthetic else self.label_names
+        dump = self.model_dump(mode="json")
         blob = {
             "m": self.modality,
             "t": self.task_type,
-            "l": labels,
+            "l": self.label_names,
             "hop": self.frame_hop_ms,
-            "d": self.data.model_dump(mode="json"),
-            "desc": self.description if synthetic else "",
+            "d": dump["data"],
+            "desc": "",
         }
+        if self.data.synthetic:
+            blob |= {"l": dump["labels"], "desc": self.description, **{k: dump[k] for k in SYNTH_FIELDS}}
         return hashlib.sha1(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:10]
 
     def primary_suite(self) -> str:

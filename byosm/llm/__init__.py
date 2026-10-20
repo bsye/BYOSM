@@ -31,12 +31,22 @@ def register_provider(name: str, factory: Callable[..., LLM]) -> None:
 _cache: dict[str, LLM] = {}
 
 
+CONNECTION = ("provider", "base_url", "api_key", "api_key_env")
+
+
+def role_config(roles: dict, role: str) -> dict:
+    default = roles["default"]
+    own = roles.get(role) or {}
+    if any(k in own for k in CONNECTION):
+        return {"provider": default.get("provider", "anthropic"), **own}
+    return {**default, **own}
+
+
 def get_llm(role: str = "default", cfg: dict | None = None) -> LLM:
     from ..config import load_config
 
     cfg = cfg or load_config()
-    roles = cfg["llm"]
-    conf = dict(roles.get(role) or roles["default"])
+    conf = role_config(cfg["llm"], role)
     key = json.dumps(conf, sort_keys=True)
     if key not in _cache:
         provider = conf.pop("provider", "anthropic")
