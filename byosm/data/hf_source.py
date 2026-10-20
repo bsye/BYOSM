@@ -1,6 +1,8 @@
 """Find and map Hugging Face datasets onto a TaskSpec. Audio/images are decoded with soundfile/PIL (no ffmpeg needed)."""
 from __future__ import annotations
 
+from ..text import normalize
+
 import io
 import json
 import itertools
@@ -140,9 +142,6 @@ def _decode(v: Any, modality: str, sr: int) -> Any:
     raise ValueError(modality)
 
 
-def _norm(s: str) -> str:
-    return " ".join(str(s).lower().replace("_", " ").replace("-", " ").split())
-
 
 def _label_index(src: HFSource, spec: TaskSpec) -> dict[str, list[tuple[str, int]]]:
     """{our label: [(parquet path, row)]} for the split, reading only the label column (files downloaded once, cached)."""
@@ -154,8 +153,8 @@ def _label_index(src: HFSource, spec: TaskSpec) -> dict[str, list[tuple[str, int
     if not files:
         raise ValueError(f"{src.dataset}: no parquet files for split {src.split!r}")
     names: list[str] | None = None
-    lmap = {_norm(a): b for a, b in src.label_map}
-    ours = {_norm(n): n for n in spec.label_names}
+    lmap = {normalize(a): b for a, b in src.label_map}
+    ours = {normalize(n): n for n in spec.label_names}
     by_label: dict[str, list[tuple[str, int]]] = {}
     for f in files:
         path = hf_hub_download(src.dataset, f, repo_type="dataset")
@@ -170,7 +169,7 @@ def _label_index(src: HFSource, spec: TaskSpec) -> dict[str, list[tuple[str, int
                 names = feat.names if isinstance(feat, ClassLabel) else []
         for i, v in enumerate(pf.read(columns=[src.label_column]).column(src.label_column).to_pylist()):
             raw = names[v] if names and isinstance(v, int) and v < len(names) else str(v)
-            lab = lmap.get(_norm(raw)) or lmap.get(str(v)) or (ours.get(_norm(raw)) if not lmap else None)
+            lab = lmap.get(normalize(raw)) or lmap.get(str(v)) or (ours.get(normalize(raw)) if not lmap else None)
             if lab is None:
                 continue
             if src.partition != "all":

@@ -25,7 +25,6 @@ ALLOWED = [
     r"|layer_decay_floor|probe_epochs|ema|precision|seed)",
     r"document\.(route|text_backbone|image_backbone|max_pages|max_len|image_size|ocr|dim|modality_dropout)",
 ]
-ALLOWED_PATHS = ALLOWED  # kept for the LLM prompt
 
 
 def allowed(path: str) -> bool:
@@ -62,7 +61,7 @@ def _confusions(p: Project, exp: str, suite: str, spec: TaskSpec, k: int = 6) ->
 def diagnose(name: str) -> dict[str, Any]:
     p = Project(name)
     base = TaskSpec.load(p.spec_path)
-    board = json.loads((p.root / "board.json").read_text()) if (p.root / "board.json").exists() else {}
+    board = p.board()
     exp = p.promoted or next((k for k, v in board.items() if next(iter(v.values()))["kind"] == "experiment"), None)
     if not exp or exp not in board:
         raise RuntimeError("no scored experiment yet - run `byosm build` / `byosm eval` first")

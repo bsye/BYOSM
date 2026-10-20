@@ -57,7 +57,7 @@ def model_card(name: str, repo_id: str, license: str) -> str:
     exp = m["experiment"]
     spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml")
     meta = json.loads((p.exp_dir(exp) / "meta.json").read_text())
-    board = json.loads((p.root / "board.json").read_text())
+    board = p.board()
     tag = PIPELINE_TAG.get((spec.modality, spec.task_type), "other")
     prim = base.primary_suite()
     datasets = sorted({s.dataset for s in spec.data.hf_sources} | {e.source.dataset for e in base.evals if e.source})
@@ -251,7 +251,7 @@ def publish(name: str, repo_id: str, license: str = "other", private: bool = Tru
         shutil.rmtree(stage)
     shutil.copytree(exp_dir, stage, ignore=shutil.ignore_patterns("__pycache__", "README.md"))
     shutil.copy(p.exp_dir(m["experiment"]) / "spec.yaml", stage / "spec.yaml")
-    shutil.copy(p.root / "board.json", stage / "board.json")
+    shutil.copy(p.board_path, stage / "board.json")
     lineage = _lineage(p, m["experiment"])
     (stage / "lineage.json").write_text(json.dumps(lineage, indent=2))
     (stage / "README.md").write_text(model_card(name, repo_id, license))

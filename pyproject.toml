@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "byosm"
 version = "0.1.0"
-description = "BYOSM - Build Your Own Specialist Model: from one sentence to a tiny, measured, locally-runnable System-1 model."
+description = "BYOSM - Build Your Own Specialist Model: from one sentence to a small, measured, locally-runnable specialist model."
+license = {text = "CC-BY-NC-4.0"}
 requires-python = ">=3.10"
 dependencies = [
   "torch>=2.3",
@@ -29,11 +30,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
-silero = ["livekit-plugins-silero"]  # LiveKit's VAD as a baseline
+dev = ["pytest", "ruff"]
+silero = ["livekit-plugins-silero"]
 
 [project.scripts]
 byosm = "byosm.cli:app"
 
 [tool.setuptools.packages.find]
 include = ["byosm*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "N"]
+ignore = ["E501", "N812"]

@@ -5,8 +5,10 @@ and add the zero-shot LLM baseline(s). Every choice is returned as a logged deci
 """
 from __future__ import annotations
 
+from .text import normalize
+
 import json
-from typing import Any, Callable
+from typing import Callable
 
 from .data import hf_source
 from .llm import get_llm
@@ -17,9 +19,6 @@ TASK_TAG = {("text", "classify"): "text-classification", ("image", "classify"): 
             ("audio", "frame"): "voice-activity-detection", ("text", "frame"): "token-classification"}
 
 
-def _norm(s: str) -> str:
-    return " ".join(str(s).lower().replace("_", " ").replace("-", " ").split())
-
 
 def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap: float = 0.6) -> list[tuple[str, str]]:
     """HF models for this task type whose labels cover >= min_overlap of ours. -> [(repo, reason)]"""
@@ -28,7 +27,7 @@ def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap:
     tag = TASK_TAG.get((spec.modality, spec.task_type))
     if not tag or spec.task_type != "classify":
         return []
-    ours = {_norm(n) for n in spec.label_names}
+    ours = {normalize(n) for n in spec.label_names}
     seen, found = set(), []
     for q in queries:
         try:
@@ -43,7 +42,7 @@ def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap:
                 cfg = json.loads(open(hf_hub_download(m.id, "config.json")).read())
             except Exception:
                 continue
-            theirs = {_norm(v) for v in (cfg.get("id2label") or {}).values()}
+            theirs = {normalize(v) for v in (cfg.get("id2label") or {}).values()}
             cover = len(ours & theirs) / max(1, len(ours))
             if cover >= min_overlap:
                 dl = getattr(m, "downloads", 0) or 0

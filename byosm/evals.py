@@ -197,7 +197,7 @@ def run(name: str, experiments: list[str] | None = None, baselines: list[str] | 
     exps = experiments if experiments is not None else p.experiments()
     bls = baselines if baselines is not None else base.baselines
     # a partial run (some suites / experiments / baselines) updates the board instead of replacing it
-    old = json.loads((p.root / "board.json").read_text()) if (p.root / "board.json").exists() else {}
+    old = p.board()
     keep_ids, keep_suites = set(p.experiments()) | set(base.baselines), {s.name for s in base.evals}
     results: dict[str, dict[str, dict]] = {pid: {s: r for s, r in by.items() if s in keep_suites} for pid, by in old.items() if pid in keep_ids}
     for suite in base.evals:
@@ -231,7 +231,7 @@ def run(name: str, experiments: list[str] | None = None, baselines: list[str] | 
                 cache.parent.mkdir(parents=True, exist_ok=True)
                 cache.write_text(_dumps(r))
             results.setdefault(pid, {})[suite.name] = r
-    (p.root / "board.json").write_text(_dumps(results))
+    p.board_path.write_text(_dumps(results))
     return results
 
 
@@ -251,7 +251,7 @@ def _dumps(o: Any, ind: int = 0) -> str:
 def board_rows(name: str) -> tuple[list[str], list[dict]]:
     p = Project(name)
     base = TaskSpec.load(p.spec_path)
-    res = json.loads((p.root / "board.json").read_text()) if (p.root / "board.json").exists() else {}
+    res = p.board()
     suites = [s.name for s in base.evals]
     rows = []
     for pid, by_suite in res.items():

@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 import time
-from pathlib import Path
 from typing import Any, Callable
 
 from .config import Project, load_config
@@ -40,7 +39,7 @@ def standing(name: str, margin: float) -> dict[str, Any]:
     p = Project(name)
     base = TaskSpec.load(p.spec_path)
     prim = base.primary_suite()
-    board = json.loads((p.root / "board.json").read_text()) if (p.root / "board.json").exists() else {}
+    board = p.board()
     mine = board.get(p.promoted or "", {}).get(prim)
     ours = evals.selection_value(mine)
     bls = {k: evals.selection_value(v[prim]) for k, v in board.items() if prim in v and v[prim]["kind"] == "baseline"}
@@ -149,7 +148,7 @@ def run(name: str, prompt: str | None = None, modality: str | None = None, budge
             continue
         durations.append(time.time() - ts)
         after = standing(name, margin)
-        board = json.loads((p.root / "board.json").read_text())
+        board = p.board()
         res = board.get(exp, {}).get(st["suite"])
         mine = evals.selection_value(res)
         cmp = evals.compare(base, res, board.get(st["exp"] or "", {}).get(st["suite"]))
@@ -175,7 +174,7 @@ def run(name: str, prompt: str | None = None, modality: str | None = None, budge
                 teacher = st["exp"]
                 exp = dst.create(name, teacher)
                 build(name, exp, echo)
-                board = json.loads((p.root / "board.json").read_text())
+                board = p.board()
                 stu = board.get(exp, {}).get(st["suite"], {}).get("objective")
                 smeta = json.loads((p.exp_dir(exp) / "meta.json").read_text())
                 still = stu is not None and (st["best_baseline"] is None or stu > st["best_baseline"][1] + margin)

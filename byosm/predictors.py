@@ -8,6 +8,8 @@ Add a baseline with @register_baseline("name"). It is then usable from spec.yaml
 """
 from __future__ import annotations
 
+from .text import normalize
+
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -284,9 +286,6 @@ class ZeroShotLLM(Predictor):
         return float("nan")  # network-bound; not comparable to local models
 
 
-def _norm(s: str) -> str:
-    return " ".join(str(s).lower().replace("_", " ").replace("-", " ").split())
-
 
 class HFClassifier(Predictor):
     """Any Hugging Face classifier as a baseline: `hf:<repo>`. Image/document models see the (first) page image,
@@ -309,8 +308,8 @@ class HFClassifier(Predictor):
 
             self.proc = AutoTokenizer.from_pretrained(repo)
             self.model = AutoModelForSequenceClassification.from_pretrained(repo).eval()
-        ours = {_norm(n): i for i, n in enumerate(spec.label_names)}
-        self.map = {int(k): ours[_norm(v)] for k, v in cfg.id2label.items() if _norm(v) in ours}
+        ours = {normalize(n): i for i, n in enumerate(spec.label_names)}
+        self.map = {int(k): ours[normalize(v)] for k, v in cfg.id2label.items() if normalize(v) in ours}
         missing = set(range(len(spec.labels))) - set(self.map.values())
         if not self.map:
             raise ValueError(f"{repo}: none of its labels {list(cfg.id2label.values())[:8]} match ours {spec.label_names}")

@@ -24,7 +24,7 @@ from torch import nn
 
 from .config import Project
 from .data.store import Dataset
-from .modalities import get_modality, masked_mean
+from .modalities import get_modality
 from .modalities.audio import TinyCRNN
 from .runtime import Specialist
 
@@ -83,7 +83,7 @@ class _Stream(nn.Module):
 
 
 def _calibrated_decision(p: Project, exp: str, spec_decision: dict) -> tuple[dict, dict]:
-    board = json.loads((p.root / "board.json").read_text()) if (p.root / "board.json").exists() else {}
+    board = p.board()
     from .spec import TaskSpec
 
     base = TaskSpec.load(p.spec_path)

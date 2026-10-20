@@ -1,8 +1,9 @@
 """JSONL splits + dedupe + train/test leakage control."""
 from __future__ import annotations
 
+from ..text import normalize
+
 import json
-import re
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -35,18 +36,15 @@ def record(input: Any, label: Any, source: str, **meta: Any) -> dict:
     return {"id": uuid.uuid4().hex[:12], "input": input, "label": label, "source": source, "meta": meta}
 
 
-def norm(text: str) -> str:
-    return re.sub(r"\W+", " ", text.lower()).strip()
-
 
 def shingles(text: str, n: int = 5) -> set[str]:
-    w = norm(text).split()
+    w = normalize(text).split()
     return {" ".join(w[i : i + n]) for i in range(max(1, len(w) - n + 1))}
 
 
 def dedupe(rows: list[dict], against: list[dict] | None = None, near: float = 0.7) -> list[dict]:
     """Drop exact (normalized) duplicates, and rows whose 5-gram Jaccard with any `against` row exceeds `near`."""
-    seen = {norm(r["input"]) for r in (against or []) if isinstance(r["input"], str)}
+    seen = {normalize(r["input"]) for r in (against or []) if isinstance(r["input"], str)}
     ref = [shingles(r["input"]) for r in (against or []) if isinstance(r["input"], str)]
     index: dict[str, list[int]] = {}
     for i, s in enumerate(ref):
@@ -57,7 +55,7 @@ def dedupe(rows: list[dict], against: list[dict] | None = None, near: float = 0.
         if not isinstance(r["input"], str):
             out.append(r)
             continue
-        k = norm(r["input"])
+        k = normalize(r["input"])
         if not k or k in seen:
             continue
         if ref:

@@ -105,7 +105,7 @@ def ws(tmp_path, monkeypatch):
 
 
 def test_text_pipeline_end_to_end(ws):
-    from byosm import evals, improve
+    from byosm import improve
     from byosm.config import Project
     from byosm.export import export
     from byosm.pipeline import build

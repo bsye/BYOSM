@@ -16,7 +16,7 @@ from typing import Any, Callable
 import numpy as np
 import torch
 
-from . import jepa, metrics
+from . import jepa
 from .config import Project, device as pick_device, find_workspace
 from .data.store import Dataset
 from .modalities import get_modality

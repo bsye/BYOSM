@@ -94,7 +94,7 @@ def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> d
     """Promote exp if it beats the promoted experiment on the primary suite's calib split (test is only reported)."""
     base = TaskSpec.load(p.spec_path)
     prim = base.primary_suite()
-    board = json.loads((p.root / "board.json").read_text())
+    board = p.board()
     a, b = board.get(exp, {}).get(prim), board.get(p.promoted or "", {}).get(prim) if p.promoted else None
     mine, cur = evals.selection_value(a), evals.selection_value(b)
     mine = -1 if mine is None else mine

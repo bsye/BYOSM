@@ -10,7 +10,6 @@ label every page (e.g. "where does the next document start" when splitting a mer
 """
 from __future__ import annotations
 
-import json
 import math
 import random
 from concurrent.futures import ThreadPoolExecutor
@@ -22,7 +21,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from .base import IGNORE, Backbone, Modality, masked_mean, pad_labels, register
+from .base import Backbone, Modality, masked_mean, pad_labels, register
 from .image import TinyCNN, norm_for
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
@@ -162,15 +161,10 @@ def read_pages(path: Path, max_pages: int, dpi: int, ocr_mode: str, run_ocr: boo
     pending: list[tuple[int, str]] = []
     if ocr_mode == "never":
         return out, pending
-    legacy = path.with_name(path.name + ".ocr.json")  # pre-store sidecar: migrated into the store on first read
-    legacy = json.loads(legacy.read_text()) if legacy.exists() else {}
     for i, (txt, img) in enumerate(out):
         if ocr_mode == "always" or len(txt.strip()) < 20:
             k = STORE.key(img)
             t = STORE.get(k)
-            if t is None and str(i) in legacy:
-                t = legacy[str(i)]
-                STORE.put(k, t)
             if t is None and run_ocr:
                 t = ocr(img)
                 STORE.put(k, t)

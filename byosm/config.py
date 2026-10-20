@@ -1,6 +1,7 @@
 """Workspace layout and settings (byosm.yaml)."""
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -85,6 +86,13 @@ class Project:
 
     def exp_dir(self, exp: str) -> Path:
         return self.runs_dir / exp
+
+    @property
+    def board_path(self) -> Path:
+        return self.root / "board.json"
+
+    def board(self) -> dict:
+        return json.loads(self.board_path.read_text()) if self.board_path.exists() else {}
 
     def experiments(self) -> list[str]:
         return sorted(p.name for p in self.runs_dir.glob("*") if (p / "meta.json").exists()) if self.runs_dir.exists() else []
