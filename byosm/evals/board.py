@@ -9,6 +9,7 @@ from ..config import Project
 from ..predictors import ExperimentPredictor, Predictor, get_baseline
 from ..spec import EvalSuite, TaskSpec
 from .dumps import _dumps
+from .identity import baseline_identity
 from .scoring import score
 from .suites import fingerprint, materialize
 
@@ -30,11 +31,6 @@ def _kept_results(p: Project, base: TaskSpec) -> dict[str, dict[str, dict]]:
     return {pid: {s: r for s, r in by.items() if s in keep_suites} for pid, by in old.items() if pid in keep_ids}
 
 
-def _trained_on_split(p: Project, exp: str) -> bool:
-    meta_f = p.exp_dir(exp) / "meta.json"
-    return bool(meta_f.exists() and json.loads(meta_f.read_text()).get("n_test_folded"))
-
-
 def _experiment_predictor(p: Project, base: TaskSpec, exp: str) -> ExperimentPredictor:
     spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml").model_copy(update={"decision": base.decision})
     return ExperimentPredictor(spec, p.exp_dir(exp), exp)
@@ -43,12 +39,31 @@ def _experiment_predictor(p: Project, base: TaskSpec, exp: str) -> ExperimentPre
 def _jobs(p: Project, base: TaskSpec, suite: EvalSuite, exps: list[str], bls: list[str]) -> list[Job]:
     jobs: list[Job] = []
     for e in exps:
-        if suite.kind == "builtin" and _trained_on_split(p, e):
+        if suite.kind == "builtin" and p.meta(e).get("n_test_folded"):
             continue
         jobs.append(("experiment", e, lambda e=e: _experiment_predictor(p, base, e)))
     for b in bls:
         jobs.append(("baseline", b, lambda b=b: get_baseline(b, base)))
     return jobs
+
+
+def _identity(kind: str, pid: str) -> str | None:
+    return None if kind == "experiment" else baseline_identity(pid)
+
+
+def _write(cache: Path, r: dict) -> None:
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(_dumps(r))
+
+
+def _fresh(cache: Path, cached: dict, fp: str, kind: str, pid: str, log: Callable[[str], None]) -> bool:
+    if cached.get("fingerprint") != fp:
+        return False
+    identity = _identity(kind, pid)
+    if identity is not None and "identity" not in cached:
+        cached["identity"] = identity
+        _write(cache, cached)
+    return cached.get("identity") == identity
 
 
 def _cached_or_scored(
@@ -57,18 +72,28 @@ def _cached_or_scored(
     kind, pid, make = job
     calib, test, root = data
     cache = _cache(p, kind, pid, suite)
-    if not force and cache.exists() and json.loads(cache.read_text()).get("fingerprint") == fp:
-        return json.loads(cache.read_text())
+    cached = json.loads(cache.read_text()) if not force and cache.exists() else {}
+    if _fresh(cache, cached, fp, kind, pid, log):
+        return cached
     log(f"  scoring {pid} on {suite} ({len(test)} test items)...")
     try:
         r = score(make(), base, calib, test, root)
+        identity = _identity(kind, pid)
     except Exception as ex:
         log(f"  {pid} failed on {suite}: {type(ex).__name__}: {ex}")
         return None
     r["fingerprint"] = fp
-    cache.parent.mkdir(parents=True, exist_ok=True)
-    cache.write_text(_dumps(r))
+    if identity is not None:
+        r["identity"] = identity
+    _write(cache, r)
     return r
+
+
+def _drop(results: dict[str, dict[str, dict]], pid: str, suite: str, log: Callable[[str], None]) -> None:
+    if results.get(pid, {}).pop(suite, None) is not None:
+        log(f"  {pid}: old {suite} result dropped from the board")
+    if pid in results and not results[pid]:
+        del results[pid]
 
 
 def run(
@@ -96,6 +121,8 @@ def run(
             r = _cached_or_scored(p, base, suite.name, job, fp, force, data, log)
             if r is not None:
                 results.setdefault(job[1], {})[suite.name] = r
+            else:
+                _drop(results, job[1], suite.name, log)
     p.board_path.write_text(_dumps(results))
     return results
 
