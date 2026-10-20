@@ -1,8 +1,9 @@
-"""The modality plugin contract. Adding a modality = one file implementing `Modality` + `@register`."""
 from __future__ import annotations
 
+import importlib
 import random
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import torch
 from torch import nn
@@ -10,14 +11,13 @@ from torch import nn
 from ..spec import TaskSpec
 
 IGNORE = -100
+_PLUGINS = ("audio", "document", "image", "text")
 
 
 class Backbone(nn.Module):
-    """forward(**inputs) -> (features [B, T, D], mask [B, T] bool). T=1 is fine for pooled encoders."""
-
     dim: int
 
-    def forward(self, **inputs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:  # pragma: no cover
+    def forward(self, **inputs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
 
 
@@ -28,35 +28,33 @@ class Modality:
         self.spec = spec
         self.data_dir = data_dir
 
-    # -- data ------------------------------------------------------------------------------------
     def load(self, ex: dict) -> Any:
-        """Record from data/*.jsonl -> raw input (str, waveform, PIL image...)."""
         raise NotImplementedError
 
     def load_many(self, rows: list[dict]) -> list[Any]:
-        """Load many records (override to parallelize expensive loading such as OCR)."""
         return [self.load(r) for r in rows]
 
     def frame_labels(self, ex: dict) -> list[int] | None:
-        """For frame tasks: label index per native step (word / hop). None for classify."""
         return None
 
-    # -- model -----------------------------------------------------------------------------------
+    def frame_label_ids(self, ex: dict, numeric_ok: bool = True) -> list[int] | None:
+        if self.spec.task_type != "frame":
+            return None
+        idx = {n: i for i, n in enumerate(self.spec.label_names)}
+        return [idx[lab] if isinstance(lab, str) or not numeric_ok else int(lab) for lab in ex["label"]]
+
     def build_backbone(self) -> Backbone:
         raise NotImplementedError
 
-    def collate(self, raws: list[Any], frame_labels: list[list[int]] | None = None) -> tuple[dict[str, torch.Tensor], torch.Tensor | None]:
-        """Batch raw inputs into model inputs. Frame targets come back padded with IGNORE; the model
-        nearest-resamples them to its output length if the two differ (e.g. 10ms labels vs 20ms frames)."""
+    def collate(
+        self, raws: list[Any], frame_labels: list[list[int]] | None = None
+    ) -> tuple[dict[str, torch.Tensor], torch.Tensor | None]:
         raise NotImplementedError
 
-    # -- self-supervised views (LeJEPA) ------------------------------------------------------------
     def views(self, raw: Any, rng: random.Random) -> tuple[list[Any], list[Any]]:
-        """Return (global_views, local_views) of one input. Globals see most of the input, locals a small part."""
         raise NotImplementedError
 
     def example_input(self) -> Any:
-        """A representative input for latency benchmarking."""
         raise NotImplementedError
 
 
@@ -69,8 +67,8 @@ def register(cls: type[Modality]) -> type[Modality]:
 
 
 def get_modality(spec: TaskSpec, data_dir: str | None = None) -> Modality:
-    from . import audio, document, image, text  # noqa: F401  (populate registry)
-
+    for plugin in _PLUGINS:
+        importlib.import_module(f"{__package__}.{plugin}")
     if spec.modality not in REGISTRY:
         raise KeyError(f"no modality plugin {spec.modality!r}; known: {sorted(REGISTRY)}")
     return REGISTRY[spec.modality](spec, data_dir)

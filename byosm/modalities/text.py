@@ -1,4 +1,3 @@
-"""Text: any Hugging Face encoder (mBERT, MiniLM, ModernBERT...). Frame tasks = one label per whitespace word."""
 from __future__ import annotations
 
 import random
@@ -18,7 +17,9 @@ class HFTextBackbone(Backbone):
         self.model = AutoModel.from_pretrained(repo)
         self.dim = self.model.config.hidden_size
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, **kw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, input_ids: torch.Tensor, attention_mask: torch.Tensor, **kw: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         extra = {"token_type_ids": kw["token_type_ids"]} if "token_type_ids" in kw else {}
         out = self.model(input_ids=input_ids, attention_mask=attention_mask, **extra)
         return out.last_hidden_state, attention_mask.bool()
@@ -45,28 +46,29 @@ class Text(Modality):
         return ex["input"]
 
     def frame_labels(self, ex: dict) -> list[int] | None:
-        if self.spec.task_type != "frame":
-            return None
-        idx = {n: i for i, n in enumerate(self.spec.label_names)}
-        return [idx[l] for l in ex["label"]]
+        return self.frame_label_ids(ex, numeric_ok=False)
 
     def build_backbone(self) -> Backbone:
         return HFTextBackbone(self.repo)
 
-    def collate(self, raws: list[str], frame_labels: list[list[int]] | None = None) -> tuple[dict[str, torch.Tensor], torch.Tensor | None]:
+    def collate(
+        self, raws: list[str], frame_labels: list[list[int]] | None = None
+    ) -> tuple[dict[str, torch.Tensor], torch.Tensor | None]:
         max_len = self.spec.train.max_len
         if frame_labels is None and self.spec.task_type != "frame":
             enc = self.tokenizer(raws, padding=True, truncation=True, max_length=max_len, return_tensors="pt")
             return dict(enc), None
         words = [r.split() for r in raws]
-        enc = self.tokenizer(words, is_split_into_words=True, padding=True, truncation=True, max_length=max_len, return_tensors="pt")
+        enc = self.tokenizer(
+            words, is_split_into_words=True, padding=True, truncation=True, max_length=max_len, return_tensors="pt"
+        )
         targets = None
         if frame_labels is not None:
             targets = torch.full(enc["input_ids"].shape, IGNORE, dtype=torch.long)
             for i, labs in enumerate(frame_labels):
                 prev = None
                 for j, w in enumerate(enc.word_ids(i)):
-                    if w is not None and w != prev and w < len(labs):  # label the first sub-token of each word
+                    if w is not None and w != prev and w < len(labs):
                         targets[i, j] = labs[w]
                     prev = w
         return dict(enc), targets
