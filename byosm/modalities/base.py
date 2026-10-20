@@ -40,7 +40,7 @@ class Modality:
     def frame_label_ids(self, ex: dict, numeric_ok: bool = True) -> list[int] | None:
         if self.spec.task_type != "frame":
             return None
-        idx = {n: i for i, n in enumerate(self.spec.label_names)}
+        idx = self.spec.label_index
         return [idx[lab] if isinstance(lab, str) or not numeric_ok else int(lab) for lab in ex["label"]]
 
     def build_backbone(self) -> Backbone:

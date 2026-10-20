@@ -144,5 +144,4 @@ def baseline_available() -> None:
     from ..predictors import BASELINES
 
     for k, c in sorted(BASELINES.items()):
-        doc = (c.__doc__ or "").strip().splitlines()[0]
-        log(f"{k:10s} {'/'.join(c.modalities) or 'any'} {'/'.join(c.task_types)}  {doc}")
+        log(f"{k:10s} {'/'.join(c.modalities) or 'any'} {'/'.join(c.task_types)}  {c.summary}")

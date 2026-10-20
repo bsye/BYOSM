@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from ..text import normalize
-
 import json
 import uuid
 from collections import Counter
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+
+from ..text import normalize
 
 SPLITS = ("train", "dev", "test")
 
@@ -34,7 +34,6 @@ def append(path: Path, rows: Iterable[dict]) -> None:
 
 def record(input: Any, label: Any, source: str, **meta: Any) -> dict:
     return {"id": uuid.uuid4().hex[:12], "input": input, "label": label, "source": source, "meta": meta}
-
 
 
 def shingles(text: str, n: int = 5) -> set[str]:

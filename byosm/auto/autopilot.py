@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from ..config import Project, load_config
+from ..config import PUBLISH_LICENSE, Project, load_config
 from .loop import improve_until_stop
 from .report import _report
 from .standing import standing
@@ -102,7 +102,7 @@ def run(
     distill: bool = True,
     max_params_m: float = 25.0,
     publish: str | None = None,
-    license: str = "other",
+    license: str = PUBLISH_LICENSE,
     use_llm: bool = True,
     echo: Callable[[str], None] = print,
 ) -> dict[str, Any]:

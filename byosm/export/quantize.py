@@ -30,7 +30,7 @@ def _calib_evaluator(out: Path, sp: Specialist, p: Project, base: Any, log: Call
     rows = calib[:CALIB_ROWS]
     mod = get_modality(sp.spec, str(root))
     rt = load_runtime(out)
-    idx = {n: i for i, n in enumerate(sp.spec.label_names)}
+    idx = sp.spec.label_index
     y = np.array([idx[r["label"]] for r in rows])
     thr = json.loads((out / "manifest.json").read_text())["decision"].get("threshold")
     xs = [str(mod._path(r)) if sp.spec.modality == "document" else mod.load(r) for r in rows]

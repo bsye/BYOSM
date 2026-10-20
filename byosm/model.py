@@ -59,9 +59,6 @@ def align_targets(targets: torch.Tensor, n: int) -> torch.Tensor:
     return targets[:, idx]
 
 
-align_probs = align_targets
-
-
 def task_loss(
     logits: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, weight: torch.Tensor | None = None
 ) -> torch.Tensor:

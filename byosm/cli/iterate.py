@@ -5,7 +5,7 @@ from typing import Annotated
 
 import typer
 
-from ..config import Project
+from ..config import PUBLISH_LICENSE, Project
 from .base import _spec, app, log
 from .train import board, build
 
@@ -94,7 +94,7 @@ def auto(
     publish_repo: Annotated[
         str | None, typer.Option("--publish", help="also publish to this Hugging Face repo (private)")
     ] = None,
-    license: str = "other",
+    license: str = PUBLISH_LICENSE,
     no_llm: Annotated[bool, typer.Option(help="rule-based proposals only")] = False,
 ) -> None:
     """One command: prompt -> spec -> benchmark + baselines -> experiments until it wins (or the budget ends) -> distill -> export."""

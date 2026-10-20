@@ -10,9 +10,9 @@ import numpy as np
 import torch
 
 from ..modalities import IGNORE, Modality
-from ..model import SpecialistModel, distill_loss, task_loss
+from ..model import SpecialistModel, distill_loss, task_loss, warmup_cosine
 from ..spec import TaskSpec
-from .common import amp_dtype, autocast, batches, param_groups, pretrained_encoders, to_device, warmup_cosine
+from .common import amp_dtype, autocast, batches, param_groups, pretrained_encoders, to_device
 from .teacher import soft_batch
 
 
@@ -43,7 +43,7 @@ class Trainer:
         self.opt = torch.optim.AdamW(param_groups(self.model, tc), weight_decay=0.01)
         steps_per_epoch = math.ceil(len(self.train_raw) / tc.batch_size)
         steps = tc.epochs * steps_per_epoch
-        self.sched = warmup_cosine(self.opt, steps)
+        self.sched = warmup_cosine(self.opt, steps, steps // 15)
         self.amp = amp_dtype(self.spec, self.model, self.dev)
         self.scaler = torch.amp.GradScaler(self.dev, enabled=self.amp == torch.float16)
         self.probe = 0 if tc.freeze_backbone or not enc else min(tc.probe_epochs, tc.epochs // 4)

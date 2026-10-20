@@ -9,7 +9,7 @@ import torch
 
 from ..data.store import Dataset
 from ..modalities import IGNORE, Modality, get_modality
-from ..model import align_probs
+from ..model import align_targets
 from ..spec import TaskSpec
 
 
@@ -54,4 +54,4 @@ def soft_batch(
     tp = torch.nn.utils.rnn.pad_sequence([torch.as_tensor(soft[i]) for i in b], batch_first=True).to(dev)
     lens = torch.tensor([len(soft[i]) for i in b], device=dev)
     valid = (torch.arange(tp.shape[1], device=dev)[None] < lens[:, None]).float()
-    return align_probs(tp, logits.shape[1]), align_probs(valid[..., None], logits.shape[1])[..., 0] * mask.float()
+    return align_targets(tp, logits.shape[1]), align_targets(valid[..., None], logits.shape[1])[..., 0] * mask.float()

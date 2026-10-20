@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import random
 from collections.abc import Callable
 from typing import Any
@@ -15,7 +14,7 @@ from ..data.store import Dataset
 from ..modalities import get_modality
 from ..model import SpecialistModel, task_loss, warmup_cosine
 from ..spec import TaskSpec
-from ..train import batches, evaluate_rows, targets_of, to_device
+from ..train import batches, cpu_state, evaluate_rows, targets_of, to_device
 
 
 def _generalist_spec(specs: list[TaskSpec], backbone: str) -> TaskSpec:
@@ -131,6 +130,6 @@ def train_generalist(
         log(f"  generalist epoch {ep + 1}/{tc.epochs} mean dev objective={score:.4f} " + per_task)
         if score > best_score:
             best_score, thresholds = score, thr
-            best = copy.deepcopy({k: v.cpu() for k, v in model.state_dict().items()})
+            best = cpu_state(model)
     model.load_state_dict(best)
     return model, thresholds, gspec

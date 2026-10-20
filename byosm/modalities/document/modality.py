@@ -74,7 +74,7 @@ class Document(Modality):
     def frame_labels(self, ex: dict) -> list[int] | None:
         if self.spec.task_type != "frame":
             return None
-        idx = {n: i for i, n in enumerate(self.spec.label_names)}
+        idx = self.spec.label_index
         return [idx[lab] if isinstance(lab, str) else int(lab) for lab in ex["label"]][: self.cfg.max_pages]
 
     def build_backbone(self) -> Backbone:

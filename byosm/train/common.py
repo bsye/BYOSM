@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import copy
-import functools
-import math
 import random
 from typing import Any
 
@@ -19,17 +17,7 @@ LAYER_SEGMENTS = {"layer", "layers", "blocks", "block", "h", "stages"}
 def targets_of(spec: TaskSpec, mod: Modality, rows: list[dict]) -> list[Any]:
     if spec.task_type == "frame":
         return [mod.frame_labels(r) for r in rows]
-    idx = {n: i for i, n in enumerate(spec.label_names)}
-    return [idx[r["label"]] for r in rows]
-
-
-def _lr_factor(s: int, warm: int, steps: int) -> float:
-    return min(1.0, (s + 1) / warm) * 0.5 * (1 + math.cos(math.pi * min(s, steps) / steps))
-
-
-def warmup_cosine(opt: torch.optim.Optimizer, steps: int) -> torch.optim.lr_scheduler.LambdaLR:
-    lr_lambda = functools.partial(_lr_factor, warm=max(1, steps // 15), steps=steps)
-    return torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda)
+    return [spec.label_index[r["label"]] for r in rows]
 
 
 def cpu_state(model: torch.nn.Module) -> dict[str, torch.Tensor]:

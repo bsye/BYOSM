@@ -51,6 +51,10 @@ class TaskSpec(BaseModel):
         return [label.name for label in self.labels]
 
     @property
+    def label_index(self) -> dict[str, int]:
+        return {name: i for i, name in enumerate(self.label_names)}
+
+    @property
     def pos_index(self) -> int:
         names = self.label_names
         return names.index(self.positive_label) if self.positive_label in names else len(self.labels) - 1

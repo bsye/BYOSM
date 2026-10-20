@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
-from ..config import Project, find_workspace, list_projects
+from ..config import PUBLISH_LICENSE, Project, find_workspace, list_projects
 from .base import _spec, app, console, log
 
 
@@ -30,7 +30,7 @@ def publish(
     repo: Annotated[str, typer.Option(help="Hugging Face repo id, e.g. you/byosm-vad")],
     license: Annotated[
         str, typer.Option(help="model licence for the card (check your training data's licences)")
-    ] = "other",
+    ] = PUBLISH_LICENSE,
     public: Annotated[bool, typer.Option("--public", help="create the repo public (default: private)")] = False,
     dry_run: Annotated[
         bool, typer.Option("--dry-run", help="stage files + model card locally, upload nothing")

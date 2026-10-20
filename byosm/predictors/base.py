@@ -65,7 +65,6 @@ def register_baseline(name: str, summary: str) -> Callable[[type[Predictor]], ty
     def deco(cls: type[Predictor]) -> type[Predictor]:
         cls.id = name
         cls.summary = summary
-        cls.__doc__ = summary
         BASELINES[name] = cls
         return cls
 

@@ -20,6 +20,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
 }
 
 
+PUBLISH_LICENSE = "cc-by-nc-4.0"
+
+
 def find_workspace(start: Path | None = None) -> Path:
     p = (start or Path.cwd()).resolve()
     for d in [p, *p.parents]:

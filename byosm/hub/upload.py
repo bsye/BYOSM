@@ -5,7 +5,7 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-from ..config import Project
+from ..config import PUBLISH_LICENSE, Project
 from .card import model_card
 from .facts import lineage
 
@@ -26,7 +26,7 @@ def _stage(p: Project, repo_id: str, license: str, experiment: str) -> Path:
 def publish(
     name: str,
     repo_id: str,
-    license: str = "other",
+    license: str = PUBLISH_LICENSE,
     private: bool = True,
     dry_run: bool = False,
     log: Callable[[str], None] = print,

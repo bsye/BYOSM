@@ -31,7 +31,7 @@ def _collect(
             n = min(len(pr), len(y))
             per.append((pr[:n], y[:n]))
         return np.concatenate([a for a, _ in per]), np.concatenate([b for _, b in per]), per
-    idx = {n: i for i, n in enumerate(spec.label_names)}
+    idx = spec.label_index
     y = np.array([idx[r["label"]] for r in rows])
     if getattr(pred, "wants_rows", False):
         return pred.probs_rows(rows, mod), y, []
