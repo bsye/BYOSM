@@ -9,12 +9,12 @@ from .analyst import llm_proposals
 from .cost import estimate
 from .diagnosis import diagnose
 from .paths import apply_ops
-from .registry import rule_proposals
+from .registry import rule_proposals, unique
 
 
 def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print) -> tuple[dict, list[dict]]:
     dg = diagnose(name)
-    props = rule_proposals(dg) + (llm_proposals(dg, log) if use_llm else [])
+    props = unique(rule_proposals(dg) + (llm_proposals(dg, log) if use_llm else []))
     for pr in props:
         pr["cost"] = estimate(dg, pr)
     p = Project(name)

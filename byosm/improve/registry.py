@@ -16,11 +16,12 @@ def gap(dg: dict, suite: str) -> tuple[float, tuple[str, float] | None]:
     return ((bb[1] - r["objective"]) if bb else 0.0), bb
 
 
+def unique(props: list[dict]) -> list[dict]:
+    out: dict[str, dict] = {}
+    for pr in props:
+        out.setdefault(pr["id"], pr)
+    return list(out.values())
+
+
 def rule_proposals(dg: dict) -> list[dict]:
-    seen, out = set(), []
-    for r in RULES:
-        for pr in r(dg):
-            if pr["id"] not in seen:
-                seen.add(pr["id"])
-                out.append(pr)
-    return out
+    return unique([pr for r in RULES for pr in r(dg)])

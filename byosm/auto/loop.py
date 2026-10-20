@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from typing import Any
 
@@ -52,11 +53,11 @@ def _budget_stop(s: Session, st: dict, max_experiments: int) -> str:
 
 def _pick(fresh: list[dict], deadline: float) -> tuple[dict | None, str]:
     left_min = (deadline - time.time()) / 60
-    fits = [pr for pr in fresh if not (pr.get("cost", {}).get("minutes", 0) > left_min)]
+    fits = [pr for pr in fresh if pr["cost"]["minutes"] <= left_min]
     if not fits:
         cheapest = min(pr["cost"]["minutes"] for pr in fresh)
         return None, f"time budget: {left_min:.0f} min left, cheapest untried proposal needs ~{cheapest:.0f} min"
-    pick = max(fits, key=lambda pr: (_prior(pr["id"]), -(pr.get("cost", {}).get("minutes") or 0), -fits.index(pr)))
+    pick = max(fits, key=lambda pr: (_prior(pr["id"]), -pr["cost"]["minutes"], -fits.index(pr)))
     return pick, ""
 
 
@@ -104,10 +105,23 @@ def _experiment(s: Session, st: dict, pick: dict, fresh: list[dict]) -> bool | N
     return _is_real_gain(kept, cmp, mine, st["ours"])
 
 
+def _applicable(s: Session, props: list[dict], tried: set[str]) -> list[dict]:
+    fresh = []
+    for pr in props:
+        if _key(pr) in tried:
+            continue
+        if math.isnan(pr["cost"]["minutes"]):
+            tried.add(_key(pr))
+            s.log("skip", pr["id"], "its ops do not apply to the promoted spec", proposal=pr)
+        else:
+            fresh.append(pr)
+    return fresh
+
+
 def improve_until_stop(s: Session, max_experiments: int, use_llm: bool) -> str:
     from .. import improve
 
-    tried = {_key(d["proposal"]) for d in s.log.decisions if d["step"] == "experiment" and "proposal" in d}
+    tried = {_key(d["proposal"]) for d in s.log.decisions if d["step"] in ("experiment", "skip") and "proposal" in d}
     stale = 0
     while True:
         st = standing(s.name, s.margin)
@@ -115,7 +129,7 @@ def improve_until_stop(s: Session, max_experiments: int, use_llm: bool) -> str:
         if reason:
             return reason
         _, props = improve.propose(s.name, use_llm, s.echo)
-        fresh = [pr for pr in props if _key(pr) not in tried]
+        fresh = _applicable(s, props, tried)
         if not fresh:
             return "no untried proposals left"
         pick, reason = _pick(fresh, s.deadline)

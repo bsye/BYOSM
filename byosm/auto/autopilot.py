@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Callable
 from typing import Any
@@ -47,20 +46,24 @@ def _distill_student(s: Session, st: dict, meta: dict) -> None:
 
     teacher = st["exp"]
     exp = dst.create(s.name, teacher)
-    build(s.name, exp, s.echo)
-    stu = s.p.board().get(exp, {}).get(st["suite"], {}).get("objective")
-    smeta = json.loads((s.p.exp_dir(exp) / "meta.json").read_text())
-    still = stu is not None and (st["best_baseline"] is None or stu > st["best_baseline"][1] + s.margin)
-    if still:
-        Project(s.name).promote(exp)
-    outcome = (
-        "student still beats every baseline -> promoted" if still else "student no longer wins -> keep the teacher"
-    )
+    try:
+        build(s.name, exp, s.echo)
+    except Exception as ex:
+        s.p.promote(teacher)
+        s.log("distill", exp, f"student build failed ({type(ex).__name__}: {ex}) -> keep the teacher {teacher}")
+        return
+    smeta = s.p.meta(exp)
+    s.p.promote(exp)
+    stu = standing(s.name, s.margin)
+    if not stu["won"]:
+        s.p.promote(teacher)
+    outcome = "student still wins -> promoted" if stu["won"] else "student no longer wins -> keep the teacher"
+    ours = stu["ours"] if stu["ours"] is not None else float("nan")
     s.log(
         "distill",
         exp,
         f"{meta['params'] / 1e6:.1f}M teacher {teacher} {st['ours']:.4f} -> "
-        f"{smeta['params'] / 1e6:.1f}M student {stu:.4f}; " + outcome,
+        f"{smeta['params'] / 1e6:.1f}M student {ours:.4f}; " + outcome,
     )
 
 
@@ -68,7 +71,7 @@ def _distill(s: Session, max_params_m: float) -> None:
     st = standing(s.name, s.margin)
     if not st["exp"]:
         return
-    meta = json.loads((s.p.exp_dir(st["exp"]) / "meta.json").read_text())
+    meta = s.p.meta(st["exp"])
     large = meta["params"] / 1e6 > max_params_m
     if meta.get("distilled_from"):
         s.log("distill", None, "already a distilled student")
@@ -80,16 +83,28 @@ def _distill(s: Session, max_params_m: float) -> None:
         s.log("distill", None, "skipped: not enough time budget left")
 
 
-def _ship(s: Session, publish: str | None, license: str) -> None:
+def _ship(s: Session, won: bool, publish: str | None, license: str) -> None:
     from ..export import export
 
     out = export(s.name, log=s.echo)
-    s.log("export", str(out.relative_to(s.p.ws)), "torch-free ONNX bundle (encode / predict / serve)")
-    if publish:
+    scope = "" if won else "; local only, it did not win"
+    s.log("export", str(out.relative_to(s.p.ws)), "torch-free ONNX bundle (encode / predict / serve)" + scope)
+    if publish and not won:
+        s.log("publish", None, f"skipped {publish}: it did not win, so nothing goes to the Hub")
+    elif publish:
         from ..hub import publish as pub
 
         pub(s.name, publish, license, private=True, log=s.echo)
         s.log("publish", publish, "private Hugging Face repo with generated model card (flip public on the Hub)")
+
+
+def _finish(s: Session, distill: bool, max_params_m: float, publish: str | None, license: str) -> None:
+    won = standing(s.name, s.margin)["won"]
+    if distill and won:
+        _distill(s, max_params_m)
+    elif distill:
+        s.log("distill", None, "skipped: it did not win, so there is no winner to shrink")
+    _ship(s, standing(s.name, s.margin)["won"], publish, license)
 
 
 def run(
@@ -119,9 +134,7 @@ def run(
         _build_v1(s)
     reason = improve_until_stop(s, max_experiments, use_llm)
     log("stop", reason, "")
-    if distill:
-        _distill(s, max_params_m)
-    _ship(s, publish, license)
+    _finish(s, distill, max_params_m, publish, license)
     final = standing(name, margin)
     final["hours"] = round((time.time() - t0) / 3600, 2)
     final["stop_reason"] = reason
