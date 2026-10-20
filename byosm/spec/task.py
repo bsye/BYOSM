@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+import yaml
+from pydantic import BaseModel, Field
+
+from .backbones import MINILM
+from .sections import (
+    Axis,
+    DataPlan,
+    Decision,
+    DocumentCfg,
+    EvalSuite,
+    Label,
+    Modality,
+    Objective,
+    TaskType,
+    TrainCfg,
+)
+
+
+class TaskSpec(BaseModel):
+    name: str
+    description: str
+    modality: Modality
+    task_type: TaskType = "classify"
+    summary: str = ""
+    input_description: str = ""
+    labels: list[Label]
+    positive_label: str | None = None
+    objective: Objective = Field(default_factory=Objective)
+    languages: list[str] = Field(default_factory=lambda: ["en"])
+    diversity_axes: list[Axis] = Field(default_factory=list)
+    hard_cases: list[str] = Field(default_factory=list)
+    backbone: str = MINILM
+    latency_budget_ms: float = 10.0
+    frame_hop_ms: float = 10.0
+    data: DataPlan = Field(default_factory=DataPlan)
+    train: TrainCfg = Field(default_factory=TrainCfg)
+    decision: Decision = Field(default_factory=Decision)
+    document: DocumentCfg = Field(default_factory=DocumentCfg)
+    evals: list[EvalSuite] = Field(default_factory=lambda: [EvalSuite(name="builtin", primary=True)])
+    baselines: list[str] = Field(default_factory=list)
+    search: dict[str, list[str]] = Field(default_factory=dict)
+
+    @property
+    def label_names(self) -> list[str]:
+        return [label.name for label in self.labels]
+
+    @property
+    def pos_index(self) -> int:
+        names = self.label_names
+        return names.index(self.positive_label) if self.positive_label in names else len(self.labels) - 1
+
+    def data_key(self) -> str:
+        synthetic = self.data.synthetic
+        labels = self.model_dump(mode="json")["labels"] if synthetic else self.label_names
+        blob = {
+            "m": self.modality,
+            "t": self.task_type,
+            "l": labels,
+            "hop": self.frame_hop_ms,
+            "d": self.data.model_dump(mode="json"),
+            "desc": self.description if synthetic else "",
+        }
+        return hashlib.sha1(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:10]
+
+    def primary_suite(self) -> str:
+        return next((e.name for e in self.evals if e.primary), self.evals[0].name if self.evals else "builtin")
+
+    def trains_on_test_split(self) -> bool:
+        h = self.train.holdout_test
+        prim = next((e for e in self.evals if e.name == self.primary_suite()), None)
+        return h == "train" or (h == "auto" and prim is not None and prim.kind != "builtin")
+
+    def save(self, path: Path) -> None:
+        path.write_text(yaml.safe_dump(self.model_dump(mode="json"), sort_keys=False, allow_unicode=True, width=110))
+
+    @classmethod
+    def load(cls, path: Path) -> TaskSpec:
+        return cls.model_validate(yaml.safe_load(path.read_text()))
