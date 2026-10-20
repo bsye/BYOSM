@@ -1,8 +1,3 @@
-"""Segment-labelled audio repos (audio files + JSON sidecars with onset/offset lists, e.g. AVA-Speech).
-
-Items are assigned to train / calib / test by a stable hash of their file name, so one dataset can feed training
-(partition=train) and an eval suite (calib + test) with zero overlap, no matter who reads it first.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -22,7 +17,11 @@ def partition_of(key: str) -> str:
 def list_files(src: HFSource) -> list[str]:
     from huggingface_hub import HfApi
 
-    files = [f.path for f in HfApi().list_repo_tree(src.dataset, repo_type="dataset", recursive=True) if getattr(f, "path", "").endswith((".wav", ".flac"))]
+    files = [
+        f.path
+        for f in HfApi().list_repo_tree(src.dataset, repo_type="dataset", recursive=True)
+        if getattr(f, "path", "").endswith((".wav", ".flac"))
+    ]
     return sorted(files)
 
 
@@ -31,17 +30,20 @@ def fetch(src: HFSource, partitions: tuple[str, ...], max_files: int, cache: Pat
 
     files = [f for f in list_files(src) if partition_of(Path(f).name) in partitions][:max_files]
     pats = [p for f in files for p in (f, str(Path(f).with_suffix(".json")))]
-    root = Path(snapshot_download(src.dataset, repo_type="dataset", allow_patterns=pats, local_dir=str(cache / src.dataset.replace("/", "__"))))
+    root = Path(
+        snapshot_download(
+            src.dataset, repo_type="dataset", allow_patterns=pats, local_dir=str(cache / src.dataset.replace("/", "__"))
+        )
+    )
     return [root / f for f in files]
 
 
 def frame_labels(wav_path: Path, n_frames: int, spec: TaskSpec, label_filter: list[str] | None = None) -> np.ndarray:
-    """Positive frames inside any [onset, offset) segment (optionally only segments whose `cluster` is in the filter)."""
     meta = json.loads(wav_path.with_suffix(".json").read_text())
     hop_s = spec.frame_hop_ms / 1000
     y = np.zeros(n_frames, dtype=np.int64)
     clusters = meta.get("cluster") or [None] * len(meta["onset"])
-    for on, off, c in zip(meta["onset"], meta["offset"], clusters):
+    for on, off, c in zip(meta["onset"], meta["offset"], clusters, strict=False):
         if label_filter and c not in label_filter:
             continue
         y[int(round(on / hop_s)) : int(round(off / hop_s))] = 1

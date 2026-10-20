@@ -1,15 +1,17 @@
-"""Data stage: turn the spec's data plan into data/{train,dev,test,unlabeled}.jsonl."""
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from ..spec import TaskSpec
+from ..spec import HFSource, TaskSpec
 from . import audio_mix, hf_source, segments, synth_text
 from .store import Dataset, dedupe, record, write
 
 MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
+
+Log = Callable[[str], None]
 
 
 def _split3(items: list, rng: random.Random, dev: float = 0.1, test: float = 0.15) -> dict[str, list]:
@@ -34,19 +36,18 @@ def _save_media(spec: TaskSpec, data_dir: Path, split: str, x: Any) -> str:
 
 
 def _local(spec: TaskSpec) -> list[tuple[Any, str]]:
-    """<local_dir>/<label>/* : .txt (one example per line) or media files."""
     out = []
     root = Path(spec.data.local_dir or "")
     for lab in spec.label_names:
         for p in sorted((root / lab).glob("*")) if (root / lab).exists() else []:
             if p.suffix == ".txt" and spec.modality == "text":
-                out += [(l.strip(), lab) for l in p.read_text().splitlines() if l.strip()]
+                out += [(line.strip(), lab) for line in p.read_text().splitlines() if line.strip()]
             elif spec.modality != "text":
                 out.append((str(p.resolve()), lab))
     return out
 
 
-def _segment_clips(spec: TaskSpec, src, data_dir: Path, log: Callable[[str], None]) -> list[dict]:  # noqa: ANN001
+def _segment_clips(spec: TaskSpec, src: HFSource, data_dir: Path, log: Log) -> list[dict]:
     import soundfile as sf
 
     from ..modalities.audio import load_wav
@@ -64,37 +65,44 @@ def _segment_clips(spec: TaskSpec, src, data_dir: Path, log: Callable[[str], Non
         for s0 in range(0, len(wav) - clip + 1, clip):
             if len(rows) >= src.max_rows:
                 break
-            r = record("", y[s0 // hop : (s0 + clip) // hop].tolist(), f"hf:{src.dataset}", file=f.name, offset_s=s0 / sr)
+            labels = y[s0 // hop : (s0 + clip) // hop].tolist()
+            r = record("", labels, f"hf:{src.dataset}", file=f.name, offset_s=s0 / sr)
             rel = f"audio/real/{r['id']}.wav"
             sf.write(str(data_dir / rel), wav[s0 : s0 + clip], sr, subtype="PCM_16")
             r["input"] = rel
             rows.append(r)
-    log(f"  {src.dataset}: {len(rows)} real {spec.data.audio.clip_seconds}s training clips from {len(files)} files (partition={parts})")
+    clip_s = spec.data.audio.clip_seconds
+    log(f"  {src.dataset}: {len(rows)} real {clip_s}s training clips from {len(files)} files (partition={parts})")
     return rows
 
 
-def build(spec: TaskSpec, data_dir: Path, cfg: dict | None = None, log: Callable[[str], None] = print) -> dict[str, Any]:
-    ds = Dataset(data_dir)
-    rng = random.Random(spec.name)
-    splits: dict[str, list[dict]] = {"train": [], "dev": [], "test": []}
-    unlabeled: list[dict] = []
+def _add_local(spec: TaskSpec, splits: dict[str, list[dict]], rng: random.Random, log: Log) -> None:
+    rows = [record(x, y, "local") for x, y in _local(spec)]
+    for s, part in _split3(rows, rng).items():
+        splits[s] += part
+    log(f"  local: {len(rows)} examples from {spec.data.local_dir}")
 
-    # 1. Real data: local folders and Hugging Face.
-    if spec.data.local_dir:
-        rows = [record(x, y, "local") for x, y in _local(spec)]
-        for s, part in _split3(rows, rng).items():
-            splits[s] += part
-        log(f"  local: {len(rows)} examples from {spec.data.local_dir}")
+
+def _resolve_sources(spec: TaskSpec, data_dir: Path, cfg: dict | None, log: Log) -> tuple[list, list]:
+    import yaml
 
     seg_sources = [s for s in spec.data.hf_sources if s.format == "segment_files"]
     row_spec = spec.model_copy(deep=True)
     row_spec.data.hf_sources = [s for s in spec.data.hf_sources if s.format == "rows"]
     sources = hf_source.resolve(row_spec, cfg, log) if (row_spec.data.hf_sources or spec.data.hf_queries) else []
-    import yaml
+    resolved = data_dir / "sources.resolved.yaml"
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    resolved.write_text(yaml.safe_dump([s.model_dump(mode="json") for s in sources + seg_sources], sort_keys=False))
+    return sources, seg_sources
 
-    (data_dir / "sources.resolved.yaml").parent.mkdir(parents=True, exist_ok=True)
-    (data_dir / "sources.resolved.yaml").write_text(yaml.safe_dump([s.model_dump(mode="json") for s in sources + seg_sources], sort_keys=False))
-    pools: dict[str, dict[str, list]] = {"positive": {"train": [], "dev": [], "test": []}, "negative": {"train": [], "dev": [], "test": []}}
+
+def _add_hf(
+    spec: TaskSpec, data_dir: Path, sources: list, splits: dict, unlabeled: list, rng: random.Random, log: Log
+) -> dict[str, dict[str, list]]:
+    pools: dict[str, dict[str, list]] = {
+        "positive": {"train": [], "dev": [], "test": []},
+        "negative": {"train": [], "dev": [], "test": []},
+    }
     for src in sources:
         try:
             rows = hf_source.take(src, spec)
@@ -110,40 +118,57 @@ def build(spec: TaskSpec, data_dir: Path, cfg: dict | None = None, log: Callable
         elif src.role in pools:
             for s, part in _split3([x for x, _ in rows], rng).items():
                 pools[src.role][s] += part
-        else:  # unlabeled
+        else:
             for x, _ in rows[:2000]:
-                unlabeled.append(record(x if spec.modality == "text" else _save_media(spec, data_dir, "unlabeled", x), None, f"hf:{src.dataset}"))
+                inp = x if spec.modality == "text" else _save_media(spec, data_dir, "unlabeled", x)
+                unlabeled.append(record(inp, None, f"hf:{src.dataset}"))
+    return pools
 
-    # 1b. Real segment-labelled audio (e.g. AVA-Speech train partition), chopped into training clips.
+
+def _add_synthetic(spec: TaskSpec, splits: dict[str, list[dict]], cfg: dict | None, log: Log) -> None:
+    need = max(0, spec.data.train_size - len(splits["train"]))
+    if need:
+        splits["train"] += synth_text.generate(spec, need, "train", cfg, against=splits["train"], log=log)
+    for s, size in (("dev", spec.data.dev_size), ("test", spec.data.test_size)):
+        need = max(0, size - len(splits[s]))
+        if need:
+            prior = splits["train"] + splits["dev"] + splits["test"]
+            splits[s] += synth_text.generate(spec, need, s, cfg, against=prior, log=log)
+
+
+def _collect(spec: TaskSpec, data_dir: Path, cfg: dict | None, log: Log) -> tuple[dict[str, list[dict]], list[dict]]:
+    rng = random.Random(spec.name)
+    splits: dict[str, list[dict]] = {"train": [], "dev": [], "test": []}
+    unlabeled: list[dict] = []
+    if spec.data.local_dir:
+        _add_local(spec, splits, rng, log)
+    sources, seg_sources = _resolve_sources(spec, data_dir, cfg, log)
+    pools = _add_hf(spec, data_dir, sources, splits, unlabeled, rng, log)
     for src in seg_sources:
         real = _segment_clips(spec, src, data_dir, log)
-        splits["dev"] += real[::10]  # some real audio in dev so model selection sees it too
+        splits["dev"] += real[::10]
         splits["train"] += [r for i, r in enumerate(real) if i % 10]
-
-    # 2. Procedural audio from positive/negative pools (exact labels by construction).
     if spec.modality == "audio" and pools["positive"]["train"]:
         sizes = {"train": spec.data.train_size, "dev": spec.data.dev_size, "test": spec.data.test_size}
         for s, rows in audio_mix.build(spec, data_dir, pools["positive"], pools["negative"], sizes, log).items():
             splits[s] += rows
-
-    # 3. LLM-written text: train from the generator, dev/test from the independent evaluator.
     if spec.data.synthetic and spec.modality == "text":
-        need = max(0, spec.data.train_size - len(splits["train"]))
-        if need:
-            splits["train"] += synth_text.generate(spec, need, "train", cfg, against=splits["train"], log=log)
-        for s, size in (("dev", spec.data.dev_size), ("test", spec.data.test_size)):
-            need = max(0, size - len(splits[s]))
-            if need:
-                # Dedupe against everything already written so held-out sets can't leak from train.
-                prior = splits["train"] + splits["dev"] + splits["test"]
-                splits[s] += synth_text.generate(spec, need, s, cfg, against=prior, log=log)
-
+        _add_synthetic(spec, splits, cfg, log)
     if spec.modality == "text":
         splits["test"] = dedupe(splits["test"], against=splits["train"] + splits["dev"])
         splits["dev"] = dedupe(splits["dev"], against=splits["train"])
+    return splits, unlabeled
 
-    if not splits["train"]:  # fail before writing anything, so an empty dataset is never cached
-        raise RuntimeError("data stage produced no training examples - check the data plan in spec.yaml (sources, synthetic, local_dir)")
+
+def build(
+    spec: TaskSpec, data_dir: Path, cfg: dict | None = None, log: Callable[[str], None] = print
+) -> dict[str, Any]:
+    ds = Dataset(data_dir)
+    splits, unlabeled = _collect(spec, data_dir, cfg, log)
+    if not splits["train"]:
+        raise RuntimeError(
+            "data stage produced no training examples - check the data plan in spec.yaml (sources, synthetic, local_dir)"
+        )
     for s, rows in splits.items():
         ds.save(s, rows)
     unlabeled += [record(r["input"], None, "train-inputs") for r in splits["train"]]

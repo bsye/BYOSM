@@ -1,10 +1,8 @@
-"""Procedural audio data: place clean positive events (e.g. speech) over negative backgrounds (noise, music, babble)
-at controlled SNRs. Labels are exact by construction: per-frame (VAD-style) or per-clip (detection)."""
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 
@@ -16,9 +14,9 @@ def _rms_db(x: np.ndarray) -> float:
     return 10 * np.log10(float(np.mean(x**2)) + 1e-12)
 
 
-def frame_activity(x: np.ndarray, hop: int, rel_db: float = 35.0, floor_db: float = -55.0, fill_ms: int = 60, hop_ms: float = 10.0) -> np.ndarray:
-    """1 where the clean event is active: frame energy within rel_db of its peak and above an absolute floor.
-    Gaps shorter than fill_ms are filled so labels don't flicker inside words."""
+def frame_activity(
+    x: np.ndarray, hop: int, rel_db: float = 35.0, floor_db: float = -55.0, fill_ms: int = 60, hop_ms: float = 10.0
+) -> np.ndarray:
     n = len(x) // hop
     if n == 0:
         return np.zeros(0, dtype=np.int64)
@@ -41,7 +39,10 @@ class Mixer:
         a = spec.data.audio
         self.spec, self.sr, self.n = spec, a.sample_rate, int(a.sample_rate * a.clip_seconds)
         self.hop = int(a.sample_rate * spec.frame_hop_ms / 1000)
-        self.pos, self.neg = [p for p in positives if len(p) > self.sr // 5], [n for n in negatives if len(n) > self.sr // 10]
+        self.pos, self.neg = (
+            [p for p in positives if len(p) > self.sr // 5],
+            [n for n in negatives if len(n) > self.sr // 10],
+        )
         if not self.pos:
             raise ValueError("audio mixing needs at least one positive source clip")
         self.rng = random.Random(seed)
@@ -52,7 +53,7 @@ class Mixer:
 
     def _background(self) -> np.ndarray:
         r = self.rng.random()
-        if not self.neg or r < 0.12:  # near-silence with mic hiss
+        if not self.neg or r < 0.12:
             return self.np_rng.normal(0, 10 ** (self.rng.uniform(-80, -50) / 20), self.n).astype(np.float32)
         out = np.zeros(self.n, dtype=np.float32)
         layers = 1 if r < 0.7 else 2
@@ -66,26 +67,35 @@ class Mixer:
                 pos += max(len(seg), 1)
         return out
 
+    def _event_activity(self, ev: np.ndarray) -> np.ndarray:
+        a = self.spec.data.audio
+        if a.label_by_energy:
+            return frame_activity(ev, self.hop, fill_ms=a.fill_ms, hop_ms=self.spec.frame_hop_ms)
+        return np.ones(len(ev) // self.hop, dtype=np.int64)
+
+    def _place_event(self, mix: np.ndarray, labels: np.ndarray, bg_db: float) -> None:
+        lo, hi = self.spec.data.audio.snr_db
+        src = self.rng.choice(self.pos)
+        m = min(len(src), int(self.sr * self.rng.uniform(0.3, self.spec.data.audio.clip_seconds * 0.8)))
+        s = self.rng.randint(0, len(src) - m)
+        ev = src[s : s + m].copy()
+        ev *= 10 ** ((bg_db + self.rng.uniform(lo, hi) - _rms_db(ev)) / 20)
+        t0 = self.rng.randint(0, self.n - m) // self.hop * self.hop
+        mix[t0 : t0 + m] += ev
+        act = self._event_activity(ev)
+        f0 = t0 // self.hop
+        labels[f0 : f0 + len(act)] |= act[: len(labels) - f0]
+
     def clip(self) -> tuple[np.ndarray, np.ndarray]:
         bg = self._background()
         bg_db = _rms_db(bg)
-        bg = bg * (10 ** ((self.rng.uniform(-45, -20) - bg_db) / 20))  # background level
+        bg = bg * (10 ** ((self.rng.uniform(-45, -20) - bg_db) / 20))
         bg_db = _rms_db(bg)
         labels = np.zeros(self.n // self.hop, dtype=np.int64)
         mix = bg.copy()
         k = 0 if self.rng.random() < 0.25 else self.rng.randint(1, self.spec.data.audio.max_events)
-        lo, hi = self.spec.data.audio.snr_db
         for _ in range(k):
-            src = self.rng.choice(self.pos)
-            m = min(len(src), int(self.sr * self.rng.uniform(0.3, self.spec.data.audio.clip_seconds * 0.8)))
-            s = self.rng.randint(0, len(src) - m)
-            ev = src[s : s + m].copy()
-            ev *= 10 ** ((bg_db + self.rng.uniform(lo, hi) - _rms_db(ev)) / 20)
-            t0 = self.rng.randint(0, self.n - m) // self.hop * self.hop
-            mix[t0 : t0 + m] += ev
-            act = frame_activity(ev, self.hop, fill_ms=self.spec.data.audio.fill_ms, hop_ms=self.spec.frame_hop_ms) if self.spec.data.audio.label_by_energy else np.ones(m // self.hop, dtype=np.int64)
-            f0 = t0 // self.hop
-            labels[f0 : f0 + len(act)] |= act[: len(labels) - f0]
+            self._place_event(mix, labels, bg_db)
         peak = np.abs(mix).max()
         if peak > 0.99:
             mix *= 0.99 / peak
@@ -94,27 +104,46 @@ class Mixer:
         return mix.astype(np.float32), frame
 
 
-def build(spec: TaskSpec, data_dir: Path, positives: dict[str, list[np.ndarray]], negatives: dict[str, list[np.ndarray]], sizes: dict[str, int], log: Callable[[str], None] = print) -> dict[str, list[dict]]:
-    """positives/negatives are pre-partitioned per split so test clips never reuse train source audio."""
+def _clip_label(spec: TaskSpec, mixer: Mixer, frames: np.ndarray) -> list[int] | str:
+    if spec.task_type == "frame":
+        return frames.tolist()
+    if (frames == mixer.pos_idx).any():
+        return spec.label_names[mixer.pos_idx]
+    return spec.label_names[mixer.neg_idx]
+
+
+def _mix_row(spec: TaskSpec, mixer: Mixer, data_dir: Path, split: str) -> dict:
     import soundfile as sf
 
+    wav, frames = mixer.clip()
+    r = record("", None, "mix", split=split)
+    rel = f"audio/{split}/{r['id']}.wav"
+    sf.write(str(data_dir / rel), wav, spec.data.audio.sample_rate, subtype="PCM_16")
+    r["input"] = rel
+    r["label"] = _clip_label(spec, mixer, frames)
+    return r
+
+
+def _positive_share(spec: TaskSpec, mixer: Mixer, rows: list[dict]) -> float:
+    if spec.task_type == "frame":
+        return np.mean([np.mean(np.array(r["label"]) == mixer.pos_idx) for r in rows])
+    return np.mean([r["label"] == spec.label_names[mixer.pos_idx] for r in rows])
+
+
+def build(
+    spec: TaskSpec,
+    data_dir: Path,
+    positives: dict[str, list[np.ndarray]],
+    negatives: dict[str, list[np.ndarray]],
+    sizes: dict[str, int],
+    log: Callable[[str], None] = print,
+) -> dict[str, list[dict]]:
     out: dict[str, list[dict]] = {}
+    unit = "frames" if spec.task_type == "frame" else "clips"
     for i, (split, n) in enumerate(sizes.items()):
         mixer = Mixer(spec, positives[split], negatives[split], seed=1000 + i)
-        rows = []
         (data_dir / "audio" / split).mkdir(parents=True, exist_ok=True)
-        for _ in range(n):
-            wav, frames = mixer.clip()
-            r = record("", None, "mix", split=split)
-            rel = f"audio/{split}/{r['id']}.wav"
-            sf.write(str(data_dir / rel), wav, spec.data.audio.sample_rate, subtype="PCM_16")
-            r["input"] = rel
-            if spec.task_type == "frame":
-                r["label"] = frames.tolist()
-            else:
-                r["label"] = spec.label_names[mixer.pos_idx] if (frames == mixer.pos_idx).any() else spec.label_names[mixer.neg_idx]
-            rows.append(r)
-        pos_share = np.mean([np.mean(np.array(r["label"]) == mixer.pos_idx) if spec.task_type == "frame" else r["label"] == spec.label_names[mixer.pos_idx] for r in rows])
-        log(f"  mixed {n} {split} clips ({pos_share:.0%} positive {'frames' if spec.task_type == 'frame' else 'clips'})")
+        rows = [_mix_row(spec, mixer, data_dir, split) for _ in range(n)]
+        log(f"  mixed {n} {split} clips ({_positive_share(spec, mixer, rows):.0%} positive {unit})")
         out[split] = rows
     return out

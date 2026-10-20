@@ -1,4 +1,3 @@
-"""JSONL splits + dedupe + train/test leakage control."""
 from __future__ import annotations
 
 from ..text import normalize
@@ -6,8 +5,9 @@ from ..text import normalize
 import json
 import uuid
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 SPLITS = ("train", "dev", "test")
 
@@ -15,7 +15,7 @@ SPLITS = ("train", "dev", "test")
 def read(path: Path) -> list[dict]:
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def write(path: Path, rows: Iterable[dict]) -> None:
@@ -43,7 +43,6 @@ def shingles(text: str, n: int = 5) -> set[str]:
 
 
 def dedupe(rows: list[dict], against: list[dict] | None = None, near: float = 0.7) -> list[dict]:
-    """Drop exact (normalized) duplicates, and rows whose 5-gram Jaccard with any `against` row exceeds `near`."""
     seen = {normalize(r["input"]) for r in (against or []) if isinstance(r["input"], str)}
     ref = [shingles(r["input"]) for r in (against or []) if isinstance(r["input"], str)]
     index: dict[str, list[int]] = {}

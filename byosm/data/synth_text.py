@@ -1,31 +1,17 @@
-"""LLM-written text data: diverse generation, blind second-opinion labeling, adversarial held-out sets."""
 from __future__ import annotations
 
 import random
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from ..llm import get_llm, pmap
 from ..spec import TaskSpec
+from .prompts import ANALYZE_SYSTEM, EVAL_SYSTEM, GEN_SYSTEM, JUDGE_SYSTEM, REFINE_SCHEMA
 from .store import dedupe, record
-
-GEN_SYSTEM = """You write training data for a tiny, single-purpose classifier. Inputs must look exactly like what the \
-deployed model will receive in production: realistic, varied, messy where reality is messy (typos, fragments, slang, \
-code-switching, missing punctuation) and never templated. Vary length, structure, vocabulary and openings aggressively. \
-Every label you assign must be correct under the definitions; when in doubt, choose the label the definitions dictate, \
-not intuition."""
-
-EVAL_SYSTEM = """You are an independent evaluator writing a HELD-OUT test set to find where a tiny classifier fails. \
-You did not write its training data. Write inputs as real users/systems would produce them, with a realistic share of \
-hard cases: confusers, near-misses, ambiguity resolved by the definitions, rare phrasings, long-tail domains, adversarial \
-but plausible wording. Never write obviously synthetic or templated text. Every label must be correct under the definitions."""
-
-JUDGE_SYSTEM = """You are a meticulous annotator. Label each input strictly according to the label definitions. \
-Return exactly one label per input, in order. If an input is unusable (not a plausible input, or genuinely ambiguous \
-even under the definitions) label it "__drop__"."""
 
 
 def _label_block(spec: TaskSpec) -> str:
-    return "\n".join(f'- "{l.name}": {l.definition}' for l in spec.labels)
+    return "\n".join(f'- "{lab.name}": {lab.definition}' for lab in spec.labels)
 
 
 def _context(spec: TaskSpec) -> str:
@@ -37,9 +23,18 @@ def _context(spec: TaskSpec) -> str:
 
 def _schema(spec: TaskSpec) -> dict:
     if spec.task_type == "frame":
-        item = {"type": "object", "properties": {"words": {"type": "array", "items": {"type": "string"}}, "labels": {"type": "array", "items": {"type": "string", "enum": spec.label_names}}}}
+        item = {
+            "type": "object",
+            "properties": {
+                "words": {"type": "array", "items": {"type": "string"}},
+                "labels": {"type": "array", "items": {"type": "string", "enum": spec.label_names}},
+            },
+        }
     else:
-        item = {"type": "object", "properties": {"text": {"type": "string"}, "label": {"type": "string", "enum": spec.label_names}}}
+        item = {
+            "type": "object",
+            "properties": {"text": {"type": "string"}, "label": {"type": "string", "enum": spec.label_names}},
+        }
     return {"type": "object", "properties": {"examples": {"type": "array", "items": item}}}
 
 
@@ -48,13 +43,13 @@ def _to_records(spec: TaskSpec, out: dict, source: str, **meta: Any) -> list[dic
     names = set(spec.label_names)
     for ex in out.get("examples", []):
         if spec.task_type == "frame":
-            w, l = ex.get("words") or [], ex.get("labels") or []
-            if w and len(w) == len(l) and all(x in names for x in l) and all(" " not in t for t in w):
-                rows.append(record(" ".join(w), l, source, **meta))
+            w, labs = ex.get("words") or [], ex.get("labels") or []
+            if w and len(w) == len(labs) and all(x in names for x in labs) and all(" " not in t for t in w):
+                rows.append(record(" ".join(w), labs, source, **meta))
         else:
-            t, l = (ex.get("text") or "").strip(), ex.get("label")
-            if t and l in names:
-                rows.append(record(t, l, source, **meta))
+            t, lab = (ex.get("text") or "").strip(), ex.get("label")
+            if t and lab in names:
+                rows.append(record(t, lab, source, **meta))
     return rows
 
 
@@ -85,12 +80,18 @@ def _gen_prompt(spec: TaskSpec, job: dict, adversarial: bool, avoid: list[str]) 
     )
 
 
-def judge(spec: TaskSpec, rows: list[dict], cfg: dict | None = None, concurrency: int = 8, log: Callable[[str], None] = print) -> list[dict]:
-    """Blind second-opinion labels; keep only agreements. Cheap insurance against label noise, which caps precision."""
+def judge(
+    spec: TaskSpec, rows: list[dict], cfg: dict | None = None, concurrency: int = 8, log: Callable[[str], None] = print
+) -> list[dict]:
     if spec.task_type == "frame" or not rows:
         return rows
     llm = get_llm("judge", cfg)
-    schema = {"type": "object", "properties": {"labels": {"type": "array", "items": {"type": "string", "enum": [*spec.label_names, "__drop__"]}}}}
+    schema = {
+        "type": "object",
+        "properties": {
+            "labels": {"type": "array", "items": {"type": "string", "enum": [*spec.label_names, "__drop__"]}}
+        },
+    }
     chunks = [rows[i : i + 40] for i in range(0, len(rows), 40)]
 
     def run(chunk: list[dict]) -> list[dict]:
@@ -99,9 +100,11 @@ def judge(spec: TaskSpec, rows: list[dict], cfg: dict | None = None, concurrency
         labs = out.get("labels", [])
         if len(labs) != len(chunk):
             return []
-        return [r for r, l in zip(chunk, labs) if l == r["label"]]
+        return [r for r, lab in zip(chunk, labs, strict=True) if lab == r["label"]]
 
-    kept = [r for part in pmap(run, chunks, concurrency, on_error=lambda e: log(f"  judge batch failed: {e}")) for r in part]
+    kept = [
+        r for part in pmap(run, chunks, concurrency, on_error=lambda e: log(f"  judge batch failed: {e}")) for r in part
+    ]
     log(f"  judge kept {len(kept)}/{len(rows)} ({len(kept) / max(1, len(rows)):.0%} agreement)")
     return kept
 
@@ -128,43 +131,48 @@ def generate(
     def run(job: dict) -> list[dict]:
         avoid = random.Random(job["seed"]).sample(pool, min(8, len(pool)))
         prompt = job.get("prompt") or _gen_prompt(spec, job, adversarial, avoid)
-        return _to_records(spec, llm.json(system, prompt, schema), f"llm:{llm.name}", split=split, combo=job.get("combo"))
+        return _to_records(
+            spec, llm.json(system, prompt, schema), f"llm:{llm.name}", split=split, combo=job.get("combo")
+        )
 
-    rows = [r for part in pmap(run, jobs, concurrency, on_error=lambda e: log(f"  generation call failed: {e}")) for r in part]
+    rows = [
+        r
+        for part in pmap(run, jobs, concurrency, on_error=lambda e: log(f"  generation call failed: {e}"))
+        for r in part
+    ]
     rows = dedupe(rows, against=against)
     if spec.data.judge:
         rows = judge(spec, rows, cfg, concurrency, log)
     return rows
 
 
-ANALYZE_SYSTEM = """You analyze the errors of a tiny classifier on a dev set and design targeted training data to fix them. \
-Find the systematic failure patterns (not one-off noise). For each, explain the confusion and say precisely what new \
-training examples would teach the boundary. Also flag dev examples whose gold label looks wrong under the definitions."""
+def _pattern_prompt(spec: TaskSpec, p: dict, k: int, combo: dict) -> str:
+    situation = "; ".join(f"{a}={v}" for a, v in combo.items())
+    return (
+        f"{_context(spec)}\n\nThe model systematically fails on this pattern:\n{p['name']}: {p['explanation']}\n\n"
+        f"Write {k} new, varied training examples following this recipe: {p['data_recipe']}\n"
+        f"Situation: {situation}. Include both sides of the boundary, labeled correctly."
+    )
 
 
-def refine_jobs(spec: TaskSpec, errors: list[dict], n: int, cfg: dict | None = None) -> tuple[list[dict], dict]:
-    """Ask the analyst LLM for failure patterns on dev errors, then turn them into generation jobs."""
-    schema = {
-        "type": "object",
-        "properties": {
-            "patterns": {"type": "array", "items": {"type": "object", "properties": {
-                "name": {"type": "string"}, "explanation": {"type": "string"},
-                "data_recipe": {"type": "string"}, "share": {"type": "number"}}}},
-            "suspect_gold_ids": {"type": "array", "items": {"type": "string"}},
-        },
-    }
-    listing = "\n".join(f'[{e["id"]}] gold={e["gold"]} pred={e["pred"]} p={e["confidence"]:.2f}: {str(e["input"])[:300]}' for e in errors[:150])
-    out = get_llm("analyze", cfg).json(ANALYZE_SYSTEM, f"{_context(spec)}\n\nDev errors ({len(errors)} total):\n{listing}", schema)
-    pats = [p for p in out.get("patterns", []) if p.get("data_recipe")]
+def _pattern_jobs(spec: TaskSpec, pats: list[dict], n: int, rng: random.Random) -> list[dict]:
     total = sum(max(0.05, p.get("share", 1)) for p in pats) or 1
     jobs, k = [], spec.data.per_call
-    rng = random.Random(len(errors))
     for p in pats:
         calls = max(1, round(n * max(0.05, p.get("share", 1)) / total / k))
         for _ in range(calls):
             combo = {a.name: rng.choice(a.values) for a in spec.diversity_axes if a.values}
-            jobs.append({"combo": combo, "seed": rng.randint(0, 10**6), "prompt": (
-                f"{_context(spec)}\n\nThe model systematically fails on this pattern:\n{p['name']}: {p['explanation']}\n\n"
-                f"Write {k} new, varied training examples following this recipe: {p['data_recipe']}\n"
-                f"Situation: {'; '.join(f'{a}={v}' for a, v in combo.items())}. Include both sides of the boundary, labeled correctly.")})
-    return jobs, out
+            seed = rng.randint(0, 10**6)
+            jobs.append({"combo": combo, "seed": seed, "prompt": _pattern_prompt(spec, p, k, combo)})
+    return jobs
+
+
+def refine_jobs(spec: TaskSpec, errors: list[dict], n: int, cfg: dict | None = None) -> tuple[list[dict], dict]:
+    listing = "\n".join(
+        f"[{e['id']}] gold={e['gold']} pred={e['pred']} p={e['confidence']:.2f}: {str(e['input'])[:300]}"
+        for e in errors[:150]
+    )
+    prompt = f"{_context(spec)}\n\nDev errors ({len(errors)} total):\n{listing}"
+    out = get_llm("analyze", cfg).json(ANALYZE_SYSTEM, prompt, REFINE_SCHEMA)
+    pats = [p for p in out.get("patterns", []) if p.get("data_recipe")]
+    return _pattern_jobs(spec, pats, n, random.Random(len(errors))), out
