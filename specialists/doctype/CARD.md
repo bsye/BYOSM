@@ -11,14 +11,14 @@ beats DiT-base", not a model that reached DiT's accuracy from less data: it star
 fine-tuned on RVL-CDIP's 320k-document `train` split. That split is disjoint from the `test` documents used here. On the
 800-document calib split the two tie (93.5% vs 93.6%).
 
-**Label noise sets the ceiling.** On 69 of the 3,200 test documents (2.2%) this model, DiT-base and an independent BYOJL
+**Label noise sets the ceiling.** On 69 of the 3,200 test documents (2.2%) this model, DiT-base and an independent BYOSM
 model all agree on the same label, and it is not the given one. In a manual look at a random sample, about half were
 clearly mislabelled (for example an email printout labelled `letter`) and others were genuinely ambiguous
 (`scientific_report` vs `presentation`). Published estimates put RVL-CDIP's label error rate at several percent, so
 accuracy far above ~96-97% on this benchmark would mean fitting the noise.
 
 **Confidence-gated use.** If you need very high precision, act only on confident predictions and route the rest to a
-person. With a confidence threshold fitted on calib, a DiT + BYOJL ensemble answered 59.6% of test documents at 99.6%
+person. With a confidence threshold fitted on calib, a DiT + BYOSM ensemble answered 59.6% of test documents at 99.6%
 accuracy. Measure this on your own documents before relying on it.
 
 **Domain.** RVL-CDIP is 1990s scanned tobacco-industry correspondence at low resolution. Modern born-digital PDFs are
