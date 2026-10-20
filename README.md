@@ -289,6 +289,8 @@ Repos are private unless you pass `--public`. `--dry-run` stages everything unde
 
 ## The training recipe, measured
 
+The Banking77 model trained with this recipe is published as **[huggingface.co/bsye/byosm-intent](https://huggingface.co/bsye/byosm-intent)** (int8 ONNX, 23 MB).
+
 Banking77 (77 intents, official test split, 2,460 items after the calib split), MiniLM-L6 (22M), 3 seeds each, same data:
 
 | recipe | test accuracy (mean ± sd) | vs old |
@@ -347,6 +349,8 @@ the model to its domain), not a claim that v2 is better everywhere. It's also sl
 whose labels use the convention v2 was moved away from.
 
 ## Documents: PDFs and scans, with multimodal fusion
+
+Published: **[huggingface.co/bsye/byosm-doctype](https://huggingface.co/bsye/byosm-doctype)** (v2-ditft, int8 ONNX, 113 MB).
 
 `modality: document` treats a PDF (or a page image) as a list of **pages**. Each page has two views:
 

@@ -19,7 +19,8 @@ from .config import Project
 from .spec import TaskSpec
 
 PIPELINE_TAG = {("audio", "frame"): "voice-activity-detection", ("audio", "classify"): "audio-classification",
-                ("text", "classify"): "text-classification", ("text", "frame"): "token-classification", ("image", "classify"): "image-classification"}
+                ("text", "classify"): "text-classification", ("text", "frame"): "token-classification", ("image", "classify"): "image-classification",
+                ("document", "classify"): "image-classification"}
 TASK_NAME = {"voice-activity-detection": "Voice Activity Detection", "audio-classification": "Audio Classification",
              "text-classification": "Text Classification", "token-classification": "Token Classification", "image-classification": "Image Classification"}
 NC_DATASETS = {"ashraq/esc50": "ESC-50 (CC BY-NC 3.0)"}
