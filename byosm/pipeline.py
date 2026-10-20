@@ -1,14 +1,9 @@
-"""Experiment pipeline:  spec -> data (content-addressed) -> [LeJEPA -> train -> dev] -> (refine)* -> eval suites -> board -> promote
-
-  byosm build vad                  base spec -> next experiment (v1, v2, ...)
-  byosm build vad --exp v3         a specific experiment (e.g. one created by `byosm improve --apply`)
-Eval suites' test splits are never used for training or model selection; promotion is decided on the primary suite.
-"""
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from . import data as data_stage
 from . import evals
@@ -61,7 +56,9 @@ def refine(p: Project, spec: TaskSpec, cfg: dict, exp_dir: Path, data_dir: Path,
     return len(rows)
 
 
-def build(name: str, exp: str | None = None, log: Callable[[str], None] = print, force_data: bool = False) -> dict[str, Any]:
+def build(
+    name: str, exp: str | None = None, log: Callable[[str], None] = print, force_data: bool = False
+) -> dict[str, Any]:
     p = Project(name).ensure()
     cfg = load_config(p.ws)
     exp = exp or next_exp(p)
@@ -91,7 +88,6 @@ def build(name: str, exp: str | None = None, log: Callable[[str], None] = print,
 
 
 def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> dict[str, Any]:
-    """Promote exp if it beats the promoted experiment on the primary suite's calib split (test is only reported)."""
     base = TaskSpec.load(p.spec_path)
     prim = base.primary_suite()
     board = p.board()

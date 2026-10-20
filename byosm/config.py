@@ -1,32 +1,26 @@
-"""Workspace layout and settings (byosm.yaml)."""
 from __future__ import annotations
 
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
+
+if TYPE_CHECKING:
+    from .spec import TaskSpec
 
 CONFIG_NAME = "byosm.yaml"
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    # Every LLM role falls back to `default`. Point any role at any provider:
-    #   anthropic  -> Claude via the official SDK (ANTHROPIC_API_KEY or `ant auth login`)
-    #   openai     -> any OpenAI-compatible endpoint: OpenAI, Ollama, vLLM, LM Studio, OpenRouter...
     "llm": {
         "default": {"provider": "anthropic", "model": "claude-opus-5-5", "effort": "medium"},
-        # Bulk generation is the expensive part; a cheaper/faster model is usually fine.
-        # "generate": {"provider": "openai", "model": "qwen3:14b", "base_url": "http://localhost:11434/v1", "api_key": "ollama"},
-        # Use a *different* model family for the held-out eval set to avoid grading a model on its own generator's quirks.
-        # "eval": {"provider": "openai", "model": "gpt-5", "api_key_env": "OPENAI_API_KEY"},
     },
     "concurrency": 8,
 }
 
 
 def find_workspace(start: Path | None = None) -> Path:
-    """Walk up from `start` looking for byosm.yaml; fall back to cwd."""
     p = (start or Path.cwd()).resolve()
     for d in [p, *p.parents]:
         if (d / CONFIG_NAME).exists():
@@ -51,8 +45,6 @@ def write_default_config(ws: Path) -> Path:
 
 
 class Project:
-    """One specialist's directory: specialists/<name>/{spec.yaml,data/,runs/,state.json}."""
-
     def __init__(self, name: str, ws: Path | None = None):
         self.ws = ws or find_workspace()
         self.name = name
@@ -62,19 +54,11 @@ class Project:
     def spec_path(self) -> Path:
         return self.root / "spec.yaml"
 
-    # Layout:
-    #   spec.yaml                      base spec (what `byosm new` wrote; what you edit)
-    #   data/<data_key>/               datasets, shared by every experiment with the same data plan
-    #   experiments/<exp>/             spec.yaml snapshot, model.pt, meta.json, results/<suite>.json
-    #   evals/<suite>/                 frozen eval suites (calib.jsonl, test.jsonl, media)
-    #   baselines/<baseline>/          cached baseline results per suite
-    #   promoted                       name of the experiment `predict`/`serve`/`export` use
-    def data_dir_for(self, spec) -> Path:  # noqa: ANN001
+    def data_dir_for(self, spec: TaskSpec) -> Path:
         return self.root / "data" / spec.data_key()
 
     @property
     def data_dir(self) -> Path:
-        """Data of the promoted experiment (or of the base spec)."""
         from .spec import TaskSpec
 
         sp = self.best_dir / "spec.yaml"
@@ -87,15 +71,10 @@ class Project:
     def exp_dir(self, exp: str) -> Path:
         return self.runs_dir / exp
 
-    @property
-    def board_path(self) -> Path:
-        return self.root / "board.json"
-
-    def board(self) -> dict:
-        return json.loads(self.board_path.read_text()) if self.board_path.exists() else {}
-
     def experiments(self) -> list[str]:
-        return sorted(p.name for p in self.runs_dir.glob("*") if (p / "meta.json").exists()) if self.runs_dir.exists() else []
+        if not self.runs_dir.exists():
+            return []
+        return sorted(p.name for p in self.runs_dir.glob("*") if (p / "meta.json").exists())
 
     @property
     def promoted(self) -> str | None:
@@ -118,13 +97,20 @@ class Project:
         return self.root / "baselines"
 
     @property
+    def board_path(self) -> Path:
+        return self.root / "board.json"
+
+    def board(self) -> dict[str, Any]:
+        return json.loads(self.board_path.read_text()) if self.board_path.exists() else {}
+
+    @property
     def state_path(self) -> Path:
         return self.root / "state.json"
 
     def exists(self) -> bool:
         return self.spec_path.exists()
 
-    def ensure(self) -> "Project":
+    def ensure(self) -> Project:
         for d in (self.root, self.runs_dir):
             d.mkdir(parents=True, exist_ok=True)
         return self

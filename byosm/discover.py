@@ -1,48 +1,60 @@
-"""Discovery: given a compiled spec, find on the Hugging Face Hub
-  - a public benchmark to be the primary eval suite (its held-out split), and its train split as training data
-  - existing models that solve the same task, as baselines (labels matched to ours by name)
-and add the zero-shot LLM baseline(s). Every choice is returned as a logged decision with its reason.
-"""
 from __future__ import annotations
 
-from .text import normalize
-
 import json
-from typing import Callable
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
 
 from .data import hf_source
 from .llm import get_llm
 from .spec import EvalSuite, HFSource, TaskSpec
+from .text import normalize
 
-TASK_TAG = {("text", "classify"): "text-classification", ("image", "classify"): "image-classification",
-            ("document", "classify"): "image-classification", ("audio", "classify"): "audio-classification",
-            ("audio", "frame"): "voice-activity-detection", ("text", "frame"): "token-classification"}
+TASK_TAG = {
+    ("text", "classify"): "text-classification",
+    ("image", "classify"): "image-classification",
+    ("document", "classify"): "image-classification",
+    ("audio", "classify"): "audio-classification",
+    ("audio", "frame"): "voice-activity-detection",
+    ("text", "frame"): "token-classification",
+}
 
+HELD_OUT_SPLITS = ("test", "validation", "val", "valid")
+
+
+def _model_labels(repo: str) -> set[str] | None:
+    from huggingface_hub import hf_hub_download
+
+    try:
+        cfg = json.loads(Path(hf_hub_download(repo, "config.json")).read_text())
+    except Exception:
+        return None
+    return {normalize(v) for v in (cfg.get("id2label") or {}).values()}
+
+
+def _search_models(q: str, tag: str) -> list[Any]:
+    from huggingface_hub import HfApi
+
+    try:
+        return list(HfApi().list_models(search=q, pipeline_tag=tag, sort="downloads", limit=15))
+    except Exception:
+        return []
 
 
 def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap: float = 0.6) -> list[tuple[str, str]]:
-    """HF models for this task type whose labels cover >= min_overlap of ours. -> [(repo, reason)]"""
-    from huggingface_hub import HfApi, hf_hub_download
-
     tag = TASK_TAG.get((spec.modality, spec.task_type))
     if not tag or spec.task_type != "classify":
         return []
     ours = {normalize(n) for n in spec.label_names}
     seen, found = set(), []
     for q in queries:
-        try:
-            models = list(HfApi().list_models(search=q, pipeline_tag=tag, sort="downloads", limit=15))
-        except Exception:
-            continue
-        for m in models:
+        for m in _search_models(q, tag):
             if m.id in seen:
                 continue
             seen.add(m.id)
-            try:
-                cfg = json.loads(open(hf_hub_download(m.id, "config.json")).read())
-            except Exception:
+            theirs = _model_labels(m.id)
+            if theirs is None:
                 continue
-            theirs = {normalize(v) for v in (cfg.get("id2label") or {}).values()}
             cover = len(ours & theirs) / max(1, len(ours))
             if cover >= min_overlap:
                 dl = getattr(m, "downloads", 0) or 0
@@ -56,24 +68,46 @@ that best matches the task and labels and has a held-out split (test or validati
 none fits. Prefer widely used, established benchmarks."""
 
 
-def benchmark(spec: TaskSpec, queries: list[str], cfg: dict | None, log: Callable[[str], None]) -> tuple[HFSource | None, HFSource | None, str]:
-    """-> (eval source on the held-out split, train source on the train split, reason)"""
+def _pick_benchmark(spec: TaskSpec, hits: list[dict], cfg: dict | None) -> dict[str, Any]:
+    listing = "\n".join(f"- {h['id']} (downloads={h['downloads']}, {', '.join(h['tags'])})" for h in hits)
+    task = f"Task: {spec.summary or spec.description}\nModality: {spec.modality}\nLabels: {spec.label_names}"
+    return get_llm("spec", cfg).json(
+        PICK_BENCH,
+        f"{task}\n\nResults:\n{listing}",
+        {"type": "object", "properties": {"dataset": {"type": "string"}, "why": {"type": "string"}}},
+    )
+
+
+def _split_sources(
+    spec: TaskSpec, src: HFSource, held: str, splits: list[str]
+) -> tuple[HFSource, HFSource | None, str | None]:
+    n_lab = len(spec.labels)
+    ev = src.model_copy(update={"split": held, "sampling": "balanced", "per_label": max(50, 4000 // n_lab)})
+    train_split = next((s for s in ("train",) if s in splits and s != held), None)
+    if not train_split:
+        return ev, None, None
+    per_label = max(100, spec.data.train_size // n_lab)
+    tr = src.model_copy(update={"split": train_split, "sampling": "balanced", "per_label": per_label})
+    return ev, tr, train_split
+
+
+def benchmark(
+    spec: TaskSpec, queries: list[str], cfg: dict | None, log: Callable[[str], None]
+) -> tuple[HFSource | None, HFSource | None, str]:
     from datasets import get_dataset_split_names
 
     hits = hf_source.search(queries)
     if not hits:
         return None, None, "no Hub results for the benchmark queries"
-    listing = "\n".join(f"- {h['id']} (downloads={h['downloads']}, {', '.join(h['tags'])})" for h in hits)
-    out = get_llm("spec", cfg).json(PICK_BENCH, f"Task: {spec.summary or spec.description}\nModality: {spec.modality}\nLabels: {spec.label_names}\n\nResults:\n{listing}",
-                                    {"type": "object", "properties": {"dataset": {"type": "string"}, "why": {"type": "string"}}})
+    out = _pick_benchmark(spec, hits, cfg)
     ds = out.get("dataset", "")
     if ds not in {h["id"] for h in hits}:
         return None, None, "no suitable benchmark among the search results"
     try:
         splits = get_dataset_split_names(ds)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return None, None, f"{ds}: cannot read splits ({type(e).__name__})"
-    held = next((s for s in ("test", "validation", "val", "valid") if s in splits), None)
+    held = next((s for s in HELD_OUT_SPLITS if s in splits), None)
     if not held:
         return None, None, f"{ds} has no held-out split ({splits})"
     tmp = spec.model_copy(deep=True)
@@ -81,47 +115,58 @@ def benchmark(spec: TaskSpec, queries: list[str], cfg: dict | None, log: Callabl
     mapped = hf_source.resolve(tmp, cfg, log)
     if not mapped:
         return None, None, f"{ds}: could not map its columns/labels onto ours"
-    src = mapped[0]
-    n_lab = len(spec.labels)
-    # ~4000 items -> ~800 calib: selection compares models on calib, and ~200 items can't separate a 2-pt difference
-    ev = src.model_copy(update={"split": held, "sampling": "balanced", "per_label": max(50, 4000 // n_lab)})
-    train_split = next((s for s in ("train",) if s in splits and s != held), None)
-    tr = src.model_copy(update={"split": train_split, "sampling": "balanced", "per_label": max(100, spec.data.train_size // n_lab)}) if train_split else None
+    ev, tr, train_split = _split_sources(spec, mapped[0], held, splits)
     return ev, tr, f"{ds}: {out.get('why', '')} (eval on `{held}`" + (f", train on `{train_split}`)" if tr else ")")
 
 
-def discover(spec: TaskSpec, queries: dict[str, list[str]], cfg: dict | None = None, log: Callable[[str], None] = print) -> tuple[TaskSpec, list[dict]]:
-    spec = spec.model_copy(deep=True)
-    decisions: list[dict] = []
-    # Benchmark suite (+ its train split as real training data).
-    if spec.task_type == "classify" and queries.get("benchmark"):
-        try:
-            ev, tr, why = benchmark(spec, queries["benchmark"], cfg, log)
-        except Exception as e:  # noqa: BLE001
-            ev, tr, why = None, None, f"benchmark search failed: {type(e).__name__}: {e}"
-        if ev:
-            for e in spec.evals:
-                e.primary = False
-            spec.evals.append(EvalSuite(name="bench", kind="hf", source=ev, max_items=5000, primary=True))
-            if tr:
-                spec.data.hf_sources.append(tr)
-        decisions.append({"step": "benchmark", "choice": ev.dataset if ev else None, "why": why})
-    # Baselines: the LLM(s) + existing task models.
-    bl = list(spec.baselines)
+def _add_benchmark(
+    spec: TaskSpec, queries: list[str], cfg: dict | None, log: Callable[[str], None], decisions: list[dict]
+) -> None:
+    try:
+        ev, tr, why = benchmark(spec, queries, cfg, log)
+    except Exception as e:
+        ev, tr, why = None, None, f"benchmark search failed: {type(e).__name__}: {e}"
+    if ev:
+        for e in spec.evals:
+            e.primary = False
+        spec.evals.append(EvalSuite(name="bench", kind="hf", source=ev, max_items=5000, primary=True))
+        if tr:
+            spec.data.hf_sources.append(tr)
+    decisions.append({"step": "benchmark", "choice": ev.dataset if ev else None, "why": why})
+
+
+def _default_baselines(spec: TaskSpec, bl: list[str], decisions: list[dict]) -> None:
     if spec.modality in ("text", "document", "image") and spec.task_type == "classify" and "llm" not in bl:
         bl.append("llm")
-        decisions.append({"step": "baseline", "choice": "llm", "why": "the zero-shot LLM is the System-2 bar the specialist must beat"})
+        why = "the zero-shot LLM is the System-2 bar the specialist must beat"
+        decisions.append({"step": "baseline", "choice": "llm", "why": why})
     if spec.modality == "audio" and spec.task_type == "frame":
         for b in ("energy", "silero"):
             if b not in bl:
                 bl.append(b)
-        decisions.append({"step": "baseline", "choice": "energy, silero", "why": "frame-level audio: a sanity floor + LiveKit's VAD"})
+        why = "frame-level audio: a sanity floor + LiveKit's VAD"
+        decisions.append({"step": "baseline", "choice": "energy, silero", "why": why})
+
+
+def _model_baselines(spec: TaskSpec, queries: list[str], bl: list[str], decisions: list[dict]) -> None:
     try:
-        for repo, why in baseline_models(spec, queries.get("baseline") or []):
+        for repo, why in baseline_models(spec, queries):
             if f"hf:{repo}" not in bl:
                 bl.append(f"hf:{repo}")
                 decisions.append({"step": "baseline", "choice": f"hf:{repo}", "why": why})
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         decisions.append({"step": "baseline", "choice": None, "why": f"model search failed: {type(e).__name__}"})
+
+
+def discover(
+    spec: TaskSpec, queries: dict[str, list[str]], cfg: dict | None = None, log: Callable[[str], None] = print
+) -> tuple[TaskSpec, list[dict]]:
+    spec = spec.model_copy(deep=True)
+    decisions: list[dict] = []
+    if spec.task_type == "classify" and queries.get("benchmark"):
+        _add_benchmark(spec, queries["benchmark"], cfg, log, decisions)
+    bl = list(spec.baselines)
+    _default_baselines(spec, bl, decisions)
+    _model_baselines(spec, queries.get("baseline") or [], bl, decisions)
     spec.baselines = bl
     return spec, decisions

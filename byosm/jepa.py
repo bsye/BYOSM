@@ -1,44 +1,61 @@
-"""LeJEPA domain adaptation (Balestriero & LeCun, 2025): multi-view prediction + SIGReg.
-
-Every view's embedding is pulled toward the mean embedding of the global views (prediction term), while SIGReg pushes
-the batch's embedding distribution toward an isotropic Gaussian along random 1-D projections (Epps-Pulley test on the
-characteristic function). No EMA teacher, no stop-gradient, one hyperparameter (lambda). Modality-agnostic: each
-modality plugin only provides `views()`.
-"""
 from __future__ import annotations
 
-import math
 import random
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import torch
 from rich.progress import Progress
 
-from .model import SpecialistModel
+from .model import SpecialistModel, warmup_cosine
 
 
 def sigreg(z: torch.Tensor, num_slices: int = 256, knots: int = 17, t_max: float = 3.0) -> torch.Tensor:
-    """Sketched isotropic-Gaussian regularizer. z: [N, K] embeddings."""
     n, k = z.shape
     a = torch.randn(k, num_slices, device=z.device, dtype=z.dtype)
     a = a / a.norm(dim=0, keepdim=True)
-    s = z @ a  # [N, M]
+    s = z @ a
     t = torch.linspace(-t_max, t_max, knots, device=z.device, dtype=z.dtype)
-    x = s.unsqueeze(-1) * t  # [N, M, K]
+    x = s.unsqueeze(-1) * t
     gauss = torch.exp(-0.5 * t**2)
-    err = (torch.cos(x).mean(0) - gauss) ** 2 + torch.sin(x).mean(0) ** 2  # |ECF - CF_N(0,1)|^2
+    err = (torch.cos(x).mean(0) - gauss) ** 2 + torch.sin(x).mean(0) ** 2
     stat = torch.trapezoid(err * gauss, t, dim=-1) * n
     return stat.mean()
 
 
-def lejepa_loss(model: SpecialistModel, view_batches: list[dict[str, torch.Tensor]], n_global: int, lam: float) -> tuple[torch.Tensor, dict[str, float]]:
-    z = torch.stack([model.embed(vb) for vb in view_batches])  # [V, B, K]
+def lejepa_loss(
+    model: SpecialistModel, view_batches: list[dict[str, torch.Tensor]], n_global: int, lam: float
+) -> tuple[torch.Tensor, dict[str, float]]:
+    z = torch.stack([model.embed(vb) for vb in view_batches])
     centers = z[:n_global].mean(0)
-    pred = (z - centers).pow(2).mean()  # mean over dims: summing makes collapse cheaper than SIGReg's penalty
+    pred = (z - centers).pow(2).mean()
     sig = torch.stack([sigreg(zv) for zv in z]).mean()
     loss = (1 - lam) * pred + lam * sig
-    # Collapse monitor: per-dim std of embeddings across the batch (SIGReg drives it toward 1).
-    return loss, {"pred": float(pred.detach()), "sigreg": float(sig.detach()), "emb_std": float(z.detach().std(1).mean())}
+    return loss, {
+        "pred": float(pred.detach()),
+        "sigreg": float(sig.detach()),
+        "emb_std": float(z.detach().std(1).mean()),
+    }
+
+
+def _view_batches(
+    modality: Any, raws: list[Any], rng: random.Random, device: str
+) -> tuple[list[dict[str, torch.Tensor]], int]:
+    per = [modality.views(r, rng) for r in raws]
+    n_global, n_local = len(per[0][0]), len(per[0][1])
+    view_batches = []
+    for v in range(n_global + n_local):
+        xs = [(glob + loc)[v] for glob, loc in per]
+        inputs, _ = modality.collate(xs)
+        view_batches.append({k: t.to(device) for k, t in inputs.items()})
+    return view_batches, n_global
+
+
+def _log_step(log: Callable[[str], None], step: int, steps: int, loss: float, parts: dict[str, float]) -> None:
+    log(
+        f"  jepa step {step}/{steps} loss={loss:.4f} pred={parts['pred']:.4f} "
+        f"sigreg={parts['sigreg']:.4f} emb_std={parts['emb_std']:.3f}"
+    )
 
 
 def pretrain(
@@ -59,20 +76,13 @@ def pretrain(
     model.to(device).train()
     params = list(model.backbone.parameters()) + list(model.proj.parameters())
     opt = torch.optim.AdamW(params, lr=lr, weight_decay=0.05)
-    sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, (s + 1) / max(1, steps // 10)) * 0.5 * (1 + math.cos(math.pi * s / steps)))
+    sched = warmup_cosine(opt, steps, steps // 10)
     history = []
     bs = min(batch_size, len(unlabeled))
     with Progress(transient=True) as prog:
         task = prog.add_task("LeJEPA pretraining", total=steps)
         for step in range(steps):
-            raws = rng.sample(unlabeled, bs)
-            per = [modality.views(r, rng) for r in raws]
-            n_global, n_local = len(per[0][0]), len(per[0][1])
-            view_batches = []
-            for v in range(n_global + n_local):
-                xs = [(g + l)[v] for g, l in per]
-                inputs, _ = modality.collate(xs)
-                view_batches.append({k: t.to(device) for k, t in inputs.items()})
+            view_batches, n_global = _view_batches(modality, rng.sample(unlabeled, bs), rng, device)
             loss, parts = lejepa_loss(model, view_batches, n_global, lam)
             opt.zero_grad(set_to_none=True)
             loss.backward()
@@ -82,5 +92,5 @@ def pretrain(
             history.append({"step": step, "loss": float(loss), **parts})
             prog.update(task, advance=1, description=f"LeJEPA pretraining loss={float(loss):.3f}")
             if step % max(1, steps // 5) == 0:
-                log(f"  jepa step {step}/{steps} loss={float(loss):.4f} pred={parts['pred']:.4f} sigreg={parts['sigreg']:.4f} emb_std={parts['emb_std']:.3f}")
+                _log_step(log, step, steps, float(loss), parts)
     return history
