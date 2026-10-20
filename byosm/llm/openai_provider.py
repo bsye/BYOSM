@@ -16,6 +16,7 @@ class OpenAICompatLLM:
         api_key_env: str | None = None,
         temperature: float | None = None,
         max_tokens: int = 8000,
+        reasoning_effort: str | None = None,
         **_: Any,
     ):
         import openai
@@ -24,6 +25,7 @@ class OpenAICompatLLM:
         key = api_key or env_key or os.environ.get("OPENAI_API_KEY") or "not-needed"
         self.client = openai.OpenAI(base_url=base_url, api_key=key)
         self.model, self.temperature, self.max_tokens = model, temperature, max_tokens
+        self.reasoning_effort = reasoning_effort
         self.name = f"openai:{model}@{base_url or 'api.openai.com'}"
         self._schema_mode = True
 
@@ -37,6 +39,8 @@ class OpenAICompatLLM:
         kwargs: dict[str, Any] = dict(model=self.model, messages=messages, max_tokens=self.max_tokens)
         if self.temperature is not None:
             kwargs["temperature"] = self.temperature
+        if self.reasoning_effort is not None:
+            kwargs["reasoning_effort"] = self.reasoning_effort
         if self._schema_mode:
             json_schema = {"name": "output", "schema": _strict(schema), "strict": True}
             kwargs["response_format"] = {"type": "json_schema", "json_schema": json_schema}
