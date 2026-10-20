@@ -256,7 +256,7 @@ _SPEC_SCHEMA = {
     },
 }
 
-_SPEC_SYSTEM = """You are the task compiler of byojl, a framework that trains tiny single-purpose perception models \
+_SPEC_SYSTEM = """You are the task compiler of byosm, a framework that trains tiny single-purpose perception models \
 ("System 1" specialists, in the spirit of JEPA/LeJEPA encoders with a small task head). Turn a natural-language request \
 into a precise, unambiguous task specification.
 

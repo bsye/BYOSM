@@ -1,7 +1,7 @@
 """Experiment pipeline:  spec -> data (content-addressed) -> [LeJEPA -> train -> dev] -> (refine)* -> eval suites -> board -> promote
 
-  byojl build vad                  base spec -> next experiment (v1, v2, ...)
-  byojl build vad --exp v3         a specific experiment (e.g. one created by `byojl improve --apply`)
+  byosm build vad                  base spec -> next experiment (v1, v2, ...)
+  byosm build vad --exp v3         a specific experiment (e.g. one created by `byosm improve --apply`)
 Eval suites' test splits are never used for training or model selection; promotion is decided on the primary suite.
 """
 from __future__ import annotations

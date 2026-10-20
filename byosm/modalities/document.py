@@ -95,12 +95,12 @@ def ocr_many(imgs: list[Any], keys: list[str] | None = None) -> list[str]:
 class OCRStore:
     """OCR text, content-addressed: key = hash(page pixels) + engine version. Shared by every specialist and every data
     build (media files get new names when a dataset is rebuilt; their pixels don't), so a page is OCR'd once per machine.
-    Location: $BYOJL_CACHE/ocr (default ~/.cache/byojl/ocr), one small file per page, written atomically."""
+    Location: $BYOSM_CACHE/ocr (default ~/.cache/byosm/ocr), one small file per page, written atomically."""
 
     def __init__(self, root: Path | None = None):
         import os
 
-        base = Path(os.environ.get("BYOJL_CACHE") or Path.home() / ".cache" / "byojl")
+        base = Path(os.environ.get("BYOSM_CACHE") or Path.home() / ".cache" / "byosm")
         self.root = root or base / "ocr"
 
     @cached_property

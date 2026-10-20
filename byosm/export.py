@@ -5,7 +5,7 @@
     stream.onnx       (causal audio only) mel chunk + state -> logits, embedding, new state
     manifest.json     labels, calibrated decision policy, frontend config, metrics, provenance
     tokenizer.json | mel_fb.npy + window.npy
-    byojl_rt.py      the portable runtime (numpy + onnxruntime): load / encode / predict / stream().step / serve
+    byosm_rt.py      the portable runtime (numpy + onnxruntime): load / encode / predict / stream().step / serve
     requirements.txt, README.md
 
 The bundle is verified against the PyTorch model before it is written (max abs diff on real inputs).
@@ -184,14 +184,14 @@ def export(name: str, exp: str | None = None, out: Path | None = None, log: Call
 
     neg = next(i for i in range(len(spec.labels)) if i != spec.pos_index) if len(spec.labels) > 1 else 0
     manifest = {
-        "format": "byojl/1", "name": spec.name, "experiment": exp, "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "format": "byosm/1", "name": spec.name, "experiment": exp, "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "description": spec.description, "modality": spec.modality, "task_type": spec.task_type, "labels": spec.label_names,
         "positive_index": spec.pos_index if (spec.positive_label or len(spec.labels) == 2) else None, "negative_index": neg,
         "frame_hop_ms": spec.frame_hop_ms, "decision": decision, "frontend": frontend, "backbone": spec.backbone,
         "params": sp.meta["params"], "embedding_dim": int(bb.dim), "metrics": metrics,
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
-    shutil.copy(Path(__file__).with_name("rt.py"), out / "byojl_rt.py")
+    shutil.copy(Path(__file__).with_name("rt.py"), out / "byosm_rt.py")
     reqs = ["numpy", "onnxruntime"] + (["tokenizers"] if kind == "text" or (kind == "document" and spec.document.route != "visual") else []) + (["pillow"] if kind in ("image", "document") else []) + (["pypdfium2", "rapidocr_onnxruntime  # OCR for scanned pages"] if kind == "document" else []) + (["soundfile  # only for reading audio files"] if spec.modality == "audio" else [])
     (out / "requirements.txt").write_text("\n".join(reqs) + "\n")
     (out / "README.md").write_text(_readme(manifest, kind))
@@ -218,7 +218,7 @@ def _quantize(out: Path, sp: Specialist, p: Project, base: Any, log: Callable[[s
         calib, _, root = evals.materialize(p, base, suite, log)
         rows = calib[:400]
         mod = get_modality(sp.spec, str(root))
-        rt_spec = importlib.util.spec_from_file_location("byojl_rt", out / "byojl_rt.py")
+        rt_spec = importlib.util.spec_from_file_location("byosm_rt", out / "byosm_rt.py")
         rt = importlib.util.module_from_spec(rt_spec)
         rt_spec.loader.exec_module(rt)
         idx = {n: i for i, n in enumerate(sp.spec.label_names)}
@@ -263,13 +263,13 @@ def _quantize(out: Path, sp: Specialist, p: Project, base: Any, log: Callable[[s
 def _verify(out: Path, sp: Specialist, p: Project, kind: str, log: Callable[[str], None]) -> None:
     import importlib.util
 
-    spec_ = importlib.util.spec_from_file_location("byojl_rt", out / "byojl_rt.py")
+    spec_ = importlib.util.spec_from_file_location("byosm_rt", out / "byosm_rt.py")
     rt = importlib.util.module_from_spec(spec_)
     spec_.loader.exec_module(rt)
     m = rt.load(out)
     rows = Dataset(p.data_dir_for(sp.spec)).load("test")[:5]
     if not rows:
-        raise RuntimeError(f"no test inputs found in data/{sp.spec.data_key()} to verify the export against; run `byojl data {p.name}`")
+        raise RuntimeError(f"no test inputs found in data/{sp.spec.data_key()} to verify the export against; run `byosm data {p.name}`")
     mod = get_modality(sp.spec, str(p.data_dir_for(sp.spec)))
     worst = 0.0
     for r in rows:
@@ -307,7 +307,7 @@ for chunk in mic_chunks():          # any size, float32 mono @ 16 kHz
 ```
 """ if kind == "logmel" else ""
     metrics = "\n".join(f"| {s} | {v['objective']} | {v.get('precision', '')} | {v.get('recall', '')} | {v.get('roc_auc', '')} |" for s, v in m["metrics"].items())
-    return f"""# {m['name']} (byojl specialist, {m['experiment']})
+    return f"""# {m['name']} (byosm specialist, {m['experiment']})
 
 {m['description']}
 
@@ -315,12 +315,12 @@ Labels: {', '.join(m['labels'])} · {m['task_type']} · {m['params'] / 1e6:.2f}M
 
 ```bash
 pip install -r requirements.txt
-python byojl_rt.py predict . <input>
-python byojl_rt.py serve . --port 8800        # POST /v1/{m['name']}/predict  /v1/{m['name']}/encode
+python byosm_rt.py predict . <input>
+python byosm_rt.py serve . --port 8800        # POST /v1/{m['name']}/predict  /v1/{m['name']}/encode
 ```
 
 ```python
-from byojl_rt import load
+from byosm_rt import load
 m = load(".")
 {ex}
 m.encode(x)          # JEPA representation

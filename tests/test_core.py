@@ -7,12 +7,12 @@ import pytest
 import torch
 import yaml
 
-from byojl import llm
-from byojl.data.audio_mix import Mixer, frame_activity
-from byojl.jepa import sigreg
-from byojl.metrics import calibrate, compute
-from byojl.modalities.audio import TinyCRNN
-from byojl.spec import Label, Objective, TaskSpec
+from byosm import llm
+from byosm.data.audio_mix import Mixer, frame_activity
+from byosm.jepa import sigreg
+from byosm.metrics import calibrate, compute
+from byosm.modalities.audio import TinyCRNN
+from byosm.spec import Label, Objective, TaskSpec
 
 TINY_BERT = "hf:google/bert_uncased_L-4_H-256_A-4"
 
@@ -99,17 +99,17 @@ class FakeLLM:
 def ws(tmp_path, monkeypatch):
     llm.register_provider("fake", FakeLLM)
     llm._cache.clear()
-    (tmp_path / "byojl.yaml").write_text(yaml.safe_dump({"llm": {"default": {"provider": "fake"}}, "concurrency": 2}))
+    (tmp_path / "byosm.yaml").write_text(yaml.safe_dump({"llm": {"default": {"provider": "fake"}}, "concurrency": 2}))
     monkeypatch.chdir(tmp_path)
     return tmp_path
 
 
 def test_text_pipeline_end_to_end(ws):
-    from byojl import evals, improve
-    from byojl.config import Project
-    from byojl.export import export
-    from byojl.pipeline import build
-    from byojl.spec import compile_spec
+    from byosm import evals, improve
+    from byosm.config import Project
+    from byosm.export import export
+    from byosm.pipeline import build
+    from byosm.spec import compile_spec
 
     spec = compile_spec("isq", "detect questions")
     spec.data.dev_size, spec.data.per_call = 40, 20
@@ -134,7 +134,7 @@ def test_text_pipeline_end_to_end(ws):
     out = export("isq", log=lambda m: None)
     import importlib.util
 
-    s = importlib.util.spec_from_file_location("byojl_rt", out / "byojl_rt.py")
+    s = importlib.util.spec_from_file_location("byosm_rt", out / "byosm_rt.py")
     rt = importlib.util.module_from_spec(s)
     s.loader.exec_module(rt)
     m = rt.load(out)
@@ -170,11 +170,11 @@ def _make_pdf(path, pages):
 
 
 def test_document_fused_pipeline_and_export(ws):
-    from byojl.config import Project
-    from byojl.data.store import Dataset, record
-    from byojl.export import export
-    from byojl.pipeline import build
-    from byojl.spec import DocumentCfg, EvalSuite, TaskSpec, TrainCfg
+    from byosm.config import Project
+    from byosm.data.store import Dataset, record
+    from byosm.export import export
+    from byosm.pipeline import build
+    from byosm.spec import DocumentCfg, EvalSuite, TaskSpec, TrainCfg
 
     p = Project("doc").ensure()
     spec = TaskSpec(name="doc", description="invoice vs letter", modality="document", backbone="doc",
@@ -203,7 +203,7 @@ def test_document_fused_pipeline_and_export(ws):
     out = export("doc", log=lambda m: None)
     import importlib.util
 
-    s = importlib.util.spec_from_file_location("byojl_rt", out / "byojl_rt.py")
+    s = importlib.util.spec_from_file_location("byosm_rt", out / "byosm_rt.py")
     rt = importlib.util.module_from_spec(s)
     s.loader.exec_module(rt)
     m = rt.load(out)
@@ -220,9 +220,9 @@ def _dg(spec, objective, baseline, curve, best_epoch, losses=None):
 
 
 def test_improve_rules_and_list_paths(monkeypatch):
-    from byojl.data import hf_source
-    from byojl.improve import apply_ops, rule_proposals
-    from byojl.spec import DocumentCfg, HFSource, TrainCfg
+    from byosm.data import hf_source
+    from byosm.improve import apply_ops, rule_proposals
+    from byosm.spec import DocumentCfg, HFSource, TrainCfg
 
     spec = TaskSpec(name="d", description="", modality="document", labels=[Label(name="form", definition=""), Label(name="specification", definition="")],
                     document=DocumentCfg(image_backbone="hf:facebook/dinov2-small"), train=TrainCfg(epochs=8))
@@ -252,7 +252,7 @@ def test_improve_rules_and_list_paths(monkeypatch):
 
 
 def test_paired_bootstrap():
-    from byojl.metrics import bootstrap, units
+    from byosm.metrics import bootstrap, units
 
     spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="a", definition=""), Label(name="b", definition=""), Label(name="c", definition="")],
                     objective=Objective(metric="accuracy"))
@@ -266,15 +266,15 @@ def test_paired_bootstrap():
     ci = bootstrap(spec, a)
     assert ci["lo"] < (good == y).mean() < ci["hi"]
     # frame tasks: units are files (one confusion matrix each); same objective as the flat computation
-    from byojl.metrics import _cms, objective_from_cm
+    from byosm.metrics import _cms, objective_from_cm
     fu = units(3, y, good, groups=[100, 200, 300])
     assert len(fu["cm"]) == 3 and abs(objective_from_cm(spec, _cms(fu, 3).sum(0)) - (good == y).mean()) < 1e-9
 
 
 def test_param_groups_layer_decay():
-    from byojl.modalities import get_modality
-    from byojl.spec import TrainCfg
-    from byojl.train import build_model, param_groups
+    from byosm.modalities import get_modality
+    from byosm.spec import TrainCfg
+    from byosm.train import build_model, param_groups
 
     spec = TaskSpec(name="t", description="", modality="text", backbone=TINY_BERT, labels=[Label(name="a", definition=""), Label(name="b", definition="")],
                     train=TrainCfg(lr_backbone=1e-4, lr_head=1e-3, layer_decay_floor=0.1))
@@ -289,15 +289,15 @@ def test_param_groups_layer_decay():
 
 
 def test_autopilot_end_to_end(ws):
-    from byojl.auto import run
-    from byojl.config import Project
-    from byojl.spec import TaskSpec
+    from byosm.auto import run
+    from byosm.config import Project
+    from byosm.spec import TaskSpec
 
     llm._cache.clear()
     p = Project("auto")
     # keep it fast: compile normally, then shrink the plan before the first build
-    from byojl.discover import discover
-    from byojl.spec import compile_spec
+    from byosm.discover import discover
+    from byosm.spec import compile_spec
 
     spec = compile_spec("auto", "detect questions")
     spec.data.train_size, spec.data.dev_size, spec.data.test_size, spec.data.per_call = 120, 40, 60, 20

@@ -1,4 +1,4 @@
-# BYOJL: Build Your Own JEPA‑Like
+# BYOSM: Build Your Own Specialist Model
 
 **Describe a perception task in one sentence. Get a tiny, measured model that does exactly that task and runs on any
 computer.**
@@ -6,7 +6,7 @@ computer.**
 **One command:**
 
 ```bash
-byojl auto doctype "classify business documents (PDF or scan) into invoice, letter, memo, form, ..." --budget 6h
+byosm auto doctype "classify business documents (PDF or scan) into invoice, letter, memo, form, ..." --budget 6h
 ```
 
 The autopilot compiles the spec, **discovers** a public benchmark and existing models to beat (and always adds the
@@ -15,12 +15,12 @@ zero-shot **LLM** as a baseline), builds experiments until the specialist **beat
 decision and its evidence lands in `specialists/<name>/auto.md`. The same steps can also be run by hand:
 
 ```bash
-byojl new vad "voice activity detection for a voice agent; ignore coughs, laughter and keyboards"
-byojl build vad        # data → self-supervised pretraining → training → evaluation → promotion
-byojl board vad        # how it compares to the alternatives, on real test sets
-byojl improve vad      # what to change next, and why
-byojl export vad       # a 0.4 MB ONNX bundle that needs only numpy + onnxruntime
-byojl publish vad --repo you/byojl-vad    # Hugging Face: bundle + model card with eval, comparison, lineage
+byosm new vad "voice activity detection for a voice agent; ignore coughs, laughter and keyboards"
+byosm build vad        # data → self-supervised pretraining → training → evaluation → promotion
+byosm board vad        # how it compares to the alternatives, on real test sets
+byosm improve vad      # what to change next, and why
+byosm export vad       # a 0.4 MB ONNX bundle that needs only numpy + onnxruntime
+byosm publish vad --repo you/byosm-vad    # Hugging Face: bundle + model card with eval, comparison, lineage
 ```
 
 ---
@@ -28,12 +28,12 @@ byojl publish vad --repo you/byojl-vad    # Hugging Face: bundle + model card wi
 ## Why
 
 Fast, intuitive, *System 1* perception (is someone speaking? did they finish their turn? is this message toxic?) is
-usually handled by one general model, or by a large LLM called for every decision. BYOJL bets the other way: **many small
+usually handled by one general model, or by a large LLM called for every decision. BYOSM bets the other way: **many small
 specialists, each trained for exactly one job on exactly its own data, beat one generalist**. They're more accurate on
 their task, a fraction of the size, and fast enough to run side by side on a laptop CPU.
 
 Each specialist is a small encoder (JEPA‑style: it learns to *represent* its inputs, not to generate them) with a tiny task
-head on top. BYOJL automates everything around that model: defining the task, getting data, training, honest evaluation
+head on top. BYOSM automates everything around that model: defining the task, getting data, training, honest evaluation
 against real competitors, deciding what to fix next, and shipping something you can run anywhere.
 
 ---
@@ -58,13 +58,13 @@ against real competitors, deciding what to fix next, and shipping something you 
         │
    ⑦  IMPROVE     diagnosis → proposed spec edits (with evidence) → new experiment → back to ②
         │
-   ⑧  SHIP        export/: model.onnx + stream.onnx + manifest.json + byojl_rt.py  →  encode / predict / stream / serve
+   ⑧  SHIP        export/: model.onnx + stream.onnx + manifest.json + byosm_rt.py  →  encode / predict / stream / serve
    ⑨  PUBLISH     Hugging Face repo: bundle + generated model card (test eval, baseline comparison, lineage, limitations)
 ```
 
 ### ① Define: the spec
 
-`byojl new <name> "<sentence>"` sends your sentence to an LLM acting as a *task compiler*, which writes
+`byosm new <name> "<sentence>"` sends your sentence to an LLM acting as a *task compiler*, which writes
 `specialists/<name>/spec.yaml`. The spec is the single source of truth, and you're expected to read and edit it:
 
 - **Labels with definitions** that settle borderline cases ("a cough is non‑speech"; "a 40 ms gap between words is
@@ -98,7 +98,7 @@ from another view, rather than reconstructing pixels or samples. That teaches th
 is exactly what a perception model needs. The classic failure mode is **collapse**: every input maps to the same vector,
 which makes prediction trivially perfect.
 
-BYOJL uses **LeJEPA** (Balestriero & LeCun, 2025), which removes the usual anti-collapse tricks (EMA teachers,
+BYOSM uses **LeJEPA** (Balestriero & LeCun, 2025), which removes the usual anti-collapse tricks (EMA teachers,
 stop‑gradients) and replaces them with one principled regulariser:
 
 - Each unlabeled input produces **2 global views** (most of the input) and **4 local views** (small crops), made by the
@@ -108,7 +108,7 @@ stop‑gradients) and replaces them with one principled regulariser:
 - **SIGReg**: the batch's embeddings are projected onto 256 random directions. Along each one, the *empirical
   characteristic function* is compared with a standard Gaussian's (an Epps–Pulley test). Minimising it pushes the
   embedding distribution toward an isotropic Gaussian, which provably can't collapse.
-- `loss = (1 − λ)·prediction + λ·SIGReg` with λ = 0.05. BYOJL logs the embedding spread (`emb_std`) every few steps so
+- `loss = (1 − λ)·prediction + λ·SIGReg` with λ = 0.05. BYOSM logs the embedding spread (`emb_std`) every few steps so
   collapse is visible immediately.
 
 This matters most for backbones trained from scratch (`tiny-crnn`, `tiny-cnn`). Pretrained Hugging Face encoders get a short
@@ -168,9 +168,9 @@ Results are cached by a fingerprint of the suite, so re-scoring is free until so
 
 ### ⑥ Board and promotion
 
-`byojl board <name>` is the leaderboard: experiments × baselines × suites. The experiment with the best objective on the
+`byosm board <name>` is the leaderboard: experiments × baselines × suites. The experiment with the best objective on the
 primary suite's **calib** split is promoted, and promotion decides what `export` and `serve` use. You can override it with
-`byojl promote`.
+`byosm promote`.
 
 Selection never looks at test. Promotion, the autopilot's keep/revert, its stopping rule and the int8 check all decide on
 calib; test is only reported. Otherwise, after ten experiments, the "best" one is partly the one that got lucky on the
@@ -178,7 +178,7 @@ test set.
 
 ### ⑦ Improve
 
-`byojl improve <name>` reads the board and proposes the next experiment as **explicit edits to the spec**, each with the
+`byosm improve <name>` reads the board and proposes the next experiment as **explicit edits to the spec**, each with the
 evidence behind it:
 
 It first prints a diagnosis: per-suite objective, the gap to the best baseline, the dev training curve, the weakest
@@ -198,18 +198,18 @@ labels and the most confused label pairs. Then each rule proposes edits only whe
 | `llm-*` | an LLM is configured (role `analyze`) | its own proposals, given the board, curve and confusions, limited to allowed spec paths |
 
 Edits address list items by index (`data.hf_sources.0.per_label`). Adding a rule means writing one function decorated
-with `@rule` in `byojl/improve.py`.
+with `@rule` in `byosm/improve.py`.
 
 Every proposal comes with an **estimated cost**: ingest time for the new data (OCR is ~0.36 s per new page, zero for pages
 already in the OCR store) plus training time scaled from the last run. The autopilot uses it to skip proposals that don't fit the
 remaining budget.
 
-`byojl improve <name> --apply a,b --run` writes `experiments/vN/spec.yaml` and builds and scores it. Every experiment
+`byosm improve <name> --apply a,b --run` writes `experiments/vN/spec.yaml` and builds and scores it. Every experiment
 records which proposal created it.
 
 ### ⑧ Ship: runs on most computers
 
-`byojl export <name>` writes a self-contained folder that needs **no PyTorch and no GPU**, just
+`byosm export <name>` writes a self-contained folder that needs **no PyTorch and no GPU**, just
 `pip install numpy onnxruntime` (+ `tokenizers` for text, Pillow for images), on macOS, Linux or Windows:
 
 ```
@@ -217,7 +217,7 @@ export/vad/
   model.onnx       inputs → embedding (the learned representation) + logits
   stream.onnx      stateful streaming step (causal audio backbones)
   manifest.json    labels, calibrated decision policy, preprocessing config, metrics per suite, provenance
-  byojl_rt.py      the runtime: one file
+  byosm_rt.py      the runtime: one file
   mel_fb.npy, window.npy | tokenizer.json
 ```
 
@@ -228,7 +228,7 @@ is just the network. Before writing the bundle, export checks it against PyTorch
 **The API is the same for every modality:**
 
 ```python
-from byojl_rt import load
+from byosm_rt import load
 m = load("export/vad")
 
 m.encode(x)        # the representation: [D] pooled, or [T, D] per frame (feed it to probes, retrieval, other heads)
@@ -241,7 +241,7 @@ s.step(chunk)      # {"probs": [...per 10 ms...], "speaking": bool, "events": [{
 **Or as a local HTTP server**, with many specialists in one process:
 
 ```bash
-python export/vad/byojl_rt.py serve export/vad export/eot --port 8800
+python export/vad/byosm_rt.py serve export/vad export/eot --port 8800
 ```
 
 ```
@@ -255,7 +255,7 @@ POST /v1/predict      {...}           → every model's answer at once
 
 ```bash
 huggingface-cli login                      # once
-byojl publish vad --repo you/byojl-vad --license cc-by-nc-4.0 [--public] [--dry-run]
+byosm publish vad --repo you/byosm-vad --license cc-by-nc-4.0 [--public] [--dry-run]
 ```
 
 This pushes the exported bundle plus `spec.yaml`, `board.json` and `lineage.json`, and a **model card generated from the
@@ -268,7 +268,7 @@ project's own artifacts**, so it can't drift from what was measured:
 - **How it was built**: data sources, LeJEPA, training, and the `improve` lineage with the evidence behind each step.
 - **Limitations**, generated automatically: in-domain caveats (trained on a partition of an eval source), non-commercial
   datasets, small suites.
-- **Usage**: `snapshot_download` + `byojl_rt`, streaming, HTTP server.
+- **Usage**: `snapshot_download` + `byosm_rt`, streaming, HTTP server.
 
 Repos are private unless you pass `--public`. `--dry-run` stages everything under `specialists/<name>/hub/` for review.
 
@@ -280,7 +280,7 @@ Repos are private unless you pass `--public`. `--dry-run` stages everything unde
 |---|---|---|
 | define | task, labels, objective, backbone | spec compiler (LLM) from the prompt |
 | discover | primary eval suite | a public benchmark found on the Hub (its held-out split), with its train split as training data |
-| discover | baselines | the zero-shot LLM (`llm`, or `llm:<role>` for each extra LLM in `byojl.yaml`; multimodal for documents and images) + existing Hub models whose labels cover ≥60% of ours |
+| discover | baselines | the zero-shot LLM (`llm`, or `llm:<role>` for each extra LLM in `byosm.yaml`; multimodal for documents and images) + existing Hub models whose labels cover ≥60% of ours |
 | loop | next experiment | among untried `improve` proposals that fit the remaining time budget, the highest prior (domain data/encoder > label convention > more data / new split > regularize, hard pairs > train longer), cheaper first on ties; **one change per round** so every gain is attributable |
 | loop | keep or revert | promoted only if it beats the current best on the primary suite's calib split; it counts as progress only if a paired bootstrap gives P(better) ≥ 0.9 |
 | stop | when | **won** (beats every baseline by `--margin` on calib and meets the target), time or experiment budget, 2 rounds without a significant gain, or nothing left to try |
@@ -306,7 +306,7 @@ why the floor is 0.5 and the probe is off.
 
 ## Distillation
 
-`byojl distill <name> [--teacher exp] --run` trains a tiny student on `α·CE(gold) + (1−α)·T²·KL(teacher ‖ student)`,
+`byosm distill <name> [--teacher exp] --run` trains a tiny student on `α·CE(gold) + (1−α)·T²·KL(teacher ‖ student)`,
 over the training inputs plus up to `distill_unlabeled` extra unlabeled inputs that only the teacher labels. Default
 students are small *pretrained* encoders, which beat from-scratch ones on small data: tiny-BERT (text, 11M), tiny-crnn
 (audio, 0.1M), DeiT-tiny (image, 5.7M), tiny-BERT + DeiT-tiny (document, ~17M).
@@ -320,24 +320,24 @@ On RVL-CDIP the 17.6M document student keeps 97% of its 110M teacher's accuracy 
 
 ## Results: a 0.1M-param VAD vs LiveKit's Silero
 
-Published with `byojl publish`: **[huggingface.co/bsye/byojl-vad](https://huggingface.co/bsye/byojl-vad)** (model card, eval widget, ONNX bundle).
+Published with `byosm publish`: **[huggingface.co/bsye/byosm-vad](https://huggingface.co/bsye/byosm-vad)** (model card, eval widget, ONNX bundle).
 
 Frozen AVA‑Speech suite: 20 real film/TV recordings, ~5 h, labelled by humans, never trained on. Every model goes
 through LiveKit's own hysteresis logic, calibrated on 8 separate recordings, on one CPU thread.
 
 | | params | CPU per chunk | builtin F1 | **AVA F1** | AVA AUC |
 |---|---|---|---|---|---|
-| **BYOJL vad v3** (v2 + new trainer) | **0.10M** | 0.070 ms / 30 ms ¹ | – ² | **0.882** | **0.942** |
-| BYOJL vad v2 | 0.10M | 0.070 ms / 30 ms ¹ | 0.879 | 0.876 | 0.939 |
+| **BYOSM vad v3** (v2 + new trainer) | **0.10M** | 0.070 ms / 30 ms ¹ | – ² | **0.882** | **0.942** |
+| BYOSM vad v2 | 0.10M | 0.070 ms / 30 ms ¹ | 0.879 | 0.876 | 0.939 |
 | Silero (LiveKit) | 0.55M | 0.068 ms / 32 ms | 0.885 | 0.865 | 0.923 |
-| BYOJL vad v1 | 0.10M | 0.070 ms / 30 ms ¹ | 0.894 | 0.849 | 0.900 |
+| BYOSM vad v1 | 0.10M | 0.070 ms / 30 ms ¹ | 0.894 | 0.849 | 0.900 |
 | energy floor | – | – | 0.728 | 0.728 | 0.694 |
 
-¹ the exported ONNX bundle (`byojl board` reports the slower PyTorch timing). ² v3 trains on the builtin test split
+¹ the exported ONNX bundle (`byosm board` reports the slower PyTorch timing). ² v3 trains on the builtin test split
 (`holdout_test: auto`), so it isn't scored there. The published model is v2.
 
 **How v1 became v2.** v1 was trained only on synthetic mixtures (LibriSpeech over ESC‑50) and lost to Silero on real audio.
-`byojl improve` read the board and proposed two changes. `real-data-ava`: the model had never heard film audio, so train
+`byosm improve` read the board and proposed two changes. `real-data-ava`: the model had never heard film audio, so train
 on AVA's train partition (hash-disjoint from the test files). `utterance-labels`: calibration pushed the threshold down to
 0.20, a sign that AVA labels whole utterances while our labels covered only voiced frames. Applying both produced v2: same
 size, same speed, ahead of Silero on real audio.
@@ -351,7 +351,7 @@ whose labels use the convention v2 was moved away from.
 `modality: document` treats a PDF (or a page image) as a list of **pages**. Each page has two views:
 
 - **text**: the PDF's text layer, or OCR for scanned pages (RapidOCR, ONNX). OCR text goes into a content-addressed
-  store (`~/.cache/byojl/ocr`, or `$BYOJL_CACHE`), keyed by a hash of the page's pixels and the OCR version, so a page is
+  store (`~/.cache/byosm/ocr`, or `$BYOSM_CACHE`), keyed by a hash of the page's pixels and the OCR version, so a page is
   OCR'd once per machine, across every specialist and data rebuild. Uncached pages run one single-threaded OCR engine
   per core: 0.26 s/page on an 18-core M5 Max, 7× faster than one engine using all cores.
 - **visual**: the rendered page image
@@ -367,16 +367,16 @@ RVL-CDIP (16 document types), scored on 3,200 documents from the **original test
 | | params | accuracy | CPU/doc | trained on |
 |---|---|---|---|---|
 | DiT-base (`microsoft/dit-base-finetuned-rvlcdip`, baseline) | 85.8M | 94.0% | 37 ms | 320k labelled + 42M unlabelled documents |
-| **BYOJL v2-ditft** (v1 with its visual branch started from DiT-base's fine-tuned weights) | 109.6M | **94.8%** | 46 ms | 34,935 documents, on top of DiT's 320k |
-| BYOJL v1 (r2 + all of the val split, *proposed by `byojl improve`*) | 109.6M | 91.8% | 45 ms | 34,935 documents (val split + builtin test) |
-| BYOJL r2 (fused-dit + new trainer + builtin test folded in) | 109.6M | 90.5% | 48 ms | 11,520 documents |
-| BYOJL fused-dit (MiniLM text + DiT-base visual, *proposed by `byojl improve`*) | 109.6M | 88.4% | 47 ms | 9,600 documents |
-| BYOJL distill-r2 (tiny-BERT + DeiT-tiny student of r2) | 17.6M | 88.2% | 11 ms | same as r2 + r2's soft labels |
-| BYOJL fused (MiniLM text + DINOv2-small visual) | 45.7M | 80.1% | 24 ms | 2,400 documents |
-| BYOJL text (OCR → MiniLM) | 23.4M | 74.1% | 7 ms | same |
-| BYOJL visual (DINOv2-small) | 22.8M | 64.5% | 19 ms | same |
+| **BYOSM v2-ditft** (v1 with its visual branch started from DiT-base's fine-tuned weights) | 109.6M | **94.8%** | 46 ms | 34,935 documents, on top of DiT's 320k |
+| BYOSM v1 (r2 + all of the val split, *proposed by `byosm improve`*) | 109.6M | 91.8% | 45 ms | 34,935 documents (val split + builtin test) |
+| BYOSM r2 (fused-dit + new trainer + builtin test folded in) | 109.6M | 90.5% | 48 ms | 11,520 documents |
+| BYOSM fused-dit (MiniLM text + DiT-base visual, *proposed by `byosm improve`*) | 109.6M | 88.4% | 47 ms | 9,600 documents |
+| BYOSM distill-r2 (tiny-BERT + DeiT-tiny student of r2) | 17.6M | 88.2% | 11 ms | same as r2 + r2's soft labels |
+| BYOSM fused (MiniLM text + DINOv2-small visual) | 45.7M | 80.1% | 24 ms | 2,400 documents |
+| BYOSM text (OCR → MiniLM) | 23.4M | 74.1% | 7 ms | same |
+| BYOSM visual (DINOv2-small) | 22.8M | 64.5% | 19 ms | same |
 
-`fused` → `fused-dit` applied three proposals from `byojl improve`: 4× data, a document-pretrained visual encoder
+`fused` → `fused-dit` applied three proposals from `byosm improve`: 4× data, a document-pretrained visual encoder
 (`microsoft/dit-base`, self-supervised on unlabelled scans) and longer training. The new trainer (EMA, layer decay,
 fp16) and folding in the builtin test split gave r2; `more-data` (every val document, ~2,400 per type) gave v1. The gap
 to DiT went 14 → 6 → 3.5 → **2.2 points**, with 9× fewer labelled documents than DiT was fine-tuned on.
@@ -396,15 +396,15 @@ Fusion adds 6 points over the best single view, because the views fail on differ
 
 The first, 768-document version of this suite had a 192-document calib part, on which v1 and r2 tied exactly despite a
 2-point test gap: too small to select on. Benchmark suites now default to ~4,000 items (~800 calib). The next step
-`byojl improve` proposes is `new-split`: the val split is used up, and RVL-CDIP's 320k-document `train` split is unused.
+`byosm improve` proposes is `new-split`: the val split is used up, and RVL-CDIP's 320k-document `train` split is unused.
 A clean, born-digital invoice PDF is also out of distribution for a
 model trained on 1990s scans (it predicted `budget` 0.73 / `invoice` 0.27); add an eval suite of your own PDFs to see
 that gap on the board.
 
 ```bash
-byojl exp create doctype fused --set document.route=fused     # ablations are one line each
-byojl build doctype --exp fused
-python specialists/doctype/export/byojl_rt.py predict specialists/doctype/export invoice.pdf
+byosm exp create doctype fused --set document.route=fused     # ablations are one line each
+byosm build doctype --exp fused
+python specialists/doctype/export/byosm_rt.py predict specialists/doctype/export invoice.pdf
 curl -X POST localhost:8800/v1/doctype/predict -d '{"pdf_b64": "..."}'
 ```
 
@@ -413,25 +413,25 @@ curl -X POST localhost:8800/v1/doctype/predict -d '{"pdf_b64": "..."}'
 ## Quickstart
 
 ```bash
-git clone https://github.com/bsye/BYOJL && cd BYOJL
+git clone https://github.com/bsye/BYOSM && cd BYOSM
 python3.11 -m venv .venv && .venv/bin/pip install -e '.[dev,silero]'
-byojl init                                   # writes byojl.yaml: which LLM to use for each role
-byojl new eot "decide if a voice-agent user finished their turn or is mid-thought; en/es/it"
-byojl build eot
-byojl board eot
-byojl export eot && python specialists/eot/export/byojl_rt.py predict specialists/eot/export "so what I wanted to ask was"
+byosm init                                   # writes byosm.yaml: which LLM to use for each role
+byosm new eot "decide if a voice-agent user finished their turn or is mid-thought; en/es/it"
+byosm build eot
+byosm board eot
+byosm export eot && python specialists/eot/export/byosm_rt.py predict specialists/eot/export "so what I wanted to ask was"
 ```
 
 The VAD example is reproducible without any LLM. `specialists/vad/spec.yaml` lists every data source explicitly:
 
 ```bash
-byojl build vad && byojl board vad
+byosm build vad && byosm board vad
 ```
 
 ### LLMs: any provider, per role
 
 An LLM is only used to compile specs, write and label text data, analyse errors, and serve as the `llm` baseline. Each role
-is configured in `byojl.yaml`:
+is configured in `byosm.yaml`:
 
 ```yaml
 llm:
@@ -442,40 +442,40 @@ llm:
 ```
 
 `provider: openai` means any OpenAI-compatible server: OpenAI, Ollama, vLLM, LM Studio, OpenRouter… You can register
-anything else with `byojl.llm.register_provider(name, factory)`.
+anything else with `byosm.llm.register_provider(name, factory)`.
 
 ### Commands
 
 | | |
 |---|---|
-| `byojl auto <name> "<task>" [--budget 6] [--margin 0] [--publish repo]` | **everything, decided automatically** |
-| `byojl new <name> "<task>"` | compile a spec from a sentence |
-| `byojl suite add <name> <suite> --hf <id> [--format segment_files] [--primary]` | add a frozen eval suite |
-| `byojl baseline add <name> silero\|energy\|llm` | add a competitor |
-| `byojl build <name> [--exp vN]` | data → pretrain → train → evaluate → promote |
-| `byojl eval <name>` · `byojl board <name> [--detail]` | score and compare |
-| `byojl improve <name> [--apply ids --run]` | diagnose, propose, run the next experiment |
-| `byojl promote <name> <exp>` | choose what ships |
-| `byojl distill <name> [--teacher exp] [--run]` | shrink a teacher into a tiny student |
-| `byojl export <name>` · `byojl serve <names…>` · `byojl predict <name> <input>` | ship and run |
-| `byojl publish <name> --repo <id> [--public] [--dry-run]` | push to Hugging Face with a generated model card |
-| `byojl bench <a> <b> …` | the thesis test: N specialists vs one shared-backbone generalist on the same data |
+| `byosm auto <name> "<task>" [--budget 6] [--margin 0] [--publish repo]` | **everything, decided automatically** |
+| `byosm new <name> "<task>"` | compile a spec from a sentence |
+| `byosm suite add <name> <suite> --hf <id> [--format segment_files] [--primary]` | add a frozen eval suite |
+| `byosm baseline add <name> silero\|energy\|llm` | add a competitor |
+| `byosm build <name> [--exp vN]` | data → pretrain → train → evaluate → promote |
+| `byosm eval <name>` · `byosm board <name> [--detail]` | score and compare |
+| `byosm improve <name> [--apply ids --run]` | diagnose, propose, run the next experiment |
+| `byosm promote <name> <exp>` | choose what ships |
+| `byosm distill <name> [--teacher exp] [--run]` | shrink a teacher into a tiny student |
+| `byosm export <name>` · `byosm serve <names…>` · `byosm predict <name> <input>` | ship and run |
+| `byosm publish <name> --repo <id> [--public] [--dry-run]` | push to Hugging Face with a generated model card |
+| `byosm bench <a> <b> …` | the thesis test: N specialists vs one shared-backbone generalist on the same data |
 
 ---
 
 ## Extending
 
-- **New modality**: one file in `byojl/modalities/` implementing `load`, `build_backbone`, `collate`, `views` (the JEPA
+- **New modality**: one file in `byosm/modalities/` implementing `load`, `build_backbone`, `collate`, `views` (the JEPA
   augmentations) and `example_input`, decorated with `@register`. Training, LeJEPA, evaluation and export are all
   modality-agnostic.
-- **New baseline**: subclass `Predictor` in `byojl/predictors.py` with `@register_baseline("name")`, or use any
+- **New baseline**: subclass `Predictor` in `byosm/predictors.py` with `@register_baseline("name")`, or use any
   Hugging Face classifier directly as `hf:<repo>` (its labels are matched to yours by name).
 - **New LLM provider**: `register_provider`.
 
 ## Layout
 
 ```
-byojl/
+byosm/
   spec.py          TaskSpec, spec compiler, backbone catalog
   llm.py           provider-agnostic structured-JSON LLM calls
   data/            synth_text · hf_source · audio_mix · segments · store (dedupe, leakage control)
@@ -488,7 +488,7 @@ byojl/
   improve.py       diagnosis and proposals
   pipeline.py      experiment pipeline
   export.py        ONNX bundle + parity check
-  rt.py            portable runtime (copied into every bundle as byojl_rt.py)
+  rt.py            portable runtime (copied into every bundle as byosm_rt.py)
   auto.py          autopilot: define → discover → experiment loop → distill → ship
   discover.py      benchmark + baseline discovery on the Hub
   distill.py       teacher → tiny student
@@ -505,4 +505,4 @@ licences before shipping a model commercially.
 
 Working end to end: audio (the VAD above), documents (RVL-CDIP above, 94.8%, ahead of DiT-base on test), and text on a real benchmark (Banking77, 93.4%
 with a 22M encoder). The autopilot's LLM-driven steps (spec compiling, synthetic data, the `llm` baseline) are tested with
-a stub; a real `byojl auto` run and the `bench` thesis experiment need an LLM key or a local model.
+a stub; a real `byosm auto` run and the `bench` thesis experiment need an LLM key or a local model.

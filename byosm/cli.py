@@ -1,15 +1,15 @@
-"""byojl - tiny System-1 specialists, from a sentence to a local model.
+"""byosm - tiny System-1 specialists, from a sentence to a local model.
 
-  auto       byojl auto doctype "classify business documents into invoice, letter, ..."   -> everything below, decided automatically
-  define     byojl new vad "voice activity detection for a voice agent..."      -> spec.yaml (labels, objective, data plan)
-             byojl suite add vad ava --hf nccratliri/vad-human-ava-speech --format segment_files
-             byojl baseline add vad silero
-  train      byojl build vad                     -> data (cached) -> LeJEPA -> train -> eval every suite -> promote
-  compare    byojl board vad                     -> experiments vs baselines on every suite
-  improve    byojl improve vad                   -> diagnoses + proposals;  --apply a,b --run  -> next experiment
-  ship       byojl export vad                    -> export/vad: ONNX + manifest + byojl_rt.py (numpy+onnxruntime only)
-             byojl publish vad --repo you/byojl-vad   -> Hugging Face: bundle + model card (eval, comparison, lineage)
-             byojl serve vad eot --port 8800     -> local HTTP API over exported bundles
+  auto       byosm auto doctype "classify business documents into invoice, letter, ..."   -> everything below, decided automatically
+  define     byosm new vad "voice activity detection for a voice agent..."      -> spec.yaml (labels, objective, data plan)
+             byosm suite add vad ava --hf nccratliri/vad-human-ava-speech --format segment_files
+             byosm baseline add vad silero
+  train      byosm build vad                     -> data (cached) -> LeJEPA -> train -> eval every suite -> promote
+  compare    byosm board vad                     -> experiments vs baselines on every suite
+  improve    byosm improve vad                   -> diagnoses + proposals;  --apply a,b --run  -> next experiment
+  ship       byosm export vad                    -> export/vad: ONNX + manifest + byosm_rt.py (numpy+onnxruntime only)
+             byosm publish vad --repo you/byosm-vad   -> Hugging Face: bundle + model card (eval, comparison, lineage)
+             byosm serve vad eot --port 8800     -> local HTTP API over exported bundles
 """
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ def _spec(name: str):  # noqa: ANN202
 
 @app.command()
 def init() -> None:
-    """Create byojl.yaml (LLM providers per role) in the current directory."""
+    """Create byosm.yaml (LLM providers per role) in the current directory."""
     log(f"wrote {write_default_config(Path.cwd())} - set providers/models per role: spec, generate, judge, eval, analyze, baseline")
 
 
@@ -70,7 +70,7 @@ def new(name: str, description: str, modality: Optional[str] = typer.Option(None
     p.ensure()
     spec.save(p.spec_path)
     _show_spec(spec)
-    log(f"\nspec: {p.spec_path}\nnext: review it, optionally `byojl suite add {name} ...`, then `byojl build {name}`")
+    log(f"\nspec: {p.spec_path}\nnext: review it, optionally `byosm suite add {name} ...`, then `byosm build {name}`")
 
 
 def _show_spec(spec) -> None:  # noqa: ANN001
@@ -126,7 +126,7 @@ def suite_add(
             e.primary = False
     spec.evals.append(es)
     spec.save(p.spec_path)
-    log(f"added suite {suite} to {name}; it is materialized and frozen on the next `byojl eval {name}`")
+    log(f"added suite {suite} to {name}; it is materialized and frozen on the next `byosm eval {name}`")
 
 
 @suite_app.command("ls")
@@ -137,7 +137,7 @@ def suite_ls(name: str) -> None:
 
 @baseline_app.command("add")
 def baseline_add(name: str, baseline: str) -> None:
-    """Add a baseline (see `byojl baseline available`)."""
+    """Add a baseline (see `byosm baseline available`)."""
     from .predictors import BASELINES
 
     p, spec = _spec(name)
@@ -242,7 +242,7 @@ app.add_typer(exp_app, name="exp")
 @exp_app.command("create")
 def exp_create(name: str, exp: str, set_: list[str] = typer.Option(..., "--set", help="path=value (YAML value), e.g. document.route=visual"),
                base: Optional[str] = typer.Option(None, help="start from this experiment's spec (default: base spec.yaml)")) -> None:
-    """e.g. byojl exp create doctype visual --set document.route=visual"""
+    """e.g. byosm exp create doctype visual --set document.route=visual"""
     import yaml
 
     from .improve import apply_ops
@@ -260,7 +260,7 @@ def exp_create(name: str, exp: str, set_: list[str] = typer.Option(..., "--set",
     d.mkdir(parents=True, exist_ok=True)
     new.save(d / "spec.yaml")
     (d / "proposal.json").write_text(json.dumps({"parent": base or "spec.yaml", "applied": [{"id": "manual", "why": " ".join(set_), "ops": ops}]}, indent=2))
-    log(f"created {name}/{exp} ({', '.join(set_)}); data key {new.data_key()} -> byojl build {name} --exp {exp}")
+    log(f"created {name}/{exp} ({', '.join(set_)}); data key {new.data_key()} -> byosm build {name} --exp {exp}")
 
 
 @app.command()
@@ -285,7 +285,7 @@ def improve(name: str, apply: Optional[str] = typer.Option(None, help="comma-sep
         if run:
             build(name, exp)
         else:
-            log(f"next: byojl build {name} --exp {exp}")
+            log(f"next: byosm build {name} --exp {exp}")
         return
     dg, props = imp.propose(name, not no_llm, log)
     log(f"diagnosis of {dg['experiment']} ({dg['n_train']} train examples; dev curve {', '.join(f'{c:.2f}' for c in dg['curve'])}; best epoch {dg['best_epoch'] + 1}):")
@@ -309,7 +309,7 @@ def improve(name: str, apply: Optional[str] = typer.Option(None, help="comma-sep
         c = pr.get("cost") or {}
         if c.get("minutes") == c.get("minutes") and c.get("minutes") is not None:
             log(f"    est. cost ~{c['minutes']:.0f} min" + (f" ({c['new_items']} new items to ingest)" if c.get("new_items") else ""))
-    log(f"\napply: byojl improve {name} --apply {','.join(p['id'] for p in props)} --run")
+    log(f"\napply: byosm improve {name} --apply {','.join(p['id'] for p in props)} --run")
 
 
 @app.command()
@@ -347,7 +347,7 @@ def distill(name: str, teacher: Optional[str] = typer.Option(None, help="teacher
     if run:
         build(name, exp)
     else:
-        log(f"next: byojl build {name} --exp {exp}")
+        log(f"next: byosm build {name} --exp {exp}")
 
 
 # --------------------------------------------------------------------------------------------- ship
@@ -356,17 +356,17 @@ def distill(name: str, teacher: Optional[str] = typer.Option(None, help="teacher
 @app.command()
 def export(name: str, exp: Optional[str] = None, out: Optional[Path] = None,
            precision: str = typer.Option("auto", help="auto (int8 if it costs <= 0.5 pt on calib) | int8 | fp32")) -> None:
-    """Export to a torch-free bundle: ONNX + manifest + byojl_rt.py (encode / predict / stream().step / serve)."""
+    """Export to a torch-free bundle: ONNX + manifest + byosm_rt.py (encode / predict / stream().step / serve)."""
     from .export import export as run
 
     d = run(name, exp, out, log, precision)
-    log(f"exported to {d}\n  python {d / 'byojl_rt.py'} predict {d} <input>\n  python {d / 'byojl_rt.py'} serve {d}")
+    log(f"exported to {d}\n  python {d / 'byosm_rt.py'} predict {d} <input>\n  python {d / 'byosm_rt.py'} serve {d}")
 
 
 @app.command()
 def publish(
     name: str,
-    repo: str = typer.Option(..., help="Hugging Face repo id, e.g. you/byojl-vad"),
+    repo: str = typer.Option(..., help="Hugging Face repo id, e.g. you/byosm-vad"),
     license: str = typer.Option("other", help="model licence for the card (check your training data's licences)"),
     public: bool = typer.Option(False, "--public", help="create the repo public (default: private)"),
     dry_run: bool = typer.Option(False, "--dry-run", help="stage files + model card locally, upload nothing"),
@@ -386,7 +386,7 @@ def predict(name: str, input: str) -> None:
 
     p, _ = _spec(name)
     if not (p.root / "export" / "manifest.json").exists():
-        raise typer.BadParameter(f"export first: byojl export {name}")
+        raise typer.BadParameter(f"export first: byosm export {name}")
     rt._main(["predict", str(p.root / "export"), input])
 
 

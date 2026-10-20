@@ -1,7 +1,7 @@
-"""byojl VAD specialist vs LiveKit's VAD (Silero, the exact ONNX bundled in livekit-plugins-silero).
+"""byosm VAD specialist vs LiveKit's VAD (Silero, the exact ONNX bundled in livekit-plugins-silero).
 
 Two test sets:
-  synthetic  our held-out mixed test set (home turf for byojl: same mixer as its training data)
+  synthetic  our held-out mixed test set (home turf for byosm: same mixer as its training data)
   ava        AVA-Speech, real film/TV audio with human utterance labels; neither model trained on it
 
 Two views of each model:
@@ -26,9 +26,9 @@ import soundfile as sf
 import torch
 from sklearn.metrics import average_precision_score, roc_auc_score
 
-from byojl.config import Project
-from byojl.data.store import Dataset
-from byojl.runtime import Specialist
+from byosm.config import Project
+from byosm.data.store import Dataset
+from byosm.runtime import Specialist
 
 SR, HOP = 16000, 160
 
@@ -85,7 +85,7 @@ class Ours:
 
     def __init__(self, name: str = "vad") -> None:
         self.sp = Specialist.from_project(name, "cpu")
-        self.name = f"byojl {name} ({self.sp.spec.backbone})"
+        self.name = f"byosm {name} ({self.sp.spec.backbone})"
         self.pos = self.sp.spec.label_names.index(self.sp.spec.positive_label)
         self.bb = self.sp.model.backbone
         self.head = next(iter(self.sp.model.heads.values()))

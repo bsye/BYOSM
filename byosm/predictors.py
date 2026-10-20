@@ -137,7 +137,7 @@ def register_baseline(name: str) -> Callable[[type[Predictor]], type[Predictor]]
 def get_baseline(name: str, spec: TaskSpec) -> Predictor:
     if name.startswith("hf:"):
         return HFClassifier(spec, name[3:])
-    if name.startswith("llm:"):  # another LLM role from byojl.yaml, e.g. llm:gpt -> llm.gpt
+    if name.startswith("llm:"):  # another LLM role from byosm.yaml, e.g. llm:gpt -> llm.gpt
         return ZeroShotLLM(spec, role=name[4:])
     if name not in BASELINES:
         raise KeyError(f"unknown baseline {name!r}; available: {sorted(BASELINES)}")
@@ -206,7 +206,7 @@ class EnergyVAD(Predictor):
 
 @register_baseline("llm")
 class ZeroShotLLM(Predictor):
-    """The LLM itself, zero-shot, given the label definitions (role `baseline` in byojl.yaml): the System-2 bar.
+    """The LLM itself, zero-shot, given the label definitions (role `baseline` in byosm.yaml): the System-2 bar.
     Text: the input. Documents: each page as a readable image (~1000px) + its text layer / OCR. Images: the image."""
 
     modalities, task_types = ("text", "document", "image"), ("classify",)

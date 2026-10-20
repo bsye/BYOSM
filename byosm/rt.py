@@ -1,4 +1,4 @@
-"""byojl portable runtime. Depends only on numpy + onnxruntime (+ `tokenizers` for text, Pillow for images).
+"""byosm portable runtime. Depends only on numpy + onnxruntime (+ `tokenizers` for text, Pillow for images).
 
 This single file is copied into every exported bundle, so a specialist runs on any machine with:
     pip install onnxruntime numpy
@@ -12,8 +12,8 @@ API (JEPA-style split of representation and readout, same for every modality):
     serve([m1, m2], port=8800)   # POST /v1/<name>/predict | /v1/<name>/encode ; GET /v1/models
 
 CLI:
-    python byojl_rt.py predict export/vad clip.wav
-    python byojl_rt.py serve export/vad export/eot --port 8800
+    python byosm_rt.py predict export/vad clip.wav
+    python byosm_rt.py serve export/vad export/eot --port 8800
 """
 from __future__ import annotations
 
@@ -374,14 +374,14 @@ def serve(models: list[Specialist], host: str = "127.0.0.1", port: int = 8800) -
             except Exception as e:  # noqa: BLE001
                 self._send(400, {"error": f"{type(e).__name__}: {e}"})
 
-    print(f"byojl runtime: serving {', '.join(by_name)} on http://{host}:{port}")
+    print(f"byosm runtime: serving {', '.join(by_name)} on http://{host}:{port}")
     ThreadingHTTPServer((host, port), H).serve_forever()
 
 
 def _main(argv: list[str]) -> None:
     import argparse
 
-    ap = argparse.ArgumentParser(prog="byojl_rt")
+    ap = argparse.ArgumentParser(prog="byosm_rt")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("predict")
     p.add_argument("model")

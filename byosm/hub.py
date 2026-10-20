@@ -46,7 +46,7 @@ def _suite_dataset(spec: TaskSpec, suite: str) -> tuple[str, str]:
     s = next(e for e in spec.evals if e.name == suite)
     if s.kind == "hf" and s.source:
         return s.source.dataset, s.source.dataset
-    return f"{spec.name}-{suite}", f"byojl/{spec.name}-{suite}"
+    return f"{spec.name}-{suite}", f"byosm/{spec.name}-{suite}"
 
 
 def model_card(name: str, repo_id: str, license: str) -> str:
@@ -69,19 +69,24 @@ def model_card(name: str, repo_id: str, license: str) -> str:
         mm = r["metrics"]
         metrics = [{"type": base.objective.metric, "value": round(r["objective"], 4), "name": f"{base.objective.metric} ({base.decision.kind} decision, calibrated)"}]
         metrics += [{"type": k, "value": round(mm[k], 4), "name": k} for k in ("precision", "recall", "roc_auc", "avg_precision") if mm.get(k) is not None]
-        results.append({"task": {"type": tag, "name": TASK_NAME.get(tag, tag)}, "dataset": {"name": ds_name, "type": ds_type, "split": "test" if suite != "builtin" else "byojl-heldout"}, "metrics": metrics})
-    front = {"license": license, "library_name": "onnx", "pipeline_tag": tag, "tags": ["byojl", "jepa", "lejepa", "onnx", "system-1", spec.modality, spec.backbone],
+        results.append({"task": {"type": tag, "name": TASK_NAME.get(tag, tag)}, "dataset": {"name": ds_name, "type": ds_type, "split": "test" if suite != "builtin" else "byosm-heldout"}, "metrics": metrics})
+    encoders = [b[3:] for b in ((spec.document.text_backbone, spec.document.image_backbone) if spec.modality == "document" else (spec.backbone,)) if b.startswith("hf:")]
+    jepa = spec.train.pretrain_steps > 0
+    tags = ["byosm", "onnx", "system-1", spec.modality] + (["jepa", "lejepa"] if jepa else []) + encoders
+    front = {"license": license, "library_name": "onnx", "pipeline_tag": tag, "tags": tags,
              "datasets": [d for d in datasets], "model-index": [{"name": repo_id.split("/")[-1], "results": results}]}
 
     # ---- comparison table: every predictor on every suite
     suites = [e.name for e in base.evals]
-    rows = sorted(board.items(), key=lambda kv: -(kv[1].get(prim, {}).get("objective") or -1))
+    line_ids = {st["exp"] for st in _lineage(p, exp)}
+    rows = sorted(((pid, by) for pid, by in board.items() if pid == exp or pid in line_ids or next(iter(by.values()))["kind"] != "experiment"),
+                  key=lambda kv: -(kv[1].get(prim, {}).get("objective") or -1))
     head = "| model | params | " + " | ".join(f"{s} {base.objective.metric}" + (" (primary)" if s == prim else "") for s in suites) + " | " + " | ".join(f"{s} ROC-AUC" for s in suites) + " |"
     sep = "|" + "---|" * (2 + 2 * len(suites))
     lines = [head, sep]
     for pid, by in rows:
         kind = next(iter(by.values()))["kind"]
-        label = f"**{pid} (this model)**" if pid == exp else (f"{pid} (BYOJL experiment)" if kind == "experiment" else f"{pid} (baseline)")
+        label = f"**{pid} (this model)**" if pid == exp else (f"{pid} (BYOSM experiment)" if kind == "experiment" else f"{pid} (baseline)")
         params = next(iter(by.values())).get("params")
         cells = [label, f"{params / 1e6:.2f}M" if params else "–"]
         cells += [f"**{_f(by[s]['objective'])}**" if pid == exp and s in by else _f(by.get(s, {}).get("objective")) for s in suites]
@@ -128,23 +133,44 @@ for chunk in mic_chunks():         # float32 mono, any size
 ```
 """ if (p.root / "export" / "stream.onnx").exists() else ""
     example = {"audio": 'import soundfile as sf\nwav, sr = sf.read("clip.wav", dtype="float32")   # 16 kHz mono\nprint(m.predict(wav)["segments"])',
-               "text": 'print(m.predict("so what I wanted to ask was"))', "image": 'print(m.predict("photo.jpg"))'}[spec.modality]
+               "text": 'print(m.predict("so what I wanted to ask was"))', "image": 'print(m.predict("photo.jpg"))',
+               "document": 'print(m.predict("invoice.pdf"))       # PDF or page image; scans are OCR\'d'}[spec.modality]
+    reqs = [l.split("#")[0].strip() for l in (p.root / "export" / "requirements.txt").read_text().splitlines()] if (p.root / "export" / "requirements.txt").exists() else ["numpy", "onnxruntime"]
+    pip = " ".join(["huggingface_hub"] + [r for r in reqs if r])
+    built = (f"a JEPA-style encoder pretrained with LeJEPA and trained only for this task" if jepa else
+             f"fine-tuned from {' + '.join(f'[`{e}`](https://huggingface.co/{e})' for e in encoders)} for this task only" if encoders else "trained only for this task")
+    notes_f = p.root / "CARD.md"
+    notes = f"\n## Notes\n\n{notes_f.read_text().strip()}\n" if notes_f.exists() else ""
+    tc = spec.train
+    recipe = ", ".join(x for x in [f"layer-wise LR decay on pretrained encoders (floor {tc.layer_decay_floor:g})" if encoders else "",
+                                   "EMA of the weights" if tc.ema else "", ("mixed precision" if tc.precision == "auto" else f"{tc.precision} precision") if tc.precision != "fp32" else "",
+                                   "the benchmark's builtin test split folded into training" if meta.get("n_test_folded") else ""] if x)
+    n0 = 3
+    steps = ""
+    if jepa:
+        steps += (f"3. **LeJEPA pretraining** ({tc.pretrain_steps} steps): multi-view prediction + SIGReg (isotropic-Gaussian\n"
+                  "   regulariser on random projections), no EMA teacher, no stop-gradient.\n")
+        n0 = 4
+    steps += (f"{n0}. **Supervised training**: {recipe or 'class-weighted cross-entropy'}; checkpoint chosen on dev (best epoch {meta['best_epoch'] + 1}).\n"
+              f"{n0 + 1}. **Evaluation**: frozen eval suites; decision policy calibrated on each suite's calib split; baselines scored\n"
+              "   identically; promotion decided on calib, test only reported.\n"
+              f"{n0 + 2}. **Improvement lineage**")
+    backbone_s = (f"text `{spec.document.text_backbone}` + visual `{spec.document.image_backbone}`, route `{spec.document.route}`" if spec.modality == "document" else f"`{spec.backbone}`")
 
     body = f"""
 # {repo_id.split('/')[-1]}
 
 **{spec.description}**
 
-A tiny, single-purpose *System 1* model built with [BYOJL](https://github.com/bsye/BYOJL): a JEPA-style
-encoder trained only for this task, with a calibrated decision policy, shipped as a {m['params'] / 1e6:.2f}M-parameter ONNX
-bundle that runs on any CPU with just `numpy` + `onnxruntime`.
+A single-purpose *System 1* model built with [BYOSM](https://github.com/bsye/BYOSM): {built}, with a calibrated
+decision policy, shipped as a {m['params'] / 1e6:.2f}M-parameter ONNX bundle that runs on any CPU with `onnxruntime`.
 
 | | |
 |---|---|
 | task | `{spec.modality}` / `{spec.task_type}`{f" (one decision every {spec.frame_hop_ms:g} ms)" if spec.task_type == "frame" else ""} |
 | labels | {", ".join(f"`{l}`" for l in spec.label_names)} |
 | parameters | {m['params']:,}{f" (shipped as int8 ONNX, {m['quantization']['tried']['+'.join(m['quantization']['ops'])]['mb']:.0f} MB)" if m.get('precision') == 'int8' else ""} |
-| backbone | `{spec.backbone}` · embedding dim {m['embedding_dim']} |
+| backbone | {backbone_s} · embedding dim {m['embedding_dim']} |
 | objective | `{base.objective.metric}`, primary suite `{prim}` |
 | decision policy | `{m['decision']['kind']}`, threshold {_f(m['decision'].get('threshold'), 3)} (calibrated on `{prim}`'s calib split) |
 {f"| CPU, streaming | {_f(lat.get('stream_ms_per_chunk'), 3)} ms per {_f(lat.get('chunk_ms'), 0)} ms chunk, 1 thread (PyTorch; the ONNX bundle is faster) |" if lat.get('stream_ms_per_chunk') else ""}
@@ -167,7 +193,7 @@ decision policy calibrated on the same calib splits. **Bold** = this model.
 ## Usage
 
 ```bash
-pip install huggingface_hub numpy onnxruntime soundfile
+pip install {pip}
 ```
 
 ```python
@@ -175,7 +201,7 @@ from huggingface_hub import snapshot_download
 import sys
 path = snapshot_download("{repo_id}")
 sys.path.insert(0, path)
-from byojl_rt import load
+from byosm_rt import load
 
 m = load(path)
 {example}
@@ -185,7 +211,7 @@ emb = m.encode(...)                # the learned representation (JEPA-style), fo
 ### Local HTTP server
 
 ```bash
-python byojl_rt.py serve . --port 8800
+python byosm_rt.py serve . --port 8800
 # GET /v1/models · POST /v1/{spec.name}/predict · POST /v1/{spec.name}/encode
 ```
 
@@ -194,13 +220,10 @@ python byojl_rt.py serve . --port 8800
 1. **Spec**: labels, definitions, objective and data plan in `spec.yaml` (included in this repo).
 2. **Data** ({meta['n_train']:,} training / {meta['n_dev']:,} dev examples):
 {synth}{sources}
-3. **LeJEPA pretraining** ({spec.train.pretrain_steps} steps): multi-view prediction + SIGReg (isotropic-Gaussian
-   regulariser on random projections), no EMA teacher, no stop-gradient.
-4. **Supervised training**: tiny head on the backbone, class-weighted, checkpoint chosen on dev (best epoch {meta['best_epoch'] + 1}).
-5. **Evaluation**: frozen eval suites; thresholds calibrated on each suite's calib split; baselines scored identically.
-6. **Improvement lineage** (each step proposed by `byojl improve` from the previous board):
+{steps} (each step proposed by `byosm improve` from the previous board):
 {lineage_s}
 
+{notes}
 ## Limitations
 
 {chr(10).join(caveats)}
@@ -208,9 +231,9 @@ python byojl_rt.py serve . --port 8800
 ## Reproduce
 
 ```bash
-git clone https://github.com/bsye/BYOJL && cd BYOJL && pip install -e .
+git clone https://github.com/bsye/BYOSM && cd BYOSM && pip install -e .
 # put spec.yaml from this repo at specialists/{spec.name}/spec.yaml, then:
-byojl build {spec.name} && byojl board {spec.name} && byojl export {spec.name}
+byosm build {spec.name} && byosm board {spec.name} && byosm export {spec.name}
 ```
 """
     return "---\n" + yaml.safe_dump(front, sort_keys=False, allow_unicode=True) + "---\n" + body
@@ -220,7 +243,7 @@ def publish(name: str, repo_id: str, license: str = "other", private: bool = Tru
     p = Project(name)
     exp_dir = p.root / "export"
     if not (exp_dir / "manifest.json").exists():
-        raise RuntimeError(f"export first: byojl export {name}")
+        raise RuntimeError(f"export first: byosm export {name}")
     m = json.loads((exp_dir / "manifest.json").read_text())
     stage = p.root / "hub" / repo_id.replace("/", "__")
     if stage.exists():
@@ -239,6 +262,6 @@ def publish(name: str, repo_id: str, license: str = "other", private: bool = Tru
 
     api = HfApi()
     api.create_repo(repo_id, private=private, exist_ok=True)
-    api.upload_folder(folder_path=str(stage), repo_id=repo_id, commit_message=f"BYOJL publish {name}/{m['experiment']}")
+    api.upload_folder(folder_path=str(stage), repo_id=repo_id, commit_message=f"BYOSM publish {name}/{m['experiment']}")
     log(f"  published https://huggingface.co/{repo_id} ({'private' if private else 'public'})")
     return stage

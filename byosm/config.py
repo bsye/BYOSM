@@ -1,4 +1,4 @@
-"""Workspace layout and settings (byojl.yaml)."""
+"""Workspace layout and settings (byosm.yaml)."""
 from __future__ import annotations
 
 import os
@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-CONFIG_NAME = "byojl.yaml"
+CONFIG_NAME = "byosm.yaml"
 
 DEFAULT_CONFIG: dict[str, Any] = {
     # Every LLM role falls back to `default`. Point any role at any provider:
@@ -25,7 +25,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 
 def find_workspace(start: Path | None = None) -> Path:
-    """Walk up from `start` looking for byojl.yaml; fall back to cwd."""
+    """Walk up from `start` looking for byosm.yaml; fall back to cwd."""
     p = (start or Path.cwd()).resolve()
     for d in [p, *p.parents]:
         if (d / CONFIG_NAME).exists():
@@ -62,7 +62,7 @@ class Project:
         return self.root / "spec.yaml"
 
     # Layout:
-    #   spec.yaml                      base spec (what `byojl new` wrote; what you edit)
+    #   spec.yaml                      base spec (what `byosm new` wrote; what you edit)
     #   data/<data_key>/               datasets, shared by every experiment with the same data plan
     #   experiments/<exp>/             spec.yaml snapshot, model.pt, meta.json, results/<suite>.json
     #   evals/<suite>/                 frozen eval suites (calib.jsonl, test.jsonl, media)
@@ -131,7 +131,7 @@ def list_projects(ws: Path | None = None) -> list[str]:
 def device() -> str:
     import torch
 
-    forced = os.environ.get("BYOJL_DEVICE")
+    forced = os.environ.get("BYOSM_DEVICE")
     if forced:
         return forced
     if torch.cuda.is_available():

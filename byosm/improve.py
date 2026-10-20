@@ -3,7 +3,7 @@
 Proposals are small, explicit edits to the spec (ops on spec.yaml paths), each with the evidence that motivated it:
     {"id": "more-data", "why": "...", "ops": [{"op": "set", "path": "data.hf_sources.0.per_label", "value": 800}]}
 Paths walk dicts by key and lists by index. Built-in rules always run (no LLM needed); if an LLM is configured
-(role `analyze`) it adds its own proposals. `byojl improve <name> --apply a,b --run` builds the next experiment.
+(role `analyze`) it adds its own proposals. `byosm improve <name> --apply a,b --run` builds the next experiment.
 
 Each rule is a function (diagnosis) -> list[proposal]; add one with @rule.
 """
@@ -65,7 +65,7 @@ def diagnose(name: str) -> dict[str, Any]:
     board = json.loads((p.root / "board.json").read_text()) if (p.root / "board.json").exists() else {}
     exp = p.promoted or next((k for k, v in board.items() if next(iter(v.values()))["kind"] == "experiment"), None)
     if not exp or exp not in board:
-        raise RuntimeError("no scored experiment yet - run `byojl build` / `byojl eval` first")
+        raise RuntimeError("no scored experiment yet - run `byosm build` / `byosm eval` first")
     spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml")
     meta = json.loads((p.exp_dir(exp) / "meta.json").read_text())
     binary = spec.positive_label is not None or len(spec.labels) == 2

@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "byojl"
+name = "byosm"
 version = "0.1.0"
-description = "BYOJL - Build Your Own JEPA-Like: from one sentence to a tiny, measured, locally-runnable System-1 model."
+description = "BYOSM - Build Your Own Specialist Model: from one sentence to a tiny, measured, locally-runnable System-1 model."
 requires-python = ">=3.10"
 dependencies = [
   "torch>=2.3",
@@ -33,7 +33,7 @@ dev = ["pytest"]
 silero = ["livekit-plugins-silero"]  # LiveKit's VAD as a baseline
 
 [project.scripts]
-byojl = "byojl.cli:app"
+byosm = "byosm.cli:app"
 
 [tool.setuptools.packages.find]
-include = ["byojl*"]
+include = ["byosm*"]

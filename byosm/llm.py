@@ -1,10 +1,10 @@
-"""Pluggable LLM layer. Every call in byojl is `llm.json(system, prompt, schema) -> dict`.
+"""Pluggable LLM layer. Every call in byosm is `llm.json(system, prompt, schema) -> dict`.
 
 Providers:
   anthropic  Claude through the official `anthropic` SDK (structured outputs).
   openai     Any OpenAI-compatible server (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, Together...).
 
-Roles (see byojl.yaml): spec, generate, judge, eval, analyze -> each falls back to `default`.
+Roles (see byosm.yaml): spec, generate, judge, eval, analyze -> each falls back to `default`.
 """
 from __future__ import annotations
 
