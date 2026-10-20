@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from .facts import TASK_NAME, CardFacts, fmt, suite_dataset
+from ..format import MISSING, fmt, interval, params
+from .facts import TASK_NAME, CardFacts, suite_dataset
 
 DETAIL_HEAD = "| suite | dataset | test items | {metric} | 95% CI | precision | recall | ROC-AUC | avg precision | decision threshold |"
 EXTRA_METRICS = ("precision", "recall", "roc_auc", "avg_precision")
@@ -62,8 +63,7 @@ def _comparison_row(f: CardFacts, pid: str, by: dict, suites: list[str]) -> str:
         label = f"**{pid} (this model)**"
     else:
         label = f"{pid} (BYOSM experiment)" if kind == "experiment" else f"{pid} (baseline)"
-    params = first.get("params")
-    cells = [label, f"{params / 1e6:.2f}M" if params else "–"]
+    cells = [label, params(first.get("params"), MISSING)]
     cells += [
         f"**{fmt(by[s]['objective'])}**" if pid == f.exp and s in by else fmt(by.get(s, {}).get("objective"))
         for s in suites
@@ -81,14 +81,12 @@ def comparison_table(f: CardFacts) -> str:
 
 def _detail_row(f: CardFacts, suite: str, r: dict) -> str:
     mm = r["metrics"]
-    ci = mm.get("ci95")
-    ci_s = f"{ci['lo']:.3f}-{ci['hi']:.3f}" if ci else ""
     cells = [
         suite,
         suite_dataset(f.base, suite)[0],
         str(r["n_test"]),
         fmt(r["objective"]),
-        ci_s,
+        interval(mm.get("ci95")),
         fmt(mm.get("precision")),
         fmt(mm.get("recall")),
         fmt(mm.get("roc_auc")),

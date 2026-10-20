@@ -99,6 +99,10 @@ class Project:
     def baselines_dir(self) -> Path:
         return self.root / "baselines"
 
+    def meta(self, exp: str) -> dict:
+        f = self.exp_dir(exp) / "meta.json"
+        return json.loads(f.read_text()) if f.exists() else {}
+
     @property
     def board_path(self) -> Path:
         return self.root / "board.json"

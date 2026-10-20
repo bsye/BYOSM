@@ -25,7 +25,7 @@ def _task_row(s: TaskSpec, model: SpecialistModel, gmod: Any, threshold: Any, de
     test_rows = Dataset(dd).load("test")
     raws = [mod.load(r) for r in test_rows]
     g = evaluate_rows(model, gmod, s, test_rows, raws, dev, threshold, head=s.name)["metrics"]
-    meta = json.loads((p.best_dir / "meta.json").read_text())
+    meta = p.meta(p.best_dir.name)
     specialist = Specialist(p.best_dir).model
     sm = evaluate_rows(specialist, mod, s, test_rows, raws, dev, meta["threshold"])["metrics"]
     return {

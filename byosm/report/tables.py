@@ -3,11 +3,12 @@ from __future__ import annotations
 from ..auto.standing import standing
 from ..config import Project
 from ..evals import board_rows
+from ..format import cpu, params
 from ..hub.facts import lineage, suite_dataset
 from ..spec import TaskSpec
-from .cells import STALE, cpu_cell, fold_note, folded, num, params_cell, score, stale_ids, stale_note, train_rows
+from .cells import STALE, fold_note, folded, num, score, stale_ids, stale_note, train_rows
 from .origin import built_from
-from .seeds import SEEDS, groups
+from .seeds import SEEDS, recipes, scored
 
 NO_BASELINE = "no outside baseline scored yet"
 SUMMARY_HEAD = (
@@ -19,7 +20,7 @@ SUMMARY_HEAD = (
 
 def _replicates(p: Project, prim: str) -> set[str]:
     line = {step["exp"] for step in lineage(p, p.promoted)} if p.promoted else set()
-    return {i for ids in groups(p, prim).values() for i in ids} - line
+    return {i for ids in recipes(scored(p, prim)).values() for i in ids} - line
 
 
 def _row(p: Project, r: dict, prim: str, stale: set[str]) -> str:
@@ -27,7 +28,7 @@ def _row(p: Project, r: dict, prim: str, stale: set[str]) -> str:
     name = f"**{r['id']}**{mark} (promoted)" if r["promoted"] else f"{r['id']}{mark}"
     exp = r["kind"] == "experiment"
     built = built_from(p, r["id"]) if exp else "outside baseline"
-    cells = [name, built, train_rows(p, r["id"]) if exp else "-", params_cell(r.get("params")), cpu_cell(r)]
+    cells = [name, built, train_rows(p, r["id"]) if exp else "-", params(r.get("params")), cpu(r)]
     cells += [score(r.get(prim), r.get(f"{prim}:ci")), num(r.get(f"{prim}:calib"))]
     return "| " + " | ".join(cells) + " |"
 
@@ -92,7 +93,7 @@ def summary_row(name: str) -> str:
     if ours is None:
         return f"| {spec.summary} | - | not promoted yet | - | - | - | - | - |"
     bench = f"{suite_dataset(spec, prim)[0]} ({spec.objective.metric})"
-    model = f"{p.promoted} ({params_cell(ours.get('params'))})"
+    model = f"{p.promoted} ({params(ours.get('params'))})"
     cells = [spec.summary, bench, model, score(ours["objective"], ours["metrics"].get("ci95"))]
     st = standing(name, 0.0)
     if st["best_baseline"] is None:
@@ -101,7 +102,7 @@ def summary_row(name: str) -> str:
         pid, theirs_calib = st["best_baseline"]
         theirs = board[pid][prim]
         cells += [
-            f"{pid} ({params_cell(theirs.get('params'))})",
+            f"{pid} ({params(theirs.get('params'))})",
             score(theirs["objective"], theirs["metrics"].get("ci95")),
             _paired(st["test"]["vs_best_baseline"]),
             _calib(st["ours"], theirs_calib),

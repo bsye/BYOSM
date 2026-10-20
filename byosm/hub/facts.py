@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any
 
 from ..config import Project
 from ..spec import TaskSpec
@@ -23,10 +22,6 @@ TASK_NAME = {
     "image-classification": "Image Classification",
 }
 NC_DATASETS = {"ashraq/esc50": "ESC-50 (CC BY-NC 3.0)"}
-
-
-def fmt(x: Any, nd: int = 4) -> str:
-    return "–" if x is None else (f"{x:.{nd}f}" if isinstance(x, float) else str(x))
 
 
 def lineage(p: Project, exp: str) -> list[dict]:

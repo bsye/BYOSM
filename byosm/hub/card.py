@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import yaml
 
+from ..format import fmt
 from . import sections
-from .facts import CardFacts, fmt, load_facts
+from .facts import CardFacts, load_facts
 from .tables import comparison_table, detail_table, front_matter
 
 INTRO = """

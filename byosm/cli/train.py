@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
+from ..format import cpu, fmt, interval, params
 from .base import _spec, app, console, exp_app, log
 
 
@@ -66,23 +67,15 @@ def _board_table(name: str, metric: str, suites: list[str], prim: str, detail: b
     return t
 
 
-def _cpu_cell(r: dict) -> str:
-    if r.get("stream_ms"):
-        return f"{r['stream_ms']:.3f}/{r['chunk_ms']:.0f}ms"
-    return f"{r['latency_ms']:.2f}ms" if r.get("latency_ms") else "-"
-
-
 def _suite_cells(r: dict, s: str, best: float | None, prim: str, detail: bool) -> list[str]:
     v = r.get(s)
     pr = r.get(f"{s}:p/r")
     auc = r.get(f"{s}:auc")
     cells = ["-" if v is None else (f"[bold]{v:.4f}[/]" if v == best else f"{v:.4f}")]
     if s == prim:
-        c = r.get(f"{s}:calib")
-        cells.append("-" if c is None else f"{c:.4f}")
+        cells.append(fmt(r.get(f"{s}:calib"), 4, "-"))
     if detail:
-        ci = r.get(f"{s}:ci")
-        cells.append(f"{ci['lo']:.3f}-{ci['hi']:.3f}" if ci else "")
+        cells.append(interval(r.get(f"{s}:ci")))
         cells.append(f"{pr[0]:.3f}/{pr[1]:.3f}" if pr and pr[0] is not None else "")
     cells.append(f"{auc:.3f}" if auc else "")
     return cells
@@ -103,8 +96,7 @@ def board(
     for r in rows:
         star = " *" if r["promoted"] else ""
         colour = "green" if r["kind"] == "experiment" else "yellow"
-        params = f"{r['params'] / 1e6:.2f}M" if r.get("params") else "-"
-        cells = [f"[{colour}]{r['id']}{star}[/]", params, _cpu_cell(r)]
+        cells = [f"[{colour}]{r['id']}{star}[/]", params(r.get("params")), cpu(r)]
         for s in suites:
             cells += _suite_cells(r, s, best[s], prim, detail)
         t.add_row(*cells)

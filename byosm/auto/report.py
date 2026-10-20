@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..config import Project
+from ..format import fmt, interval, params
 
 
 def _selection_line(final: dict) -> str:
@@ -14,7 +15,7 @@ def _test_line(final: dict) -> str:
     if t.get("ours") is None:
         return "- held-out test: n/a"
     ci, vs, bb = t.get("ci95"), t.get("vs_best_baseline"), final["best_baseline"]
-    line = f"- held-out test: {t['ours']:.4f}" + (f" (95% CI {ci['lo']:.4f}-{ci['hi']:.4f})" if ci else "")
+    line = f"- held-out test: {t['ours']:.4f}" + (f" (95% CI {interval(ci, 4)})" if ci else "")
     if vs and bb:
         line += f" vs {bb[0]} {t['baselines'][bb[0]]:.4f}: delta {vs['delta']:+.4f}, P(better) {vs['p_better']:.2f}"
     return line
@@ -26,8 +27,8 @@ def _board_lines(name: str) -> list[str]:
     suites, rows = evals.board_rows(name)
     lines = ["| | params | " + " | ".join(suites) + " |", "|---|---|" + "---|" * len(suites)]
     for r in rows:
-        cells = " | ".join("–" if r.get(s) is None else f"{r[s]:.4f}" for s in suites)
-        lines.append(f"| {r['id']}{' *' if r['promoted'] else ''} | {(r['params'] or 0) / 1e6:.2f}M | {cells} |")
+        cells = " | ".join(fmt(r.get(s)) for s in suites)
+        lines.append(f"| {r['id']}{' *' if r['promoted'] else ''} | {params(r['params'])} | {cells} |")
     return lines
 
 

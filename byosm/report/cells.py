@@ -1,41 +1,25 @@
 from __future__ import annotations
 
-import json
-
 from ..config import Project
+from ..format import fmt, interval
 
 STALE = "†"
 
 
 def num(x: float | None) -> str:
-    return "-" if x is None else f"{x:.3f}"
+    return fmt(x, 3, "-")
 
 
 def score(v: float | None, ci: dict | None) -> str:
-    return num(v) if v is None or not ci else f"{v:.3f} [{ci['lo']:.3f}, {ci['hi']:.3f}]"
-
-
-def params_cell(n: int | None) -> str:
-    return f"{n / 1e6:.2f}M" if n else "-"
-
-
-def cpu_cell(r: dict) -> str:
-    if r.get("stream_ms"):
-        return f"{r['stream_ms']:.3f}/{r['chunk_ms']:.0f}ms"
-    return f"{r['latency_ms']:.2f}ms" if r.get("latency_ms") else "-"
-
-
-def _meta(p: Project, exp: str) -> dict:
-    f = p.exp_dir(exp) / "meta.json"
-    return json.loads(f.read_text()) if f.exists() else {}
+    return num(v) if v is None or not ci else f"{num(v)} [{interval(ci, sep=', ')}]"
 
 
 def folded(p: Project, exp: str) -> int:
-    return _meta(p, exp).get("n_test_folded") or 0
+    return p.meta(exp).get("n_test_folded") or 0
 
 
 def train_rows(p: Project, exp: str) -> str:
-    n = _meta(p, exp).get("n_train")
+    n = p.meta(exp).get("n_train")
     if n is None:
         return "-"
     k = folded(p, exp)

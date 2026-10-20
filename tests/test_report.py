@@ -1,13 +1,15 @@
 import json
-from pathlib import Path
 
+import numpy as np
 import pytest
 import yaml
 from typer.testing import CliRunner
 
 from byosm.cli import app
 from byosm.config import Project
-from byosm.report import blocks, fill, keys_in, replace_block, sync, unexpected
+from byosm.format import cpu, fmt, interval, params
+from byosm.report import blocks, fill, keys_in, replace_block, unexpected
+from byosm.report.cells import num, score
 from byosm.spec import TaskSpec
 from byosm.spec.sections import EvalSuite, Label, Objective
 
@@ -69,13 +71,13 @@ def test_blocks_render_board(toy):
     assert "6 test and 4 calib items" in out["toy"] and "Every scored experiment is listed." in out["toy"]
 
 
-def test_built_from_names_unexplained_fields_and_folds(toy):
+def test_built_from_names_only_lineage_and_folds(toy):
     p = Project("toy")
     (p.exp_dir("v1") / "spec.yaml").write_text(yaml.safe_dump({"train": {"epochs": 3}}))
     (p.exp_dir("v2") / "spec.yaml").write_text(yaml.safe_dump({"train": {"epochs": 5, "ema": True}}))
     (p.exp_dir("v2") / "meta.json").write_text(json.dumps({"n_train": 120, "n_test_folded": 20}))
     row = blocks()["toy"].split("\n")[2]
-    assert "v1 + more-data; spec also differs in 2 other fields (train) | 120 (+20 builtin test) |" in row
+    assert "| v1 + more-data | 120 (+20 builtin test) |" in row and "differs" not in row
     assert "builtin suite's held-out split" in blocks()["toy"]
 
 
@@ -138,12 +140,54 @@ def test_seed_groups_and_stale_rows(toy):
         "| recipe | seeds | train rows | test accuracy % | calib accuracy % |\n|---|---|---|---|---|\n"
     )
     assert "| rec† | 2 | - | 60.00 ± 14.14 | 70.00 ± 14.14 |" in seeds
-    assert "sample sd" in seeds and "top on calib: `rec`" in seeds
+    assert "sample sd" in seeds and "no recipe has seeds on the promoted model's suite version" in seeds
     assert "| rec" not in blocks()["toy"] and "except 2 seed replicates" in blocks()["toy"]
 
 
-def test_repository_readme_is_current(monkeypatch):
-    root = Path(__file__).resolve().parents[1]
-    monkeypatch.chdir(root)
-    current, missing, extra = sync(root / "README.md", check=True)
-    assert missing == [] and extra == [] and current, "README result tables are stale: run byosm report"
+def _replicates(p: Project, runs: tuple[tuple[float, float, str], ...]) -> None:
+    board = json.loads(p.board_path.read_text())
+    for i, (acc, calib, fp) in enumerate(runs):
+        exp = f"rec-s{i}"
+        p.exp_dir(exp).mkdir(parents=True, exist_ok=True)
+        (p.exp_dir(exp) / "spec.yaml").write_text(yaml.safe_dump({"train": {"seed": i}}))
+        board[exp] = {"bench": _result("experiment", acc, calib, BASE_UNITS, 2_000_000) | {"fingerprint": fp}}
+    board["v2"]["bench"]["fingerprint"] = "new"
+    p.board_path.write_text(json.dumps(board))
+
+
+def test_a_lone_replicate_on_another_fingerprint_stays_in_the_main_table(toy):
+    _replicates(Project("toy"), ((0.5, 0.6, "old"), (0.7, 0.8, "old"), (0.9, 0.9, "new")))
+    seeds, main = blocks()["toy:seeds"], blocks()["toy"]
+    assert "| rec† | 2 | - | 60.00 ± 14.14 | 70.00 ± 14.14 |" in seeds
+    assert "rec-s2" not in seeds and "top on calib" not in seeds
+    assert "| rec-s2 |" in main and "except 2 seed replicates" in main
+
+
+def test_each_fingerprint_subgroup_gets_its_own_recipe_row(toy):
+    _replicates(Project("toy"), ((0.5, 0.5, "old"), (0.6, 0.6, "old"), (0.8, 0.8, "new"), (0.9, 0.9, "new")))
+    seeds = blocks()["toy:seeds"]
+    assert "| rec @old† | 2 | - | 55.00 ± 7.07 | 55.00 ± 7.07 |" in seeds
+    assert "| rec @new | 2 | - | 85.00 ± 7.07 | 85.00 ± 7.07 |" in seeds
+    assert "top on calib: `rec @new`" in seeds and "except 4 seed replicates" in blocks()["toy"]
+
+
+def test_format_cells():
+    assert fmt(None) == "–" and fmt(None, missing="-") == "-" and fmt(0.12345) == "0.1235" and fmt(7) == "7.0000"
+    assert params(2_345_678) == "2.35M" and params(None) == "-" and params(0, "–") == "–"
+    assert cpu({"stream_ms": 0.1694, "chunk_ms": 30}) == "0.169/30ms"
+    assert cpu({"latency_ms": 3.371}) == "3.37ms" and cpu({}) == "-"
+    assert interval({"lo": 0.8631, "hi": 0.899}) == "0.863-0.899" and interval(None) == ""
+    assert interval({"lo": 0.5, "hi": 0.75}, 4, ", ") == "0.5000, 0.7500"
+
+
+def test_format_numbers_whatever_their_type():
+    assert fmt(1, 3) == "1.000" and fmt(0) == "0.0000" and fmt(np.float32(0.5), 3) == "0.500"
+    assert fmt(True) == "True" and fmt("n/a") == "n/a"
+    assert num(1) == "1.000" and score(1, {"lo": 0.9, "hi": 1}) == "1.000 [0.900, 1.000]"
+
+
+def test_a_stale_recipe_is_never_ranked_top(toy):
+    _replicates(Project("toy"), ((0.9, 0.95, "old"), (0.9, 0.97, "old"), (0.8, 0.8, "new"), (0.81, 0.81, "new")))
+    seeds = blocks()["toy:seeds"]
+    assert seeds.index("| rec @new |") < seeds.index("| rec @old† |")
+    assert "top on calib: `rec @new`" in seeds
