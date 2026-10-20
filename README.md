@@ -366,8 +366,9 @@ RVL-CDIP (16 document types), scored on 3,200 documents from the **original test
 
 | | params | accuracy | CPU/doc | trained on |
 |---|---|---|---|---|
-| DiT-base (`microsoft/dit-base-finetuned-rvlcdip`, baseline) | 85.8M | **94.0%** | 37 ms | 320k labelled + 42M unlabelled documents |
-| **BYOJL v1** (r2 + all of the val split, *proposed by `byojl improve`*) | 109.6M | **91.8%** | 45 ms | 34,935 documents (val split + builtin test) |
+| DiT-base (`microsoft/dit-base-finetuned-rvlcdip`, baseline) | 85.8M | 94.0% | 37 ms | 320k labelled + 42M unlabelled documents |
+| **BYOJL v2-ditft** (v1 with its visual branch started from DiT-base's fine-tuned weights) | 109.6M | **94.8%** | 46 ms | 34,935 documents, on top of DiT's 320k |
+| BYOJL v1 (r2 + all of the val split, *proposed by `byojl improve`*) | 109.6M | 91.8% | 45 ms | 34,935 documents (val split + builtin test) |
 | BYOJL r2 (fused-dit + new trainer + builtin test folded in) | 109.6M | 90.5% | 48 ms | 11,520 documents |
 | BYOJL fused-dit (MiniLM text + DiT-base visual, *proposed by `byojl improve`*) | 109.6M | 88.4% | 47 ms | 9,600 documents |
 | BYOJL distill-r2 (tiny-BERT + DeiT-tiny student of r2) | 17.6M | 88.2% | 11 ms | same as r2 + r2's soft labels |
@@ -379,6 +380,16 @@ RVL-CDIP (16 document types), scored on 3,200 documents from the **original test
 (`microsoft/dit-base`, self-supervised on unlabelled scans) and longer training. The new trainer (EMA, layer decay,
 fp16) and folding in the builtin test split gave r2; `more-data` (every val document, ~2,400 per type) gave v1. The gap
 to DiT went 14 → 6 → 3.5 → **2.2 points**, with 9× fewer labelled documents than DiT was fine-tuned on.
+
+**Beating DiT-base: add the view it lacks.** v1 lost to DiT on visually distinctive types (news articles, scientific
+reports), but was right on 64 test documents DiT got wrong, because it reads the text. v2-ditft keeps v1's text branch
+and fusion and starts the visual branch from DiT-base's own fine-tuned checkpoint (`document.image_pool: pooler` reads it
+exactly as DiT's classifier did). On the 3,200 test documents it beats DiT by **+0.8 pt** (paired bootstrap 95% CI +0.3
+to +1.3, P = 1.00; fixes 50 of DiT's errors, adds 24). On the 800 calib documents the two tie (93.5% vs 93.6%), so the
+autopilot would not yet call it a win. Dev accuracy peaked at epoch 2 and then fell, which suggests the visual branch is
+drifting from what DiT learned; a lower visual learning rate is the next experiment. The claim is "DiT + text beats
+DiT", not "beat DiT from less data": DiT's checkpoint brings its 320k labelled documents. RVL-CDIP's test split is
+disjoint from the train split DiT was fine-tuned on.
 
 Fusion adds 6 points over the best single view, because the views fail on different classes. Visual is strong on
 `handwritten`, `advertisement` and `file_folder`; text is strong on `questionnaire`, `memo` and `invoice`.
@@ -492,6 +503,6 @@ licences before shipping a model commercially.
 
 ## Status
 
-Working end to end: audio (the VAD above), documents (RVL-CDIP above, 91.8%), and text on a real benchmark (Banking77, 93.4%
+Working end to end: audio (the VAD above), documents (RVL-CDIP above, 94.8%, ahead of DiT-base on test), and text on a real benchmark (Banking77, 93.4%
 with a 22M encoder). The autopilot's LLM-driven steps (spec compiling, synthetic data, the `llm` baseline) are tested with
 a stub; a real `byojl auto` run and the `bench` thesis experiment need an LLM key or a local model.

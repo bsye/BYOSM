@@ -1,0 +1,21 @@
+{
+  "parent": "v1",
+  "applied": [
+    {
+      "id": "manual",
+      "why": "document.image_backbone=hf:microsoft/dit-base-finetuned-rvlcdip document.image_pool=pooler",
+      "ops": [
+        {
+          "op": "set",
+          "path": "document.image_backbone",
+          "value": "hf:microsoft/dit-base-finetuned-rvlcdip"
+        },
+        {
+          "op": "set",
+          "path": "document.image_pool",
+          "value": "pooler"
+        }
+      ]
+    }
+  ]
+}

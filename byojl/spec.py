@@ -94,6 +94,7 @@ class DocumentCfg(BaseModel):
     route: Literal["text", "visual", "fused"] = "fused"
     text_backbone: str = "hf:sentence-transformers/all-MiniLM-L6-v2"
     image_backbone: str = "hf:facebook/dinov2-small"
+    image_pool: Literal["mean", "pooler"] = "mean"  # pooler: the encoder's own trained pooling (BEiT/DiT: patch mean + LayerNorm), what its fine-tuned head read
     max_pages: int = 8  # first pages are kept (most document types are decided early)
     max_len: int = 256  # tokens per page
     image_size: int = 224

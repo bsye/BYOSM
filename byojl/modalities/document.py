@@ -222,6 +222,7 @@ class DocumentBackbone(Backbone):
                 c = self.image.config
                 idim = getattr(c, "hidden_size", None) or c.hidden_sizes[-1]
             self.iproj = nn.Linear(idim, d)
+        self.image_pool = getattr(cfg, "image_pool", "mean")
         if self.route == "fused":
             self.gate = nn.Linear(2 * d, d)
         self.pos = nn.Embedding(cfg.max_pages, d)
@@ -237,7 +238,10 @@ class DocumentBackbone(Backbone):
         if isinstance(self.image, TinyCNN):
             f, m = self.image(pixel_values)
         else:
-            f = self.image(pixel_values=pixel_values).last_hidden_state
+            o = self.image(pixel_values=pixel_values)
+            if self.image_pool == "pooler" and getattr(o, "pooler_output", None) is not None:
+                return self.iproj(o.pooler_output.flatten(1))
+            f = o.last_hidden_state
             if f.dim() == 4:
                 f = f.flatten(2).transpose(1, 2)
             m = torch.ones(f.shape[:2], dtype=torch.bool, device=f.device)
