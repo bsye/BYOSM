@@ -1,0 +1,20 @@
+from __future__ import annotations
+
+from .. import metrics
+from ..spec import TaskSpec
+
+
+def selection_value(r: dict | None) -> float | None:
+    if not r:
+        return None
+    return r.get("calib_objective", r.get("objective"))
+
+
+def compare(spec: TaskSpec, a: dict | None, b: dict | None, split: str = "calib") -> dict[str, float] | None:
+    ua, ub = (a or {}).get("units", {}).get(split), (b or {}).get("units", {}).get(split)
+    if not ua or not ub:
+        return None
+    try:
+        return metrics.bootstrap(spec, ua, ub)
+    except ValueError:
+        return None
