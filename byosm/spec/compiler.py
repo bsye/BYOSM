@@ -49,8 +49,14 @@ def _data_plan(mod: str, out: dict) -> DataPlan:
         synthetic=bool(out.get("synthetic")) and mod == "text",
         **sizes,
         **_present(out, {"hf_queries": "hf_queries"}),
-        hf_sources=[HFSource(dataset=c["dataset"], role=c["role"]) for c in out.get("hf_candidates", [])],
+        hf_sources=[HFSource(dataset=c["dataset"], role=c["role"]) for c in _real(out.get("hf_candidates", []))],
     )
+
+
+def _real(candidates: list[dict]) -> list[dict]:
+    from ..data.hf_source.hub import exists
+
+    return [c for c in candidates if exists(c["dataset"])]
 
 
 def _train_cfg(mod: str, backbone: str) -> TrainCfg:

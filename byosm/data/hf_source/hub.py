@@ -78,6 +78,19 @@ def search(queries: list[str], limit: int = 8) -> list[dict]:
     return out
 
 
+def exists(dataset: str) -> bool:
+    from huggingface_hub import HfApi
+    from huggingface_hub.errors import RepositoryNotFoundError
+
+    try:
+        HfApi().dataset_info(dataset)
+    except RepositoryNotFoundError:
+        return False
+    except Exception:
+        return True
+    return True
+
+
 def split_sizes(dataset: str, config: str | None = None) -> dict[str, int]:
     try:
         from datasets import load_dataset_builder

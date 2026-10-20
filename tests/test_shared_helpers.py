@@ -39,3 +39,12 @@ def test_search_terms_drop_filler_words_and_keep_the_id():
     terms = search_terms(["dair-ai/emotion dataset", "go-emojis benchmark"])
     assert terms[:2] == ["dair-ai/emotion dataset", "dair-ai/emotion"]
     assert "go-emojis" in terms and "dataset" not in terms and "benchmark" not in terms
+
+
+def test_compiled_specs_keep_only_datasets_that_exist(monkeypatch):
+    from byosm.data.hf_source import hub
+    from byosm.spec import compiler
+
+    monkeypatch.setattr(hub, "exists", lambda d: d == "real/one")
+    kept = compiler._real([{"dataset": "real/one", "role": "labeled"}, {"dataset": "made/up", "role": "labeled"}])
+    assert [c["dataset"] for c in kept] == ["real/one"]
