@@ -20,3 +20,4 @@ specialists/*/experiments/*/report.json
 systems/*/evals/
 systems/*/export/
 .env
+byosm/app/static/
