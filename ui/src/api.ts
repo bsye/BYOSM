@@ -102,6 +102,31 @@ export type Detail = Summary & {
   runs: Run[]
   data: Record<string, SplitSummary> | null
   proposals: { from: string; proposals: Proposal[] } | null
+  overfit: OverfitReport | null
+}
+
+export type Severity = "ok" | "warn" | "fail"
+
+export type Finding = {
+  check: string
+  title: string
+  severity: Severity
+  explanation: string
+  numbers: Record<string, number | null>
+  suite?: string
+  examples?: { test: string; train: string; similarity: number }[]
+}
+
+export type OverfitReport = {
+  experiment: string
+  suite: string
+  metric: string
+  verdict: Severity
+  summary: string
+  scores: Record<"train" | "dev" | "calib" | "test", number | null>
+  train: { objective: number; ci95: { lo: number; hi: number }; n: number }
+  findings: Finding[]
+  skipped: string[]
 }
 
 export type Proposal = {

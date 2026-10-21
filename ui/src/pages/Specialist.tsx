@@ -14,6 +14,7 @@ import { go } from "@/route"
 import { BoardChart, boardRows } from "./BoardChart"
 import { DataRows } from "./DataRows"
 import { LabelChart } from "./LabelChart"
+import { Overfit } from "./Overfit"
 import { hasTeachers, Panel } from "./Panel"
 import { Playground, useExamples } from "./Playground"
 import { Proposals } from "./Proposals"
@@ -207,6 +208,7 @@ function Model({ name }: { name: string }) {
         </TabsList>
         <TabsContent value="board" className="space-y-4">
           <Board d={d} />
+          <Overfit d={d} />
           <Proposals d={d} />
         </TabsContent>
         <TabsContent value="runs">
