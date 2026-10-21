@@ -17,6 +17,10 @@ class ConfigText(BaseModel):
     text: str
 
 
+class DefaultLlm(BaseModel):
+    config: dict[str, Any]
+
+
 def _roles(cfg: dict) -> dict[str, dict]:
     return {k: v for k, v in (cfg.get("llm") or {}).items() if isinstance(v, dict)}
 
@@ -58,6 +62,13 @@ def config_router(ws: Path, auth: Any) -> APIRouter:
         if not isinstance(new, dict) or not isinstance(new.get("llm", {}), dict):
             raise HTTPException(422, "byosm.yaml is a mapping with an optional llm: section of roles")
         path.write_text(yaml.safe_dump(_unmasked(new, stored()), sort_keys=False))
+        return read()
+
+    @router.put("/api/config/default-llm")
+    def default_llm(body: DefaultLlm) -> dict:
+        cfg = stored()
+        cfg["llm"] = {**(cfg.get("llm") or {}), "default": {k: v for k, v in body.config.items() if v is not None}}
+        path.write_text(yaml.safe_dump(cfg, sort_keys=False))
         return read()
 
     @router.get("/api/llm/providers")

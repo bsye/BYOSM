@@ -27,3 +27,11 @@ def test_a_job_can_choose_its_own_llm_for_every_role(ws, monkeypatch):
     chosen = {"provider": "claude-code", "model": "claude-haiku-5-5"}
     monkeypatch.setenv(LLM_OVERRIDE_ENV, json.dumps(chosen))
     assert role_config(load_config(ws)["llm"], "spec") == chosen
+
+
+def test_the_default_llm_can_be_set_from_a_provider_choice(ws):
+    with TestClient(create_app(ws, "t"), base_url="http://127.0.0.1") as c:
+        chosen = {"provider": "claude-code", "model": "claude-haiku-5-5", "base_url": None}
+        assert c.put("/api/config/default-llm", headers=AUTH, json={"config": chosen}).status_code == 200
+    saved = yaml.safe_load((ws / "byosm.yaml").read_text())["llm"]["default"]
+    assert saved == {"provider": "claude-code", "model": "claude-haiku-5-5"}
