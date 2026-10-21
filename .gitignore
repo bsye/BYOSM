@@ -14,3 +14,7 @@ specialists/*/experiments/*/model.pt
 specialists/*/experiments/*/*errors.json
 specialists/*/experiments/*/report.json
 .claude/
+
+# Systems: keep the spec, results and board; not data or exports.
+systems/*/evals/
+systems/*/export/

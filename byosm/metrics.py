@@ -24,7 +24,7 @@ def span_counts(names: list[str], y: np.ndarray, pred: np.ndarray, lengths: list
     return np.asarray(out, np.int64).reshape(-1, 3)
 
 
-def _span_f1(counts: np.ndarray) -> float:
+def f1_of_counts(counts: np.ndarray) -> float:
     tp, fp, fn = counts.astype(float)
     return 2 * tp / max(1.0, 2 * tp + fp + fn)
 
@@ -104,7 +104,7 @@ def compute(
     if is_span(spec):
         tp, fp, fn = span_counts(names, y, pred, lengths or [len(y)]).sum(0).astype(float)
         out.update(span_precision=tp / max(1.0, tp + fp), span_recall=tp / max(1.0, tp + fn))
-        out["span_f1"] = _span_f1(np.array([tp, fp, fn]))
+        out["span_f1"] = f1_of_counts(np.array([tp, fp, fn]))
     out["objective"] = objective_value(spec, out)
     return out
 
@@ -161,7 +161,7 @@ def _unit_stats(spec: TaskSpec, u: dict[str, Any]) -> np.ndarray:
 
 
 def _objective_of_stats(spec: TaskSpec, summed: np.ndarray) -> float:
-    return _span_f1(summed) if summed.ndim == 1 else objective_from_cm(spec, summed)
+    return f1_of_counts(summed) if summed.ndim == 1 else objective_from_cm(spec, summed)
 
 
 def objective_of_units(spec: TaskSpec, u: dict[str, Any]) -> float:

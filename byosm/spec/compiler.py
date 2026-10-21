@@ -61,7 +61,7 @@ def _real(candidates: list[dict]) -> list[dict]:
     return [c for c in candidates if exists(c["dataset"])]
 
 
-def _train_cfg(mod: str, backbone: str) -> TrainCfg:
+def train_cfg(mod: str, backbone: str) -> TrainCfg:
     recipe = PRETRAINED_TRAIN if backbone.startswith("hf:") else FROM_SCRATCH_TRAIN
     batch = {"batch_size": AUDIO_BATCH_SIZE} if mod == "audio" else {}
     return TrainCfg(**recipe, **batch)
@@ -87,7 +87,7 @@ def compile_spec(name: str | None, description: str, modality: str | None = None
         backbone=backbone,
         data=_data_plan(mod, out),
         search={"benchmark": out.get("benchmark_queries") or [], "baseline": out.get("baseline_queries") or []},
-        train=_train_cfg(mod, backbone),
+        train=train_cfg(mod, backbone),
         **_task_fields(out),
     )
     if spec.positive_label and spec.positive_label not in spec.label_names:

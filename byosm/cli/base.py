@@ -39,10 +39,12 @@ class PromptFirst(TyperGroup):
 app = typer.Typer(cls=PromptFirst, add_completion=False, no_args_is_help=True, help=HELP)
 suite_app = typer.Typer(no_args_is_help=True, help="Manage eval suites (frozen test sets) of a specialist.")
 baseline_app = typer.Typer(no_args_is_help=True, help="Manage baselines (competitors scored on every suite).")
+system_app = typer.Typer(no_args_is_help=True, help="Teams of specialists that do a whole task, scored end to end.")
 exp_app = typer.Typer(no_args_is_help=True, help="Create experiment variants (ablations) by editing spec paths.")
 app.add_typer(suite_app, name="suite")
 app.add_typer(baseline_app, name="baseline")
 app.add_typer(exp_app, name="exp")
+app.add_typer(system_app, name="system")
 console = Console()
 
 

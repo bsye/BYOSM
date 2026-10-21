@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+import json
+from typing import Annotated
+
+import typer
+from rich.table import Table
+
+from .base import console, log, system_app
+
+
+def _project(name: str):
+    from ..system import SystemProject
+
+    sp = SystemProject(name)
+    if not sp.spec_path.exists():
+        raise typer.BadParameter(f"no system {name!r} at {sp.spec_path}")
+    return sp
+
+
+def _fmt(summary: dict) -> str:
+    return f"{summary['exact_frame']:.3f}"
+
+
+def _show(board: dict) -> None:
+    for suite, b in board.items():
+        t = Table(title=f"{suite}: exact frame (action and every argument right)")
+        for col in ("", "test exact [95% CI]", "calib exact", "action acc", "arg F1", "ms / request"):
+            t.add_column(col)
+        for r, v in b["rivals"].items():
+            ci = f"{_fmt(v['test'])} [{v['ci']['lo']:.3f}, {v['ci']['hi']:.3f}]"
+            ms = f"{v['latency_ms']:.1f}" if v["latency_ms"] else "-"
+            t.add_row(r, ci, _fmt(v["calib"]), f"{v['test']['action_accuracy']:.3f}", f"{v['test']['arg_f1']:.3f}", ms)
+        console.print(t)
+        for r, pv in b["paired"].items():
+            test, calib = pv["test"], pv["calib"]
+            log(
+                f"  system - {r}: test {test['delta']:+.3f} (P(better) {test['p_better']:.2f}), calib {calib['delta']:+.3f}"
+            )
+
+
+@system_app.command("build")
+def build(name: str) -> None:
+    """Build every node as a specialist, export one bundle for the team, and score it end to end."""
+    from ..system import build_node, evaluate, export_system
+
+    sp = _project(name)
+    spec = sp.spec()
+    for node in spec.nodes.values():
+        build_node(node, spec, log)
+    export_system(sp, log)
+    _show(evaluate(sp, log))
+
+
+@system_app.command("eval")
+def eval_(name: str, force: Annotated[bool, typer.Option(help="rescore cached rivals")] = False) -> None:
+    """Score the exported team and its rivals (an LLM doing the whole task) on every system suite."""
+    from ..system import evaluate
+
+    _show(evaluate(_project(name), log, force))
+
+
+@system_app.command("board")
+def board(name: str) -> None:
+    """Show the last end-to-end scores."""
+    _show(json.loads((_project(name).root / "board.json").read_text()))
+
+
+@system_app.command("run")
+def run(name: str, text: str) -> None:
+    """Run the exported team on one request: action, arguments and the tool call it maps to."""
+    from ..rt import System
+
+    log(json.dumps(System(_project(name).export_dir).run(text), indent=2))

@@ -105,7 +105,7 @@ def bio(kind: str, n: int) -> list[str]:
     return [f"{BEGIN}{TAG_SEP}{kind}"] + [f"{INSIDE}{TAG_SEP}{kind}"] * (n - 1) if n else []
 
 
-def _tag(tag: str) -> tuple[str, str]:
+def tag_parts(tag: str) -> tuple[str, str]:
     head, sep, kind = tag.partition(TAG_SEP)
     if sep and head in (BEGIN, INSIDE):
         return head, kind
@@ -115,7 +115,7 @@ def _tag(tag: str) -> tuple[str, str]:
 def spans(tags: list[str]) -> list[tuple[str, int, int]]:
     out, kind, start = [], "", 0
     for i, t in enumerate([*tags, OUTSIDE]):
-        head, k = _tag(t)
+        head, k = tag_parts(t)
         if kind and (head != INSIDE or k != kind):
             out.append((kind, start, i))
             kind = ""
@@ -389,6 +389,48 @@ def load(path: str | Path, threads: int = 1) -> Specialist:
     return Specialist(path, threads)
 
 
+SYSTEM_MANIFEST = "system.json"
+NODES_DIR = "nodes"
+
+
+def _function(ref: str) -> Any:
+    import importlib
+
+    module, _, name = ref.partition(":")
+    return getattr(importlib.import_module(module), name)
+
+
+class System:
+    def __init__(self, path: str | Path, threads: int = 1):
+        self.path = Path(path)
+        self.m = json.loads((self.path / SYSTEM_MANIFEST).read_text())
+        self.nodes = {k: load(self.path / NODES_DIR / k, threads) for k in self.m["nodes"]}
+
+    def _role(self, role: str) -> str | None:
+        return next((k for k, n in self.m["nodes"].items() if n["role"] == role), None)
+
+    def run(self, text: str) -> dict:
+        out = {k: m.predict(text) for k, m in self.nodes.items()}
+        router, tagger = self._role("router"), self._role("tagger")
+        action = out[router]["label"] if router else None
+        args = [{"type": e["label"], "text": e["text"]} for e in out[tagger]["entities"]] if tagger else []
+        tool = next((t for t, spec in self.m["tools"].items() if spec["when"] == action), None)
+        return {"action": action, "args": args, "tool": tool, "call": self._call_args(tool, args)}
+
+    def _call_args(self, tool: str | None, args: list[dict]) -> dict:
+        wanted = self.m["tools"][tool]["args"] if tool else {}
+        return {name: next((a["text"] for a in args if a["type"] == kind), None) for name, kind in wanted.items()}
+
+    def act(self, text: str) -> dict:
+        r = self.run(text)
+        ref = self.m["tools"][r["tool"]].get("call") if r["tool"] else None
+        return {**r, "result": _function(ref)(**r["call"])} if ref else r
+
+
+def is_system(path: str | Path) -> bool:
+    return (Path(path) / SYSTEM_MANIFEST).exists()
+
+
 def _read_wav(path: str) -> np.ndarray:
     import soundfile as sf
 
@@ -488,6 +530,9 @@ def _parser() -> Any:
 
 
 def _predict_cli(model: str, inp: str) -> None:
+    if is_system(model):
+        print(json.dumps(System(model).run(inp), indent=2))
+        return
     m = load(model)
     x: Any = _read_wav(inp) if m.m["modality"] == "audio" else inp
     out = m.predict(x)
