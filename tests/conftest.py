@@ -80,6 +80,11 @@ class FakeLLM:
         props = schema["properties"]
         if "modality" in props:
             return dict(SPEC_REPLY)
+        if "confusable" in props:
+            pair = {"a": "statement", "b": "question", "why": "rhetorical questions"}
+            return {"confusable": [pair], "tips": [], "examples": [{"label": "question", "input": "is it on?"}]}
+        if "why" in props:
+            return {"label": "question", "why": "it asks something"}
         if "labels" in props:
             return self.label(prompt)
         if "patterns" in props:

@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ..config import PUBLISH_LICENSE, Project, load_config
+from ..data.request import missing_labels
 from .loop import improve_until_stop
 from .report import _report
 from .standing import standing
@@ -32,6 +33,20 @@ def _define(p: Project, log: Log, spec: Any, cfg: Any, echo: Callable) -> None:
         log("discover:" + d["step"], d["choice"], d["why"])
     p.ensure()
     spec.save(p.spec_path)
+
+
+def _request_data(s: Session, cfg: Any, t0: float) -> dict[str, Any]:
+    from ..data.request import write_request
+
+    missing = missing_labels(s.base)
+    reason = f"No public dataset covers {', '.join(missing)}, and {s.base.modality} examples cannot be generated."
+    out = write_request(s.p.root, s.base, reason, cfg)
+    s.log("data", str(out.relative_to(s.p.ws)), reason + " Wrote a template and the rows needed per label.")
+    stop = f"data needed: fill {out / 'template.xlsx'}, then `byosm check-data {s.name} <file>`"
+    final = {"name": s.name, "won": False, "stop_reason": stop, "data_request": str(out)}
+    final["hours"] = round((time.time() - t0) / 3600, 2)
+    s.log.save(final)
+    return final
 
 
 def _build_v1(s: Session) -> None:
@@ -136,6 +151,8 @@ def run(
     if fresh:
         _define(p, log, fresh, cfg, echo)
     s = Session(name, p, log, TaskSpec.load(p.spec_path), margin, t0 + budget_h * 3600, echo)
+    if not p.experiments() and missing_labels(s.base):
+        return _request_data(s, cfg, t0)
     if not p.experiments():
         _build_v1(s)
     reason = improve_until_stop(s, max_experiments, use_llm)

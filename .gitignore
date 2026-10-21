@@ -10,6 +10,7 @@ specialists/*/cache/
 specialists/*/evals/
 specialists/*/export/
 specialists/*/hub/
+specialists/*/data_request/
 specialists/*/experiments/*/model.pt
 specialists/*/experiments/*/*errors.json
 specialists/*/experiments/*/report.json

@@ -117,6 +117,9 @@ def auto(
         not no_llm,
         log,
     )
+    if final.get("data_request"):
+        log(f"\nstopped: {final['stop_reason']}")
+        return
     board(final["name"], detail=True)
     p = Project(final["name"])
     verdict = "WON" if final["won"] else "did not win"
