@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib
 import secrets
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +21,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 LOCAL_HOSTS = ["127.0.0.1", "localhost"]
 BEARER = "Bearer "
 UNAUTHORIZED_CLOSE = 4401
+WARM_MODULE = "byosm.export.bundle"
 
 
 class JobRequest(BaseModel):
@@ -149,6 +152,7 @@ def create_app(ws: Path, token: str, hosts: list[str] | None = None, parallel: i
         if not secrets.compare_digest(given, token):
             raise HTTPException(401, "missing or wrong token: open the link `byosm app` printed")
 
+    threading.Thread(target=importlib.import_module, args=(WARM_MODULE,), daemon=True).start()
     _routes(app, ws, runner, hub, Depends(check))
     app.include_router(systems_router(ws, Depends(check)))
     if STATIC_DIR.exists():
