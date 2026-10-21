@@ -1,8 +1,9 @@
 # UI guidelines
 
-Rules for every page of the web app in `ui/`. The look is standard shadcn: the default `radix-nova` style, the
-neutral base colour and Geist, exactly as `npx shadcn init` and the stock components ship them. We change how pages
-are composed, never how components look.
+Rules for every page of the web app in `ui/`. The look is standard shadcn: the default `radix-nova` style and the
+neutral base colour, exactly as `npx shadcn init` and the stock components ship them. The one exception is the
+typeface: Hanken Grotesk, set only through the `--font-sans` token in `ui/src/index.css`. We change how pages are
+composed, never how components look.
 
 Sources: Anthropic's `frontend-design` skill (plugin `frontend-design@claude-code-plugins`) for what reads as
 AI-generated, the `ux-skill` dashboard rules, and shadcn's own `dashboard-01` block for layout.
@@ -24,16 +25,50 @@ AI-generated, the `ux-skill` dashboard rules, and shadcn's own `dashboard-01` bl
 - Cards in the same grid row have the same height (`h-full` on the card, grid `items-stretch`), the same internal
   structure (header, content, footer in the same order) and the same padding.
 - One primary number per page. It is visibly larger and heavier than everything else (`text-3xl font-semibold`);
-  secondary numbers are `text-2xl`; labels are `text-sm text-muted-foreground`. The hierarchy must survive grayscale.
+  secondary numbers are `text-2xl`; labels follow the text levels below. The hierarchy must survive grayscale.
 - Two to four secondary metrics at most. A fifth is noise: move it to a table.
 - Cards group related things. No card holding a single word, no card inside a card, no wrapper without a purpose.
 - One density per page. Tables use the stock row height; do not mix compact and comfortable lists.
+
+## Text levels
+
+Every card and section uses exactly these levels, top to bottom. Two neighbouring texts never share a level unless
+they are the same kind of thing.
+
+| level | what | classes |
+|---|---|---|
+| title | the thing's name | `CardTitle` (stock) |
+| context | one line of description, clamped | `CardDescription line-clamp-1` |
+| hero | the one number or state the card exists for | `text-3xl font-semibold tabular-nums` |
+| label | only when the title does not already say what the hero is; otherwise put it in the hero's `title` tooltip | `text-xs text-muted-foreground` |
+| detail | the comparison or note under the hero: "+0.129 vs Jev" | `text-xs`, the figure `text-foreground font-medium`, the rest muted |
+
+- Hierarchy comes from opacity as much as from size. Four steps, and only these: `text-foreground` for what the
+  reader came for, `text-foreground/70` for supporting values (params, latency, counts), `text-muted-foreground` for
+  labels, `text-muted-foreground/70` for the least important (intervals, units, ids). In a table the key column and
+  the main score are full strength; every other column steps down.
+- Fewer levels beat more: drop any line the reader does not need to decide something. A label that repeats what the
+  page already says is noise.
+- No decorative icons next to the product name or headings; icons belong on buttons and on state.
+- The hero is the only large text in a card. Labels and details are small and quiet so it stands out without colour.
+- A description never wraps to two lines inside a card; the full text belongs on the detail page.
+- Human names, never internal codes: the benchmark's dataset name (`banking77`), not the suite id (`b77`); the rival's
+  short name (`Jev`, `bert-base-NER`), not `hf:org/repo`.
+
+## Alignment
+
+- Cards in a grid row share one height, and their parts line up across the row: labels clamp to one line so every
+  header ends at the same height, and the footer is pinned to the bottom (`mt-auto`) so no empty band appears under it.
+- Numbers in the same position on neighbouring cards sit on the same baseline.
 
 ## Text
 
 - Every label says what the number is and against what: "Test accuracy on Banking77", not "Score". Units and
   splits are always named (test, calib, ms per request).
 - Sentence case. No ALL-CAPS eyebrows, no middle-dot meta strings ("A · B · C"), no arrows appended to buttons.
+- Every button has a lucide icon before its label (`<Hammer /> Build`). Icon-only buttons have an `aria-label` and a
+  tooltip. One primary button per view (`variant="default"`), the rest `outline`; destructive actions use the
+  `destructive` variant and confirm first.
 - Buttons name the outcome: "Build it", "Save changes", "Run this proposal". The confirmation uses the same verb.
 - Descriptions are one sentence, plain, and say what the thing does for the user. No selling.
 - Errors say what happened and what to do next. Empty states invite the next action.
