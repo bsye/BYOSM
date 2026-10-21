@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { rivalName } from "@/format"
+import { GeneratedSuites } from "./GeneratedSuites"
 
 type Prediction = { label?: string; probs?: Record<string, number>; entities?: { label: string; text: string }[] }
 type Rival = { label?: string; confidence?: number; ms: number; error?: string }
@@ -99,7 +100,7 @@ function Rivals({ ours, rivals }: { ours?: string; rivals: Record<string, Rival>
   )
 }
 
-export function Playground({ d }: { d: Detail }) {
+function TryIt({ d }: { d: Detail }) {
   const ex = useExamples(d.name)
   const [text, setText] = useState("")
   const [out, setOut] = useState<Prediction | null>(null)
@@ -188,6 +189,15 @@ export function Playground({ d }: { d: Detail }) {
           </Card>
         </div>
       )}
+    </div>
+  )
+}
+
+export function Playground({ d }: { d: Detail }) {
+  return (
+    <div className="flex flex-col gap-4 md:gap-6">
+      <TryIt d={d} />
+      <GeneratedSuites d={d} />
     </div>
   )
 }

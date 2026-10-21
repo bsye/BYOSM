@@ -95,9 +95,18 @@ export type Run = {
 
 export type SplitSummary = { n: number; labels: Record<string, number> }
 
+export type Suite = {
+  name: string
+  kind: string
+  primary: boolean
+  written_by: string | null
+  judged_by: string | null
+}
+
 export type Detail = Summary & {
   spec: Record<string, unknown>
   board: Record<string, Record<string, Result>>
+  suites: Suite[]
   baselines: string[]
   runs: Run[]
   data: Record<string, SplitSummary> | null
