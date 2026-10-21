@@ -129,12 +129,14 @@ def suite_ls(name: str) -> None:
 
 @baseline_app.command("add")
 def baseline_add(name: str, baseline: str) -> None:
-    """Add a baseline (see `byosm baseline available`)."""
-    from ..predictors import BASELINES
+    """Add a baseline: a registered name (see `byosm baseline available`), hf:<repo> or llm:<role>."""
+    from ..predictors import get_baseline
 
     p, spec = _spec(name)
-    if baseline not in BASELINES:
-        raise typer.BadParameter(f"unknown baseline; available: {sorted(BASELINES)}")
+    try:
+        get_baseline(baseline, spec)
+    except (KeyError, ValueError, OSError) as e:
+        raise typer.BadParameter(str(e)) from e
     if baseline not in spec.baselines:
         spec.baselines.append(baseline)
         spec.save(p.spec_path)
