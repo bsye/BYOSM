@@ -275,6 +275,14 @@ fallback for tiny-cnn or when the processor has none.
 spec's labels and is scored by the same code. Calib probabilities fit the decision policy; test probabilities give the
 objective, P/R/F1 and, for binary tasks with both classes present, ROC-AUC and AP.
 
+**Tagging is a frame task over words.**
+`byosm/rt.py` `spans`, `first_subtokens`, `byosm/metrics.py` `span_counts`: `frame` means one label per unit, a 10 ms
+audio frame or a word, so tagging reuses the frame path instead of adding a parallel one. A word's prediction is read
+from its first subtoken, in training, scoring and the bundle alike. Spans are decoded from `O`, `B-X` and `I-X` tags (a
+bare `X` counts as `I-X`) by one function in the runtime that the scorer imports. `span_f1` is entity-level F1, the
+CoNLL standard: a span counts only if its type and both ends are right. Each sentence stores its (hit, extra, missed)
+span counts as its bootstrap unit, so CIs and paired comparisons work as for every other task.
+
 **Every predictor answers inside the benchmark's label space.**
 `EvalSuite.label_space`, `byosm/evals/scoring.py` `_within`, `byosm/predictors/zero_shot.py`: a spec may carry labels
 a public benchmark never uses (the autopilot adds a catch-all `other`). The suite's declared `label_map` targets are
