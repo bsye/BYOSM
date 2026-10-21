@@ -9,6 +9,7 @@ from ..spec import TaskSpec
 from ..text import markup_tags
 
 TABLE_SUFFIXES = (".csv", ".xlsx")
+TEMPLATE_STEM = "template"
 SPLIT_CHOICES = ["train", "test"]
 LABEL_COL, SPLIT_COL = "label", "split"
 DATA_SHEET, GUIDE_SHEET = "data", "labels"
@@ -80,9 +81,10 @@ def _write_xlsx(path: Path, header: list[str], rows: list[list[Any]], guide: lis
 
 def write_template(out: Path, header: list[str], rows: list[list[Any]], guide: list[list[Any]]) -> list[Path]:
     out.mkdir(parents=True, exist_ok=True)
-    _write_csv(out / "template.csv", header, rows)
-    _write_xlsx(out / "template.xlsx", header, rows, guide)
-    return [out / "template.csv", out / "template.xlsx"]
+    csv_path, xlsx_path = (out / f"{TEMPLATE_STEM}{s}" for s in TABLE_SUFFIXES)
+    _write_csv(csv_path, header, rows)
+    _write_xlsx(xlsx_path, header, rows, guide)
+    return [csv_path, xlsx_path]
 
 
 def resolve_input(spec: TaskSpec, raw: str, base: Path) -> str:

@@ -14,6 +14,8 @@ from pydantic import BaseModel
 from ..config import MAX_PARALLEL_JOBS
 from . import catalog, keys
 from .config_routes import config_router
+from .data_routes import data_router
+from .errors import missing
 from .hub import Hub
 from .jobs import Runner
 from .systems_routes import systems_router
@@ -37,15 +39,6 @@ class PredictRequest(BaseModel):
     input: str
 
 
-def _missing(fn: Any, *a: Any) -> Any:
-    try:
-        return fn(*a)
-    except KeyError as e:
-        raise HTTPException(404, str(e).strip("'\"")) from e
-    except ValueError as e:
-        raise HTTPException(422, str(e)) from e
-
-
 def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None:
     models: dict[str, Any] = {}
 
@@ -55,23 +48,23 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.get("/api/specialists/{name}", dependencies=[auth])
     def specialist(name: str) -> dict:
-        return _missing(catalog.detail, ws, name)
+        return missing(catalog.detail, ws, name)
 
     @app.put("/api/specialists/{name}/spec", dependencies=[auth])
     def save_spec(name: str, body: dict) -> dict:
-        return _missing(catalog.save_spec, ws, name, body)
+        return missing(catalog.save_spec, ws, name, body)
 
     @app.delete("/api/specialists/{name}", dependencies=[auth])
     def delete(name: str, confirm: str = Query(...)) -> dict:
         if confirm != name:
             raise HTTPException(422, "pass confirm=<name> to delete a specialist and everything it built")
-        _missing(catalog.delete, ws, name)
+        missing(catalog.delete, ws, name)
         models.pop(name, None)
         return {"deleted": name}
 
     @app.get("/api/specialists/{name}/rows", dependencies=[auth])
     def rows(name: str, split: str = "train", offset: int = 0, limit: int = 100) -> dict:
-        return _missing(catalog.rows, ws, name, split, offset, limit)
+        return missing(catalog.rows, ws, name, split, offset, limit)
 
     @app.post("/api/specialists/{name}/predict", dependencies=[auth])
     def predict(name: str, body: PredictRequest) -> dict:
@@ -89,7 +82,7 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.get("/api/systems/{name}", dependencies=[auth])
     def system(name: str) -> dict:
-        return _missing(catalog.system, ws, name)
+        return missing(catalog.system, ws, name)
 
     @app.get("/api/jobs", dependencies=[auth])
     def jobs() -> list[dict]:
@@ -97,15 +90,15 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.post("/api/jobs", dependencies=[auth])
     def submit(body: JobRequest) -> dict:
-        return _missing(runner.submit, body.args).public()
+        return missing(runner.submit, body.args).public()
 
     @app.get("/api/jobs/{job_id}", dependencies=[auth])
     def job(job_id: str) -> dict:
-        return _missing(runner.detail, job_id)
+        return missing(runner.detail, job_id)
 
     @app.post("/api/jobs/{job_id}/cancel", dependencies=[auth])
     def cancel(job_id: str) -> dict:
-        return _missing(runner.cancel, job_id).public()
+        return missing(runner.cancel, job_id).public()
 
     @app.get("/api/keys", dependencies=[auth])
     def list_keys() -> list[dict]:
@@ -113,12 +106,12 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.put("/api/keys/{name}", dependencies=[auth])
     def set_key(name: str, body: KeyValue) -> dict:
-        _missing(keys.set_key, ws, name, body.value)
+        missing(keys.set_key, ws, name, body.value)
         return {"name": name, "set": True}
 
     @app.delete("/api/keys/{name}", dependencies=[auth])
     def delete_key(name: str) -> dict:
-        _missing(keys.delete_key, ws, name)
+        missing(keys.delete_key, ws, name)
         return {"name": name, "set": False}
 
     @app.websocket("/api/events")
@@ -157,6 +150,7 @@ def create_app(ws: Path, token: str, hosts: list[str] | None = None, parallel: i
     _routes(app, ws, runner, hub, Depends(check))
     app.include_router(systems_router(ws, Depends(check)))
     app.include_router(config_router(ws, Depends(check)))
+    app.include_router(data_router(ws), dependencies=[Depends(check)])
     if STATIC_DIR.exists():
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
     return app

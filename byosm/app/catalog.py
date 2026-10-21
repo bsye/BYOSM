@@ -15,7 +15,7 @@ MAX_PAGE = 500
 RESULT_FIELDS = ("objective", "calib_objective", "latency_ms", "params", "n_test", "n_calib")
 
 
-def _project(ws: Path, name: str) -> Project:
+def project(ws: Path, name: str) -> Project:
     p = Project(name, ws)
     if not p.exists():
         raise KeyError(f"no specialist {name!r}")
@@ -29,7 +29,7 @@ def _result(r: dict) -> dict[str, Any]:
 def summary(ws: Path, name: str) -> dict[str, Any]:
     from ..export.bundle import is_exported
 
-    p = _project(ws, name)
+    p = project(ws, name)
     s = TaskSpec.load(p.spec_path)
     prim = s.primary_suite()
     board = p.board()
@@ -76,7 +76,7 @@ def _run(p: Project, exp: str) -> dict[str, Any]:
 
 
 def detail(ws: Path, name: str) -> dict[str, Any]:
-    p = _project(ws, name)
+    p = project(ws, name)
     spec = TaskSpec.load(p.spec_path)
     board = {pid: {suite: _result(r) for suite, r in by.items()} for pid, by in p.board().items()}
     dd = p.data_dir_for(spec)
@@ -92,20 +92,20 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
 
 
 def save_spec(ws: Path, name: str, body: dict) -> dict[str, Any]:
-    p = _project(ws, name)
+    p = project(ws, name)
     spec = TaskSpec(**{**body, "name": name})
     spec.save(p.spec_path)
     return spec.model_dump(mode="json")
 
 
 def delete(ws: Path, name: str) -> None:
-    shutil.rmtree(_project(ws, name).root)
+    shutil.rmtree(project(ws, name).root)
 
 
 def rows(ws: Path, name: str, split: str, offset: int, limit: int) -> dict[str, Any]:
     if split not in SPLITS:
         raise KeyError(f"split must be one of {', '.join(SPLITS)}")
-    p = _project(ws, name)
+    p = project(ws, name)
     data = Dataset(p.data_dir_for(TaskSpec.load(p.spec_path))).load(split)
     return {"total": len(data), "rows": data[offset : offset + min(limit, MAX_PAGE)]}
 

@@ -32,8 +32,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-app = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
-dev = ["pytest", "ruff", "httpx", "fastapi>=0.110", "uvicorn[standard]>=0.29"]
+app = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart"]
+dev = ["pytest", "ruff", "httpx", "fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart"]
 silero = ["livekit-plugins-silero"]
 
 [project.scripts]
