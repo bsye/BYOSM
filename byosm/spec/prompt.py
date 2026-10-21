@@ -50,6 +50,8 @@ Rules:
 - name: a short lowercase name for the task, one to three words (e.g. "doctype", "banking-intent", "names").
 - modality: what the model reads. "document" for PDFs or scanned pages, "image" for photos, "audio" for sound, \
 "text" otherwise.
+- If the request names its classes, keep every named class as its own label, named in the user's words; never merge \
+or drop a named class, even when two look alike (sharpen their definitions instead).
 - Labels must be mutually exclusive and collectively exhaustive for the input distribution. Add a catch-all label \
 (e.g. "other"/"none") when real inputs can fall outside the named classes. Definitions must settle borderline cases explicitly.
 - task_type "frame" means one label per timestep/token (e.g. voice activity per 10ms frame, token tagging). Otherwise "classify".
