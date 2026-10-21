@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { api } from "@/api"
+import { TypeDemo } from "./TypeDemo"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
@@ -84,6 +85,7 @@ export function Systems() {
               ))}
             </div>
           </div>
+          {s.exported && <TypeDemo system={s.name} />}
           {Object.entries(s.board ?? {}).map(([name, suite]) => (
             <SuiteCard key={name} name={name} suite={suite} />
           ))}
