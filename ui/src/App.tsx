@@ -24,6 +24,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { LiveProvider, useLive, useJobToasts } from "@/events"
 import { Jobs, Running } from "@/pages/Jobs"
 import { Keys } from "@/pages/Keys"
+import { Palette } from "@/pages/Palette"
 import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
 import { Systems } from "@/pages/Systems"
@@ -98,7 +99,8 @@ function Shell() {
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-5" />
           <span className="text-sm">{route.join(" / ") || "specialists"}</span>
-          <Badge variant={live.connected ? "secondary" : "destructive"} className="ml-auto">
+          <kbd className="text-muted-foreground ml-auto hidden rounded border px-1.5 font-mono text-xs md:inline">⌘K</kbd>
+          <Badge variant={live.connected ? "secondary" : "destructive"}>
             {live.connected ? "live" : "offline"}
           </Badge>
         </header>
@@ -116,6 +118,7 @@ export default function App() {
   return (
     <LiveProvider>
       <Shell />
+      <Palette />
       <Toaster />
     </LiveProvider>
   )
