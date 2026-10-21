@@ -43,11 +43,13 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   return lines.at(-1)?.trim() || "Starting"
 }
 
+const PROVIDER_PREFIXES = ["openai:", "anthropic:", "claude-code:", "codex:"]
+
 export function modelName(id: string): string {
   const at = id.indexOf("@")
   const bare = at >= 0 ? id.slice(0, at) : id
-  const colon = bare.indexOf(":")
-  return colon >= 0 && !bare.slice(colon + 1).startsWith("/") ? bare.slice(colon + 1) : bare
+  const prefix = PROVIDER_PREFIXES.find((p) => bare.startsWith(p))
+  return prefix ? bare.slice(prefix.length) : bare
 }
 
 export function llmUsed(metrics: Metric[]): string | null {

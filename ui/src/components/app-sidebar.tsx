@@ -1,4 +1,4 @@
-import { Activity, Boxes, Github, KeyRound, Settings, Smile, SquarePen } from "lucide-react"
+import { Activity, Boxes, Github, Settings, Smile, SquarePen } from "lucide-react"
 import type { ComponentProps } from "react"
 import {
   Sidebar,
@@ -20,7 +20,6 @@ const MAIN = [
   { key: "jobs", label: "Jobs", icon: Activity },
 ]
 const SECONDARY = [
-  { key: "keys", label: "Keys", icon: KeyRound },
   { key: "settings", label: "Settings", icon: Settings },
 ]
 

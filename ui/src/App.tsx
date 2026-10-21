@@ -14,7 +14,6 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { LiveProvider, useLive, useJobToasts } from "@/events"
 import { Create } from "@/pages/Create"
 import { Jobs } from "@/pages/Jobs"
-import { Keys } from "@/pages/Keys"
 import { Palette } from "@/pages/Palette"
 import { Settings } from "@/pages/Settings"
 import { Specialist } from "@/pages/Specialist"
@@ -26,7 +25,7 @@ function Page({ route }: { route: string[] }) {
   if (section === "create") return <Create />
   if (section === "specialists") return id ? <Specialist name={id} /> : <Specialists />
   if (section === "jobs") return <Jobs id={id} />
-  if (section === "keys") return <Keys />
+  if (section === "keys") return <Settings />
   if (section === "settings") return <Settings />
   return <Specialists />
 }
