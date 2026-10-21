@@ -126,6 +126,28 @@ export type CheckReport = {
   noise: { agreement: number; confusions: { given: string; probe: string; rows: number }[]; suspects: Suspect[] } | null
 }
 
+export type ReviewRow = {
+  input: string
+  panel: string
+  sure: number
+  votes: Record<string, string | null>
+  reviewed: string | null
+}
+
+export type PanelView = {
+  teachers: string[]
+  labels: string[]
+  summary: {
+    teachers: Record<string, number>
+    panel_on_labelled: number
+    n_labelled: number
+    n_pool: number
+    all_agree: number
+  } | null
+  n_reviewed: number
+  review: ReviewRow[]
+}
+
 export const runJob = (args: string[]) => post<Job>("/jobs", { args })
 
 export function eventsUrl(): string {

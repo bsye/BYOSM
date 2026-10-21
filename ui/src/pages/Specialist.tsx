@@ -12,6 +12,7 @@ import { go } from "@/route"
 import { BoardChart, boardRows } from "./BoardChart"
 import { DataRows } from "./DataRows"
 import { LabelChart } from "./LabelChart"
+import { hasTeachers, Panel } from "./Panel"
 import { Playground } from "./Playground"
 import { Proposals } from "./Proposals"
 import { Runs } from "./Runs"
@@ -159,6 +160,7 @@ export function Specialist({ name }: { name: string }) {
           <TabsTrigger value="board">Board</TabsTrigger>
           <TabsTrigger value="runs">Experiments</TabsTrigger>
           <TabsTrigger value="data">Data</TabsTrigger>
+          {hasTeachers(d) && <TabsTrigger value="teachers">Teachers</TabsTrigger>}
           <TabsTrigger value="try">Try it</TabsTrigger>
           <TabsTrigger value="spec">Spec</TabsTrigger>
         </TabsList>
@@ -174,6 +176,7 @@ export function Specialist({ name }: { name: string }) {
           <YourData name={name} />
           <DataRows name={name} />
         </TabsContent>
+        <TabsContent value="teachers">{hasTeachers(d) && <Panel name={name} />}</TabsContent>
         <TabsContent value="try">
           <Playground d={d} />
         </TabsContent>
