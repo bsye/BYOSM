@@ -1,4 +1,4 @@
-import { Activity, Boxes, KeyRound, Network } from "lucide-react"
+import { Activity, Boxes, KeyRound, Network, Settings as SettingsIcon } from "lucide-react"
 import { useState } from "react"
 import { saveToken } from "@/api"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -25,6 +25,7 @@ import { LiveProvider, useLive, useJobToasts } from "@/events"
 import { Jobs, Running } from "@/pages/Jobs"
 import { Keys } from "@/pages/Keys"
 import { Palette } from "@/pages/Palette"
+import { Settings } from "@/pages/Settings"
 import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
 import { Systems } from "@/pages/Systems"
@@ -35,6 +36,7 @@ const NAV = [
   { key: "systems", label: "Systems", icon: Network },
   { key: "jobs", label: "Jobs", icon: Activity },
   { key: "keys", label: "Keys", icon: KeyRound },
+  { key: "settings", label: "Settings", icon: SettingsIcon },
 ]
 
 function Page({ route }: { route: string[] }) {
@@ -43,6 +45,7 @@ function Page({ route }: { route: string[] }) {
   if (section === "systems") return <Systems />
   if (section === "jobs") return <Jobs id={id} />
   if (section === "keys") return <Keys />
+  if (section === "settings") return <Settings />
   return <Specialists />
 }
 

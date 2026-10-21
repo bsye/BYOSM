@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/command"
 import { go } from "@/route"
 
-const PAGES = ["specialists", "systems", "jobs", "keys"]
+const PAGES = ["specialists", "systems", "jobs", "keys", "settings"]
 const JOBS: { verb: string; args: (n: string) => string[] }[] = [
   { verb: "Build", args: (n) => ["build", n] },
   { verb: "Score", args: (n) => ["eval", n] },
