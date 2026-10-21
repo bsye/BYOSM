@@ -308,6 +308,8 @@ byosm export vad && byosm predict vad clip.wav
 | `byosm suite add` · `byosm baseline add` | add a benchmark or a rival |
 | `byosm distill <name> [--run]` | shrink a winner into a smaller student |
 | `byosm export` · `byosm predict` · `byosm serve` | ONNX bundle, run it, local HTTP API |
+| `byosm app [--token t --allow-host h]` | local web UI and API: specialists, live jobs, keys (`docker/compose.yaml` to self-host) |
+| `byosm containerize <name> [--tag t]` | a small non-root Docker image that serves one exported bundle |
 | `byosm publish <name> --repo <id>` | push to Hugging Face with a generated model card |
 | `byosm bench <a> <b> ...` | specialists vs one generalist (not run yet, see above) |
 | `byosm report [--check]` | regenerate the tables in this README |

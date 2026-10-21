@@ -626,6 +626,37 @@ autopilot publishes only a winner, always private, to be flipped public on the H
 when a repo is created, so a private publish into a repo that already exists as public stops with an error instead of
 uploading publicly (`byosm/hub/upload.py`).
 
+## Deployment
+
+**Jobs and models run in separate containers.**
+`docker/`: the app runs any allowed `byosm` command as a subprocess with the workspace keys in its environment, so it
+gets its own container that sees only `/workspace` and `/cache`. A served model needs none of that: it gets its own
+image with no torch, no keys and no workspace, so a bug or an exploit in one model cannot reach the pipeline, the keys
+or another model, and each model scales and restarts on its own.
+
+| image | built from | contains | runs as |
+|---|---|---|---|
+| `byosm-app` | `docker/app.Dockerfile` (repo root as context) | python 3.11 slim, CPU torch, byosm with the `app` extra, the UI built by node 20 in a first stage | uid 1000, `byosm app --host 0.0.0.0 --no-open` on 8765 |
+| `byosm-<name>` | `docker/model.Dockerfile` (the export folder as context), via `byosm containerize <name>` | python 3.11 slim, the bundle's own `requirements.txt` (numpy, onnxruntime, tokenizers for text), the bundle | uid 1000, `byosm_rt.py serve /model --host 0.0.0.0` on 8800 |
+
+**The UI ships as package data.**
+`pyproject.toml` `[tool.setuptools.package-data]`: `byosm/app/static` is built, not committed, and a plain (non-editable)
+install drops non-Python files unless they are listed, so the app image would serve no UI without it.
+
+**A container needs a stable token and its own Host names.**
+`byosm/cli/local_app.py`: by default `byosm app` makes a new random token each start and accepts only `127.0.0.1` and
+`localhost` as Host header, against DNS rebinding. `--token` (or `BYOSM_APP_TOKEN`) fixes the token, which is then never
+printed; `--allow-host` (repeatable, or `BYOSM_APP_HOSTS=a,b`) adds the names a reverse proxy or another container uses.
+The bind address is always allowed too.
+
+**Compose is hardened and local by default.**
+`docker/compose.yaml`: both services are read-only with `/tmp` as tmpfs, drop every capability and set
+`no-new-privileges`; ports bind to `127.0.0.1`, so exposing them is a reverse proxy's job. The app mounts the workspace
+(`BYOSM_WORKSPACE`, default the repo) and a `byosm-cache` volume for downloads, embeddings and OCR, and reads the
+workspace `.env` as `env_file`. `BYOSM_APP_TOKEN` is required. The model service is in the `models` profile and uses the
+image `byosm containerize intent` built, so `docker compose up` starts only the app. Gotcha: inside the container
+`localhost` is the container; an Ollama on the host is `http://host.docker.internal:11434/v1` in `byosm.yaml`.
+
 ## README results
 
 **README tables are generated, never typed.**
