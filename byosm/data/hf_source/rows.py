@@ -4,7 +4,7 @@ import itertools
 from collections.abc import Iterator
 from typing import Any
 
-from ...rt import OUTSIDE
+from ...rt import OUTSIDE, bio, spans
 from ...spec import HFSource, TaskSpec
 from ...text import markup_tags
 from .decode import _decode
@@ -12,7 +12,7 @@ from .hub import _no_decode, open_split
 from .parquet import balanced_rows
 
 
-def _class_names(src: HFSource, ds: Any) -> list[str] | None:
+def class_names(src: HFSource, ds: Any) -> list[str] | None:
     from datasets import ClassLabel
 
     feat = (ds.features or {}).get(src.label_column) if src.label_column else None
@@ -33,7 +33,7 @@ def _row_label(raw: Any, names: list[str] | None, lmap: dict[str, str]) -> str |
 
 def _stream_rows(src: HFSource, spec: TaskSpec) -> Iterator[tuple[Any, str | None]]:
     ds = open_split(src.dataset, src.config, src.split)
-    names = _class_names(src, ds)
+    names = class_names(src, ds)
     ds = _no_decode(ds).shuffle(seed=0, buffer_size=1000)
     lmap = {str(a): b for a, b in src.label_map}
     n = 0
@@ -69,3 +69,11 @@ def take(src: HFSource, spec: TaskSpec, n: int | None = None) -> list[tuple[Any,
     if src.sampling == "balanced":
         return balanced_rows(src, spec)
     return list(itertools.islice(iter_rows(src, spec), n or src.max_rows))
+
+
+def source_labels(src: HFSource, scan_rows: int) -> list[str]:
+    ds = open_split(src.dataset, src.config, src.split)
+    if src.format != "markup":
+        return class_names(src, ds) or sorted({str(r[src.label_column]) for r in itertools.islice(ds, scan_rows)})
+    kinds = {k for r in itertools.islice(ds, scan_rows) for k, _, _ in spans(markup_tags(r[src.label_column])[1])}
+    return [OUTSIDE, *(t for k in sorted(kinds) for t in (bio(k, 2)))]

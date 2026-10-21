@@ -1,7 +1,7 @@
 from .hub import search, split_sizes
 from .mapping import MAP_SYSTEM, PICK_SYSTEM, resolve
 from .parquet import availability, balanced_rows
-from .rows import iter_rows, take
+from .rows import iter_rows, source_labels, take
 
 __all__ = [
     "MAP_SYSTEM",
@@ -11,6 +11,7 @@ __all__ = [
     "iter_rows",
     "resolve",
     "search",
+    "source_labels",
     "split_sizes",
     "take",
 ]
