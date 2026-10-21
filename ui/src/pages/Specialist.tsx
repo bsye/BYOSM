@@ -1,6 +1,6 @@
 import { InfoTip } from "@/components/info-tip"
 import { ExternalLink, Gauge, Hammer, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { api, del, put, runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -151,10 +151,13 @@ function Model({ name }: { name: string }) {
   const [d, setD] = useState<Detail | null>(null)
   const [error, setError] = useState("")
   const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
-  const load = () => api<Detail>(`/specialists/${name}`).then(setD).catch((e) => setError(String(e)))
+  const load = useCallback(
+    () => api<Detail>(`/specialists/${name}`).then(setD).catch((e) => setError(String(e))),
+    [name],
+  )
   useEffect(() => {
     load()
-  }, [name, finished])
+  }, [load, finished])
   if (error) return <p className="text-destructive">{error}</p>
   if (!d) return null
   const remove = async () => {

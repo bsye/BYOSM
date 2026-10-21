@@ -1,5 +1,5 @@
 import { Download, FilePlus, ShieldCheck } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { api, download, runJob, upload, type CheckReport as Report, type DataRequest } from "@/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -73,15 +73,15 @@ export function YourData({ name }: { name: string }) {
   const [req, setReq] = useState<DataRequest | null>(null)
   const [report, setReport] = useState<Report | null>(null)
   const finished = Object.values(useLive().jobs).filter((j) => j.status === "done" || j.status === "failed").length
-  const load = () => {
+  const load = useCallback(() => {
     api<DataRequest>(`/specialists/${name}/request`).then(setReq).catch(() => setReq(null))
     api<{ report: Report | null }>(`/specialists/${name}/check`)
       .then((r) => setReport(r.report))
       .catch(() => setReport(null))
-  }
+  }, [name])
   useEffect(() => {
     load()
-  }, [name, finished])
+  }, [load, finished])
   if (!req) return null
   return (
     <>

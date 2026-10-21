@@ -28,7 +28,7 @@ export function useLlmChoice(): LlmChoice {
     const first = available.find((p) => p.id === PREFERRED) ?? available[0]
     const known = available.some((p) => [...p.models, null].some((m) => choiceKey(p, m) === choice))
     if (first && !known) setChoice(choiceKey(first, first.models[0] ?? null))
-  }, [providers])
+  }, [providers, available, choice])
   const pick = (v: string) => {
     setChoice(v)
     try {
