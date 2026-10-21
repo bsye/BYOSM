@@ -9,6 +9,9 @@ from typing import Any
 
 from ..text import normalize
 
+DEV_SHARE = 0.1
+TEST_SHARE = 0.15
+
 SPLITS = ("train", "dev", "test")
 
 

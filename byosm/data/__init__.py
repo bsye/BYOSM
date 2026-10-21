@@ -7,14 +7,15 @@ from typing import Any
 
 from ..spec import HFSource, TaskSpec
 from . import audio_mix, hf_source, segments, synth_text
-from .store import Dataset, dedupe, record, write
+from .store import DEV_SHARE, TEST_SHARE, Dataset, dedupe, record, write
+from .table import is_table, table_rows
 
 MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
 
 Log = Callable[[str], None]
 
 
-def _split3(items: list, rng: random.Random, dev: float = 0.1, test: float = 0.15) -> dict[str, list]:
+def _split3(items: list, rng: random.Random, dev: float = DEV_SHARE, test: float = TEST_SHARE) -> dict[str, list]:
     items = items[:]
     rng.shuffle(items)
     n = len(items)
@@ -35,15 +36,17 @@ def _save_media(spec: TaskSpec, data_dir: Path, split: str, x: Any) -> str:
     return rel
 
 
-def _local(spec: TaskSpec) -> list[tuple[Any, str]]:
-    out = []
+def _local(spec: TaskSpec) -> list[tuple[Any, Any, str]]:
     root = Path(spec.data.local_dir or "")
+    if is_table(root):
+        return table_rows(spec, root)
+    out = []
     for lab in spec.label_names:
         for p in sorted((root / lab).glob("*")) if (root / lab).exists() else []:
             if p.suffix == ".txt" and spec.modality == "text":
-                out += [(line.strip(), lab) for line in p.read_text().splitlines() if line.strip()]
+                out += [(line.strip(), lab, "") for line in p.read_text().splitlines() if line.strip()]
             elif spec.modality != "text":
-                out.append((str(p.resolve()), lab))
+                out.append((str(p.resolve()), lab, ""))
     return out
 
 
@@ -77,10 +80,14 @@ def _segment_clips(spec: TaskSpec, src: HFSource, data_dir: Path, log: Log) -> l
 
 
 def _add_local(spec: TaskSpec, splits: dict[str, list[dict]], rng: random.Random, log: Log) -> None:
-    rows = [record(x, y, "local") for x, y in _local(spec)]
-    for s, part in _split3(rows, rng).items():
+    local = _local(spec)
+    held = [record(x, y, "local") for x, y, s in local if s == "test"]
+    rows = [record(x, y, "local") for x, y, s in local if s != "test"]
+    parts = _split3(rows, rng, test=0.0 if held else TEST_SHARE)
+    parts["test"] += held
+    for s, part in parts.items():
         splits[s] += part
-    log(f"  local: {len(rows)} examples from {spec.data.local_dir}")
+    log(f"  local: {len(local)} examples from {spec.data.local_dir} ({len(held)} marked test)")
 
 
 def _resolve_sources(spec: TaskSpec, data_dir: Path, cfg: dict | None, log: Log) -> tuple[list, list]:
@@ -167,7 +174,8 @@ def build(
     splits, unlabeled = _collect(spec, data_dir, cfg, log)
     if not splits["train"]:
         raise RuntimeError(
-            "data stage produced no training examples - check the data plan in spec.yaml (sources, synthetic, local_dir)"
+            "data stage produced no training examples - check the data plan in spec.yaml (sources, synthetic, local_dir), "
+            "or run `byosm request-data <name>` for a template to fill"
         )
     for s, rows in splits.items():
         ds.save(s, rows)
