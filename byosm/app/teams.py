@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+OURS = "system"
+TEAM_METRIC = "exact_frame"
+
+
+def team_names(ws: Path) -> list[str]:
+    root = ws / "systems"
+    return sorted(d.name for d in root.glob("*") if (d / "system.yaml").exists()) if root.exists() else []
+
+
+def members(ws: Path) -> dict[str, str]:
+    from ..system import SystemProject
+
+    return {n.specialist: t for t in team_names(ws) for n in SystemProject(t, ws).spec().nodes.values()}
+
+
+def _best_rival(suite: dict) -> dict[str, Any] | None:
+    rivals = {k: v["test"][TEAM_METRIC] for k, v in suite["rivals"].items() if k != OURS}
+    if not rivals:
+        return None
+    name = max(rivals, key=lambda k: rivals[k])
+    return {"name": name, "score": rivals[name]}
+
+
+def team_summary(ws: Path, name: str) -> dict[str, Any]:
+    from .catalog import system
+
+    t = system(ws, name)
+    board = t["board"] or {}
+    suite_name, suite = next(iter(board.items()), (None, None))
+    ours = suite["rivals"].get(OURS) if suite else None
+    return {
+        "name": name,
+        "kind": "team",
+        "description": t["spec"]["description"],
+        "modality": "text",
+        "task_type": "team",
+        "labels": 0,
+        "metric": TEAM_METRIC,
+        "primary_suite": suite_name,
+        "benchmark": suite_name,
+        "promoted": None,
+        "score": ours["test"][TEAM_METRIC] if ours else None,
+        "rival": _best_rival(suite) if suite else None,
+        "experiments": [],
+        "exported": t["exported"],
+        "members": [n["specialist"] for n in t["spec"]["nodes"].values()],
+        "part_of": None,
+    }

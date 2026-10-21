@@ -54,7 +54,11 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
 
 
 def specialists(ws: Path) -> list[dict[str, Any]]:
-    return [summary(ws, n) for n in list_projects(ws)]
+    from .teams import members, team_names, team_summary
+
+    part_of = members(ws)
+    singles = [{**summary(ws, n), "kind": "model", "part_of": part_of.get(n)} for n in list_projects(ws)]
+    return singles + [team_summary(ws, t) for t in team_names(ws)]
 
 
 def _parent(p: Project, exp: str) -> str | None:
@@ -114,10 +118,9 @@ def rows(ws: Path, name: str, split: str, offset: int, limit: int) -> dict[str, 
 
 def systems(ws: Path) -> list[dict[str, Any]]:
     from ..system import SystemProject
+    from .teams import team_names
 
-    root = ws / "systems"
-    names = sorted(d.name for d in root.glob("*") if (d / "system.yaml").exists()) if root.exists() else []
-    return [system(ws, n) for n in names if SystemProject(n, ws).spec_path.exists()]
+    return [system(ws, n) for n in team_names(ws) if SystemProject(n, ws).spec_path.exists()]
 
 
 def system(ws: Path, name: str) -> dict[str, Any]:
