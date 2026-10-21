@@ -838,6 +838,15 @@ one `@event <json>` line, and only when the app sets `BYOSM_EVENTS=1`. Plain CLI
 needs no import of the app, and the runner publishes each line as a `metric` event and stores it next to the job's log
 in `.byosm/app.sqlite`, so history and charts survive a restart.
 
+**App jobs outlive the server.**
+`byosm/app/detached.py`, `byosm/app/jobs.py`: each job starts in its own session with its output in
+`.byosm/jobs/<id>.log`, and a small wrapper writes the exit code to `<id>.exit` when it ends; the pid is stored with the
+job. The runner tails the log instead of a pipe, so stopping or restarting the app never kills a job. On startup it
+reattaches to jobs whose process is alive and skips the lines and events already stored, finalises jobs that left an
+exit file, marks failed only those whose process is gone without one, and requeues jobs that never started. Cancel
+sends SIGTERM to the whole process group. This gives durable jobs without a workflow engine such as Temporal: one
+machine, one server per workspace (`byosm/app/lock.py`), and SQLite plus two files per job as the source of truth.
+
 **Feature routes are routers.**
 `byosm/app/panel_routes.py`: a feature with its own endpoints is an `APIRouter` that `create_app` includes with the
 token dependency, so `server.py` stays small. The panel endpoint reshapes each review row so teacher votes sit under

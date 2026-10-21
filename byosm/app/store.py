@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import Any
 
 DB_PATH = Path(".byosm") / "app.sqlite"
-JOB_FIELDS = ("id", "args", "status", "created", "started", "ended", "code")
+JOB_FIELDS = ("id", "args", "status", "created", "started", "ended", "code", "pid")
 SCHEMA = """
 create table if not exists jobs (
-    id text primary key, args text, status text, created real, started real, ended real, code integer
+    id text primary key, args text, status text, created real, started real, ended real, code integer, pid integer
 );
 create table if not exists lines (job text, line text);
 create index if not exists lines_job on lines (job);
@@ -27,6 +27,9 @@ class JobStore:
         self.lock = threading.Lock()
         with self.lock, self.db:
             self.db.executescript(SCHEMA)
+            columns = [r[1] for r in self.db.execute("pragma table_info(jobs)")]
+            if "pid" not in columns:
+                self.db.execute("alter table jobs add column pid integer")
 
     def _write(self, sql: str, params: tuple) -> None:
         with self.lock, self.db:
@@ -53,6 +56,10 @@ class JobStore:
 
     def lines(self, job_id: str) -> list[str]:
         return [r[0] for r in self._read("select line from lines where job = ? order by rowid", (job_id,))]
+
+    def seen(self, job_id: str) -> int:
+        counts = [self._read(f"select count(*) from {t} where job = ?", (job_id,))[0][0] for t in ("lines", "events")]
+        return sum(counts)
 
     def events(self, job_id: str) -> list[dict[str, Any]]:
         rows = self._read("select data from events where job = ? order by rowid", (job_id,))

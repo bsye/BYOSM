@@ -1,14 +1,24 @@
+import subprocess
+import sys
 import time
 
 import pytest
 
 from byosm.app import jobs
+from byosm.app.detached import LOG_SUFFIX, alive, job_file
 from byosm.app.hub import Hub
-from byosm.app.jobs import Runner
+from byosm.app.jobs import LOST_LINE, Runner
+from byosm.app.store import JobStore
 from byosm.events import EVENTS_ENV, emit
 
 SLEEPER = "import sys, time; print('started', flush=True); time.sleep(float(sys.argv[2]))"
 EMITTER = "from byosm.events import emit; emit('epoch', epoch=1, loss=0.5); print('@event not json')"
+SURVIVOR = "import time; print('started', flush=True); time.sleep(1.5); print('finished')"
+EXITER = "import sys; print('bye', flush=True); sys.exit(int(sys.argv[2]))"
+GROUP = (
+    "import subprocess, sys, time; child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); "
+    "print(child.pid, flush=True); time.sleep(60)"
+)
 POLL_SECONDS = 0.02
 TIMEOUT_SECONDS = 20
 
@@ -64,6 +74,50 @@ def test_event_lines_become_metric_events_and_are_stored(ws, monkeypatch):
     assert metric in hub.seen and {"type": "log", "job": job.id, "line": "@event not json"} in hub.seen
     detail = Runner(ws, Hub()).detail(job.id)
     assert detail["events"] == [metric["data"]] and detail["lines"] == ["@event not json"]
+
+
+def test_a_job_survives_a_new_runner_without_duplicate_lines(ws, monkeypatch):
+    monkeypatch.setattr(jobs, "ENTRY", SURVIVOR)
+    first = Runner(ws, Hub())
+    job = first.submit(["report"])
+    wait_for(lambda: first.detail(job.id)["lines"] == ["started"])
+    first.shutdown()
+    second = Runner(ws, Hub())
+    assert second.jobs[job.id].status == "running"
+    wait_for(lambda: second.jobs[job.id].status == "done")
+    assert second.detail(job.id)["lines"] == ["started", "finished"] and job.status == "running"
+
+
+def test_a_dead_job_without_an_exit_file_fails_with_its_log(ws):
+    gone = subprocess.Popen([sys.executable, "-c", "pass"])
+    gone.wait()
+    log = job_file(ws, "lost", LOG_SUFFIX)
+    log.parent.mkdir(parents=True)
+    log.write_text("partial\n")
+    row = {"id": "lost", "args": ["report"], "status": "running", "created": 0.0, "started": 0.0}
+    JobStore(ws).save({**row, "ended": None, "code": None, "pid": gone.pid})
+    detail = Runner(ws, Hub()).detail("lost")
+    assert detail["status"] == "failed" and detail["lines"] == ["partial", LOST_LINE] and not log.exists()
+
+
+@pytest.mark.parametrize(("code", "status"), [(0, "done"), (3, "failed")])
+def test_exit_codes_map_to_done_or_failed(ws, monkeypatch, code, status):
+    monkeypatch.setattr(jobs, "ENTRY", EXITER)
+    runner = Runner(ws, Hub())
+    job = runner.submit(["report", str(code)])
+    wait_for(lambda: job.status not in ("queued", "running"))
+    assert (job.status, job.code) == (status, code) and runner.detail(job.id)["lines"] == ["bye"]
+
+
+def test_cancel_kills_the_whole_process_group(ws, monkeypatch):
+    monkeypatch.setattr(jobs, "ENTRY", GROUP)
+    runner = Runner(ws, Hub())
+    job = runner.submit(["report"])
+    wait_for(lambda: runner.detail(job.id)["lines"])
+    child = int(runner.detail(job.id)["lines"][0])
+    runner.cancel(job.id)
+    wait_for(lambda: job.status == "cancelled")
+    wait_for(lambda: not alive(child))
 
 
 def test_emit_is_silent_outside_a_job(monkeypatch, capsys):

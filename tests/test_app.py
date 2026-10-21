@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from byosm.app import create_app
-from byosm.app.jobs import STOPPED_LINE
+from byosm.app.jobs import LOST_LINE
 from byosm.app.store import JobStore
 from byosm.spec import Label, TaskSpec
 
@@ -76,7 +76,7 @@ def test_job_history_survives_a_restart(client, ws):
     with TestClient(create_app(ws, TOKEN), base_url="http://127.0.0.1") as again:
         assert again.get(f"/api/jobs/{job['id']}", headers=AUTH).json()["lines"] == done["lines"]
         stale = again.get("/api/jobs/stale", headers=AUTH).json()
-    assert stale["status"] == "failed" and stale["lines"] == [STOPPED_LINE]
+    assert stale["status"] == "failed" and stale["lines"] == [LOST_LINE]
     assert (ws / ".byosm" / "app.sqlite").exists()
 
 
