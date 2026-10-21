@@ -2,7 +2,7 @@ import { useState } from "react"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import type { Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { params, score } from "@/format"
@@ -33,7 +33,6 @@ export function Runs({ d }: { d: Detail }) {
       <Card>
         <CardHeader>
           <CardTitle>Training curves</CardTitle>
-          <CardDescription>Dev {d.metric} after each epoch. Pick up to {COLORS} runs in the table below.</CardDescription>
         </CardHeader>
         <CardContent>
           {runs.length ? (
@@ -57,7 +56,6 @@ export function Runs({ d }: { d: Detail }) {
       <Card>
         <CardHeader>
           <CardTitle>Experiments</CardTitle>
-          <CardDescription>Each run, what it was built from, and its test score on {d.primary_suite}.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>

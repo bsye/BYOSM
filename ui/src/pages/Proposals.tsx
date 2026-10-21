@@ -2,7 +2,7 @@ import { Lightbulb, Play } from "lucide-react"
 import { runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { go } from "@/route"
 
 const VALUE_CHARS = 60
@@ -20,12 +20,10 @@ export function Proposals({ d }: { d: Detail }) {
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div className="space-y-1.5">
-          <CardTitle>What to try next</CardTitle>
-          <CardDescription>
-            {saved
-              ? `Diagnosed from ${saved.from}${saved.from !== d.promoted ? `, not the promoted ${d.promoted}: ask again for fresh ones` : ""}. Each is one spec edit with its evidence.`
-              : "No proposals yet. The diagnosis reads the board, the training curve and the confusions."}
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            What to try next
+            {saved && saved.from !== d.promoted && <Badge variant="outline">From {saved.from}, ask again</Badge>}
+          </CardTitle>
         </div>
         <Button variant="outline" onClick={ask}>
           <Lightbulb />

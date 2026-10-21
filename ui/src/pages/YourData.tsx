@@ -2,7 +2,7 @@ import { Download, FilePlus, ShieldCheck } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, download, runJob, upload, type CheckReport as Report, type DataRequest } from "@/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
@@ -88,9 +88,6 @@ export function YourData({ name }: { name: string }) {
       <Card>
         <CardHeader>
           <CardTitle>Your data</CardTitle>
-          <CardDescription>
-            {req.request?.reason ?? "Fill a table with your own labelled rows, upload it and check it before training."}
-          </CardDescription>
           <div className="flex flex-wrap gap-2">
             {req.request ? (
               req.templates.map((kind) => (

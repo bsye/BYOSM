@@ -13,6 +13,8 @@ type Live = {
 }
 
 const RECONNECT_MS = 2000
+const SEED_LINES = 50
+const UNFINISHED = new Set(["running", "queued"])
 const UNAUTHORIZED = 4401
 const KEPT_LINES = 5000
 const LiveContext = createContext<Live>({ jobs: {}, lines: {}, metrics: {}, connected: false, unauthorized: false })
@@ -21,6 +23,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [live, setLive] = useState<Live>({ jobs: {}, lines: {}, metrics: {}, connected: false, unauthorized: false })
   useEffect(() => {
     let sock: WebSocket | null = null
+    const seeded = new Set<string>()
     let stop = false
     const open = () => {
       sock = new WebSocket(eventsUrl())
@@ -31,6 +34,18 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       }
       sock.onmessage = (m) => {
         const ev = JSON.parse(m.data)
+        if (ev.type === "job" && UNFINISHED.has(ev.job.status) && !seeded.has(ev.job.id)) {
+          seeded.add(ev.job.id)
+          api<{ events?: Metric[]; lines: string[] }>(`/jobs/${ev.job.id}`)
+            .then((d) =>
+              setLive((l) => ({
+                ...l,
+                metrics: { ...l.metrics, [ev.job.id]: [...(d.events ?? []), ...(l.metrics[ev.job.id] ?? [])] },
+                lines: { ...l.lines, [ev.job.id]: [...d.lines.slice(-SEED_LINES), ...(l.lines[ev.job.id] ?? [])] },
+              })),
+            )
+            .catch(() => seeded.delete(ev.job.id))
+        }
         setLive((l) => {
           if (ev.type === "job") return { ...l, jobs: { ...l.jobs, [ev.job.id]: ev.job } }
           if (ev.type === "metric") return { ...l, metrics: { ...l.metrics, [ev.job]: [...(l.metrics[ev.job] ?? []), ev.data] } }

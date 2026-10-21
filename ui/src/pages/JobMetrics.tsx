@@ -1,5 +1,5 @@
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -20,9 +20,9 @@ function Epochs({ items }: { items: Epoch[] }) {
     <Card>
       <CardHeader>
         <CardTitle>Training {run?.experiment}</CardTitle>
-        <CardDescription>
-          Epoch {run?.epoch} of {run?.epochs}, dev score {score(run?.dev_objective)}
-        </CardDescription>
+        <CardAction className="text-muted-foreground text-sm tabular-nums">
+          Epoch {run?.epoch}/{run?.epochs}, dev {score(run?.dev_objective)}
+        </CardAction>
       </CardHeader>
       <CardContent className="space-y-3">
         <Progress value={run ? (run.epoch / run.epochs) * 100 : 0} />

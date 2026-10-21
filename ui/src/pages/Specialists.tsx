@@ -114,7 +114,6 @@ export function Specialists() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Specialists</h1>
-          <p className="text-muted-foreground text-sm">Small models, each scored on a public benchmark against its rivals.</p>
         </div>
         <NewSpecialist>
           <Button>

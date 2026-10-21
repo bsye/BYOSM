@@ -2,7 +2,7 @@ import { Save } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, put } from "@/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -33,7 +33,6 @@ export function Settings() {
       <Card>
         <CardHeader>
           <CardTitle>LLM roles</CardTitle>
-          <CardDescription>Which model writes specs and data, judges, and plays the LLM rival. Roles fall back to default.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -61,7 +60,6 @@ export function Settings() {
       <Card>
         <CardHeader>
           <CardTitle>byosm.yaml</CardTitle>
-          <CardDescription>Keys show as ******** and are kept as they are when you save. Put real secrets in Keys instead.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea className="h-80 font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} />

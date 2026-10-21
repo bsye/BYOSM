@@ -27,7 +27,7 @@ export function SizeChart({ d }: { d: Detail }) {
   const y: [number, number] = [Math.max(0, Math.min(...tests) - PAD_Y), Math.min(1, Math.max(...tests) + PAD_Y)]
   return (
     <div className="space-y-2">
-    <p className="text-muted-foreground text-sm">Parameters against test score: up and to the left is smaller and better.</p>
+    <p className="text-muted-foreground text-sm">Size vs test score</p>
     <ChartContainer config={config} className="h-72 w-full">
       <ScatterChart margin={{ left: 8, right: 16, bottom: 8 }}>
         <CartesianGrid />

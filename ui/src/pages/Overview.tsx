@@ -1,6 +1,7 @@
+import { InfoTip } from "@/components/info-tip"
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis } from "recharts"
 import type { Summary } from "@/api"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 
 const config = { lead: { label: "lead on test", color: "var(--chart-2)" } } satisfies ChartConfig
@@ -14,10 +15,10 @@ export function Overview({ items }: { items: Summary[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Lead over the best rival</CardTitle>
-        <CardDescription>
-          Test score of each promoted specialist minus its strongest rival's, the rival chosen on calib. Above zero is ahead.
-        </CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          Lead over the best rival
+          <InfoTip>Test score minus the strongest rival's, the rival chosen on calib.</InfoTip>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={config} className="h-64 w-full">

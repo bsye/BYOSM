@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import type { CheckReport as Report } from "@/api"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
@@ -66,9 +66,6 @@ export function CheckReport({ report }: { report: Report }) {
         <CardTitle className="flex items-center gap-2">
           Data check <Badge variant={VERDICT_BADGE[report.verdict]}>{report.verdict}</Badge>
         </CardTitle>
-        <CardDescription>
-          {report.file.split("/").pop()}: rows per label against the suggested minimum
-        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {Object.keys(report.coverage).length > 0 && <Coverage coverage={report.coverage} />}

@@ -1,10 +1,10 @@
-import { Save, Trash2 } from "lucide-react"
+import { Save, ShieldCheck, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, del, put } from "@/api"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 
 type Key = { name: string; set: boolean; in_file: boolean }
@@ -25,16 +25,12 @@ export function Keys() {
   return (
     <div className="space-y-4">
       <Alert>
-        <AlertTitle>Keys stay on this machine</AlertTitle>
-        <AlertDescription>
-          They are written to the workspace .env (readable only by you, never committed) and passed to jobs. The server never
-          sends a key back to the browser.
-        </AlertDescription>
+        <ShieldCheck />
+        <AlertTitle>Stored in the workspace .env, never sent back to the browser</AlertTitle>
       </Alert>
       <Card>
         <CardHeader>
           <CardTitle>API keys</CardTitle>
-          <CardDescription>Used by rivals and teachers (Jev, hosted LLMs) and for the Hugging Face Hub.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {[...keys, ...(name && !keys.some((k) => k.name === name) ? [{ name, set: false, in_file: false }] : [])].map((k) => (

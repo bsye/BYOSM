@@ -2,7 +2,7 @@ import { Play } from "lucide-react"
 import { useState } from "react"
 import { post, type Detail } from "@/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -30,7 +30,6 @@ export function Playground({ d }: { d: Detail }) {
     <Card>
       <CardHeader>
         <CardTitle>Try it</CardTitle>
-        <CardDescription>Runs the exported bundle on this machine.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="type an input" />

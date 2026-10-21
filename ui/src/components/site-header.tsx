@@ -10,6 +10,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { href } from "@/route"
+import { Running } from "@/pages/Jobs"
 import { ThemeToggle } from "./theme"
 
 export function SiteHeader({ route, connected }: { route: string[]; connected: boolean }) {
@@ -36,6 +37,7 @@ export function SiteHeader({ route, connected }: { route: string[]; connected: b
           </BreadcrumbList>
         </Breadcrumb>
         <div className="ml-auto flex items-center gap-2">
+          <Running />
           <kbd className="bg-muted text-muted-foreground hidden h-5 items-center rounded border px-1.5 font-mono text-[10px] font-medium md:inline-flex">
             ⌘K
           </kbd>

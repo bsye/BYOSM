@@ -7,39 +7,34 @@ import { rivalName } from "@/format"
 
 const PRIMARY = 0
 
-type Stat = { label: string; value: string; badge?: { up?: boolean; text: string }; line: string; note: string }
+type Stat = { label: string; value: string; badge?: { up?: boolean; text: string }; line: string }
 
 function stats(items: Summary[], running: number): Stat[] {
   const scored = items.filter((s) => s.score != null && s.rival?.score != null)
   const margins = scored.map((s) => ({ name: s.name, rival: s.rival?.name, d: (s.score ?? 0) - (s.rival?.score ?? 0) }))
   const ahead = margins.filter((m) => m.d > 0).length
   const best = [...margins].sort((a, b) => b.d - a.d)[0]
-  const worst = [...margins].sort((a, b) => a.d - b.d)[0]
   return [
     {
       label: "Ahead of the best rival",
       value: `${ahead} / ${scored.length}`,
       badge: { text: `${Math.round((ahead / Math.max(1, scored.length)) * 100)}%` },
-      line: "Benchmarks, on test",
-      note: "Each rival chosen on calib",
+      line: "public benchmarks, test",
     },
     {
       label: "Biggest lead",
       value: best ? `+${best.d.toFixed(3)}` : "-",
       line: best ? `${best.name} vs ${rivalName(best.rival)}` : "nothing scored yet",
-      note: worst && worst.d < 0 ? `Behind on ${worst.name} by ${(-worst.d).toFixed(3)}` : "Behind on none",
     },
     {
       label: "Specialists",
       value: String(items.length),
       line: `${items.filter((s) => s.exported).length} exported`,
-      note: "Each one an ONNX bundle that runs on CPU",
     },
     {
       label: "Running jobs",
       value: String(running),
-      line: running ? "jobs streaming live" : "nothing running",
-      note: "Jobs run in parallel and survive a restart",
+      line: running ? "streaming live" : "idle",
     },
   ]
 }
@@ -66,8 +61,7 @@ export function SectionCards({ items }: { items: Summary[] }) {
             )}
           </CardHeader>
           <CardFooter className="mt-auto flex-col items-start gap-1 text-sm">
-            <div className="line-clamp-1 flex gap-2 font-medium">{s.line}</div>
-            <div className="text-muted-foreground">{s.note}</div>
+            <div className="text-muted-foreground line-clamp-1">{s.line}</div>
           </CardFooter>
         </Card>
       ))}

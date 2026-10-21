@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api } from "@/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
@@ -24,10 +24,9 @@ export function DataRows({ name }: { name: string }) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-4">
         <div>
-          <CardTitle>Data</CardTitle>
-          <CardDescription>
-            {page.total} rows in {split}
-          </CardDescription>
+          <CardTitle>
+            Rows <span className="text-muted-foreground font-normal tabular-nums">{page.total}</span>
+          </CardTitle>
         </div>
         <Select
           value={split}

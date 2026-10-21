@@ -13,7 +13,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { LiveProvider, useLive, useJobToasts } from "@/events"
 import { Create } from "@/pages/Create"
-import { Jobs, Running } from "@/pages/Jobs"
+import { Jobs } from "@/pages/Jobs"
 import { Keys } from "@/pages/Keys"
 import { Palette } from "@/pages/Palette"
 import { Settings } from "@/pages/Settings"
@@ -66,7 +66,6 @@ function Shell() {
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
               {live.unauthorized && <TokenPrompt />}
-              <Running />
               <ErrorBoundary resetKey={route.join("/")}>
                 <Page route={route} />
               </ErrorBoundary>

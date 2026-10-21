@@ -1,3 +1,4 @@
+import { InfoTip } from "@/components/info-tip"
 import { RefreshCw } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from "recharts"
@@ -5,7 +6,7 @@ import { api, put, runJob, type Detail, type PanelView, type ReviewRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -44,11 +45,10 @@ function Accuracy({ view }: { view: PanelView }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Teachers</CardTitle>
-        <CardDescription>
-          Accuracy of each teacher and of the weighted panel on the {s.n_labelled} labelled rows. The panel labelled{" "}
-          {s.n_pool} inputs for training.
-        </CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          Teachers
+          <InfoTip>Accuracy on the labelled rows. The panel weights each teacher by it, then labels the unlabeled inputs.</InfoTip>
+        </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-6 md:grid-cols-[1fr_14rem]">
         <ChartContainer config={config} className="h-64 w-full">
@@ -117,10 +117,10 @@ function Review({ name, view, onSaved }: { name: string; view: PanelView; onSave
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Least sure rows</CardTitle>
-        <CardDescription>
-          The {view.review.length} inputs the panel is least sure about. Set the right label and it replaces the panel's guess.
-        </CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          Least sure rows
+          <InfoTip>Your label replaces the panel's guess on the next data rebuild.</InfoTip>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Alert>

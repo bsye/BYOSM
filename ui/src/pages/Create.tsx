@@ -51,10 +51,7 @@ export function Create() {
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 py-12">
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-semibold">What should your specialist do?</h1>
-        <p className="text-muted-foreground">
-          One sentence. The model it builds runs on your machine without an LLM; the LLM below only plans, writes data
-          and judges.
-        </p>
+        <p className="text-muted-foreground">Describe the task in one sentence.</p>
       </div>
       <InputGroup>
         <InputGroupTextarea

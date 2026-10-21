@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts"
 import type { Job } from "@/api"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart"
 
 const SHOWN = 12
@@ -44,7 +44,6 @@ export function Timeline({ jobs }: { jobs: Job[] }) {
     <Card>
       <CardHeader>
         <CardTitle>Timeline</CardTitle>
-        <CardDescription>The last {recent.length} jobs, so overlapping work is visible at a glance.</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={config} className="w-full" style={{ height: data.length * ROW_PX + 40 }}>

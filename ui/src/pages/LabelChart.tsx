@@ -1,6 +1,6 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import type { SplitSummary } from "@/api"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 
 const SPLITS = ["train", "dev", "test"] as const
@@ -24,9 +24,7 @@ export function LabelChart({ data }: { data: Record<string, SplitSummary> }) {
     <Card>
       <CardHeader>
         <CardTitle>Labels</CardTitle>
-        <CardDescription>
-          {counts}. {labels.length < Object.keys(data.train?.labels ?? {}).length ? `The ${MAX_LABELS} largest labels shown.` : ""}
-        </CardDescription>
+        <CardAction className="text-muted-foreground text-sm tabular-nums">{counts}</CardAction>
       </CardHeader>
       <CardContent>
         <ChartContainer config={config} className="w-full" style={{ height: Math.max(160, rows.length * ROW_PX + 60) }}>

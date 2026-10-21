@@ -1,9 +1,10 @@
+import { InfoTip } from "@/components/info-tip"
 import { Gauge, Hammer, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, del, put, runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -41,10 +42,10 @@ function Board({ d }: { d: Detail }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
+        <CardTitle className="flex items-center gap-2">
           Test {metricName(d.metric)} on {d.benchmark}
+          <InfoTip>Test with its 95% interval, next to calib. Calib picks the model; test is only reported.</InfoTip>
         </CardTitle>
-        <CardDescription>Each test score with its 95% interval, next to calib, the split used to choose.</CardDescription>
         {(every.length > rows.length || all) && (
           <CardAction>
             <Button variant="outline" size="sm" onClick={() => setAll(!all)}>
@@ -122,7 +123,6 @@ function SpecEditor({ d, onSaved }: { d: Detail; onSaved: () => void }) {
     <Card>
       <CardHeader>
         <CardTitle>spec.yaml</CardTitle>
-        <CardDescription>Edited as JSON and validated by the server before it is saved.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <Textarea className="h-[32rem] font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} />
