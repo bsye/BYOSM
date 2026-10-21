@@ -453,6 +453,21 @@ Gotcha: both sides are scored on the test split of each specialist's own data (`
 `n_test_folded` set) is graded on its own training rows, while the generalist never trained on them, which tilts the
 comparison toward the specialists.
 
+**The overfitting check reads the board and scores only a train sample.**
+`byosm/evals/overfit.py`, `overfit_checks.py`: five findings, each `ok`, `warn` or `fail`, and the verdict is the worst.
+The train score is the experiment scored by the same `score` as the board, on 1000 of its own training rows (the rows
+`split_rows` gives with the spec's seed) with the primary suite's calib as the threshold split, so train and test use
+the same decision rule. Calib vs test compares the calib bootstrap CI (from the stored calib units) with the test CI.
+Overlap indexes the training rows with `ShingleIndex` (the same exact and 5-word-shingle test as `dedupe`) and rescores
+each suite's test units without the overlapping rows: a leak whose removal barely moves the score is only a warning.
+Selection pressure is the expected lift of the best of N equal experiments picked on calib (Blom's approximation of the
+expected normal maximum times the calib standard error); it warns when that lift exceeds the winner's lead over the
+median of the others. The learning curve reuses `training_summary`. The report goes to `specialists/<name>/overfit.json`,
+keyed by a hash of the board and the experiment's `meta.json`; the train score has its own key (meta, primary suite
+fingerprint, sample size), so a new board result re-reads the evidence without scoring the train sample again.
+Gotcha: overlap compares text only; for audio and document inputs it is listed under `skipped`. For a builtin primary
+suite, calib is the dev split that picked the best epoch, so calib there is optimistic by construction.
+
 ## Improve and autopilot
 
 **A proposal is a small spec edit plus its evidence.**

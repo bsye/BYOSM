@@ -13,6 +13,8 @@ DEV_SHARE = 0.1
 TEST_SHARE = 0.15
 
 SPLITS = ("train", "dev", "test")
+NEAR_DUPLICATE = 0.7
+NEAR_CANDIDATES = 3
 
 
 def read(path: Path) -> list[dict]:
@@ -44,13 +46,27 @@ def shingles(text: str, n: int = 5) -> set[str]:
     return {" ".join(w[i : i + n]) for i in range(max(1, len(w) - n + 1))}
 
 
-def dedupe(rows: list[dict], against: list[dict] | None = None, near: float = 0.7) -> list[dict]:
-    seen = {normalize(r["input"]) for r in (against or []) if isinstance(r["input"], str)}
-    ref = [shingles(r["input"]) for r in (against or []) if isinstance(r["input"], str)]
-    index: dict[str, list[int]] = {}
-    for i, s in enumerate(ref):
-        for g in s:
-            index.setdefault(g, []).append(i)
+class ShingleIndex:
+    def __init__(self, rows: list[dict]):
+        self.rows = [r for r in rows if isinstance(r["input"], str)]
+        self.texts = [r["input"] for r in self.rows]
+        self.exact = {normalize(t): i for i, t in enumerate(self.texts)}
+        self.ref = [shingles(t) for t in self.texts]
+        self.index: dict[str, list[int]] = {}
+        for i, s in enumerate(self.ref):
+            for g in s:
+                self.index.setdefault(g, []).append(i)
+
+    def nearest(self, text: str) -> tuple[int, float] | None:
+        s = shingles(text)
+        hits = Counter(i for g in s for i in self.index.get(g, ()))
+        scored = [(i, c / len(s | self.ref[i])) for i, c in hits.most_common(NEAR_CANDIDATES)]
+        return max(scored, key=lambda t: t[1], default=None)
+
+
+def dedupe(rows: list[dict], against: list[dict] | None = None, near: float = NEAR_DUPLICATE) -> list[dict]:
+    ref = ShingleIndex(against or [])
+    seen = set(ref.exact)
     out = []
     for r in rows:
         if not isinstance(r["input"], str):
@@ -59,11 +75,9 @@ def dedupe(rows: list[dict], against: list[dict] | None = None, near: float = 0.
         k = normalize(r["input"])
         if not k or k in seen:
             continue
-        if ref:
-            s = shingles(r["input"])
-            hits = Counter(i for g in s for i in index.get(g, ()))
-            if any(c / len(s | ref[i]) > near for i, c in hits.most_common(3)):
-                continue
+        hit = ref.nearest(r["input"])
+        if hit is not None and hit[1] > near:
+            continue
         seen.add(k)
         out.append(r)
     return out

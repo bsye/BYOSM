@@ -65,7 +65,7 @@ def toy(tmp_path, monkeypatch):
     monkeypatch.setattr(board, "materialize", lambda *a: ([{}], [{}], tmp_path))
     monkeypatch.setattr(board, "score", scorer)
     monkeypatch.setattr(board, "get_baseline", lambda b, spec: b)
-    monkeypatch.setattr(board, "_experiment_predictor", lambda p, base, e: e)
+    monkeypatch.setattr(board, "experiment_predictor", lambda p, base, e: e)
     return scorer
 
 

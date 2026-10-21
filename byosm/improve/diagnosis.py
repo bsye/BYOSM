@@ -23,7 +23,7 @@ def _confusions(p: Project, exp: str, suite: str, spec: TaskSpec, k: int = 6) ->
     return sorted(pairs, key=lambda t: -t[2])[:k]
 
 
-def _scored_experiment(p: Project, board: dict) -> str:
+def scored_experiment(p: Project, board: dict) -> str:
     exp = p.promoted or next((k for k, v in board.items() if next(iter(v.values()))["kind"] == "experiment"), None)
     if not exp or exp not in board:
         raise RuntimeError("no scored experiment yet - run `byosm build` / `byosm eval` first")
@@ -52,7 +52,7 @@ def _converging_late(curve: list[float], best_ep: int, epochs: int) -> bool:
     return len(curve) >= 4 and len(curve) >= epochs and best_ep >= int(0.75 * len(curve))
 
 
-def _training_summary(meta: dict, spec: TaskSpec) -> dict[str, Any]:
+def training_summary(meta: dict, spec: TaskSpec) -> dict[str, Any]:
     hist = meta.get("history", [])
     curve = [h["dev_objective"] for h in hist]
     best_ep = meta.get("best_epoch", len(curve) - 1)
@@ -72,7 +72,7 @@ def diagnose(name: str) -> dict[str, Any]:
     p = Project(name)
     base = TaskSpec.load(p.spec_path)
     board = p.board()
-    exp = _scored_experiment(p, board)
+    exp = scored_experiment(p, board)
     spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml")
     meta = json.loads((p.exp_dir(exp) / "meta.json").read_text())
     binary = spec.positive_label is not None or len(spec.labels) == 2
@@ -87,4 +87,4 @@ def diagnose(name: str) -> dict[str, Any]:
         "rows_by_source": Counter(r.get("source") for r in read(p.data_dir_for(spec) / "train.jsonl")),
         "read_by_source": Counter(r.get("source") for s in SPLITS for r in read(p.data_dir_for(spec) / f"{s}.jsonl")),
     }
-    return {**head, **_training_summary(meta, spec), "board": board, "primary": base.primary_suite()}
+    return {**head, **training_summary(meta, spec), "board": board, "primary": base.primary_suite()}

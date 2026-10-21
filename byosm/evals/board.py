@@ -32,7 +32,7 @@ def _kept_results(p: Project, base: TaskSpec) -> dict[str, dict[str, dict]]:
     return {pid: {s: r for s, r in by.items() if s in keep_suites} for pid, by in old.items() if pid in keep_ids}
 
 
-def _experiment_predictor(p: Project, base: TaskSpec, exp: str) -> ExperimentPredictor:
+def experiment_predictor(p: Project, base: TaskSpec, exp: str) -> ExperimentPredictor:
     spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml").model_copy(update={"decision": base.decision})
     return ExperimentPredictor(spec, p.exp_dir(exp), exp)
 
@@ -42,7 +42,7 @@ def _jobs(p: Project, base: TaskSpec, suite: EvalSuite, exps: list[str], bls: li
     for e in exps:
         if suite.kind == "builtin" and p.meta(e).get("n_test_folded"):
             continue
-        jobs.append(("experiment", e, lambda e=e: _experiment_predictor(p, base, e)))
+        jobs.append(("experiment", e, lambda e=e: experiment_predictor(p, base, e)))
     for b in bls:
         jobs.append(("baseline", b, lambda b=b: get_baseline(b, base)))
     return jobs

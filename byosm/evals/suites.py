@@ -33,16 +33,22 @@ def fingerprint(p: Project, spec: TaskSpec, suite: EvalSuite) -> str:
     return hashlib.sha1(blob.encode()).hexdigest()[:10]
 
 
-def materialize(
-    p: Project, base: TaskSpec, suite: EvalSuite, log: Callable[[str], None] = print
-) -> tuple[list[dict], list[dict], Path]:
+def stored(p: Project, base: TaskSpec, suite: EvalSuite) -> tuple[list[dict], list[dict], Path] | None:
     if suite.kind == "builtin":
         dd = p.data_dir_for(base)
         ds = Dataset(dd)
         return ds.load("dev"), ds.load("test"), dd
     d = suite_dir(p, suite)
-    if (d / "test.jsonl").exists():
-        return read(d / "calib.jsonl"), read(d / "test.jsonl"), d
+    return (read(d / "calib.jsonl"), read(d / "test.jsonl"), d) if (d / "test.jsonl").exists() else None
+
+
+def materialize(
+    p: Project, base: TaskSpec, suite: EvalSuite, log: Callable[[str], None] = print
+) -> tuple[list[dict], list[dict], Path]:
+    kept = stored(p, base, suite)
+    if kept is not None:
+        return kept
+    d = suite_dir(p, suite)
     d.mkdir(parents=True, exist_ok=True)
     calib, test, suite = _fetch(p, base, suite, d, log)
     write(d / "calib.jsonl", calib)
