@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_recall_fscore_support, roc_auc_score
 
+from .resample import bootstrap_stats
 from .rt import spans
 from .spec import TaskSpec
 
@@ -167,29 +168,8 @@ def objective_of_units(spec: TaskSpec, u: dict[str, Any]) -> float:
     return _objective_of_stats(spec, _unit_stats(spec, u).sum(0))
 
 
-def _resample(spec: TaskSpec, sa: np.ndarray, sb: np.ndarray | None, n: int, seed: int) -> np.ndarray:
-    rng = np.random.default_rng(seed)
-    vals = []
-    for _ in range(n):
-        idx = rng.integers(0, len(sa), len(sa))
-        va = _objective_of_stats(spec, sa[idx].sum(0))
-        vals.append(va - _objective_of_stats(spec, sb[idx].sum(0)) if sb is not None else va)
-    return np.asarray(vals)
-
-
 def bootstrap(
     spec: TaskSpec, a: dict[str, Any], b: dict[str, Any] | None = None, n: int = 1000, seed: int = 0
 ) -> dict[str, float]:
-    sa = _unit_stats(spec, a)
     sb = _unit_stats(spec, b) if b is not None else None
-    if sb is not None and sb.shape != sa.shape:
-        raise ValueError("paired bootstrap needs the same units")
-    v = _resample(spec, sa, sb, n, seed)
-    lo, hi = np.quantile(v, [0.025, 0.975])
-    out = {"lo": float(lo), "hi": float(hi)}
-    if sb is not None:
-        out.update(
-            delta=_objective_of_stats(spec, sa.sum(0)) - _objective_of_stats(spec, sb.sum(0)),
-            p_better=float((v > 0).mean() + 0.5 * (v == 0).mean()),
-        )
-    return out
+    return bootstrap_stats(_unit_stats(spec, a), sb, lambda summed: _objective_of_stats(spec, summed), n, seed)
