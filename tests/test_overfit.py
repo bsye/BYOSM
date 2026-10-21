@@ -109,6 +109,17 @@ def test_the_check_is_cached_and_reuses_the_train_score_when_only_the_board_chan
     assert scorer.calls == 2
 
 
+def test_the_command_prints_every_finding_and_the_verdict(toy):
+    from typer.testing import CliRunner
+
+    from byosm.cli import app
+
+    out = CliRunner().invoke(app, ["overfit", "toy"], env={"COLUMNS": "200"})
+    assert out.exit_code == 0, out.output
+    assert "Generalisation gap" in out.output and "Selection pressure" in out.output
+    assert "fail: Overfitting or leakage found." in out.output
+
+
 def test_a_check_needs_a_scored_experiment(toy):
     p, _, _ = toy
     with pytest.raises(RuntimeError, match="no bench result"):

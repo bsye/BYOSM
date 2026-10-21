@@ -15,12 +15,17 @@ def build(
     name: str,
     exp: Annotated[str | None, typer.Option(help="experiment name (default: next vN)")] = None,
     force_data: bool = False,
+    check_overfit: Annotated[bool, typer.Option("--overfit", help="then run `byosm overfit` on the promoted")] = False,
 ) -> None:
     """Data -> LeJEPA -> train -> score on every suite (+ baselines) -> promote if the primary suite improves."""
     from ..pipeline import build as run
 
     run(name, exp, log, force_data)
     board(name, detail=True)
+    if check_overfit:
+        from .overfit import overfit
+
+        overfit(name)
 
 
 @app.command()

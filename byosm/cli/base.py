@@ -20,6 +20,7 @@ HELP = """byosm - tiny System-1 specialists, from a sentence to a local model.
              byosm baseline add vad silero
   train      byosm build vad                     -> data (cached) -> LeJEPA -> train -> eval every suite -> promote
   compare    byosm board vad                     -> experiments vs baselines on every suite
+  check      byosm overfit vad                   -> is it overfitting? train vs test gap, leakage, calib over-use
   improve    byosm improve vad                   -> diagnoses + proposals;  --apply a,b --run  -> next experiment
   ship       byosm export vad                    -> export/vad: ONNX + manifest + byosm_rt.py (numpy+onnxruntime only)
              byosm publish vad --repo you/byosm-vad   -> Hugging Face: bundle + model card (eval, comparison, lineage)

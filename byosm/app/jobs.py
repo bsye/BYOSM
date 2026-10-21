@@ -25,6 +25,7 @@ ALLOWED_COMMANDS = (
     "build",
     "data",
     "eval",
+    "overfit",
     "improve",
     "auto",
     "distill",

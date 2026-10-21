@@ -117,12 +117,24 @@ def _ship(s: Session, won: bool, publish: str | None, license: str) -> None:
         s.log("publish", publish, "private Hugging Face repo with generated model card (flip public on the Hub)")
 
 
+def _overfit(s: Session) -> None:
+    from ..evals.overfit import check
+
+    try:
+        r = check(s.name, log=s.echo)
+    except RuntimeError as ex:
+        s.log("overfit", None, f"skipped: {ex}")
+        return
+    s.log("overfit", r["verdict"], r["summary"])
+
+
 def _finish(s: Session, distill: bool, max_params_m: float, publish: str | None, license: str) -> None:
     won = standing(s.name, s.margin)["won"]
     if distill and won:
         _distill(s, max_params_m)
     elif distill:
         s.log("distill", None, "skipped: it did not win, so there is no winner to shrink")
+    _overfit(s)
     _ship(s, standing(s.name, s.margin)["won"], publish, license)
 
 

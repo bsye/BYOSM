@@ -324,8 +324,9 @@ byosm export vad && byosm predict vad clip.wav
 | `byosm request-data <name>` | a template to fill (csv and xlsx) and the rows needed per label; written for you when no dataset fits |
 | `byosm check-data <name> <file>` | check a filled table (format, coverage, leaks, likely mislabels), then train on it |
 | `byosm new <name> "<task>"` | just compile the spec |
-| `byosm build <name> [--exp vN]` | data, pretrain, train, evaluate, promote |
+| `byosm build <name> [--exp vN] [--overfit]` | data, pretrain, train, evaluate, promote |
 | `byosm eval <name>` · `byosm board <name>` | score everything, show the leaderboard |
+| `byosm overfit <name> [--exp vN]` | is it overfitting? train vs test gap, calib vs test, train/test overlap, selection pressure, learning curve |
 | `byosm improve <name> [--apply ids --run]` | diagnose, propose, run the next experiment |
 | `byosm exp create <name> <exp> --set path=value` · `byosm promote <name> <exp>` | one-line ablations; choose what ships |
 | `byosm suite add` · `byosm baseline add` | add a benchmark or a rival |

@@ -25,5 +25,6 @@ def test_autopilot_end_to_end(ws):
     steps = [d["step"] for d in json.loads((p.root / "auto.json").read_text())["decisions"]]
     assert "llm" in TaskSpec.load(p.spec_path).baselines
     assert final["won"] and final["ours"] > final["best_baseline"][1]
-    assert "distill" in steps and "export" in steps and "WON" in report
+    assert "distill" in steps and "overfit" in steps and "export" in steps and "WON" in report
+    assert json.loads((p.root / "overfit.json").read_text())["experiment"] == final["exp"]
     assert (p.root / "export" / "manifest.json").exists()

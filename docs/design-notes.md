@@ -465,6 +465,8 @@ expected normal maximum times the calib standard error); it warns when that lift
 median of the others. The learning curve reuses `training_summary`. The report goes to `specialists/<name>/overfit.json`,
 keyed by a hash of the board and the experiment's `meta.json`; the train score has its own key (meta, primary suite
 fingerprint, sample size), so a new board result re-reads the evidence without scoring the train sample again.
+It is opt-in after a build (`byosm build --overfit`), because scoring the train sample took 4 to 27 s for the text
+specialists, 17 s for vad and 79 s for doctype on CPU (measured); the autopilot runs it once, before export.
 Gotcha: overlap compares text only; for audio and document inputs it is listed under `skipped`. For a builtin primary
 suite, calib is the dev split that picked the best epoch, so calib there is optimistic by construction.
 
