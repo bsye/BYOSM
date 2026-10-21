@@ -1,0 +1,31 @@
+name: assistant
+description: Understand a request to a voice assistant, which of its actions it asks for, and the words that fill the action's arguments
+nodes:
+  intent:
+    specialist: assistant-intent
+    role: router
+    task: Which of the assistant's 60 actions a request asks for (MASSIVE intents)
+    source:
+      dataset: AmazonScience/massive
+      config: en-US
+      input_column: utt
+      label_column: intent
+  args:
+    specialist: assistant-args
+    role: tagger
+    task: Which words of a request fill an action's arguments, and their type (MASSIVE slots)
+    source:
+      dataset: AmazonScience/massive
+      config: en-US
+      format: markup
+      input_column: utt
+      label_column: annot_utt
+tools:
+  set_alarm:
+    when: alarm_set
+    args: {time: time, date: date}
+  play_music:
+    when: play_music
+    args: {artist: artist_name, song: song_name}
+evals:
+- name: massive
