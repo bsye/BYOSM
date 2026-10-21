@@ -10,6 +10,13 @@ def _baselines(board: dict, prim: str, field: str | None = None) -> dict[str, An
     return {k: r[field] for k, r in rows.items()} if field else rows
 
 
+def best_baseline(board: dict, prim: str) -> tuple[str, float] | None:
+    from .. import evals
+
+    bls = {k: evals.selection_value(r) for k, r in _baselines(board, prim).items()}
+    return max(bls.items(), key=lambda kv: kv[1]) if bls else None
+
+
 def _test_view(base: Any, board: dict, prim: str, mine: dict | None, best_bl: tuple | None) -> dict[str, Any]:
     from .. import evals
 
@@ -32,7 +39,7 @@ def standing(name: str, margin: float) -> dict[str, Any]:
     mine = b.get(p.promoted or "", {}).get(prim)
     ours = evals.selection_value(mine)
     bls = {k: evals.selection_value(r) for k, r in _baselines(b, prim).items()}
-    best_bl = max(bls.items(), key=lambda kv: kv[1]) if bls else None
+    best_bl = best_baseline(b, prim)
     beats = ours is not None and (best_bl is None or ours > best_bl[1] + margin)
     meets = ours is not None and ours >= base.objective.target
     return {

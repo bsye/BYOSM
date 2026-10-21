@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from ..auto.standing import best_baseline
 from ..config import Project, list_projects
 from ..data.store import SPLITS, Dataset
 from ..spec import TaskSpec
@@ -30,7 +31,9 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
     p = _project(ws, name)
     s = TaskSpec.load(p.spec_path)
     prim = s.primary_suite()
-    best = p.board().get(p.promoted or "", {}).get(prim, {})
+    board = p.board()
+    best = board.get(p.promoted or "", {}).get(prim, {})
+    rival = best_baseline(board, prim)
     return {
         "name": name,
         "description": s.description,
@@ -41,6 +44,7 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
         "primary_suite": prim,
         "promoted": p.promoted,
         "score": best.get("objective"),
+        "rival": {"name": rival[0], "score": board[rival[0]][prim].get("objective")} if rival else None,
         "experiments": p.experiments(),
         "exported": is_exported(p.root / "export"),
     }
