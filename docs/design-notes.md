@@ -470,6 +470,18 @@ specialists, 17 s for vad and 79 s for doctype on CPU (measured); the autopilot 
 Gotcha: overlap compares text only; for audio and document inputs it is listed under `skipped`. For a builtin primary
 suite, calib is the dev split that picked the best epoch, so calib there is optimistic by construction.
 
+**An LLM-written test set is a check, never the benchmark.**
+`byosm/evals/testset.py`, `byosm testset NAME`: the `eval` role writes `--per-label` examples per label with the same
+adversarial prompts as the builtin test split (`synth_text.generate`, now with a `labels` filter so top-up rounds ask
+only for labels still short), deduped against train, dev and test and judged when `data.judge` is on. Rows are kept per
+label and split calib/test like `hf` suites (every 5th to calib), frozen under `evals/<suite>/` as kind `generated`,
+and only the promoted experiment and the baselines are scored on it. The suite records `written_by` and `judged_by`
+(model name from the role config, never keys or URLs), so a result reads "written by qwen3.8:27b". It cannot be
+primary (`EvalSuite` validator) and `primary_suite` skips it when no suite is marked, so the README never reports it.
+Gotchas: the writer can favour models of its own family, and the LLM baseline may be the same model that wrote the
+items; read its score there as self-agreement. Frame tasks are refused. An existing suite name is refused, so a rerun
+needs `--suite`.
+
 ## Improve and autopilot
 
 **A proposal is a small spec edit plus its evidence.**
