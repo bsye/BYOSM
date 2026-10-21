@@ -32,7 +32,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+app = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
+dev = ["pytest", "ruff", "httpx", "fastapi>=0.110", "uvicorn[standard]>=0.29"]
 silero = ["livekit-plugins-silero"]
 
 [project.scripts]

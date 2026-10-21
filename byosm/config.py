@@ -32,13 +32,19 @@ def find_workspace(start: Path | None = None) -> Path:
     return p
 
 
-def secret(name: str, ws: Path | None = None) -> str | None:
-    if os.environ.get(name):
-        return os.environ[name]
+def cache_root() -> Path:
+    return Path(os.environ.get("BYOSM_CACHE") or Path.home() / ".cache" / "byosm")
+
+
+def env_file(ws: Path | None = None) -> dict[str, str]:
     env = (ws or find_workspace()) / ENV_FILE
     lines = env.read_text().splitlines() if env.exists() else []
-    found = [v.strip().strip("'\"") for k, _, v in (ln.partition("=") for ln in lines) if k.strip() == name]
-    return found[-1] if found else None
+    pairs = (ln.partition("=") for ln in lines if "=" in ln and not ln.lstrip().startswith("#"))
+    return {k.strip(): v.strip().strip("'\"") for k, _, v in pairs}
+
+
+def secret(name: str, ws: Path | None = None) -> str | None:
+    return os.environ.get(name) or env_file(ws).get(name)
 
 
 def load_config(ws: Path | None = None) -> dict[str, Any]:
