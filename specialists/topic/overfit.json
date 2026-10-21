@@ -1,0 +1,128 @@
+{
+  "fingerprint": "e44be95cb7",
+  "train_fingerprint": "07d22874c2",
+  "specialist": "topic",
+  "experiment": "v3",
+  "suite": "bench",
+  "metric": "accuracy",
+  "verdict": "warn",
+  "summary": "Some signs of overfitting: read the findings.",
+  "scores": {
+    "train": 0.985,
+    "dev": 0.9370476937832418,
+    "calib": 0.9546875,
+    "test": 0.946875
+  },
+  "train": {
+    "objective": 0.985,
+    "ci95": {
+      "lo": 0.977,
+      "hi": 0.992
+    },
+    "n": 1000,
+    "seconds": 8.5
+  },
+  "findings": [
+    {
+      "check": "gap",
+      "title": "Generalisation gap",
+      "severity": "ok",
+      "explanation": "The model scores about the same on rows it trained on as on the test, so it learned more than it memorised.",
+      "numbers": {
+        "train": 0.985,
+        "dev": 0.937,
+        "calib": 0.9547,
+        "test": 0.9469,
+        "gap": 0.0381,
+        "warn_above": 0.05
+      }
+    },
+    {
+      "check": "drift",
+      "title": "Calib vs test",
+      "severity": "ok",
+      "explanation": "Calib and test agree within their confidence intervals.",
+      "numbers": {
+        "calib": 0.9547,
+        "calib_lo": 0.9391,
+        "calib_hi": 0.9703,
+        "test": 0.9469,
+        "test_lo": 0.9373,
+        "test_hi": 0.9555,
+        "difference": 0.0078
+      },
+      "suite": "bench"
+    },
+    {
+      "check": "overlap",
+      "title": "Train/test overlap",
+      "severity": "warn",
+      "explanation": "Some test inputs also appear, exactly or nearly, in the training rows.",
+      "numbers": {
+        "test_rows": 2560,
+        "exact": 4,
+        "near": 99,
+        "share": 0.0402,
+        "same_label": 91,
+        "test": 0.9469,
+        "test_without_overlap": 0.9475
+      },
+      "suite": "bench",
+      "examples": [
+        {
+          "row": 8,
+          "test": "Asian Stocks Lower, Greenspan Awaited  SINGAPORE (Reuters) - Asian stocks edged lower on Wednesday  as profit taking set in after two days of gains and the dollar  firmed ahead of comments from Fed chief Alan Greenspan that are  expected to cement the case for further U.S. rate rises.",
+          "train": "Asian Stocks Lower, Greenspan Awaited (Reuters) Reuters - Asian stocks edged lower on Wednesday\\as profit taking set in after two days of gains and the dollar\\firmed ahead of comments from Fed chief Alan Greenspan that are\\expected to cement the case for further U.S. rate rises.",
+          "similarity": 0.7959,
+          "exact": false,
+          "same_label": true
+        },
+        {
+          "row": 9,
+          "test": "Finnish Watchdog Raps TV Game Operators (Reuters) Reuters - Finland's consumer watchdog said on\\Monday it had reprimanded broadcasters for causing children to\\run up huge mobile phone bills with interactive television game\\and chat programs.",
+          "train": "Finnish Watchdog Raps TV Game Operators  HELSINKI (Reuters) - Finland's consumer watchdog said on  Monday it had reprimanded broadcasters for causing children to  run up huge mobile phone bills with interactive television game  and chat programs.",
+          "similarity": 0.7297,
+          "exact": false,
+          "same_label": false
+        },
+        {
+          "row": 107,
+          "test": "In Haiti, Peacekeepers Take on Militants Using armored cars and earth movers, U.N. peacekeepers and Haitian police moved into an area early Sunday controlled by militants loyal to ousted President Jean-Bertrand Aristide, protecting workers removing burned out cars used as road blocks.",
+          "train": "In Haiti, Peacekeepers Take on Militants (AP) AP - Using armored cars and earth movers, U.N. peacekeepers and Haitian police moved into an area early Sunday controlled by militants loyal to ousted President Jean-Bertrand Aristide, protecting workers removing burned out cars used as road blocks.",
+          "similarity": 0.7826,
+          "exact": false,
+          "same_label": true
+        }
+      ]
+    },
+    {
+      "check": "selection",
+      "title": "Selection pressure",
+      "severity": "ok",
+      "explanation": "3 experiments were compared on calib; the winner leads by more than chance would give.",
+      "numbers": {
+        "experiments": 3,
+        "promoted_calib": 0.9547,
+        "median_others": 0.9195,
+        "lead": 0.0352,
+        "chance_lift": 0.0069
+      }
+    },
+    {
+      "check": "curve",
+      "title": "Learning curve",
+      "severity": "ok",
+      "explanation": "Dev levelled off before training ended, with no late drop.",
+      "numbers": {
+        "epochs_run": 8,
+        "epochs_cfg": 8,
+        "best_epoch": 5,
+        "best_dev": 0.937,
+        "last_dev": 0.9348,
+        "best_loss": 1.2575,
+        "last_loss": 1.2266
+      }
+    }
+  ],
+  "skipped": []
+}

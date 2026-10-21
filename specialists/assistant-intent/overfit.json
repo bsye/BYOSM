@@ -1,0 +1,128 @@
+{
+  "fingerprint": "cf3737ed2b",
+  "train_fingerprint": "3071b060d3",
+  "specialist": "assistant-intent",
+  "experiment": "stream",
+  "suite": "massive",
+  "metric": "accuracy",
+  "verdict": "warn",
+  "summary": "Some signs of overfitting: read the findings.",
+  "scores": {
+    "train": 0.958,
+    "dev": 0.8950151057401813,
+    "calib": 0.8941176470588236,
+    "test": 0.8898696931483817
+  },
+  "train": {
+    "objective": 0.958,
+    "ci95": {
+      "lo": 0.945,
+      "hi": 0.97
+    },
+    "n": 1000,
+    "seconds": 4.6
+  },
+  "findings": [
+    {
+      "check": "gap",
+      "title": "Generalisation gap",
+      "severity": "warn",
+      "explanation": "The model scores clearly higher on rows it trained on than on the test: some memorisation.",
+      "numbers": {
+        "train": 0.958,
+        "dev": 0.895,
+        "calib": 0.8941,
+        "test": 0.8899,
+        "gap": 0.0681,
+        "warn_above": 0.05
+      }
+    },
+    {
+      "check": "drift",
+      "title": "Calib vs test",
+      "severity": "ok",
+      "explanation": "Calib and test agree within their confidence intervals.",
+      "numbers": {
+        "calib": 0.8941,
+        "calib_lo": 0.8672,
+        "calib_hi": 0.9168,
+        "test": 0.8899,
+        "test_lo": 0.8773,
+        "test_hi": 0.9012,
+        "difference": 0.0042
+      },
+      "suite": "massive"
+    },
+    {
+      "check": "overlap",
+      "title": "Train/test overlap",
+      "severity": "warn",
+      "explanation": "Some test inputs also appear, exactly or nearly, in the training rows.",
+      "numbers": {
+        "test_rows": 2379,
+        "exact": 18,
+        "near": 48,
+        "share": 0.0277,
+        "same_label": 65,
+        "test": 0.8899,
+        "test_without_overlap": 0.8872
+      },
+      "suite": "massive",
+      "examples": [
+        {
+          "row": 20,
+          "test": "open harrypotter audiobook and play from last played",
+          "train": "open harrypotter audiobook and play from last played",
+          "similarity": 1.0,
+          "exact": true,
+          "same_label": true
+        },
+        {
+          "row": 33,
+          "test": "what's the sum of the two numbers four and six",
+          "train": "olly what's the sum of the two numbers four and six",
+          "similarity": 0.875,
+          "exact": false,
+          "same_label": true
+        },
+        {
+          "row": 59,
+          "test": "hey what will the weather be like to today in los angeles california",
+          "train": "hey olly what will the weather be like to today in los angeles california",
+          "similarity": 0.7273,
+          "exact": false,
+          "same_label": true
+        }
+      ]
+    },
+    {
+      "check": "selection",
+      "title": "Selection pressure",
+      "severity": "ok",
+      "explanation": "2 experiments were compared on calib; the winner leads by more than chance would give.",
+      "numbers": {
+        "experiments": 2,
+        "promoted_calib": 0.8941,
+        "median_others": 0.8891,
+        "lead": 0.005,
+        "chance_lift": 0.0075
+      }
+    },
+    {
+      "check": "curve",
+      "title": "Learning curve",
+      "severity": "ok",
+      "explanation": "Dev levelled off before training ended, with no late drop.",
+      "numbers": {
+        "epochs_run": 10,
+        "epochs_cfg": 12,
+        "best_epoch": 6,
+        "best_dev": 0.895,
+        "last_dev": 0.8935,
+        "best_loss": 1.0985,
+        "last_loss": 1.0183
+      }
+    }
+  ],
+  "skipped": []
+}

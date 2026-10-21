@@ -1,0 +1,128 @@
+{
+  "fingerprint": "1be819450f",
+  "train_fingerprint": "ff80a15088",
+  "specialist": "intent",
+  "experiment": "final-s1",
+  "suite": "b77",
+  "metric": "accuracy",
+  "verdict": "warn",
+  "summary": "Some signs of overfitting: read the findings.",
+  "scores": {
+    "train": 0.988,
+    "dev": 0.9491869918699187,
+    "calib": 0.948051948051948,
+    "test": 0.9373983739837398
+  },
+  "train": {
+    "objective": 0.988,
+    "ci95": {
+      "lo": 0.981,
+      "hi": 0.994
+    },
+    "n": 1000,
+    "seconds": 7.1
+  },
+  "findings": [
+    {
+      "check": "gap",
+      "title": "Generalisation gap",
+      "severity": "warn",
+      "explanation": "The model scores clearly higher on rows it trained on than on the test: some memorisation.",
+      "numbers": {
+        "train": 0.988,
+        "dev": 0.9492,
+        "calib": 0.9481,
+        "test": 0.9374,
+        "gap": 0.0506,
+        "warn_above": 0.05
+      }
+    },
+    {
+      "check": "drift",
+      "title": "Calib vs test",
+      "severity": "ok",
+      "explanation": "Calib and test agree within their confidence intervals.",
+      "numbers": {
+        "calib": 0.9481,
+        "calib_lo": 0.931,
+        "calib_hi": 0.9659,
+        "test": 0.9374,
+        "test_lo": 0.9285,
+        "test_hi": 0.9476,
+        "difference": 0.0107
+      },
+      "suite": "b77"
+    },
+    {
+      "check": "overlap",
+      "title": "Train/test overlap",
+      "severity": "warn",
+      "explanation": "Some test inputs also appear, exactly or nearly, in the training rows.",
+      "numbers": {
+        "test_rows": 2460,
+        "exact": 20,
+        "near": 32,
+        "share": 0.0211,
+        "same_label": 48,
+        "test": 0.9374,
+        "test_without_overlap": 0.936
+      },
+      "suite": "b77",
+      "examples": [
+        {
+          "row": 55,
+          "test": "I am still waiting for a money transfer to show",
+          "train": "I am still waiting for a money transfer to appear.",
+          "similarity": 0.7143,
+          "exact": false,
+          "same_label": true
+        },
+        {
+          "row": 144,
+          "test": "For how long will my transfer be pending?",
+          "train": "How long will my transfer be pending?",
+          "similarity": 0.75,
+          "exact": false,
+          "same_label": true
+        },
+        {
+          "row": 212,
+          "test": "How much does it cost to top up by card?",
+          "train": "How much does it cost to top up by transfer?",
+          "similarity": 0.7143,
+          "exact": false,
+          "same_label": false
+        }
+      ]
+    },
+    {
+      "check": "selection",
+      "title": "Selection pressure",
+      "severity": "warn",
+      "explanation": "29 experiments were compared on calib; chance alone could explain the winner's lead.",
+      "numbers": {
+        "experiments": 29,
+        "promoted_calib": 0.9481,
+        "median_others": 0.9399,
+        "lead": 0.0081,
+        "chance_lift": 0.0181
+      }
+    },
+    {
+      "check": "curve",
+      "title": "Learning curve",
+      "severity": "ok",
+      "explanation": "Dev levelled off before training ended, with no late drop.",
+      "numbers": {
+        "epochs_run": 7,
+        "epochs_cfg": 10,
+        "best_epoch": 3,
+        "best_dev": 0.9492,
+        "last_dev": 0.9451,
+        "best_loss": 0.3726,
+        "last_loss": 0.2277
+      }
+    }
+  ],
+  "skipped": []
+}

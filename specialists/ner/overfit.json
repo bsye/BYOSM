@@ -1,0 +1,128 @@
+{
+  "fingerprint": "0dcb09ddec",
+  "train_fingerprint": "ec146b038e",
+  "specialist": "ner",
+  "experiment": "v3",
+  "suite": "conll",
+  "metric": "span_f1",
+  "verdict": "warn",
+  "summary": "Some signs of overfitting: read the findings.",
+  "scores": {
+    "train": 0.9898386132695756,
+    "dev": 0.9618239660657476,
+    "calib": 0.9280205655526992,
+    "test": 0.9129479006375028
+  },
+  "train": {
+    "objective": 0.9898386132695756,
+    "ci95": {
+      "lo": 0.9853219934176901,
+      "hi": 0.9939444793732166
+    },
+    "n": 1000,
+    "seconds": 28.1
+  },
+  "findings": [
+    {
+      "check": "gap",
+      "title": "Generalisation gap",
+      "severity": "warn",
+      "explanation": "The model scores clearly higher on rows it trained on than on the test: some memorisation.",
+      "numbers": {
+        "train": 0.9898,
+        "dev": 0.9618,
+        "calib": 0.928,
+        "test": 0.9129,
+        "gap": 0.0769,
+        "warn_above": 0.05
+      }
+    },
+    {
+      "check": "drift",
+      "title": "Calib vs test",
+      "severity": "ok",
+      "explanation": "Calib and test agree within their confidence intervals.",
+      "numbers": {
+        "calib": 0.928,
+        "calib_lo": 0.912,
+        "calib_hi": 0.9441,
+        "test": 0.9129,
+        "test_lo": 0.9033,
+        "test_hi": 0.9214,
+        "difference": 0.0151
+      },
+      "suite": "conll"
+    },
+    {
+      "check": "overlap",
+      "title": "Train/test overlap",
+      "severity": "warn",
+      "explanation": "Many test inputs are also in training, but the score barely moves without them.",
+      "numbers": {
+        "test_rows": 2762,
+        "exact": 124,
+        "near": 0,
+        "share": 0.0449,
+        "same_label": 98,
+        "test": 0.9129,
+        "test_without_overlap": 0.9133
+      },
+      "suite": "conll",
+      "examples": [
+        {
+          "row": 5,
+          "test": "SOCCER - GERMAN FIRST DIVISION SUMMARIES .",
+          "train": "SOCCER - GERMAN FIRST DIVISION SUMMARIES .",
+          "similarity": 1.0,
+          "exact": true,
+          "same_label": true
+        },
+        {
+          "row": 10,
+          "test": "LATEST ACTUAL",
+          "train": "LATEST ACTUAL",
+          "similarity": 1.0,
+          "exact": true,
+          "same_label": true
+        },
+        {
+          "row": 17,
+          "test": "Scorers :",
+          "train": "Scorers :",
+          "similarity": 1.0,
+          "exact": true,
+          "same_label": true
+        }
+      ]
+    },
+    {
+      "check": "selection",
+      "title": "Selection pressure",
+      "severity": "ok",
+      "explanation": "3 experiments were compared on calib; the winner leads by more than chance would give.",
+      "numbers": {
+        "experiments": 3,
+        "promoted_calib": 0.928,
+        "median_others": 0.9146,
+        "lead": 0.0134,
+        "chance_lift": 0.0071
+      }
+    },
+    {
+      "check": "curve",
+      "title": "Learning curve",
+      "severity": "ok",
+      "explanation": "Dev levelled off before training ended, with no late drop.",
+      "numbers": {
+        "epochs_run": 12,
+        "epochs_cfg": 13,
+        "best_epoch": 8,
+        "best_dev": 0.9618,
+        "last_dev": 0.9597,
+        "best_loss": 0.3975,
+        "last_loss": 0.3906
+      }
+    }
+  ],
+  "skipped": []
+}
