@@ -3,6 +3,7 @@ import { useState, type CSSProperties } from "react"
 import { saveToken } from "@/api"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ErrorBoundary } from "@/components/error-boundary"
+import { LlmInspector } from "@/components/llm-inspector"
 import { SiteHeader } from "@/components/site-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -86,6 +87,7 @@ export default function App() {
         <Shell />
       </TooltipProvider>
       <Palette />
+      <LlmInspector />
       <Toaster />
     </LiveProvider>
   )
