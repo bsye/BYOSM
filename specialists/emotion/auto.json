@@ -1,0 +1,97 @@
+{
+  "decisions": [
+    {
+      "t": "2026-10-20 22:15:14",
+      "step": "define",
+      "choice": "text/classify, 7 labels, backbone hf:sentence-transformers/all-MiniLM-L6-v2",
+      "why": "compiled from the prompt; objective accuracy >= 0.9"
+    },
+    {
+      "t": "2026-10-20 22:20:53",
+      "step": "discover:benchmark",
+      "choice": "dair-ai/emotion",
+      "why": "dair-ai/emotion: Directly matches the target: English text classification into 7 emotion categories (joy/love/sadness/anger/fear/surprise + other), with established splits (train/dev/test). (eval on `test`, train on `train`)"
+    },
+    {
+      "t": "2026-10-20 22:20:53",
+      "step": "discover:baseline",
+      "choice": "llm",
+      "why": "the zero-shot LLM is the System-2 bar the specialist must beat"
+    },
+    {
+      "t": "2026-10-20 22:20:53",
+      "step": "discover:baseline",
+      "choice": "hf:SamLowe/roberta-base-go_emotions",
+      "why": "text-classification model, 4672252 downloads, covers 86% of our labels"
+    },
+    {
+      "t": "2026-10-20 22:20:53",
+      "step": "discover:baseline",
+      "choice": "hf:j-hartmann/emotion-english-distilroberta-base",
+      "why": "text-classification model, 558572 downloads, covers 71% of our labels"
+    },
+    {
+      "t": "2026-10-21 02:10:29",
+      "step": "build",
+      "choice": "v1",
+      "why": "bench accuracy 0.9037; best baseline ('hf:j-hartmann/emotion-english-distilroberta-base', 0.8128342245989305)"
+    },
+    {
+      "t": "2026-10-21 02:10:29",
+      "step": "stop",
+      "choice": "won: v1 0.9037 beats every baseline (best hf:j-hartmann/emotion-english-distilroberta-base 0.8128) and meets target 0.9",
+      "why": ""
+    },
+    {
+      "t": "2026-10-21 02:10:30",
+      "step": "distill",
+      "choice": null,
+      "why": "not needed: 22.7M <= 25.0M"
+    },
+    {
+      "t": "2026-10-21 02:10:38",
+      "step": "export",
+      "choice": "specialists/emotion/export",
+      "why": "torch-free ONNX bundle (encode / predict / serve)"
+    }
+  ],
+  "final": {
+    "suite": "bench",
+    "ours": 0.9037433155080213,
+    "exp": "v1",
+    "baselines": {
+      "llm": 0.3983957219251337,
+      "hf:SamLowe/roberta-base-go_emotions": 0.5187165775401069,
+      "hf:j-hartmann/emotion-english-distilroberta-base": 0.8128342245989305
+    },
+    "best_baseline": [
+      "hf:j-hartmann/emotion-english-distilroberta-base",
+      0.8128342245989305
+    ],
+    "beats": true,
+    "meets": true,
+    "won": true,
+    "metric": "accuracy",
+    "target": 0.9,
+    "test": {
+      "ours": 0.8974530831099196,
+      "ci95": {
+        "lo": 0.8827077747989276,
+        "hi": 0.9121983914209115
+      },
+      "baselines": {
+        "llm": 0.40415549597855227,
+        "hf:SamLowe/roberta-base-go_emotions": 0.5475871313672922,
+        "hf:j-hartmann/emotion-english-distilroberta-base": 0.8378016085790885
+      },
+      "vs_best_baseline": {
+        "lo": 0.04153820375335124,
+        "hi": 0.08042895442359244,
+        "delta": 0.05965147453083108,
+        "p_better": 1.0
+      }
+    },
+    "hours": 3.99,
+    "stop_reason": "won: v1 0.9037 beats every baseline (best hf:j-hartmann/emotion-english-distilroberta-base 0.8128) and meets target 0.9"
+  }
+}
