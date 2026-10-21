@@ -1,0 +1,12 @@
+.git
+.venv
+.env
+.claude
+**/__pycache__
+**/*.egg-info
+ui/node_modules
+byosm/app/static
+specialists
+systems
+tests
+docs

@@ -70,3 +70,19 @@ def test_job_history_survives_a_restart(client, ws):
         stale = again.get("/api/jobs/stale", headers=AUTH).json()
     assert stale["status"] == "failed" and stale["lines"] == [STOPPED_LINE]
     assert (ws / ".byosm" / "app.sqlite").exists()
+
+
+def test_the_app_command_takes_a_fixed_token_and_extra_hosts(ws, monkeypatch):
+    import uvicorn
+    from typer.testing import CliRunner
+
+    from byosm.cli import app
+
+    served = {}
+    monkeypatch.setattr(uvicorn, "run", lambda api, **kw: served.update(api=api, **kw))
+    env = {"BYOSM_APP_TOKEN": TOKEN, "BYOSM_APP_HOSTS": "byosm.internal, app.example"}
+    out = CliRunner().invoke(app, ["app", "--no-open", "--host", "0.0.0.0"], env=env)
+    assert out.exit_code == 0 and TOKEN not in out.output and served["host"] == "0.0.0.0"
+    for base, code in [("http://byosm.internal", 200), ("http://app.example", 200), ("http://evil.example", 400)]:
+        with TestClient(served["api"], base_url=base) as c:
+            assert c.get("/api/specialists", headers=AUTH).status_code == code
