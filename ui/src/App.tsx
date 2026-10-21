@@ -11,6 +11,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { LiveProvider, useLive, useJobToasts } from "@/events"
+import { Create } from "@/pages/Create"
 import { Jobs, Running } from "@/pages/Jobs"
 import { Keys } from "@/pages/Keys"
 import { Palette } from "@/pages/Palette"
@@ -21,7 +22,8 @@ import { Systems } from "@/pages/Systems"
 import { useRoute } from "@/route"
 
 function Page({ route }: { route: string[] }) {
-  const [section = "specialists", id] = route
+  const [section = "create", id] = route
+  if (section === "create") return <Create />
   if (section === "specialists") return id ? <Specialist name={id} /> : <Specialists />
   if (section === "systems") return <Systems />
   if (section === "jobs") return <Jobs id={id} />
@@ -58,7 +60,7 @@ function Shell() {
     <SidebarProvider
       style={{ "--sidebar-width": "calc(var(--spacing) * 64)", "--header-height": "calc(var(--spacing) * 12)" } as CSSProperties}
     >
-      <AppSidebar variant="inset" section={route[0] ?? "specialists"} running={running} />
+      <AppSidebar variant="inset" section={route[0] ?? "create"} running={running} />
       <SidebarInset>
         <SiteHeader route={route} connected={live.connected} />
         <div className="flex flex-1 flex-col">
