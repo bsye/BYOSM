@@ -17,37 +17,35 @@
 
 ## Goal
 
-One sentence and one command give you a small specialist model that beats general models, LLMs included, in its
-domain, measured on a public benchmark and small enough to run on any CPU.
+Describe a task in one sentence. Get back a small model that does that one job better than general models, LLMs
+included, proven on a public benchmark, and fast enough to run on any CPU.
 
 ```bash
-byosm auto doctype "classify business documents (PDF or scan) into invoice, letter, memo, form, ..." --budget 6
+byosm auto emotion "classify the emotion of a short English text: joy, love, sadness, anger, fear or surprise"
 ```
 
-## Assumptions
+That one command writes the spec, finds the benchmark and the models to beat, trains, keeps going until it wins or
+runs out of time, and exports an ONNX bundle.
 
-The thesis, stated as hypotheses:
+## The bet
 
-| | hypothesis | status |
+| | we bet that | where it stands |
 |---|---|---|
-| 1 | On a narrow task, a small model trained only for that task beats a general model, LLMs included. | **holds on 5 public benchmarks**: ahead of the best outside model on test in all 5 (on calib, DiT-base still leads documents by a hair), and far ahead of Qwen 3.8 27B zero-shot on the 4 tasks an LLM can do (summary table and each task's table) |
-| 2 | Selection can be honest: decide on calib, report test once, with a CI and a paired bootstrap. | built into promotion, the autopilot and the export check; **broken once by hand**: the training-recipe default was picked on test (see below) |
-| 3 | Specialists are cheap: small enough to run side by side on a laptop CPU, with no GPU and no PyTorch. | size and CPU time per model below (timed in PyTorch) |
+| 1 | A small model trained for one job beats a general model at that job, LLMs included. | **Holds on 5 of 5 public benchmarks.** Ahead of the best outside model on test everywhere, and far ahead of Qwen 3.8 27B on every task an LLM can do. On documents, DiT-base still edges us on calib. |
+| 2 | We can stay honest: choose on calib, report test once, compare with a paired bootstrap. | **Built in** to promotion, the autopilot and export. Broken once by hand: the training-recipe default was picked on test (below). |
+| 3 | Specialists are cheap: they run side by side on a laptop CPU, no GPU, no PyTorch. | **Yes.** Size and CPU time are in every table. |
 
-Not tested yet:
+Still open:
 
-- **Specialists vs one shared generalist (`byosm bench`) has not been run.** It scores on each specialist's builtin
-  test split, which `holdout_test: auto` folds into the promoted models' training, so it must move to the public suites
-  before its numbers mean anything.
-- **The autopilot (`byosm auto`) has run end to end twice**, from one sentence each, with Qwen 3.8 as its LLM: emotion
-  won inside its budget; topic ran one experiment, did not win, and won after two more-data steps run by hand.
-  VAD, documents and intent were built step by step.
+- **Specialists vs one shared generalist** (`byosm bench`). Not run yet: it grades on a split the promoted models
+  trained on, so it has to move to the public benchmarks first.
+- **The autopilot on its own.** Two full runs from one sentence: emotion won inside its budget; topic needed two more
+  data steps by hand. VAD, documents and intent were built step by step.
 
 ## Results
 
-The tables are generated from `specialists/*/board.json` by `byosm report`; the notes under them are written by
-hand and carry no numbers. `byosm report --check` fails when a table is out of date or a block is unknown or
-repeated, and the test suite runs it against this file.
+Every table below is generated from `specialists/*/board.json` by `byosm report`, never typed by hand.
+`byosm report --check` fails the tests if one is stale.
 
 <!-- report:summary -->
 | task | benchmark (metric) | our model | our test score [95% CI] | best outside baseline (on calib) | its test score | ours minus baseline on test (paired bootstrap) | calib, the selection split: ours vs baseline |
@@ -59,7 +57,7 @@ repeated, and the test suite runs it against this file.
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
 <!-- /report:summary -->
 
-### Voice activity detection ([bsye/byosm-vad](https://huggingface.co/bsye/byosm-vad))
+### Voice activity ([bsye/byosm-vad](https://huggingface.co/bsye/byosm-vad))
 
 <!-- report:vad -->
 | model | built from | train rows | params | CPU | test f1 [95% CI] | calib f1 |
@@ -74,13 +72,11 @@ repeated, and the test suite runs it against this file.
 Suite `ava` (nccratliri/vad-human-ava-speech): 20 test and 8 calib recordings. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
 <!-- /report:vad -->
 
-- In-domain: v2 and v3 train on the train partition of AVA-Speech (film and TV audio, hash-disjoint from the test
-  files). Silero has never seen that domain, so this is a win where the thesis says it should be, not everywhere.
-- v2 came from `byosm improve` reading the board: train on real film audio, and label whole utterances.
-- v3's recorded change is EMA plus `holdout_test: auto`, but the fold did not run (its primary suite was `builtin`,
-  see train rows), and its spec differs from v2's in many more fields (built from): the gain over v2 is not
-  attributable to one edit.
-- The AVA suite has few recordings: read the paired bootstrap column, not CI overlap.
+- Trained on the train part of AVA-Speech (film and TV audio), kept apart from the test files. Silero never saw that
+  domain: a win where the thesis says it should be.
+- v2 came straight from `byosm improve`: use real film audio, label whole utterances.
+- v3 changed more than its one recorded edit, so its gain over v2 can't be pinned on EMA alone.
+- Few recordings in the suite: trust the paired bootstrap, not overlapping CIs.
 
 ### Documents ([bsye/byosm-doctype](https://huggingface.co/bsye/byosm-doctype))
 
@@ -101,13 +97,11 @@ Suite `ava` (nccratliri/vad-human-ava-speech): 20 test and 8 calib recordings. S
 Suite `rvl` (chainyo/rvl-cdip): 3200 test and 800 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:doctype -->
 
-- v2-ditft starts its visual branch from DiT-base's own fine-tuned checkpoint and adds a text (OCR) branch. The claim is
-  "DiT plus text beats DiT", not "beat DiT from less data": the checkpoint brings DiT's labelled training set.
-- On calib, the selection split, DiT-base leads (summary table), so by the selection rule this is not a win yet.
-- RVL-CDIP has known label noise, which caps every model's accuracy on it.
-- `llm` is Qwen 3.8 27B, zero-shot, shown the page images and their OCR text.
-- distill-r2 is a tiny-BERT + DeiT-tiny student of r2; `text` and `visual` are the single-modality ablations of
-  `fused`.
+- v2-ditft starts its visual side from DiT-base's fine-tuned checkpoint and adds the OCR text. The claim is
+  "DiT plus text beats DiT", not "beat DiT with less data".
+- On calib, DiT-base is still a hair ahead, so by our own rule this is not a clean win yet.
+- `llm` is Qwen 3.8 27B, zero-shot, looking at the page images and their OCR text.
+- RVL-CDIP has known label noise, which caps every model.
 
 ### Banking intent ([bsye/byosm-intent](https://huggingface.co/bsye/byosm-intent))
 
@@ -121,11 +115,10 @@ Suite `rvl` (chainyo/rvl-cdip): 3200 test and 800 calib items. Selection uses ca
 Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 27 seed replicates off the promoted lineage, which are summarised in the recipe table (`intent:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on. † = scored on a different version of this suite or its decision policy than the promoted model; rerun `byosm eval` to refresh.
 <!-- /report:intent -->
 
-- The outside baseline is Qwen 3.8 27B, zero-shot, given the 77 label definitions (thinking off). No fine-tuned
-  Banking77 classifier has been scored yet.
-- The training-recipe ablation below is measured on this benchmark.
+- `llm` is Qwen 3.8 27B, zero-shot, given all 77 label definitions. No fine-tuned Banking77 model has been scored
+  against us yet.
 
-### Emotion (autopilot, one sentence)
+### Emotion: one sentence, end to end
 
 <!-- report:emotion -->
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
@@ -138,13 +131,13 @@ Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses cali
 Suite `bench` (dair-ai/emotion): 1492 test and 374 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:emotion -->
 
-- Built by `byosm auto` from one sentence: it chose the benchmark and the baselines, trained on dair-ai/emotion's own
-  train split plus text written by Qwen, and exported, inside its budget.
-- The spec adds a catch-all `other` that the benchmark never uses; every model, the LLM included, is scored inside the
-  benchmark's own labels ([design notes](docs/design-notes.md#evaluation-and-selection)).
-- j-hartmann's model has no `love` class, and SamLowe's was trained on Reddit (GoEmotions), not tweets.
+- Built entirely by `byosm auto`: it picked the benchmark and the rivals, trained on dair-ai/emotion's train split
+  plus text written by Qwen, and exported.
+- The spec has an extra `other` label the benchmark never uses, so every model is scored on the benchmark's own labels
+  ([why](docs/design-notes.md#evaluation-and-selection)).
+- j-hartmann's model has no `love` class; SamLowe's learned on Reddit, not tweets.
 
-### News topic (autopilot, then two data steps)
+### News topic: autopilot, then more data
 
 <!-- report:topic -->
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
@@ -159,11 +152,11 @@ Suite `bench` (dair-ai/emotion): 1492 test and 374 calib items. Selection uses c
 Suite `bench` (fancyzhx/ag_news): 2560 test and 640 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:topic -->
 
-- v1 is the autopilot's: a sample of AG News plus text written by Qwen; its budget ended after one experiment.
-- v2 (`byosm improve`: more-data) and v3 (every AG News training row, by hand) each won on calib before
-  promotion. Both outside baselines were fine-tuned on the full AG News train split.
+- v1 is the autopilot's, from a sample of AG News plus Qwen text. Its budget ran out after one experiment.
+- v2 (`byosm improve`: more data) and v3 (every AG News training row) each won on calib before being promoted. Both
+  rivals were fine-tuned on the full AG News train split, so this is a fair fight.
 
-## Methodology and benchmarks
+## How it works
 
 ```
 "one sentence" ─▶ spec.yaml ─▶ data ─▶ LeJEPA pretrain ─▶ train ─▶ score every suite ─▶ promote on calib ─▶ export
@@ -171,30 +164,27 @@ Suite `bench` (fancyzhx/ag_news): 2560 test and 640 calib items. Selection uses 
                      └──────────── byosm improve: one spec edit, with its evidence ◀─────────┘
 ```
 
-1. **Define.** An LLM compiles the sentence into `spec.yaml`: labels with definitions, objective, data plan, backbone,
-   decision policy, eval suites, baselines. You read and edit it.
-2. **Data.** Hugging Face datasets mapped onto your labels, real segment-labelled audio, procedural audio mixtures,
-   LLM-written text (double-labelled by a blind judge), or local files. Cached by a hash of the data plan.
-3. **Pretrain.** LeJEPA self-supervised adaptation on unlabelled in-domain inputs (multi-view prediction + SIGReg).
-4. **Train.** A small head on the backbone, checkpoint chosen on dev.
-5. **Evaluate.** Each eval suite is frozen and split into calib and test by a stable hash of file names. Experiments
-   and baselines (`silero`, `energy`, `llm`, any `hf:<repo>` classifier) go through the same scorer, and the decision
-   policy (threshold, or streaming hysteresis) is calibrated on calib.
-6. **Improve.** `byosm improve` diagnoses the board and proposes spec edits, each with the evidence behind it.
+| step | what happens |
+|---|---|
+| **Define** | An LLM turns the sentence into `spec.yaml`: labels with definitions, objective, data plan, backbone, decision policy, benchmarks, rivals. You can read and edit it. |
+| **Data** | Hugging Face datasets mapped onto your labels, real labelled audio, audio mixtures, LLM-written text checked by a blind judge, or your own files. Cached by content. |
+| **Pretrain** | LeJEPA self-supervised adaptation on unlabelled in-domain inputs. |
+| **Train** | A small head on the backbone, best checkpoint chosen on dev. |
+| **Evaluate** | Every model, ours or a rival (`silero`, `energy`, `llm`, any `hf:<repo>`), goes through the same scorer on frozen calib and test splits. |
+| **Improve** | `byosm improve` reads the board and proposes the next spec edit, with the evidence behind it. |
 
-Selection rules:
+How we keep it honest:
 
-- Promotion, the autopilot's keep/revert and stopping rule, and the int8 export check all decide on **calib**. The calib
-  score is cross-fitted, so a model is not rewarded for a threshold tuned on the items it is scored on.
-- **Test is only reported**, with a 95% bootstrap CI. Comparisons are a **paired bootstrap** over the same files or
-  items ("P(better)"), not a difference of two point estimates.
-- The autopilot changes one thing per round, keeps it only if it wins on calib, and counts it as progress only when
-  the paired bootstrap clears `SIGNIFICANT_P_BETTER` (`byosm/auto/loop.py`).
+- **Choose on calib.** Promotion, the autopilot's keep/revert and the int8 export check all decide on calib, and the
+  calib score is cross-fitted so a threshold never grades itself.
+- **Report test once**, with a 95% bootstrap CI.
+- **Compare paired.** Every "ours vs theirs" is a paired bootstrap over the same items (P(better)), not two point
+  estimates side by side.
 
 ### The training recipe, measured
 
-Banking77 with MiniLM-L6. Only `train` settings change, but `holdout_test: auto` also adds the builtin suite's
-held-out split to training (train rows column), so those recipes see more data.
+Banking77 with MiniLM-L6, only the `train` settings change. Recipes with `holdout_test: auto` also train on the
+builtin suite's held-out split, so they see more data.
 
 <!-- report:intent:seeds -->
 | recipe | seeds | train rows | ema | holdout_test | layer_decay_floor | precision | probe_epochs | test accuracy % | calib accuracy % |
@@ -214,89 +204,79 @@ held-out split to training (train rows column), so those recipes see more data.
 Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); no recipe has seeds on the promoted model's suite version. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on. † = scored on a different version of this suite or its decision policy than the promoted model; rerun `byosm eval` to refresh.
 <!-- /report:intent:seeds -->
 
-- The code default (`TrainCfg`: EMA, layer decay floor 0.5, no probe epoch, mixed precision, `holdout_test: auto`)
-  was chosen by hand **on test means**, which breaks hypothesis 2; the note above names the recipe that leads on calib.
-- Calib differences between recipes are of the order of one sample sd, and with so few seeds the sd itself is rough,
-  so the best recipe is not resolved; re-choosing the default on calib, with more seeds, is open.
-- `final` (bold) is the promoted lineage. Rows marked † were scored on an older suite version than the promoted model.
+- The current default (EMA, layer decay floor 0.5, no probe epoch, mixed precision, `holdout_test: auto`) was picked
+  on **test** means. That breaks bet 2; re-picking it on calib with more seeds is open.
+- The differences between recipes are within about one seed's noise: no recipe is a clear winner yet.
 
 ## Quickstart
 
 ```bash
 git clone https://github.com/bsye/BYOSM && cd BYOSM
 python3.11 -m venv .venv && .venv/bin/pip install -e '.[dev,silero]'
-byosm build vad && byosm board vad        # reproducible without an LLM: spec.yaml lists every data source
+byosm build vad && byosm board vad        # no LLM needed: spec.yaml lists every data source
 byosm export vad && byosm predict vad clip.wav
 ```
 
 | command | what it does |
 |---|---|
-| `byosm auto <name> "<task>" [--budget 6] [--margin 0] [--publish repo]` | spec, benchmark and baselines, experiments, distill, export |
-| `byosm init` · `byosm new <name> "<task>"` | create `byosm.yaml`; compile a spec from a sentence |
-| `byosm suite add <name> <suite> --hf <id> [--format segment_files] [--primary]` | add a frozen eval suite |
-| `byosm baseline add <name> <baseline>` | add a registered competitor (`byosm baseline available`) |
+| `byosm auto <name> "<task>" [--budget 6] [--publish repo]` | the whole thing: spec, benchmark, rivals, experiments, distill, export |
+| `byosm new <name> "<task>"` | just compile the spec |
 | `byosm build <name> [--exp vN]` | data, pretrain, train, evaluate, promote |
-| `byosm eval <name>` · `byosm board <name> [--detail]` | score and compare |
+| `byosm eval <name>` · `byosm board <name>` | score everything, show the leaderboard |
 | `byosm improve <name> [--apply ids --run]` | diagnose, propose, run the next experiment |
 | `byosm exp create <name> <exp> --set path=value` · `byosm promote <name> <exp>` | one-line ablations; choose what ships |
-| `byosm distill <name> [--teacher exp] [--run]` | shrink a teacher into a small student |
-| `byosm export <name>` · `byosm predict <name> <input>` · `byosm serve <names...>` | ONNX bundle, run it, local HTTP API |
-| `byosm publish <name> --repo <id> [--public] [--dry-run]` | Hugging Face bundle with a generated model card |
-| `byosm bench <a> <b> ...` | specialists vs one shared-backbone generalist (not run yet, see Assumptions) |
-| `byosm report [--check]` | regenerate the result tables in this README |
+| `byosm suite add` · `byosm baseline add` | add a benchmark or a rival |
+| `byosm distill <name> [--run]` | shrink a winner into a smaller student |
+| `byosm export` · `byosm predict` · `byosm serve` | ONNX bundle, run it, local HTTP API |
+| `byosm publish <name> --repo <id>` | push to Hugging Face with a generated model card |
+| `byosm bench <a> <b> ...` | specialists vs one generalist (not run yet, see above) |
+| `byosm report [--check]` | regenerate the tables in this README |
 
 ## Details
 
-**Modalities.** `text`, `audio` (streaming, per-10 ms frames), `image` and `document` (PDF or scan; text layer or OCR,
-plus the rendered page, fused). Task types: `classify` and `frame`.
+**Modalities.** `text`, `audio` (streaming, 10 ms frames), `image`, `document` (PDF or scan: text layer or OCR plus
+the page image). Tasks: `classify` and `frame`.
 
-**Exported bundle.** `byosm export` writes `model.onnx` (+ `stream.onnx` for streaming audio), `manifest.json` and
-`byosm_rt.py`, which needs only `numpy` and `onnxruntime` (plus `tokenizers` for text, Pillow for images) and offers
-the same `predict`, `encode`, `stream().step` and `serve` for every modality.
+**The bundle.** `byosm export` writes `model.onnx`, `manifest.json` and `byosm_rt.py`. The runtime needs only `numpy`
+and `onnxruntime` and gives every modality the same `predict`, `encode`, `stream().step` and `serve`.
 
-**LLM configuration.** An LLM compiles specs, writes and judges text data, analyses errors, and is the `llm` baseline.
-Each role (`spec`, `generate`, `judge`, `eval`, `analyze`, `baseline`) is set in `byosm.yaml` and falls back to
-`default`. This repository's default is local Qwen 3.8 through Ollama:
+**The LLM.** It writes specs, writes and judges text data, analyses errors, and is the `llm` rival. Each role is set in
+`byosm.yaml` and falls back to `default`. Here that's local Qwen 3.8 through Ollama:
 
 ```yaml
 llm:
   default: {provider: openai, model: qwen3.8:27b, base_url: http://localhost:11434/v1, api_key: ollama, reasoning_effort: none}
 ```
 
-`provider: openai` is any OpenAI-compatible server (Ollama, vLLM, LM Studio, OpenAI, OpenRouter);
-`byosm.llm.register_provider(name, factory)` adds other providers.
+`provider: openai` means any OpenAI-compatible server (Ollama, vLLM, LM Studio, OpenAI, OpenRouter).
 
-**Extending.**
-
-- Modality: a class in `byosm/modalities/` registered with `@register`.
-- Baseline: a `Predictor` registered with `@register_baseline` in `byosm/predictors/`, or any `hf:<repo>` classifier
-  listed under `baselines:` in `spec.yaml`.
-- Improvement rule: a function decorated with `@rule` in `byosm/improve/`.
-- LLM provider: `register_provider`.
+**Extending.** A modality is a class in `byosm/modalities/` with `@register`. A rival is a `Predictor` with
+`@register_baseline`, or any `hf:<repo>` classifier in `baselines:`. An improve rule is a function with `@rule`. An LLM
+provider is `register_provider`.
 
 **Layout.**
 
 ```
 byosm/
-  cli/          Typer commands (define, train, iterate, ship, report)
-  spec/         TaskSpec, spec compiler, backbone catalog
-  data/         Hugging Face sources, audio mixing, segments, synthetic text, store
-  modalities/   text, audio, image, document/
-  train/        supervised training loop, evaluation, teacher
-  evals/        suites, scoring and calibration, board, selection
-  improve/      diagnosis, rules, LLM analyst, cost estimates
-  auto/         autopilot loop and its report
-  predictors/   experiments and baselines behind one interface
-  export/       ONNX graph, int8 quantisation, bundle, parity checks
-  hub/          Hugging Face publishing and model card
-  llm/          provider-agnostic structured-JSON calls
-  bench/        specialists vs generalist, latency
-  report/       README result tables from the boards (byosm report)
-  config.py  discover.py  distill.py  jepa.py  metrics.py  model.py  pipeline.py  rt.py  runtime.py  text.py
-specialists/<name>/  spec.yaml, experiments/*/, baselines/, board.json, promoted
+  cli/          commands
+  spec/         spec, compiler, backbone catalog
+  data/         Hugging Face sources, audio, synthetic text, store
+  modalities/   text, audio, image, document
+  train/        training loop, evaluation, teacher
+  evals/        suites, scoring, board, selection
+  improve/      diagnosis, rules, LLM analyst, costs
+  auto/         autopilot
+  predictors/   our models and rivals behind one interface
+  export/       ONNX, int8, bundle, parity checks
+  hub/          Hugging Face publishing, model cards
+  llm/          provider-agnostic JSON calls
+  bench/        specialists vs generalist
+  report/       README tables
+specialists/<name>/   spec.yaml, experiments/, baselines/, board.json
+docs/design-notes.md  why things are the way they are
 ```
 
-Datasets, weights and exports are not committed.
+Datasets, weights and exports are never committed.
 
-**Licence.** CC BY-NC 4.0 (see [LICENSE](LICENSE)), for code and published models. The VAD's training data includes
-ESC-50 (CC BY-NC); check data licences before any other use.
+**Licence.** CC BY-NC 4.0 ([LICENSE](LICENSE)), for the code and the published models. The VAD's training data
+includes ESC-50 (CC BY-NC): check data licences before any other use.
