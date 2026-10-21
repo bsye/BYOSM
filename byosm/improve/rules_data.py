@@ -68,6 +68,23 @@ def _more_from_source(dg: dict, i: int, s: Any, ev: str) -> list[dict]:
             {"op": "set", "path": f"data.hf_sources.{i}.max_rows", "value": s.max_rows * 2},
         ]
         return [{"id": "more-data", "ops": ops, "why": ev + f". Take 2x more files/clips from {s.dataset}."}]
+    return _more_stream(dg, i, s, ev)
+
+
+def _more_stream(dg: dict, i: int, s: Any, ev: str) -> list[dict]:
+    from ..data import hf_source
+
+    size = hf_source.split_sizes(s.dataset, s.config).get(s.split)
+    if size is not None and size <= s.max_rows:
+        alt = _unused_split(dg, hf_source, s)
+        if not alt:
+            return []
+        value = s.model_copy(update={"split": alt[0], "max_rows": alt[1]}).model_dump(mode="json")
+        why = (
+            ev
+            + f". {s.split} is used up (all {size} rows read); `{alt[0]}` has {alt[1]} rows that no eval suite reads."
+        )
+        return [{"id": "new-split", "ops": [{"op": "append", "path": "data.hf_sources", "value": value}], "why": why}]
     ops = [{"op": "set", "path": f"data.hf_sources.{i}.max_rows", "value": s.max_rows * 4}]
     return [{"id": "more-data", "ops": ops, "why": ev + f". Read 4x more rows from {s.dataset}."}]
 
@@ -113,19 +130,25 @@ def _availability(hf_source: Any, s: Any, spec: Any) -> int | None:
         return None
 
 
-def _new_split(dg: dict, hf_source: Any, s: Any, have: int, want: int, ev: str) -> list[dict]:
+def _unused_split(dg: dict, hf_source: Any, s: Any) -> tuple[str, int] | None:
     spec, base = dg["spec"], dg["base"]
     used = {e.source.split for e in base.evals if e.source and e.source.dataset == s.dataset}
     used |= {x.split for x in spec.data.hf_sources if x.dataset == s.dataset}
     sizes = hf_source.split_sizes(s.dataset, s.config)
     alt = max((k for k in sizes if k not in used), key=lambda k: sizes[k], default=None)
-    if not alt or sizes[alt] // len(spec.labels) <= s.per_label // 2:
+    return (alt, sizes[alt]) if alt else None
+
+
+def _new_split(dg: dict, hf_source: Any, s: Any, have: int, want: int, ev: str) -> list[dict]:
+    alt = _unused_split(dg, hf_source, s)
+    n_labels = len(dg["spec"].labels)
+    if not alt or alt[1] // n_labels <= s.per_label // 2:
         return []
-    per = min(want, sizes[alt] // len(spec.labels))
-    value = s.model_copy(update={"split": alt, "per_label": per}).model_dump(mode="json")
+    per = min(want, alt[1] // n_labels)
+    value = s.model_copy(update={"split": alt[0], "per_label": per}).model_dump(mode="json")
     why = (
         ev + f". {s.split} is used up ({have} per label, {s.per_label} taken); "
-        f"`{alt}` has {sizes[alt]} rows that no eval suite reads: add {per} per label from it."
+        f"`{alt[0]}` has {alt[1]} rows that no eval suite reads: add {per} per label from it."
     )
     return [{"id": "new-split", "ops": [{"op": "append", "path": "data.hf_sources", "value": value}], "why": why}]
 

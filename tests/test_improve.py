@@ -129,3 +129,12 @@ def test_more_data_is_proposed_for_any_gap_to_a_baseline():
     spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="a", definition="")])
     spec.objective.target = 0.5
     assert "more-data" in proposals(spec, 0.92, 0.93, PLATEAU, 2)
+
+
+def test_streamed_source_read_to_the_end_proposes_an_unused_split(monkeypatch):
+    monkeypatch.setattr(hf_source, "split_sizes", lambda ds, cfg=None: {"train": 50, "validation": 30})
+    spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="a", definition="")])
+    spec.data.hf_sources = [HFSource(dataset="org/d", role="labeled", split="train", max_rows=80)]
+    ids = proposals(spec, 0.8, 0.9, RISING, 7)
+    value = ids["new-split"]["ops"][0]["value"]
+    assert (value["split"], value["max_rows"]) == ("validation", 30) and "more-data" not in ids
