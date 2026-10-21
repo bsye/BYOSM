@@ -31,7 +31,7 @@ runs out of time, and exports an ONNX bundle.
 
 | | we bet that | where it stands |
 |---|---|---|
-| 1 | A small model trained for one job beats a general model at that job, LLMs included. | **Holds on 5 of 5 public benchmarks.** Ahead of the best outside model on test everywhere, and far ahead of Qwen 3.8 27B on every task an LLM can do. On documents, DiT-base still edges us on calib. |
+| 1 | A small model trained for one job beats a general model at that job, LLMs included. | **Holds on every public benchmark so far.** Ahead of the best outside model on test everywhere (on names, only just), and far ahead of Qwen 3.8 27B on every task an LLM can do. On documents, DiT-base still edges us on calib. |
 | 2 | We can stay honest: choose on calib, report test once, compare with a paired bootstrap. | **Built in** to promotion, the autopilot and export. Broken once by hand: the training-recipe default was picked on test (below). |
 | 3 | Specialists are cheap: they run side by side on a laptop CPU, no GPU, no PyTorch. | **Yes.** Size and CPU time are in every table. |
 
@@ -53,6 +53,7 @@ Every table below is generated from `specialists/*/board.json` by `byosm report`
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
 | Classify the primary emotion expressed in a short English text (single sentence, tweet-style or short social media string) into one of six named emotions (sadness, joy, love, anger, fear, surprise). Any text that does not clearly express one of these dominates falls into a catch-all neutral-other class (including neutral statements, irony/sarcasm without a dominant named emotion, ambiguity, or non-English). | dair-ai/emotion (accuracy) | v1 (22.72M) | 0.898 [0.883, 0.913] | hf:j-hartmann/emotion-english-distilroberta-base (82.12M) | 0.838 [0.819, 0.856] | +0.060, P(better) = 1.00 | 0.904 vs 0.813 (ahead) |
 | 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | llm (-) | 0.772 [0.756, 0.788] | +0.165, P(better) = 1.00 | 0.948 vs 0.713 (ahead) |
+| Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
 <!-- /report:summary -->
@@ -155,6 +156,26 @@ Suite `bench` (fancyzhx/ag_news): 2560 test and 640 calib items. Selection uses 
 - v1 is the autopilot's, from a sample of AG News plus Qwen text. Its budget ran out after one experiment.
 - v2 (`byosm improve`: more data) and v3 (every AG News training row) each won on calib before being promoted. Both
   rivals were fine-tuned on the full AG News train split, so this is a fair fight.
+
+### Names in text: tagging every word
+
+<!-- report:ner -->
+| model | built from | train rows | params | CPU | test span_f1 [95% CI] | calib span_f1 |
+|---|---|---|---|---|---|---|
+| **v3** (promoted) | v2 + `backbone=hf:microsoft/deberta-v3-xsmall` | 15181 (+2214 builtin test) | 70.69M | 9.99ms | 0.913 [0.903, 0.921] | 0.928 |
+| hf:dslim/bert-base-NER | outside baseline | - | 107.73M | 11.33ms | 0.910 [0.900, 0.918] | 0.925 |
+| v2 | v1 + new-split, train-longer | 15181 (+2214 builtin test) | 65.20M | 5.37ms | 0.894 [0.883, 0.904] | 0.922 |
+| v1 | no recorded parent | 12320 (+1790 builtin test) | 65.20M | 5.92ms | 0.890 [0.878, 0.900] | 0.907 |
+| llm | outside baseline | - | - | - | 0.577 [0.560, 0.596] | 0.572 |
+
+Suite `conll` (BramVanroy/conll2003): 2762 test and 691 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+<!-- /report:ner -->
+
+- Scored as whole names (CoNLL span F1), with each sentence as one bootstrap unit.
+- v2 (`byosm improve`) added CoNLL's validation split, which no suite reads, and trained longer. v3 swapped the backbone
+  for DeBERTa-v3-xsmall. dslim's model is BERT-base fine-tuned on the same CoNLL train split.
+- This is the thinnest lead on the board: ahead on calib and test, but the paired bootstrap is not yet sure.
+- Qwen tags word lists in batches; it finds about as many names as there are and gets many wrong.
 
 ## How it works
 
