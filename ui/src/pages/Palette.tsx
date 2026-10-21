@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/command"
 import { go } from "@/route"
 
-const PAGES = ["create", "specialists", "systems", "jobs", "keys", "settings"]
+const PAGES = ["create", "specialists", "jobs", "keys", "settings"]
 const JOBS: { verb: string; args: (n: string) => string[] }[] = [
   { verb: "Build", args: (n) => ["build", n] },
   { verb: "Score", args: (n) => ["eval", n] },
@@ -62,8 +62,8 @@ export function Palette() {
             </CommandItem>
           ))}
           {systems.map((n) => (
-            <CommandItem key={`system-${n}`} onSelect={pick(() => go("systems"))}>
-              {n} (system)
+            <CommandItem key={`system-${n}`} onSelect={pick(() => go("specialists", n))}>
+              {n} (team)
             </CommandItem>
           ))}
         </CommandGroup>

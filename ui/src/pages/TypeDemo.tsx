@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Area, AreaChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts"
 import { post } from "@/api"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Input } from "@/components/ui/input"
 
@@ -42,11 +42,7 @@ export function TypeDemo({ system }: { system: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Type to it</CardTitle>
-        <CardDescription>
-          The router runs on every keystroke; the gate fires the action once it is sure for long enough. Runs the exported
-          bundle on this machine.
-        </CardDescription>
+        <CardTitle>Try it</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="wake me up at five am tomorrow" />

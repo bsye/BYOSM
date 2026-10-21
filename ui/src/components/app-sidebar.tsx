@@ -1,4 +1,4 @@
-import { Activity, Boxes, Github, KeyRound, Network, Settings, Smile, SquarePen } from "lucide-react"
+import { Activity, Boxes, Github, KeyRound, Settings, Smile, SquarePen } from "lucide-react"
 import type { ComponentProps } from "react"
 import {
   Sidebar,
@@ -17,7 +17,6 @@ import { href } from "@/route"
 const MAIN = [
   { key: "create", label: "Create", icon: SquarePen },
   { key: "specialists", label: "Specialists", icon: Boxes },
-  { key: "systems", label: "Systems", icon: Network },
   { key: "jobs", label: "Jobs", icon: Activity },
 ]
 const SECONDARY = [

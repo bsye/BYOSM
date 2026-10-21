@@ -19,14 +19,12 @@ import { Palette } from "@/pages/Palette"
 import { Settings } from "@/pages/Settings"
 import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
-import { Systems } from "@/pages/Systems"
 import { useRoute } from "@/route"
 
 function Page({ route }: { route: string[] }) {
   const [section = "create", id] = route
   if (section === "create") return <Create />
   if (section === "specialists") return id ? <Specialist name={id} /> : <Specialists />
-  if (section === "systems") return <Systems />
   if (section === "jobs") return <Jobs id={id} />
   if (section === "keys") return <Keys />
   if (section === "settings") return <Settings />

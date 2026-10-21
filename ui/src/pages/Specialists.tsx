@@ -79,7 +79,13 @@ function SpecialistCard({ s }: { s: Summary }) {
         <CardHeader>
           <CardTitle>{s.name}</CardTitle>
           <CardDescription className="line-clamp-1">{s.description}</CardDescription>
-          <CardAction>{s.exported && <Badge variant="outline">Exported</Badge>}</CardAction>
+          <CardAction>
+            {s.kind === "team" ? (
+              <Badge variant="outline">Team of {s.members?.length}</Badge>
+            ) : (
+              s.exported && <Badge variant="outline">Exported</Badge>
+            )}
+          </CardAction>
         </CardHeader>
         <CardFooter className="mt-auto flex-col items-start gap-1">
           <span className="text-3xl font-semibold tabular-nums" title={`Test ${metricName(s.metric)}, ${s.benchmark}`}>
@@ -118,8 +124,8 @@ export function Specialists() {
         </NewSpecialist>
       </div>
       {error && <p className="text-destructive text-sm">Could not load the specialists: {error}</p>}
-      {items && items.length > 0 && <SectionCards items={items} />}
-      {items && items.length > 0 && <Overview items={items} />}
+      {items && items.length > 0 && <SectionCards items={items.filter((s) => !s.part_of)} />}
+      {items && items.length > 0 && <Overview items={items.filter((s) => !s.part_of)} />}
       {items && items.length === 0 && (
         <Empty>
           <EmptyHeader>
@@ -138,7 +144,9 @@ export function Specialists() {
       )}
       <div className="grid auto-rows-fr gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
         {items == null && !error && Array.from({ length: SKELETONS }, (_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
-        {(items ?? []).map((s) => (
+        {(items ?? [])
+          .filter((s) => !s.part_of)
+          .map((s) => (
           <SpecialistCard key={s.name} s={s} />
         ))}
       </div>

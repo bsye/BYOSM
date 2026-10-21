@@ -18,6 +18,7 @@ import { Playground } from "./Playground"
 import { Proposals } from "./Proposals"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
+import { Team, useTeam } from "./Team"
 import { YourData } from "./YourData"
 
 const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] }[] = [
@@ -138,6 +139,13 @@ function SpecEditor({ d, onSaved }: { d: Detail; onSaved: () => void }) {
 }
 
 export function Specialist({ name }: { name: string }) {
+  const team = useTeam(name)
+  if (team === undefined) return null
+  if (team) return <Team view={team} />
+  return <Model name={name} />
+}
+
+function Model({ name }: { name: string }) {
   const [d, setD] = useState<Detail | null>(null)
   const [error, setError] = useState("")
   const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
