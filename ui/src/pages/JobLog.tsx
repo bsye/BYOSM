@@ -3,8 +3,9 @@ import { post, type Job } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useJobLines, useLive } from "@/events"
+import { useJob, useLive } from "@/events"
 import { took } from "@/format"
+import { JobMetrics } from "./JobMetrics"
 
 const STATUS_VARIANT: Record<Job["status"], "default" | "secondary" | "destructive" | "outline"> = {
   queued: "outline",
@@ -20,12 +21,14 @@ export function StatusBadge({ status }: { status: Job["status"] }) {
 
 export function JobLog({ id }: { id: string }) {
   const job = useLive().jobs[id]
-  const lines = useJobLines(id)
+  const { lines, metrics } = useJob(id)
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => end.current?.scrollIntoView({ block: "nearest" }), [lines.length])
   if (!job) return <p className="text-muted-foreground text-sm">Job {id} is not known to this server.</p>
   const active = job.status === "running" || job.status === "queued"
   return (
+    <div className="space-y-4">
+    <JobMetrics metrics={metrics} />
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-4">
         <CardTitle className="font-mono text-sm break-all">byosm {job.args.join(" ")}</CardTitle>
@@ -48,5 +51,6 @@ export function JobLog({ id }: { id: string }) {
         </div>
       </CardContent>
     </Card>
+    </div>
   )
 }

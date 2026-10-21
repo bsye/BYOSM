@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
 import { took, when } from "@/format"
@@ -13,6 +14,8 @@ export function Running() {
     <div className="grid gap-3 lg:grid-cols-2">
       {active.map((j) => {
         const last = (live.lines[j.id] ?? []).at(-1) ?? "waiting for output..."
+        const epoch = (live.metrics[j.id] ?? []).filter((m) => m.kind === "epoch").at(-1)
+        const progress = epoch ? (Number(epoch.epoch) / Number(epoch.epochs)) * 100 : null
         return (
           <a key={j.id} href={href("jobs", j.id)}>
             <Card className="hover:bg-accent/50 transition-colors">
@@ -20,7 +23,10 @@ export function Running() {
                 <CardTitle className="truncate font-mono text-sm">byosm {j.args.join(" ")}</CardTitle>
                 <StatusBadge status={j.status} />
               </CardHeader>
-              <CardContent className="text-muted-foreground truncate font-mono text-xs">{last}</CardContent>
+              <CardContent className="space-y-2">
+                {progress != null && <Progress value={progress} />}
+                <p className="text-muted-foreground truncate font-mono text-xs">{last}</p>
+              </CardContent>
             </Card>
           </a>
         )

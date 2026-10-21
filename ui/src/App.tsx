@@ -1,5 +1,10 @@
 import { Activity, Boxes, KeyRound, Network } from "lucide-react"
+import { useState } from "react"
+import { saveToken } from "@/api"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
   Sidebar,
@@ -40,6 +45,24 @@ function Page({ route }: { route: string[] }) {
   return <Specialists />
 }
 
+function TokenPrompt() {
+  const [value, setValue] = useState("")
+  return (
+    <Alert variant="destructive">
+      <AlertTitle>This page has an old token</AlertTitle>
+      <AlertDescription className="space-y-3">
+        <p>Open the link `byosm app` printed, or paste it (or just the token) here.</p>
+        <div className="flex gap-2">
+          <Input value={value} onChange={(e) => setValue(e.target.value)} placeholder="http://127.0.0.1:8765/#token=..." />
+          <Button disabled={!value.trim()} onClick={() => saveToken(value)}>
+            Use it
+          </Button>
+        </div>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
 function Shell() {
   const route = useRoute()
   const live = useLive()
@@ -74,12 +97,13 @@ function Shell() {
         <header className="flex h-14 items-center gap-3 border-b px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-5" />
-          <span className="text-sm capitalize">{route.join(" / ") || "specialists"}</span>
+          <span className="text-sm">{route.join(" / ") || "specialists"}</span>
           <Badge variant={live.connected ? "secondary" : "destructive"} className="ml-auto">
             {live.connected ? "live" : "offline"}
           </Badge>
         </header>
         <main className="space-y-4 p-4 md:p-6">
+          {live.unauthorized && <TokenPrompt />}
           <Running />
           <Page route={route} />
         </main>

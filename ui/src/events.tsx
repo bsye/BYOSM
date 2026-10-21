@@ -2,31 +2,40 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { toast } from "sonner"
 import { api, eventsUrl, type Job } from "@/api"
 
-type Live = { jobs: Record<string, Job>; lines: Record<string, string[]>; connected: boolean }
+export type Metric = { kind: string; [key: string]: unknown }
+
+type Live = {
+  jobs: Record<string, Job>
+  lines: Record<string, string[]>
+  metrics: Record<string, Metric[]>
+  connected: boolean
+  unauthorized: boolean
+}
 
 const RECONNECT_MS = 2000
+const UNAUTHORIZED = 4401
 const KEPT_LINES = 5000
-const LiveContext = createContext<Live>({ jobs: {}, lines: {}, connected: false })
+const LiveContext = createContext<Live>({ jobs: {}, lines: {}, metrics: {}, connected: false, unauthorized: false })
 
 export function LiveProvider({ children }: { children: ReactNode }) {
-  const [live, setLive] = useState<Live>({ jobs: {}, lines: {}, connected: false })
+  const [live, setLive] = useState<Live>({ jobs: {}, lines: {}, metrics: {}, connected: false, unauthorized: false })
   useEffect(() => {
     let sock: WebSocket | null = null
     let stop = false
     const open = () => {
       sock = new WebSocket(eventsUrl())
-      sock.onopen = () => setLive((l) => ({ ...l, connected: true }))
-      sock.onclose = () => {
-        setLive((l) => ({ ...l, connected: false }))
+      sock.onopen = () => setLive((l) => ({ ...l, connected: true, unauthorized: false }))
+      sock.onclose = (e) => {
+        setLive((l) => ({ ...l, connected: false, unauthorized: e.code === UNAUTHORIZED }))
         if (!stop) setTimeout(open, RECONNECT_MS)
       }
       sock.onmessage = (m) => {
         const ev = JSON.parse(m.data)
-        setLive((l) =>
-          ev.type === "job"
-            ? { ...l, jobs: { ...l.jobs, [ev.job.id]: ev.job } }
-            : { ...l, lines: { ...l.lines, [ev.job]: [...(l.lines[ev.job] ?? []), ev.line].slice(-KEPT_LINES) } },
-        )
+        setLive((l) => {
+          if (ev.type === "job") return { ...l, jobs: { ...l.jobs, [ev.job.id]: ev.job } }
+          if (ev.type === "metric") return { ...l, metrics: { ...l.metrics, [ev.job]: [...(l.metrics[ev.job] ?? []), ev.data] } }
+          return { ...l, lines: { ...l.lines, [ev.job]: [...(l.lines[ev.job] ?? []), ev.line].slice(-KEPT_LINES) } }
+        })
       }
     }
     open()
@@ -40,17 +49,21 @@ export function LiveProvider({ children }: { children: ReactNode }) {
 
 export const useLive = () => useContext(LiveContext)
 
-export function useJobLines(id: string): string[] {
-  const fresh = useLive().lines[id] ?? []
-  const seen = useRef(fresh.length)
-  seen.current = fresh.length
-  const [backlog, setBacklog] = useState<{ lines: string[]; offset: number }>({ lines: [], offset: 0 })
+export function useJob(id: string): { lines: string[]; metrics: Metric[] } {
+  const live = useLive()
+  const fresh = { lines: live.lines[id] ?? [], metrics: live.metrics[id] ?? [] }
+  const seen = useRef({ lines: 0, metrics: 0 })
+  seen.current = { lines: fresh.lines.length, metrics: fresh.metrics.length }
+  const [stored, setStored] = useState({ lines: [] as string[], metrics: [] as Metric[], at: { lines: 0, metrics: 0 } })
   useEffect(() => {
-    api<{ lines: string[] }>(`/jobs/${id}`)
-      .then((j) => setBacklog({ lines: j.lines, offset: seen.current }))
-      .catch(() => setBacklog({ lines: [], offset: 0 }))
+    api<{ lines: string[]; events?: Metric[] }>(`/jobs/${id}`)
+      .then((j) => setStored({ lines: j.lines, metrics: j.events ?? [], at: seen.current }))
+      .catch(() => setStored({ lines: [], metrics: [], at: { lines: 0, metrics: 0 } }))
   }, [id])
-  return [...backlog.lines, ...fresh.slice(backlog.offset)]
+  return {
+    lines: [...stored.lines, ...fresh.lines.slice(stored.at.lines)],
+    metrics: [...stored.metrics, ...fresh.metrics.slice(stored.at.metrics)],
+  }
 }
 
 const ENDED = new Set(["done", "failed", "cancelled"])

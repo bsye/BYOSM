@@ -9,6 +9,11 @@ export function readToken(): string {
   return sessionStorage.getItem(TOKEN_KEY) ?? ""
 }
 
+export function saveToken(value: string) {
+  sessionStorage.setItem(TOKEN_KEY, value.includes("token=") ? value.slice(value.indexOf("token=") + 6) : value.trim())
+  window.location.reload()
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
