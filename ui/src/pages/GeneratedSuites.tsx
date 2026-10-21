@@ -5,7 +5,7 @@ import { runJob, type Detail, type Suite } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { LlmPicker, useLlmChoice } from "@/components/llm-picker"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Input } from "@/components/ui/input"
 import { metricName, rivalName } from "@/format"
@@ -39,10 +39,10 @@ function GenerateCard({ d }: { d: Detail }) {
       .then((j) => go("jobs", j.id))
       .catch((e) => setError(String(e)))
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          Generate inputs
+          Write many inputs
           <InfoTip>The LLM writes new labelled inputs, then this model and every rival answer them.</InfoTip>
         </CardTitle>
       </CardHeader>
@@ -57,18 +57,16 @@ function GenerateCard({ d }: { d: Detail }) {
             onChange={(e) => setTotal(Math.max(1, Number(e.target.value) || 1))}
           />
           <LlmPicker llm={llm} label="LLM that writes the inputs" />
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {perLabel} per label, {perLabel * d.labels} in all
+          </span>
+          <Button size="sm" className="ml-auto" disabled={!llm.choice || !d.promoted} onClick={start}>
+            <Sparkles />
+            Write and score
+          </Button>
         </div>
-        <p className="text-muted-foreground text-xs tabular-nums">
-          {perLabel} per label, {perLabel * d.labels} in all
-        </p>
         {error && <p className="text-destructive text-sm">{error}</p>}
       </CardContent>
-      <CardFooter className="mt-auto">
-        <Button variant="outline" size="sm" disabled={!llm.choice || !d.promoted} onClick={start}>
-          <Sparkles />
-          Write and score
-        </Button>
-      </CardFooter>
     </Card>
   )
 }
@@ -120,13 +118,15 @@ function SuiteCard({ d, suite }: { d: Detail; suite: Suite }) {
 
 export function GeneratedSuites({ d }: { d: Detail }) {
   return (
-    <div className="grid items-stretch gap-4 @3xl/main:grid-cols-2">
+    <div className="flex flex-col gap-4">
       {d.task_type === "classify" && <GenerateCard d={d} />}
-      {d.suites
-        .filter((s) => s.kind === GENERATED)
-        .map((s) => (
-          <SuiteCard key={s.name} d={d} suite={s} />
-        ))}
+      <div className="grid auto-rows-fr gap-4 @3xl/main:grid-cols-2">
+        {d.suites
+          .filter((s) => s.kind === GENERATED)
+          .map((s) => (
+            <SuiteCard key={s.name} d={d} suite={s} />
+          ))}
+      </div>
     </div>
   )
 }
