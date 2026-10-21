@@ -5,6 +5,7 @@ import { useLive } from "@/events"
 import { took, when } from "@/format"
 import { href } from "@/route"
 import { JobLog, StatusBadge } from "./JobLog"
+import { Timeline } from "./Timeline"
 
 export function Running() {
   const live = useLive()
@@ -40,6 +41,7 @@ export function Jobs({ id }: { id?: string }) {
   return (
     <div className="space-y-4">
       {id && <JobLog id={id} />}
+      <Timeline jobs={jobs} />
       <Card>
         <CardHeader>
           <CardTitle>Jobs</CardTitle>

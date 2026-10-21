@@ -3,11 +3,14 @@ import { api, runJob, type Summary } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
 import { score } from "@/format"
 import { go, href } from "@/route"
 import { Overview } from "./Overview"
+
+const SKELETONS = 5
 
 function NewSpecialist() {
   const [prompt, setPrompt] = useState("")
@@ -54,6 +57,7 @@ export function Specialists() {
       <Overview items={items ?? []} />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <NewSpecialist />
+      {items == null && Array.from({ length: SKELETONS }, (_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
       {(items ?? []).map((s) => (
         <a key={s.name} href={href("specialists", s.name)}>
           <Card className="hover:bg-accent/50 h-full transition-colors">
