@@ -83,8 +83,10 @@ def improve(
 
 @app.command()
 def auto(
-    name: str,
-    prompt: Annotated[str | None, typer.Argument(help="the task in plain language (needed the first time)")] = None,
+    task: Annotated[str, typer.Argument(help="the task in plain language, or the name of a specialist to resume")],
+    prompt: Annotated[
+        str | None, typer.Argument(help="the task, when the first argument names a new specialist")
+    ] = None,
     modality: Annotated[str | None, typer.Option(help="text | audio | image | document (inferred if omitted)")] = None,
     budget: Annotated[float, typer.Option(help="wall-clock budget in hours")] = 6.0,
     max_experiments: int = 8,
@@ -100,6 +102,7 @@ def auto(
     """One command: prompt -> spec -> benchmark + baselines -> experiments until it wins (or the budget ends) -> distill -> export."""
     from ..auto import run
 
+    name, prompt = (task, prompt) if prompt or Project(task).exists() else (None, task)
     final = run(
         name,
         prompt,
@@ -114,8 +117,8 @@ def auto(
         not no_llm,
         log,
     )
-    board(name, detail=True)
-    p = Project(name)
+    board(final["name"], detail=True)
+    p = Project(final["name"])
     verdict = "WON" if final["won"] else "did not win"
     log(f"\n{verdict}: {final['stop_reason']} ({final['hours']} h). Report: {p.root / 'auto.md'}")
 

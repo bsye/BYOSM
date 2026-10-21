@@ -5,6 +5,10 @@ def normalize(text: str) -> str:
     return " ".join("".join(c if c.isalnum() else " " for c in str(text).lower()).split())
 
 
+def slug(text: str, max_words: int = 3) -> str:
+    return "-".join(normalize(text).split()[:max_words])
+
+
 def match_label(name: str, candidates: list[str]) -> str | None:
     words = normalize(name).split()
     exact = [c for c in candidates if normalize(c).split() == words]

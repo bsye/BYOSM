@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from ..config import free_name
 from ..llm import get_llm
+from ..text import slug
 from .backbones import BACKBONES, DEFAULT_BACKBONE
 from .prompt import _SPEC_SCHEMA, _SPEC_SYSTEM
 from .sections import Axis, DataPlan, HFSource, Label, Objective, TrainCfg
@@ -71,12 +73,12 @@ def _task_fields(out: dict) -> dict:
     return {**_present(out, {k: k for k in present}), **_given(out, {k: k for k in given})}
 
 
-def compile_spec(name: str, description: str, modality: str | None = None, cfg: dict | None = None) -> TaskSpec:
+def compile_spec(name: str | None, description: str, modality: str | None = None, cfg: dict | None = None) -> TaskSpec:
     out = get_llm("spec", cfg).json(_SPEC_SYSTEM, _prompt(description, modality), _SPEC_SCHEMA)
     mod = modality or out["modality"]
     backbone = _backbone(mod, out)
     spec = TaskSpec(
-        name=name,
+        name=name or free_name(slug(out.get("name") or out.get("summary") or description)),
         description=description,
         modality=mod,
         labels=[Label(**label) for label in out["labels"]],

@@ -9,7 +9,8 @@ def _object_array(properties: dict) -> dict:
 _SPEC_SCHEMA = {
     "type": "object",
     "properties": {
-        "modality": {"type": "string", "enum": ["text", "audio", "image"]},
+        "name": {"type": "string"},
+        "modality": {"type": "string", "enum": ["text", "audio", "image", "document"]},
         "task_type": {"type": "string", "enum": ["classify", "frame"]},
         "summary": {"type": "string"},
         "input_description": {"type": "string"},
@@ -46,6 +47,9 @@ _SPEC_SYSTEM = """You are the task compiler of byosm, a framework that trains ti
 into a precise, unambiguous task specification.
 
 Rules:
+- name: a short lowercase name for the task, one to three words (e.g. "doctype", "banking-intent", "names").
+- modality: what the model reads. "document" for PDFs or scanned pages, "image" for photos, "audio" for sound, \
+"text" otherwise.
 - Labels must be mutually exclusive and collectively exhaustive for the input distribution. Add a catch-all label \
 (e.g. "other"/"none") when real inputs can fall outside the named classes. Definitions must settle borderline cases explicitly.
 - task_type "frame" means one label per timestep/token (e.g. voice activity per 10ms frame, token tagging). Otherwise "classify".

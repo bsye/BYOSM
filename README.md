@@ -21,10 +21,11 @@ Describe a task in one sentence. Get back a small model that does that one job b
 included, proven on a public benchmark, and fast enough to run on any CPU.
 
 ```bash
-byosm auto emotion "classify the emotion of a short English text: joy, love, sadness, anger, fear or surprise"
+byosm "classify the emotion of a short English text: joy, love, sadness, anger, fear or surprise"
 ```
 
-That one command writes the spec, finds the benchmark and the models to beat, trains, keeps going until it wins or
+That one command names the task, works out what kind of model it needs (text, audio, image or document; one label
+per input or one per word or frame), writes the spec, finds the benchmark and the models to beat, trains, keeps going until it wins or
 runs out of time, and exports an ONNX bundle.
 
 ## The bet
@@ -240,7 +241,8 @@ byosm export vad && byosm predict vad clip.wav
 
 | command | what it does |
 |---|---|
-| `byosm auto <name> "<task>" [--budget 6] [--publish repo]` | the whole thing: spec, benchmark, rivals, experiments, distill, export |
+| `byosm "<task>" [--budget 6] [--publish repo]` | the whole thing: spec, benchmark, rivals, experiments, distill, export |
+| `byosm auto <name>` | resume a specialist where it stopped |
 | `byosm new <name> "<task>"` | just compile the spec |
 | `byosm build <name> [--exp vN]` | data, pretrain, train, evaluate, promote |
 | `byosm eval <name>` · `byosm board <name>` | score everything, show the leaderboard |

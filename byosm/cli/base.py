@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import typer
 from rich.console import Console
+from typer.core import TyperGroup
 
 from ..config import Project
 
@@ -12,7 +13,8 @@ if TYPE_CHECKING:
 
 HELP = """byosm - tiny System-1 specialists, from a sentence to a local model.
 
-  auto       byosm auto doctype "classify business documents into invoice, letter, ..."   -> everything below, decided automatically
+  auto       byosm "classify business documents into invoice, letter, ..."   -> everything below, decided automatically
+             (name, modality and task type are inferred; `byosm auto <name>` resumes)
   define     byosm new vad "voice activity detection for a voice agent..."      -> spec.yaml (labels, objective, data plan)
              byosm suite add vad ava --hf nccratliri/vad-human-ava-speech --format segment_files
              byosm baseline add vad silero
@@ -24,7 +26,17 @@ HELP = """byosm - tiny System-1 specialists, from a sentence to a local model.
              byosm serve vad eot --port 8800     -> local HTTP API over exported bundles
 """
 
-app = typer.Typer(add_completion=False, no_args_is_help=True, help=HELP)
+DEFAULT_COMMAND = "auto"
+
+
+class PromptFirst(TyperGroup):
+    def parse_args(self, ctx: typer.Context, args: list[str]) -> list[str]:
+        if args and args[0] not in self.commands and not args[0].startswith("-"):
+            args = [DEFAULT_COMMAND, *args]
+        return super().parse_args(ctx, args)
+
+
+app = typer.Typer(cls=PromptFirst, add_completion=False, no_args_is_help=True, help=HELP)
 suite_app = typer.Typer(no_args_is_help=True, help="Manage eval suites (frozen test sets) of a specialist.")
 baseline_app = typer.Typer(no_args_is_help=True, help="Manage baselines (competitors scored on every suite).")
 exp_app = typer.Typer(no_args_is_help=True, help="Create experiment variants (ablations) by editing spec paths.")

@@ -123,6 +123,11 @@ class Project:
         return self
 
 
+def free_name(base: str, ws: Path | None = None) -> str:
+    taken = set(list_projects(ws))
+    return next(n for n in (base, *(f"{base}-{i}" for i in range(2, len(taken) + 3))) if n not in taken)
+
+
 def list_projects(ws: Path | None = None) -> list[str]:
     ws = ws or find_workspace()
     d = ws / "specialists"

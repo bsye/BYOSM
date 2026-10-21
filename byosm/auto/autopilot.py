@@ -11,13 +11,17 @@ from .standing import standing
 from .state import Log, Session
 
 
-def _define(p: Project, log: Log, prompt: str | None, modality: str | None, cfg: Any, echo: Callable) -> None:
-    from ..discover import discover
+def _compile(name: str | None, prompt: str | None, modality: str | None, cfg: Any) -> Any:
     from ..spec import compile_spec
 
     if not prompt:
-        raise ValueError(f"{p.name} doesn't exist yet: pass the task prompt")
-    spec = compile_spec(p.name, prompt, modality, cfg)
+        raise ValueError(f"{name} doesn't exist yet: pass the task prompt")
+    return compile_spec(name, prompt, modality, cfg)
+
+
+def _define(p: Project, log: Log, spec: Any, cfg: Any, echo: Callable) -> None:
+    from ..discover import discover
+
     log(
         "define",
         f"{spec.modality}/{spec.task_type}, {len(spec.labels)} labels, backbone {spec.backbone}",
@@ -108,7 +112,7 @@ def _finish(s: Session, distill: bool, max_params_m: float, publish: str | None,
 
 
 def run(
-    name: str,
+    name: str | None,
     prompt: str | None = None,
     modality: str | None = None,
     budget_h: float = 6.0,
@@ -123,12 +127,14 @@ def run(
 ) -> dict[str, Any]:
     from ..spec import TaskSpec
 
+    cfg = load_config()
+    fresh = None if name and Project(name).exists() else _compile(name, prompt, modality, cfg)
+    name = fresh.name if fresh else name
     p = Project(name)
-    cfg = load_config(p.ws)
     log = Log(p, echo)
     t0 = time.time()
-    if not p.exists():
-        _define(p, log, prompt, modality, cfg, echo)
+    if fresh:
+        _define(p, log, fresh, cfg, echo)
     s = Session(name, p, log, TaskSpec.load(p.spec_path), margin, t0 + budget_h * 3600, echo)
     if not p.experiments():
         _build_v1(s)
@@ -138,6 +144,7 @@ def run(
     final = standing(name, margin)
     final["hours"] = round((time.time() - t0) / 3600, 2)
     final["stop_reason"] = reason
+    final["name"] = name
     log.save(final)
     _report(p, log.decisions, final)
     return final

@@ -12,6 +12,7 @@ TINY_BERT = "hf:google/bert_uncased_L-4_H-256_A-4"
 SEED = 0
 
 SPEC_REPLY = {
+    "name": "Question detector",
     "modality": "text",
     "task_type": "classify",
     "summary": "is it a question",
