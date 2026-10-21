@@ -14,6 +14,7 @@ from ..text import markup_tags, normalize
 from .spec import SystemProject, SystemSpec, SystemSuite
 
 SPLITS = ("calib", "test")
+BUILTIN_SPLIT = "builtin"
 
 
 def _gold(row: dict, spec: SystemSpec, names: list[str] | None) -> dict:
@@ -28,8 +29,24 @@ def _gold(row: dict, spec: SystemSpec, names: list[str] | None) -> dict:
     return {"action": action, "args": args}
 
 
+def _held_out(spec: SystemSpec, suite: SystemSuite) -> list[dict]:
+    from ..config import Project
+    from ..data.store import Dataset
+    from ..spec import TaskSpec
+
+    router = spec.role("router")
+    if router is None or spec.role("tagger"):
+        raise ValueError("a builtin system suite needs a router and no tagger: its rows carry no argument spans")
+    p = Project(router[1].specialist)
+    rows = Dataset(p.data_dir_for(TaskSpec.load(p.spec_path))).load("test")[: suite.max_items]
+    return [{"input": r["input"], "action": r["label"], "args": []} for r in rows]
+
+
 def _fetch(spec: SystemSpec, suite: SystemSuite) -> list[dict]:
     import itertools
+
+    if suite.split == BUILTIN_SPLIT:
+        return _held_out(spec, suite)
 
     from ..data.hf_source.hub import open_split
     from ..data.hf_source.rows import class_names
