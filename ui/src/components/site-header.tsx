@@ -10,6 +10,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { href } from "@/route"
+import { ThemeToggle } from "./theme"
 
 export function SiteHeader({ route, connected }: { route: string[]; connected: boolean }) {
   const parts = route.length ? route : ["specialists"]
@@ -38,7 +39,8 @@ export function SiteHeader({ route, connected }: { route: string[]; connected: b
           <kbd className="bg-muted text-muted-foreground hidden h-5 items-center rounded border px-1.5 font-mono text-[10px] font-medium md:inline-flex">
             ⌘K
           </kbd>
-          <Badge variant={connected ? "outline" : "destructive"}>{connected ? "live" : "offline"}</Badge>
+          <Badge variant={connected ? "outline" : "destructive"}>{connected ? "Live" : "Offline"}</Badge>
+          <ThemeToggle />
         </div>
       </div>
     </header>

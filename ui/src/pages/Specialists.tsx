@@ -1,8 +1,19 @@
+import { Minus, Plus, TrendingDown, TrendingUp } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, runJob, type Summary } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
@@ -11,82 +22,120 @@ import { go, href } from "@/route"
 import { Overview } from "./Overview"
 import { SectionCards } from "./SectionCards"
 
-const SKELETONS = 5
+const SKELETONS = 6
+const EXAMPLE = "classify support emails into billing, shipping, technical or other"
 
-function NewSpecialist() {
+function NewSpecialist({ children }: { children: React.ReactNode }) {
   const [prompt, setPrompt] = useState("")
   const [error, setError] = useState("")
-  const start = async () => {
-    try {
-      const job = await runJob(["auto", prompt])
-      go("jobs", job.id)
-    } catch (e) {
-      setError(String(e))
-    }
-  }
+  const start = () =>
+    runJob(["auto", prompt])
+      .then((job) => go("jobs", job.id))
+      .catch((e) => setError(String(e)))
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>New specialist</CardTitle>
-        <CardDescription>One sentence. The autopilot infers the task, finds a benchmark and rivals, and trains until it wins or the budget ends.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="classify support emails into billing, shipping, technical or other"
-        />
-        {error && <p className="text-destructive mt-2 text-sm">{error}</p>}
-      </CardContent>
-      <CardFooter>
-        <Button disabled={!prompt.trim()} onClick={start}>
-          Build it
-        </Button>
-      </CardFooter>
-    </Card>
+    <Dialog>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New specialist</DialogTitle>
+          <DialogDescription>
+            Describe the task in one sentence. The autopilot infers the labels, finds a benchmark and rivals, and trains
+            until it wins or the budget ends.
+          </DialogDescription>
+        </DialogHeader>
+        <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={EXAMPLE} />
+        {error && <p className="text-destructive text-sm">{error}</p>}
+        <DialogFooter>
+          <Button disabled={!prompt.trim()} onClick={start}>
+            Build it
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function Delta({ s }: { s: Summary }) {
+  if (s.score == null || s.rival?.score == null) return <span className="text-muted-foreground">No rival scored yet</span>
+  const d = s.score - s.rival.score
+  const Icon = d > 0 ? TrendingUp : d < 0 ? TrendingDown : Minus
+  return (
+    <span className="flex w-full min-w-0 items-center gap-1.5">
+      <Icon className="size-4 shrink-0" />
+      <span className="tabular-nums">
+        {d > 0 ? "+" : ""}
+        {d.toFixed(3)}
+      </span>
+      <span className="text-muted-foreground min-w-0 truncate">against {s.rival.name}</span>
+    </span>
+  )
+}
+
+function SpecialistCard({ s }: { s: Summary }) {
+  return (
+    <a href={href("specialists", s.name)} className="h-full">
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle>{s.name}</CardTitle>
+          <CardDescription className="line-clamp-2">{s.description}</CardDescription>
+          <CardAction>{s.exported && <Badge variant="outline">Exported</Badge>}</CardAction>
+        </CardHeader>
+        <CardFooter className="mt-auto flex-col items-start gap-1 text-sm">
+          <span className="text-muted-foreground">
+            Test {s.metric.replace("_", " ")} on {s.primary_suite}
+          </span>
+          <span className="text-2xl font-semibold tabular-nums">{score(s.score)}</span>
+          <Delta s={s} />
+        </CardFooter>
+      </Card>
+    </a>
   )
 }
 
 export function Specialists() {
   const [items, setItems] = useState<Summary[] | null>(null)
+  const [error, setError] = useState("")
   const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
   useEffect(() => {
-    api<Summary[]>("/specialists").then(setItems)
+    api<Summary[]>("/specialists")
+      .then(setItems)
+      .catch((e) => setError(String(e)))
   }, [finished])
   return (
-    <div className="space-y-4">
-      {items && <SectionCards items={items} />}
-      <Overview items={items ?? []} />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <NewSpecialist />
-      {items == null && Array.from({ length: SKELETONS }, (_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
-      {(items ?? []).map((s) => (
-        <a key={s.name} href={href("specialists", s.name)}>
-          <Card className="hover:bg-accent/50 h-full transition-colors">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between gap-2">
-                {s.name}
-                <span className="text-2xl font-semibold tabular-nums">{score(s.score)}</span>
-              </CardTitle>
-              <CardDescription className="line-clamp-2">{s.description}</CardDescription>
-            </CardHeader>
-            <CardFooter className="flex flex-wrap gap-2">
-              <Badge variant="secondary">{s.modality}</Badge>
-              <Badge variant="secondary">{s.task_type}</Badge>
-              <Badge variant="outline">
-                {s.metric} on {s.primary_suite}
-              </Badge>
-              {s.exported && <Badge>exported</Badge>}
-              {s.rival?.score != null && s.score != null && (
-                <Badge variant="outline">
-                  {s.score > s.rival.score ? "+" : ""}
-                  {(s.score - s.rival.score).toFixed(3)} vs {s.rival.name}
-                </Badge>
-              )}
-            </CardFooter>
-          </Card>
-        </a>
-      ))}
+    <div className="flex flex-col gap-4 md:gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Specialists</h1>
+          <p className="text-muted-foreground text-sm">Small models, each scored on a public benchmark against its rivals.</p>
+        </div>
+        <NewSpecialist>
+          <Button>
+            <Plus />
+            New specialist
+          </Button>
+        </NewSpecialist>
+      </div>
+      {error && <p className="text-destructive text-sm">Could not load the specialists: {error}</p>}
+      {items && items.length > 0 && <SectionCards items={items} />}
+      {items && items.length > 0 && <Overview items={items} />}
+      {items && items.length === 0 && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>No specialists yet</EmptyTitle>
+            <EmptyDescription>Describe a task in one sentence and the autopilot builds the first one.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <NewSpecialist>
+              <Button>New specialist</Button>
+            </NewSpecialist>
+          </EmptyContent>
+        </Empty>
+      )}
+      <div className="grid auto-rows-fr gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+        {items == null && !error && Array.from({ length: SKELETONS }, (_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
+        {(items ?? []).map((s) => (
+          <SpecialistCard key={s.name} s={s} />
+        ))}
       </div>
     </div>
   )

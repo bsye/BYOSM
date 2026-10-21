@@ -1,33 +1,36 @@
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis } from "recharts"
 import type { Summary } from "@/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 
-const config = {
-  ours: { label: "ours", color: "var(--chart-1)" },
-  rival: { label: "best rival", color: "var(--chart-2)" },
-} satisfies ChartConfig
+const config = { lead: { label: "lead on test", color: "var(--chart-2)" } } satisfies ChartConfig
 
 export function Overview({ items }: { items: Summary[] }) {
   const data = items
     .filter((s) => s.score != null && s.rival?.score != null)
-    .map((s) => ({ name: s.name, ours: s.score, rival: s.rival?.score, who: s.rival?.name }))
+    .map((s) => ({ name: s.name, lead: Number(((s.score ?? 0) - (s.rival?.score ?? 0)).toFixed(3)), rival: s.rival?.name }))
+    .sort((a, b) => b.lead - a.lead)
   if (!data.length) return null
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ours against the best rival</CardTitle>
-        <CardDescription>Test score of each promoted specialist against its strongest rival, chosen on calib.</CardDescription>
+        <CardTitle>Lead over the best rival</CardTitle>
+        <CardDescription>
+          Test score of each promoted specialist minus its strongest rival's, the rival chosen on calib. Above zero is ahead.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={config} className="h-72 w-full">
-          <BarChart accessibilityLayer data={data}>
+        <ChartContainer config={config} className="h-64 w-full">
+          <BarChart accessibilityLayer data={data} margin={{ top: 24 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Bar dataKey="ours" fill="var(--color-ours)" radius={4} />
-            <Bar dataKey="rival" fill="var(--color-rival)" radius={4} />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel={false} indicator="line" />} />
+            <Bar dataKey="lead" radius={6}>
+              <LabelList dataKey="lead" position="top" className="fill-foreground" fontSize={12} />
+              {data.map((d) => (
+                <Cell key={d.name} fill={d.lead >= 0 ? "var(--color-lead)" : "var(--destructive)"} />
+              ))}
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>
