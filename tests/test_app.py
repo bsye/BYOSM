@@ -94,3 +94,15 @@ def test_the_app_command_takes_a_fixed_token_and_extra_hosts(ws, monkeypatch):
     for base, code in [("http://byosm.internal", 200), ("http://app.example", 200), ("http://evil.example", 400)]:
         with TestClient(served["api"], base_url=base) as c:
             assert c.get("/api/specialists", headers=AUTH).status_code == code
+
+
+def test_a_second_app_on_the_same_workspace_is_refused(ws):
+    import json
+    import os
+
+    from byosm.app.lock import LOCK_PATH, WorkspaceBusyError
+
+    (ws / ".byosm").mkdir(exist_ok=True)
+    (ws / LOCK_PATH).write_text(json.dumps({"pid": os.getppid(), "port": 1}))
+    with pytest.raises(WorkspaceBusyError):
+        create_app(ws, TOKEN)

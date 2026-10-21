@@ -49,5 +49,12 @@ def app_(
     log(f"byosm app on {url}\nAPI docs: http://{host}:{port}/docs (send Authorization: Bearer <token>)")
     if open_browser:
         webbrowser.open(url)
+    from ..app.lock import WorkspaceBusyError
+
     hosts = [host, *allowed_hosts(allow_host)]
-    uvicorn.run(create_app(find_workspace(), secret, hosts, parallel), host=host, port=port, log_level="warning")
+    try:
+        api = create_app(find_workspace(), secret, hosts, parallel, port)
+    except WorkspaceBusyError as e:
+        log(str(e))
+        raise typer.Exit(1) from e
+    uvicorn.run(api, host=host, port=port, log_level="warning")

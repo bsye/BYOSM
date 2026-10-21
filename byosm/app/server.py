@@ -18,6 +18,7 @@ from .data_routes import data_router
 from .errors import missing
 from .hub import Hub
 from .jobs import Runner
+from .lock import claim, release
 from .systems_routes import systems_router
 from .try_routes import try_router
 
@@ -134,12 +135,16 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
             hub.unsubscribe(sub)
 
 
-def create_app(ws: Path, token: str, hosts: list[str] | None = None, parallel: int = MAX_PARALLEL_JOBS) -> FastAPI:
+def create_app(
+    ws: Path, token: str, hosts: list[str] | None = None, parallel: int = MAX_PARALLEL_JOBS, port: int | None = None
+) -> FastAPI:
     app = FastAPI(title="byosm", summary="Local API over the BYOSM pipeline")
     app.state.token = token
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*LOCAL_HOSTS, *(hosts or [])])
+    lock = claim(ws, port)
     hub = Hub()
     runner = Runner(ws, hub, parallel)
+    app.router.on_shutdown.append(lambda: release(lock))
     app.state.runner = runner
     app.router.on_shutdown.append(runner.shutdown)
 
