@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from ..config import MAX_PARALLEL_JOBS
 from . import catalog, keys
+from .config_routes import config_router
 from .hub import Hub
 from .jobs import Runner
 from .systems_routes import systems_router
@@ -155,6 +156,7 @@ def create_app(ws: Path, token: str, hosts: list[str] | None = None, parallel: i
     threading.Thread(target=importlib.import_module, args=(WARM_MODULE,), daemon=True).start()
     _routes(app, ws, runner, hub, Depends(check))
     app.include_router(systems_router(ws, Depends(check)))
+    app.include_router(config_router(ws, Depends(check)))
     if STATIC_DIR.exists():
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
     return app
