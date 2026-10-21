@@ -1,0 +1,47 @@
+from __future__ import annotations
+
+import json
+
+from ..config import find_workspace
+from ..system.board import BOARD_FILE, OURS
+from .cells import num, score
+
+SYSTEM = "system"
+HEAD = (
+    "| team | exact frame [95% CI] | calib exact frame | action accuracy | argument F1 | CPU per request |\n"
+    "|---|---|---|---|---|---|"
+)
+
+
+def reported_systems() -> list[str]:
+    root = find_workspace() / "systems"
+    return sorted(d.name for d in root.glob("*") if (d / BOARD_FILE).exists()) if root.exists() else []
+
+
+def _row(name: str, v: dict) -> str:
+    ms = f"{v['latency_ms']:.1f}ms" if v.get("latency_ms") else "-"
+    t = v["test"]
+    return (
+        f"| {name} | {score(t['exact_frame'], v['ci'])} | {num(v['calib']['exact_frame'])} | "
+        f"{num(t['action_accuracy'])} | {num(t['arg_f1'])} | {ms} |"
+    )
+
+
+def _suite(name: str, suite: str, b: dict) -> list[str]:
+    rows = [_row(name if r == OURS else r, v) for r, v in b["rivals"].items()]
+    paired = [
+        f"{name} minus {r}: test {pv['test']['delta']:+.3f} (P(better) = {pv['test']['p_better']:.2f}), "
+        f"calib {pv['calib']['delta']:+.3f}"
+        for r, pv in b["paired"].items()
+    ]
+    foot = (
+        f"Suite `{suite}`: {b['rows']['test']} test and {b['rows']['calib']} calib requests. Exact frame = the action and "
+        "every argument right. CPU is the whole team per request (every node), from the exported bundle. "
+        f"Paired bootstrap on exact frame: {'; '.join(paired)}."
+    )
+    return [HEAD, *rows, "", foot]
+
+
+def system_block(name: str) -> str:
+    board = json.loads((find_workspace() / "systems" / name / BOARD_FILE).read_text())
+    return "\n\n".join("\n".join(_suite(name, s, b)) for s, b in board.items())

@@ -28,3 +28,16 @@ def test_tool_arguments_are_filled_from_tagged_types(tmp_path):
     (tmp_path / "system.json").write_text(json.dumps(manifest))
     system = System(tmp_path)
     assert system._call_args("set_alarm", [{"type": "time", "text": "five am"}]) == {"at": "five am", "day": None}
+
+
+def test_a_system_board_becomes_a_report_block(ws):
+    from byosm.report.systems import system_block
+
+    split = {"exact_frame": 0.5, "action_accuracy": 0.9, "arg_f1": 0.7, "n": 2}
+    mine = {"calib": split, "test": split, "ci": {"lo": 0.4, "hi": 0.6}, "latency_ms": 3.0}
+    paired = {"llm": {s: {"delta": 0.2, "p_better": 1.0} for s in ("calib", "test")}}
+    board = {"m": {"rows": {"calib": 1, "test": 2}, "rivals": {"system": mine, "llm": mine}, "paired": paired}}
+    (ws / "systems" / "a").mkdir(parents=True)
+    (ws / "systems" / "a" / "board.json").write_text(json.dumps(board))
+    block = system_block("a")
+    assert "| a | 0.500 [0.400, 0.600] |" in block and "a minus llm: test +0.200" in block

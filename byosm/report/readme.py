@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ..config import Project, list_projects
 from .seeds import SEEDS, seeds_block
+from .systems import SYSTEM, reported_systems, system_block
 from .tables import SUMMARY_HEAD, specialist_block, summary_row
 
 SUMMARY = "summary"
@@ -20,6 +21,7 @@ def blocks() -> dict[str, str]:
     out = {SUMMARY: SUMMARY_HEAD + "\n" + "\n".join(summary_row(n) for n in names)}
     out.update({n: specialist_block(n) for n in names})
     out.update({f"{n}:{SEEDS}": t for n in names if (t := seeds_block(n))})
+    out.update({f"{SYSTEM}:{n}": system_block(n) for n in reported_systems()})
     return out
 
 
