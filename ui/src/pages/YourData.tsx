@@ -79,7 +79,9 @@ export function YourData({ name }: { name: string }) {
       .then((r) => setReport(r.report))
       .catch(() => setReport(null))
   }
-  useEffect(load, [name, finished])
+  useEffect(() => {
+    load()
+  }, [name, finished])
   if (!req) return null
   return (
     <>

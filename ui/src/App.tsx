@@ -2,6 +2,7 @@ import { KeyRound } from "lucide-react"
 import { useState, type CSSProperties } from "react"
 import { saveToken } from "@/api"
 import { AppSidebar } from "@/components/app-sidebar"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { SiteHeader } from "@/components/site-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -65,7 +66,9 @@ function Shell() {
             <div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
               {live.unauthorized && <TokenPrompt />}
               <Running />
-              <Page route={route} />
+              <ErrorBoundary resetKey={route.join("/")}>
+                <Page route={route} />
+              </ErrorBoundary>
             </div>
           </div>
         </div>
