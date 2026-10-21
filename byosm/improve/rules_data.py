@@ -72,6 +72,13 @@ def _more_from_source(dg: dict, i: int, s: Any, ev: str) -> list[dict]:
     return [{"id": "more-data", "ops": ops, "why": ev + f". Read 4x more rows from {s.dataset}."}]
 
 
+def _richest_labeled(dg: dict) -> tuple[int, Any] | None:
+    rows = dg.get("rows_by_source") or {}
+    labeled = [(i, s) for i, s in enumerate(dg["spec"].data.hf_sources) if s.role == "labeled"]
+    used = [(i, s) for i, s in labeled if rows.get(f"hf:{s.dataset}")]
+    return max(used, key=lambda t: rows[f"hf:{t[1].dataset}"]) if used else next(iter(labeled), None)
+
+
 @rule
 def more_data(dg: dict) -> list[dict]:
     spec, out = dg["spec"], []
@@ -80,7 +87,7 @@ def more_data(dg: dict) -> list[dict]:
     if not (lag > 0.02 or below):
         return out
     ev = _more_data_evidence(dg, lag, bb)
-    labeled = next(((i, s) for i, s in enumerate(spec.data.hf_sources) if s.role == "labeled"), None)
+    labeled = _richest_labeled(dg)
     if labeled:
         out += _more_from_source(dg, *labeled, ev)
     if not out and spec.data.synthetic:

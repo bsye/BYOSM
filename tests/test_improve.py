@@ -111,3 +111,15 @@ def test_overfitting_proposes_regularize(limited_split):
     limited_split.data.hf_sources[0].per_label = EXHAUSTED_REQUEST
     ids = set(proposals(limited_split, 0.80, 0.95, OVERFIT_CURVE, 1, OVERFIT_LOSSES))
     assert "regularize" in ids
+
+
+def test_more_data_grows_the_labeled_source_that_supplied_rows():
+    from byosm.improve.rules_data import _richest_labeled
+
+    spec = document_spec()
+    spec.data.hf_sources = [HFSource(dataset="broken"), HFSource(dataset="org/real"), HFSource(dataset="org/small")]
+    dg = diagnosis(spec, 0.8, 0.9, RISING, 7)
+    dg["rows_by_source"] = {"hf:org/real": 3000, "hf:org/small": 10, "llm:x": 2000}
+    assert _richest_labeled(dg)[0] == 1
+    dg["rows_by_source"] = {}
+    assert _richest_labeled(dg)[0] == 0

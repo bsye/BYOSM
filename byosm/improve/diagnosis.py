@@ -5,6 +5,7 @@ from collections import Counter
 from typing import Any
 
 from ..config import Project
+from ..data.store import read
 from ..spec import TaskSpec
 
 
@@ -83,5 +84,6 @@ def diagnose(name: str) -> dict[str, Any]:
         "suites": suites,
         "dev": meta["dev"].get("objective"),
         "binary": binary,
+        "rows_by_source": Counter(r.get("source") for r in read(p.data_dir_for(spec) / "train.jsonl")),
     }
     return {**head, **_training_summary(meta, spec), "board": board, "primary": base.primary_suite()}
