@@ -5,6 +5,7 @@ from conftest import FakeLLM
 from typer.testing import CliRunner
 
 from byosm import llm
+from byosm.app.catalog import detail
 from byosm.cli import app
 from byosm.config import Project
 from byosm.data.store import Dataset, normalize, read, record
@@ -69,6 +70,19 @@ def test_the_suite_is_registered_but_never_primary(qa):
         EvalSuite(name="x", kind="generated", primary=True)
     suite_json = json.loads((p.evals_dir / "llm-written" / "suite.json").read_text())
     assert suite_json["written_by"] == "fake"
+
+
+def test_the_writer_model_shows_in_the_specialist_detail(qa, ws):
+    p, spec = qa
+    write_testset(p, spec, PER_LABEL, "llm-written")
+    suites = {s["name"]: s for s in detail(ws, "qa")["suites"]}
+    assert suites["llm-written"] == {
+        "name": "llm-written",
+        "kind": "generated",
+        "primary": False,
+        "written_by": "fake",
+        "judged_by": "fake",
+    }
 
 
 def test_frame_tasks_are_refused(qa):

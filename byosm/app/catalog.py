@@ -14,6 +14,7 @@ from ..spec import TaskSpec
 
 MAX_PAGE = 500
 RESULT_FIELDS = ("objective", "calib_objective", "latency_ms", "params", "n_test", "n_calib")
+SUITE_FIELDS = ("name", "kind", "primary", "written_by", "judged_by")
 
 
 def project(ws: Path, name: str) -> Project:
@@ -90,6 +91,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         **summary(ws, name),
         "spec": spec.model_dump(mode="json"),
         "board": board,
+        "suites": [{k: getattr(e, k) for k in SUITE_FIELDS} for e in spec.evals],
         "baselines": spec.baselines,
         "runs": [_run(p, e) for e in p.experiments()],
         "proposals": json.loads(proposals.read_text()) if (proposals := p.root / PROPOSALS_FILE).exists() else None,
