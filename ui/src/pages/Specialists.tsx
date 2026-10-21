@@ -9,6 +9,7 @@ import { useLive } from "@/events"
 import { score } from "@/format"
 import { go, href } from "@/route"
 import { Overview } from "./Overview"
+import { SectionCards } from "./SectionCards"
 
 const SKELETONS = 5
 
@@ -54,6 +55,7 @@ export function Specialists() {
   }, [finished])
   return (
     <div className="space-y-4">
+      {items && <SectionCards items={items} />}
       <Overview items={items ?? []} />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <NewSpecialist />
@@ -64,7 +66,7 @@ export function Specialists() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between gap-2">
                 {s.name}
-                <span className="font-mono text-2xl">{score(s.score)}</span>
+                <span className="text-2xl font-semibold tabular-nums">{score(s.score)}</span>
               </CardTitle>
               <CardDescription className="line-clamp-2">{s.description}</CardDescription>
             </CardHeader>

@@ -42,14 +42,14 @@ export function Playground({ d }: { d: Detail }) {
           <div key={label} className="space-y-1">
             <div className="flex justify-between text-sm">
               <span>{label}</span>
-              <span className="font-mono">{p.toFixed(3)}</span>
+              <span className="tabular-nums">{p.toFixed(3)}</span>
             </div>
             <Progress value={p * 100} />
           </div>
         ))}
         {out?.entities?.map((e, i) => (
           <p key={i} className="text-sm">
-            <span className="font-mono">{e.label}</span>: {e.text}
+            <span className="font-medium">{e.label}</span>: {e.text}
           </p>
         ))}
       </CardContent>

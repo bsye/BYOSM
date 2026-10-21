@@ -38,7 +38,7 @@ export function Keys() {
         <CardContent className="space-y-3">
           {[...keys, ...(name && !keys.some((k) => k.name === name) ? [{ name, set: false, in_file: false }] : [])].map((k) => (
             <div key={k.name} className="flex flex-wrap items-center gap-3">
-              <span className="w-48 font-mono text-sm">{k.name}</span>
+              <span className="w-48 text-sm font-medium">{k.name}</span>
               <Badge variant={k.set ? "default" : "outline"}>{k.set ? "set" : "not set"}</Badge>
               <Input
                 className="max-w-sm"

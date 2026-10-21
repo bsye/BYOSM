@@ -83,7 +83,7 @@ export function Runs({ d }: { d: Detail }) {
                     {r.name} {r.name === d.promoted && <Badge className="ml-2">promoted</Badge>}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{r.parent ?? "-"}</TableCell>
-                  <TableCell className="font-mono">{score(d.board[r.name]?.[d.primary_suite]?.objective)}</TableCell>
+                  <TableCell className="tabular-nums">{score(d.board[r.name]?.[d.primary_suite]?.objective)}</TableCell>
                   <TableCell>{params(r.params)}</TableCell>
                   <TableCell>{r.n_train ?? "-"}</TableCell>
                   <TableCell>{r.train_seconds == null ? "-" : `${Math.round(r.train_seconds / 6) / 10} min`}</TableCell>

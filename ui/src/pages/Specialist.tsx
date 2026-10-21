@@ -70,10 +70,10 @@ function Board({ d }: { d: Detail }) {
                     {r.model} {r.model === d.promoted && <Badge className="ml-2">promoted</Badge>}
                     {d.baselines.includes(r.model) && <Badge variant="outline" className="ml-2">rival</Badge>}
                   </TableCell>
-                  <TableCell className="font-mono">
+                  <TableCell className="tabular-nums">
                     {score(r.test)} {res.ci && `[${score(res.ci.lo)}, ${score(res.ci.hi)}]`}
                   </TableCell>
-                  <TableCell className="font-mono">{score(r.calib)}</TableCell>
+                  <TableCell className="tabular-nums">{score(r.calib)}</TableCell>
                   <TableCell>{params(res.params)}</TableCell>
                   <TableCell>{ms(res.latency_ms)}</TableCell>
                 </TableRow>

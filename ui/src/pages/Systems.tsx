@@ -63,7 +63,7 @@ function SuiteCard({ name, suite }: { name: string; suite: Suite }) {
               <Card key={label}>
                 <CardHeader className="pb-2">
                   <CardDescription>{label}</CardDescription>
-                  <CardTitle className="font-mono text-xl">{value}</CardTitle>
+                  <CardTitle className="text-2xl font-semibold tabular-nums">{value}</CardTitle>
                 </CardHeader>
               </Card>
             ))}

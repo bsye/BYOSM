@@ -1,26 +1,13 @@
-import { Activity, Boxes, KeyRound, Network, Settings as SettingsIcon } from "lucide-react"
-import { useState } from "react"
+import { useState, type CSSProperties } from "react"
 import { saveToken } from "@/api"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { LiveProvider, useLive, useJobToasts } from "@/events"
 import { Jobs, Running } from "@/pages/Jobs"
 import { Keys } from "@/pages/Keys"
@@ -29,15 +16,7 @@ import { Settings } from "@/pages/Settings"
 import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
 import { Systems } from "@/pages/Systems"
-import { href, useRoute } from "@/route"
-
-const NAV = [
-  { key: "specialists", label: "Specialists", icon: Boxes },
-  { key: "systems", label: "Systems", icon: Network },
-  { key: "jobs", label: "Jobs", icon: Activity },
-  { key: "keys", label: "Keys", icon: KeyRound },
-  { key: "settings", label: "Settings", icon: SettingsIcon },
-]
+import { useRoute } from "@/route"
 
 function Page({ route }: { route: string[] }) {
   const [section = "specialists", id] = route
@@ -72,46 +51,22 @@ function Shell() {
   const live = useLive()
   useJobToasts()
   const running = Object.values(live.jobs).filter((j) => j.status === "running" || j.status === "queued").length
-  const section = route[0] ?? "specialists"
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader className="px-4 py-3 text-lg font-semibold">byosm</SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {NAV.map((n) => (
-                  <SidebarMenuItem key={n.key}>
-                    <SidebarMenuButton asChild isActive={section === n.key}>
-                      <a href={href(n.key)}>
-                        <n.icon />
-                        <span>{n.label}</span>
-                      </a>
-                    </SidebarMenuButton>
-                    {n.key === "jobs" && running > 0 && <SidebarMenuBadge>{running}</SidebarMenuBadge>}
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-      </Sidebar>
+    <SidebarProvider
+      style={{ "--sidebar-width": "calc(var(--spacing) * 64)", "--header-height": "calc(var(--spacing) * 12)" } as CSSProperties}
+    >
+      <AppSidebar variant="inset" section={route[0] ?? "specialists"} running={running} />
       <SidebarInset>
-        <header className="flex h-14 items-center gap-3 border-b px-4">
-          <SidebarTrigger />
-          <Separator orientation="vertical" className="h-5" />
-          <span className="text-sm">{route.join(" / ") || "specialists"}</span>
-          <kbd className="text-muted-foreground ml-auto hidden rounded border px-1.5 font-mono text-xs md:inline">⌘K</kbd>
-          <Badge variant={live.connected ? "secondary" : "destructive"}>
-            {live.connected ? "live" : "offline"}
-          </Badge>
-        </header>
-        <main className="space-y-4 p-4 md:p-6">
-          {live.unauthorized && <TokenPrompt />}
-          <Running />
-          <Page route={route} />
-        </main>
+        <SiteHeader route={route} connected={live.connected} />
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
+              {live.unauthorized && <TokenPrompt />}
+              <Running />
+              <Page route={route} />
+            </div>
+          </div>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )
@@ -120,7 +75,9 @@ function Shell() {
 export default function App() {
   return (
     <LiveProvider>
-      <Shell />
+      <TooltipProvider>
+        <Shell />
+      </TooltipProvider>
       <Palette />
       <Toaster />
     </LiveProvider>

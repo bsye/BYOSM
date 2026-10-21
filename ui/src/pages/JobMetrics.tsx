@@ -56,7 +56,7 @@ function Teachers({ items }: { items: Teacher[] }) {
         {last.map((t) => (
           <div key={t.teacher} className="space-y-1">
             <div className="flex justify-between text-sm">
-              <span className="font-mono">{t.teacher}</span>
+              <span>{t.teacher}</span>
               <span>
                 {t.done} / {t.total}
               </span>
@@ -93,7 +93,7 @@ function Scores({ items }: { items: Scored[] }) {
                   {s.predictor} <span className="text-muted-foreground text-xs">{s.predictor_kind}</span>
                 </TableCell>
                 <TableCell>{s.suite}</TableCell>
-                <TableCell className="font-mono">{score(s.objective)}</TableCell>
+                <TableCell className="tabular-nums">{score(s.objective)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
