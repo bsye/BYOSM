@@ -88,7 +88,7 @@ def _resolve_sources(spec: TaskSpec, data_dir: Path, cfg: dict | None, log: Log)
 
     seg_sources = [s for s in spec.data.hf_sources if s.format == "segment_files"]
     row_spec = spec.model_copy(deep=True)
-    row_spec.data.hf_sources = [s for s in spec.data.hf_sources if s.format == "rows"]
+    row_spec.data.hf_sources = [s for s in spec.data.hf_sources if s.format != "segment_files"]
     sources = hf_source.resolve(row_spec, cfg, log) if (row_spec.data.hf_sources or spec.data.hf_queries) else []
     resolved = data_dir / "sources.resolved.yaml"
     resolved.parent.mkdir(parents=True, exist_ok=True)

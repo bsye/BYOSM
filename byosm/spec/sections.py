@@ -30,7 +30,7 @@ class Objective(BaseModel):
 class HFSource(BaseModel):
     dataset: str
     role: Literal["labeled", "positive", "negative", "unlabeled"] = "labeled"
-    format: Literal["rows", "segment_files"] = "rows"
+    format: Literal["rows", "markup", "segment_files"] = "rows"
     partition: Literal["train", "calib", "test", "all"] = "all"
     max_files: int = 40
     sampling: Literal["stream", "balanced"] = "stream"

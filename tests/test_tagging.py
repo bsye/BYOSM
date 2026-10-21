@@ -9,8 +9,9 @@ from byosm.data.store import write
 from byosm.export import export
 from byosm.metrics import bootstrap, compute, objective_of_units, units
 from byosm.pipeline import build
-from byosm.rt import spans
+from byosm.rt import OUTSIDE, bio, spans
 from byosm.spec import Label, Objective, TaskSpec
+from byosm.text import markup_tags
 
 TAGS = ["O", "B-PER", "I-PER", "B-LOC", "I-LOC"]
 PEOPLE = ["alice", "bob", "carol smith", "dan jones"]
@@ -68,6 +69,13 @@ def test_sequence_rows_map_tag_ids_to_our_labels():
 
 
 @pytest.mark.slow
+def test_bracket_markup_becomes_words_and_bio_tags():
+    words, tags = markup_tags("a [x : b c] d [y: e]")
+    assert words == ["a", "b", "c", "d", "e"]
+    assert tags == [OUTSIDE, *bio("x", 2), OUTSIDE, *bio("y", 1)]
+    assert spans(tags) == [("x", 1, 3), ("y", 4, 5)]
+
+
 def test_tagging_pipeline_end_to_end(ws, load_runtime):
     spec = tagging_spec()
     p = Project("ner").ensure()

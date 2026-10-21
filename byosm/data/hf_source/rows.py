@@ -6,8 +6,9 @@ from typing import Any
 
 from ...rt import OUTSIDE
 from ...spec import HFSource, TaskSpec
+from ...text import markup_tags
 from .decode import _decode
-from .hub import _no_decode
+from .hub import _no_decode, open_split
 from .parquet import balanced_rows
 
 
@@ -31,23 +32,24 @@ def _row_label(raw: Any, names: list[str] | None, lmap: dict[str, str]) -> str |
 
 
 def _stream_rows(src: HFSource, spec: TaskSpec) -> Iterator[tuple[Any, str | None]]:
-    from datasets import load_dataset
-
-    ds = load_dataset(src.dataset, src.config, split=src.split, streaming=True)
+    ds = open_split(src.dataset, src.config, src.split)
     names = _class_names(src, ds)
     ds = _no_decode(ds).shuffle(seed=0, buffer_size=1000)
     lmap = {str(a): b for a, b in src.label_map}
     n = 0
     for row in ds:
-        lab = None
-        if src.label_column and isinstance(row[src.label_column], list):
+        lab, raw = None, row[src.input_column]
+        if src.format == "markup":
+            raw, tags = markup_tags(row[src.label_column])
+            lab = _tag_sequence(tags, None, lmap, spec)
+        elif src.label_column and isinstance(row[src.label_column], list):
             lab = _tag_sequence(row[src.label_column], names, lmap, spec)
         elif src.label_column:
             lab = _row_label(row[src.label_column], names, lmap)
             if lmap and lab is None:
                 continue
         try:
-            x = _decode(row[src.input_column], spec.modality, spec.data.audio.sample_rate)
+            x = _decode(raw, spec.modality, spec.data.audio.sample_rate)
         except Exception:
             continue
         yield x, lab

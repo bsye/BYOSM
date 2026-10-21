@@ -73,7 +73,9 @@ def suite_add(
     name: str,
     suite: str,
     hf: Annotated[str | None, typer.Option(help="Hugging Face dataset id")] = None,
-    format: Annotated[str, typer.Option(help="rows | segment_files")] = "rows",
+    format: Annotated[
+        str, typer.Option(help="rows | markup (labels as inline [type : words]) | segment_files")
+    ] = "rows",
     config: str | None = None,
     split: str = "train",
     input_column: str | None = None,

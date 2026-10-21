@@ -98,20 +98,25 @@ def segments(frames: list[str], hop_ms: float) -> list[dict]:
 
 
 OUTSIDE = "O"
+BEGIN, INSIDE, TAG_SEP = "B", "I", "-"
+
+
+def bio(kind: str, n: int) -> list[str]:
+    return [f"{BEGIN}{TAG_SEP}{kind}"] + [f"{INSIDE}{TAG_SEP}{kind}"] * (n - 1) if n else []
 
 
 def _tag(tag: str) -> tuple[str, str]:
-    head, sep, kind = tag.partition("-")
-    if sep and head in ("B", "I"):
+    head, sep, kind = tag.partition(TAG_SEP)
+    if sep and head in (BEGIN, INSIDE):
         return head, kind
-    return ("", "") if tag == OUTSIDE else ("I", tag)
+    return ("", "") if tag == OUTSIDE else (INSIDE, tag)
 
 
 def spans(tags: list[str]) -> list[tuple[str, int, int]]:
     out, kind, start = [], "", 0
     for i, t in enumerate([*tags, OUTSIDE]):
         head, k = _tag(t)
-        if kind and (head != "I" or k != kind):
+        if kind and (head != INSIDE or k != kind):
             out.append((kind, start, i))
             kind = ""
         if k and not kind:
