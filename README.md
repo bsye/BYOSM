@@ -35,6 +35,7 @@ runs out of time, and exports an ONNX bundle.
 | 1 | A small model trained for one job beats a general model at that job, LLMs included. | **Holds on every public benchmark so far.** Ahead of the best outside model on test everywhere (on names, only just), and far ahead of Qwen 3.8 27B on every task an LLM can do. On documents, DiT-base still edges us on calib. |
 | 2 | We can stay honest: choose on calib, report test once, compare with a paired bootstrap. | **Built in** to promotion, the autopilot and export. Broken once by hand: the training-recipe default was picked on test (below). |
 | 3 | Specialists are cheap: they run side by side on a laptop CPU, no GPU, no PyTorch. | **Yes.** Size and CPU time are in every table. |
+| 4 | A team of small specialists does a whole task without an LLM, and does it better than the LLM alone. | **Holds on MASSIVE**, the first system: a router and a tagger against Qwen doing the whole task. Streaming while you type is next. |
 
 Still open:
 
@@ -51,6 +52,8 @@ Every table below is generated from `specialists/*/board.json` by `byosm report`
 <!-- report:summary -->
 | task | benchmark (metric) | our model | our test score [95% CI] | best outside baseline (on calib) | its test score | ours minus baseline on test (paired bootstrap) | calib, the selection split: ours vs baseline |
 |---|---|---|---|---|---|---|---|
+| Which words of a request fill an action's arguments, and their type (MASSIVE slots) | AmazonScience/massive (span_f1) | v2 (70.73M) | 0.734 [0.717, 0.751] | no outside baseline scored yet | - | - | - |
+| Which of the assistant's 60 actions a request asks for (MASSIVE intents) | AmazonScience/massive (accuracy) | v1 (22.74M) | 0.888 [0.876, 0.900] | no outside baseline scored yet | - | - | - |
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
 | Classify the primary emotion expressed in a short English text (single sentence, tweet-style or short social media string) into one of six named emotions (sadness, joy, love, anger, fear, surprise). Any text that does not clearly express one of these dominates falls into a catch-all neutral-other class (including neutral statements, irony/sarcasm without a dominant named emotion, ambiguity, or non-English). | dair-ai/emotion (accuracy) | v1 (22.72M) | 0.898 [0.883, 0.913] | hf:j-hartmann/emotion-english-distilroberta-base (82.12M) | 0.838 [0.819, 0.856] | +0.060, P(better) = 1.00 | 0.904 vs 0.813 (ahead) |
 | 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | llm (-) | 0.772 [0.756, 0.788] | +0.165, P(better) = 1.00 | 0.948 vs 0.713 (ahead) |
@@ -177,6 +180,44 @@ Suite `conll` (BramVanroy/conll2003): 2762 test and 691 calib items. Selection u
   for DeBERTa-v3-xsmall. dslim's model is BERT-base fine-tuned on the same CoNLL train split.
 - This is the thinnest lead on the board: ahead on calib and test, but the paired bootstrap is not yet sure.
 - Qwen tags word lists in batches; it finds about as many names as there are and gets many wrong.
+
+### A team: requests to a voice assistant
+
+<!-- report:system:assistant -->
+| team | exact frame [95% CI] | calib exact frame | action accuracy | argument F1 | CPU per request |
+|---|---|---|---|---|---|
+| assistant | 0.628 [0.609, 0.648] | 0.627 | 0.892 | 0.746 | 11.2ms |
+| llm | 0.317 [0.298, 0.337] | 0.338 | 0.773 | 0.432 | - |
+
+Suite `massive`: 2379 test and 595 calib requests. Exact frame = the action and every argument right. CPU is the whole team per request (every node), from the exported bundle. Paired bootstrap on exact frame: assistant minus llm: test +0.311 (P(better) = 1.00), calib +0.289.
+<!-- /report:system:assistant -->
+
+- Two specialists in one bundle, built by `byosm system build assistant` from
+  [`systems/assistant/system.yaml`](systems/assistant/system.yaml): a router picks the action, a tagger finds its
+  arguments, and a tool spec turns them into a call (`wake me up at five am tomorrow` -> `set_alarm(time="five am",
+  date="tomorrow")`).
+- Each node is an ordinary specialist trained on MASSIVE's train and validation splits, with its own board below. The
+  team is scored on MASSIVE's test split, which neither node saw.
+- Qwen gets the full list of actions and argument types and does the whole task alone. Its frames are scored by the
+  same code.
+- The tagger is the weaker half; training it longer (`byosm improve`) was the step that moved the team most.
+
+<!-- report:assistant-intent -->
+| model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
+|---|---|---|---|---|---|---|
+| **v1** (promoted) | no recorded parent | 12138 (+1979 builtin test) | 22.74M | 2.24ms | 0.888 [0.876, 0.900] | 0.889 |
+
+Suite `massive` (AmazonScience/massive): 2379 test and 595 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+<!-- /report:assistant-intent -->
+
+<!-- report:assistant-args -->
+| model | built from | train rows | params | CPU | test span_f1 [95% CI] | calib span_f1 |
+|---|---|---|---|---|---|---|
+| **v2** (promoted) | v1 + train-longer | 12136 (+1977 builtin test) | 70.73M | 14.91ms | 0.734 [0.717, 0.751] | 0.756 |
+| v1 | no recorded parent | 12136 (+1977 builtin test) | 70.73M | 12.87ms | 0.691 [0.673, 0.708] | 0.710 |
+
+Suite `massive` (AmazonScience/massive): 2379 test and 595 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+<!-- /report:assistant-args -->
 
 ## How it works
 
