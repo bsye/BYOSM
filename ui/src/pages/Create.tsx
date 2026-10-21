@@ -1,10 +1,9 @@
 import { Hammer, Lightbulb } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { runJob } from "@/api"
+import { LlmPicker, useLlmChoice } from "@/components/llm-picker"
 import { Button } from "@/components/ui/button"
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { choiceKey, DEFAULT_MODEL, roleConfig, useProviders } from "@/providers"
 import { go } from "@/route"
 
 const EXAMPLES = [
@@ -13,38 +12,13 @@ const EXAMPLES = [
   "detect when someone starts and stops speaking in microphone audio",
   "sort scanned documents into invoice, receipt, contract and other",
 ]
-const CHOICE_KEY = "byosm-llm-choice"
-const PREFERRED = "ollama"
-
-function remembered(): string {
-  try {
-    return localStorage.getItem(CHOICE_KEY) ?? ""
-  } catch {
-    return ""
-  }
-}
 
 export function Create() {
-  const providers = useProviders()
+  const llm = useLlmChoice()
   const [prompt, setPrompt] = useState("")
-  const [choice, setChoice] = useState(remembered)
   const [error, setError] = useState("")
-  const available = (providers ?? []).filter((p) => p.available)
-  useEffect(() => {
-    const first = available.find((p) => p.id === PREFERRED) ?? available[0]
-    const known = available.some((p) => [...p.models, null].some((m) => choiceKey(p, m) === choice))
-    if (first && !known) setChoice(choiceKey(first, first.models[0] ?? null))
-  }, [providers])
-  const pick = (v: string) => {
-    setChoice(v)
-    try {
-      localStorage.setItem(CHOICE_KEY, v)
-    } catch {
-      return
-    }
-  }
   const start = () =>
-    runJob(["auto", prompt.trim()], roleConfig(available, choice))
+    runJob(["auto", prompt.trim()], llm.config())
       .then((j) => go("jobs", j.id))
       .catch((e) => setError(String(e)))
   return (
@@ -64,26 +38,8 @@ export function Create() {
           placeholder={EXAMPLES[0]}
         />
         <InputGroupAddon align="block-end" className="justify-between">
-          <Select value={choice} onValueChange={pick}>
-            <SelectTrigger size="sm" className="max-w-72" aria-label="LLM used while building">
-              <SelectValue placeholder={providers == null ? "Looking for LLMs..." : "No LLM found"} />
-            </SelectTrigger>
-            <SelectContent>
-              {(providers ?? []).map((p) => (
-                <SelectGroup key={p.id}>
-                  <SelectLabel>
-                    {p.label} <span className="text-muted-foreground/70">{p.available ? p.kind : p.hint ?? "not found"}</span>
-                  </SelectLabel>
-                  {(p.models.length ? p.models : [null]).map((m) => (
-                    <SelectItem key={m ?? DEFAULT_MODEL} value={choiceKey(p, m)} disabled={!p.available}>
-                      {m ?? `${p.label}, its default model`}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button size="sm" disabled={!prompt.trim() || !choice} onClick={start}>
+          <LlmPicker llm={llm} label="LLM used while building" />
+          <Button size="sm" disabled={!prompt.trim() || !llm.choice} onClick={start}>
             <Hammer />
             Build it
           </Button>
