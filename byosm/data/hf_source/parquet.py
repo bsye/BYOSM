@@ -7,6 +7,7 @@ from typing import Any
 from ...spec import HFSource, TaskSpec
 from ...text import normalize
 from .decode import _decode
+from .hub import hub_call
 
 
 def _split_files(src: HFSource) -> list[str]:
@@ -29,7 +30,7 @@ def _class_names(src: HFSource, pf: Any) -> list[str]:
         return names
     from datasets import ClassLabel, load_dataset_builder
 
-    feat = (load_dataset_builder(src.dataset, src.config).info.features or {}).get(src.label_column)
+    feat = (hub_call(load_dataset_builder, src.dataset, src.config).info.features or {}).get(src.label_column)
     return feat.names if isinstance(feat, ClassLabel) else []
 
 

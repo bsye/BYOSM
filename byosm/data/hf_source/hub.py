@@ -4,6 +4,24 @@ from typing import Any
 
 from ...spec import HFSource
 
+PARQUET_BRANCH = "refs/convert/parquet"
+SCRIPT_ERROR = "Dataset scripts are no longer supported"
+
+
+def hub_call(fn: Any, dataset: str, config: str | None, **kw: Any) -> Any:
+    try:
+        return fn(dataset, config, **kw)
+    except RuntimeError as e:
+        if SCRIPT_ERROR not in str(e):
+            raise
+        return fn(dataset, data_dir=config, revision=PARQUET_BRANCH, **kw)
+
+
+def open_split(dataset: str, config: str | None, split: str) -> Any:
+    from datasets import load_dataset
+
+    return hub_call(load_dataset, dataset, config, split=split, streaming=True)
+
 
 def _no_decode(ds: Any) -> Any:
     from datasets import Audio, Image
@@ -17,7 +35,7 @@ def _no_decode(ds: Any) -> Any:
 
 
 def _features(src: HFSource) -> tuple[dict, list[str], dict, list[str]]:
-    from datasets import get_dataset_config_names, get_dataset_split_names, load_dataset
+    from datasets import get_dataset_config_names, get_dataset_split_names
 
     try:
         configs = get_dataset_config_names(src.dataset)
@@ -25,10 +43,10 @@ def _features(src: HFSource) -> tuple[dict, list[str], dict, list[str]]:
         configs = []
     cfg = src.config or (configs[0] if configs and configs[0] != "default" else None)
     try:
-        splits = get_dataset_split_names(src.dataset, cfg)
+        splits = hub_call(get_dataset_split_names, src.dataset, cfg)
     except Exception:
         splits = [src.split]
-    ds = load_dataset(src.dataset, cfg, split=src.split if src.split in splits else splits[0], streaming=True)
+    ds = open_split(src.dataset, cfg, src.split if src.split in splits else splits[0])
     feats = ds.features or {}
     row = next(iter(_no_decode(ds)))
     preview = {k: (str(v)[:120] if not isinstance(v, dict) else "<media>") for k, v in row.items()}
@@ -95,7 +113,7 @@ def split_sizes(dataset: str, config: str | None = None) -> dict[str, int]:
     try:
         from datasets import load_dataset_builder
 
-        splits = load_dataset_builder(dataset, config).info.splits or {}
+        splits = hub_call(load_dataset_builder, dataset, config).info.splits or {}
         return {k: int(v.num_examples) for k, v in splits.items() if v.num_examples}
     except Exception:
         return {}
