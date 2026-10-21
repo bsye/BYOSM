@@ -6,7 +6,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from ..base import Backbone, masked_mean
+from ..base import Backbone, masked_mean, pretrained
 from ..image import TinyCNN
 
 
@@ -27,19 +27,13 @@ class AttnBlock(nn.Module):
         return x + self.ff(self.n2(x))
 
 
-def _hf(repo: str) -> nn.Module:
-    from transformers import AutoModel
-
-    return AutoModel.from_pretrained(repo)
-
-
 class DocumentBackbone(Backbone):
     def __init__(self, cfg: Any):
         super().__init__()
         self.route, self.mdrop = cfg.route, cfg.modality_dropout
         d = self.dim = cfg.dim
         if self.route in ("text", "fused"):
-            self.text = _hf(cfg.text_backbone[3:])
+            self.text = pretrained(cfg.text_backbone[3:])
             self.tproj = nn.Linear(self.text.config.hidden_size, d)
         if self.route in ("visual", "fused"):
             self.iproj = nn.Linear(self._build_image(cfg.image_backbone), d)
@@ -54,7 +48,7 @@ class DocumentBackbone(Backbone):
         if name == "tiny-cnn":
             self.image = TinyCNN()
             return TinyCNN().dim
-        self.image = _hf(name[3:])
+        self.image = pretrained(name[3:])
         c = self.image.config
         return getattr(c, "hidden_size", None) or c.hidden_sizes[-1]
 

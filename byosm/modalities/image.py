@@ -7,7 +7,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from .base import Backbone, Modality, register
+from .base import Backbone, Modality, pretrained, register
 
 MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
 
@@ -52,9 +52,7 @@ class TinyCNN(Backbone):
 class HFImageBackbone(Backbone):
     def __init__(self, repo: str):
         super().__init__()
-        from transformers import AutoModel
-
-        self.model = AutoModel.from_pretrained(repo)
+        self.model = pretrained(repo)
         cfg = self.model.config
         self.dim = getattr(cfg, "hidden_size", None) or cfg.hidden_sizes[-1]
 

@@ -7,15 +7,13 @@ from typing import Any
 import torch
 
 from ..rt import first_subtokens
-from .base import IGNORE, Backbone, Modality, register
+from .base import IGNORE, Backbone, Modality, pretrained, register
 
 
 class HFTextBackbone(Backbone):
     def __init__(self, repo: str):
         super().__init__()
-        from transformers import AutoModel
-
-        self.model = AutoModel.from_pretrained(repo)
+        self.model = pretrained(repo)
         self.dim = self.model.config.hidden_size
 
     def forward(

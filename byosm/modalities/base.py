@@ -89,3 +89,9 @@ def masked_mean(feats: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
 
 
 Hook = Callable[..., Any]
+
+
+def pretrained(repo: str) -> nn.Module:
+    from transformers import AutoModel
+
+    return AutoModel.from_pretrained(repo, dtype=torch.float32)

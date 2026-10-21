@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from .base import Backbone, Modality, pad_labels, register
+from .base import Backbone, Modality, pad_labels, pretrained, register
 
 
 class CausalConv(nn.Module):
@@ -66,9 +66,7 @@ class TinyCRNN(Backbone):
 class HFAudioBackbone(Backbone):
     def __init__(self, repo: str):
         super().__init__()
-        from transformers import AutoModel
-
-        self.model = AutoModel.from_pretrained(repo)
+        self.model = pretrained(repo)
         self.dim = self.model.config.hidden_size
 
     def forward(self, waveform: torch.Tensor, lengths: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
