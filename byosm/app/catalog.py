@@ -54,14 +54,38 @@ def specialists(ws: Path) -> list[dict[str, Any]]:
     return [summary(ws, n) for n in list_projects(ws)]
 
 
+def _parent(p: Project, exp: str) -> str | None:
+    f = p.exp_dir(exp) / "proposal.json"
+    return json.loads(f.read_text()).get("parent") if f.exists() else None
+
+
+def _run(p: Project, exp: str) -> dict[str, Any]:
+    m = p.meta(exp)
+    return {
+        "name": exp,
+        "parent": _parent(p, exp),
+        "params": m.get("params"),
+        "n_train": m.get("n_train"),
+        "train_seconds": m.get("train_seconds"),
+        "best_epoch": m.get("best_epoch"),
+        "history": [
+            {"epoch": h["epoch"] + 1, "loss": h["loss"], "dev": h["dev_objective"]} for h in m.get("history", [])
+        ],
+    }
+
+
 def detail(ws: Path, name: str) -> dict[str, Any]:
     p = _project(ws, name)
+    spec = TaskSpec.load(p.spec_path)
     board = {pid: {suite: _result(r) for suite, r in by.items()} for pid, by in p.board().items()}
+    dd = p.data_dir_for(spec)
     return {
         **summary(ws, name),
-        "spec": TaskSpec.load(p.spec_path).model_dump(mode="json"),
+        "spec": spec.model_dump(mode="json"),
         "board": board,
-        "baselines": TaskSpec.load(p.spec_path).baselines,
+        "baselines": spec.baselines,
+        "runs": [_run(p, e) for e in p.experiments()],
+        "data": Dataset(dd).summary() if (dd / "train.jsonl").exists() else None,
     }
 
 
