@@ -56,13 +56,13 @@ def gap(train: float, dev: float | None, calib: float | None, test: float) -> di
 def drift(suite: str, calib: float, calib_ci: dict, test: float, test_ci: dict) -> dict[str, Any]:
     d = calib - test
     if calib_ci["lo"] > test_ci["hi"]:
-        sev, text = "fail", f"On {suite}, calib is clearly higher than test: calib was over-used to pick the model."
+        sev, text = "fail", "Calib is clearly higher than test: calib was over-used to pick the model."
     elif test_ci["lo"] > calib_ci["hi"]:
-        sev, text = "warn", f"On {suite}, test is clearly higher than calib: the two splits are not alike."
+        sev, text = "warn", "Test is clearly higher than calib: the two splits are not alike."
     elif d > DRIFT_WARN:
-        sev, text = "warn", f"On {suite}, calib is higher than test, though within their confidence intervals."
+        sev, text = "warn", "Calib is higher than test, though within their confidence intervals."
     else:
-        sev, text = "ok", f"On {suite}, calib and test agree within their confidence intervals."
+        sev, text = "ok", "Calib and test agree within their confidence intervals."
     nums = {"calib": calib, "calib_lo": calib_ci["lo"], "calib_hi": calib_ci["hi"], "test": test}
     nums |= {"test_lo": test_ci["lo"], "test_hi": test_ci["hi"], "difference": d}
     return finding("drift", sev, text, nums, suite=suite)
@@ -97,22 +97,22 @@ def _overlap_numbers(test_rows: list[dict], hits: list[dict], spec: TaskSpec, un
     return nums
 
 
-def _overlap_verdict(suite: str, nums: dict[str, Any]) -> tuple[str, str]:
+def _overlap_verdict(nums: dict[str, Any]) -> tuple[str, str]:
     clean = nums.get("test_without_overlap")
     inflation = nums["test"] - clean if clean is not None else None
     if nums["exact"] / nums["test_rows"] > OVERLAP_FAIL_SHARE:
         if inflation is not None and inflation <= OVERLAP_HARMLESS:
-            return "warn", f"Many {suite} test inputs are also in training, but the score barely moves without them."
-        return "fail", f"Many {suite} test inputs appear word for word in the training rows: the benchmark leaks."
+            return "warn", "Many test inputs are also in training, but the score barely moves without them."
+        return "fail", "Many test inputs appear word for word in the training rows: the benchmark leaks."
     if nums["share"] > OVERLAP_WARN_SHARE:
-        return "warn", f"Some {suite} test inputs also appear, exactly or nearly, in the training rows."
-    return "ok", f"Almost no {suite} test input also appears in the training rows."
+        return "warn", "Some test inputs also appear, exactly or nearly, in the training rows."
+    return "ok", "Almost no test input also appears in the training rows."
 
 
 def overlap(suite: str, index: ShingleIndex, test_rows: list[dict], spec: TaskSpec, units: dict) -> dict[str, Any]:
     hits = _matches(index, test_rows)
     nums = _overlap_numbers(test_rows, hits, spec, units)
-    sev, text = _overlap_verdict(suite, nums)
+    sev, text = _overlap_verdict(nums)
     return finding("overlap", sev, text, nums, suite=suite, examples=hits[:OVERLAP_EXAMPLES])
 
 

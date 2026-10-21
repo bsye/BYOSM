@@ -119,7 +119,7 @@ def _report(p: Project, base: TaskSpec, exp: str, train: dict, train_rows: list[
     findings += _drifts(base, results) + _overlaps(p, base, spec, train_rows, results)
     findings += _selection(base, board, exp, prim) + [_curve(p, exp, spec)]
     verdict = checks.worst(findings)
-    skipped = [] if spec.modality == "text" else ["overlap: only text inputs are compared"]
+    skipped = [] if spec.modality == "text" else ["train/test overlap, because only text inputs are compared"]
     head = {"specialist": p.name, "experiment": exp, "suite": prim, "metric": base.objective.metric}
     verdicts = {"verdict": verdict, "summary": VERDICTS[verdict], "scores": scores, "train": train}
     return {**head, **verdicts, "findings": findings, "skipped": skipped}
