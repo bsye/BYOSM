@@ -1,15 +1,24 @@
 import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { api } from "@/api"
+import { SystemDiagram } from "./SystemDiagram"
 import { TypeDemo } from "./TypeDemo"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 
 type Split = { exact_frame: number; action_accuracy: number; arg_f1: number }
 type Stream = { gate: { min_confidence: number; stable_for: number } | null; test: { typed_share: number; early_share: number; wrong_per_100: number }; test_at_end: { wrong_per_100: number }; ms_per_keystroke: number }
 type Suite = { rows: { test: number; calib: number }; rivals: Record<string, { test: Split; calib: Split; latency_ms: number | null }>; stream?: Stream }
-type System = { name: string; spec: { description: string; nodes: Record<string, { specialist: string; role: string }> }; board: Record<string, Suite> | null; exported: boolean }
+type System = {
+  name: string
+  spec: {
+    description: string
+    nodes: Record<string, { specialist: string; role: string; task: string }>
+    tools: Record<string, { when: string; args: Record<string, string>; call: string | null }>
+  }
+  board: Record<string, Suite> | null
+  exported: boolean
+}
 
 const config = {
   exact_frame: { label: "exact frame", color: "var(--chart-1)" },
@@ -77,14 +86,8 @@ export function Systems() {
           <div>
             <h2 className="text-xl font-semibold">{s.name}</h2>
             <p className="text-muted-foreground text-sm">{s.spec.description}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {Object.entries(s.spec.nodes).map(([k, n]) => (
-                <Badge key={k} variant="secondary">
-                  {n.role}: {n.specialist}
-                </Badge>
-              ))}
-            </div>
           </div>
+          <SystemDiagram nodes={s.spec.nodes} tools={s.spec.tools ?? {}} />
           {s.exported && <TypeDemo system={s.name} />}
           {Object.entries(s.board ?? {}).map(([name, suite]) => (
             <SuiteCard key={name} name={name} suite={suite} />
