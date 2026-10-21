@@ -14,14 +14,31 @@ export function saveToken(value: string) {
   window.location.reload()
 }
 
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function call(path: string, init: RequestInit = {}): Promise<Response> {
+  const json: Record<string, string> = init.body instanceof FormData ? {} : { "Content-Type": "application/json" }
   const res = await fetch(`/api${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${readToken()}`, ...init.headers },
+    headers: { ...json, Authorization: `Bearer ${readToken()}`, ...init.headers },
   })
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(body.detail ?? res.statusText)
-  return body as T
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? res.statusText)
+  return res
+}
+
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return (await call(path, init)).json().catch(() => ({})) as Promise<T>
+}
+
+export async function download(path: string, filename: string) {
+  const url = URL.createObjectURL(await (await call(path)).blob())
+  const link = Object.assign(document.createElement("a"), { href: url, download: filename })
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+export function upload<T>(path: string, file: File): Promise<T> {
+  const form = new FormData()
+  form.append("file", file)
+  return api<T>(path, { method: "POST", body: form })
 }
 
 export const post = <T>(path: string, body: unknown) => api<T>(path, { method: "POST", body: JSON.stringify(body) })
@@ -88,6 +105,25 @@ export type Proposal = {
   why: string
   ops: { op: string; path: string; value: unknown }[]
   cost?: { minutes: number; new_items: number }
+}
+
+export type Need = { train_min: number; train_recommended: number; test_needed: number }
+
+export type DataRequest = {
+  request: { reason: string; counts: Record<string, Need> } | null
+  templates: string[]
+  uploads: string[]
+}
+
+export type Suspect = { row: number; given: string; probe: string; llm?: string; why?: string }
+
+export type CheckReport = {
+  file: string
+  verdict: "ready" | "needs more" | "fix"
+  coverage: Record<string, Partial<Need> & { rows: number; test: number }>
+  shortfalls: string[]
+  issues: [number, string, string][]
+  noise: { agreement: number; confusions: { given: string; probe: string; rows: number }[]; suspects: Suspect[] } | null
 }
 
 export const runJob = (args: string[]) => post<Job>("/jobs", { args })

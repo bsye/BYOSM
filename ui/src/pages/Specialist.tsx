@@ -16,6 +16,7 @@ import { Playground } from "./Playground"
 import { Proposals } from "./Proposals"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
+import { YourData } from "./YourData"
 
 const ACTIONS: { label: string; args: (n: string) => string[] }[] = [
   { label: "Build", args: (n) => ["build", n] },
@@ -170,6 +171,7 @@ export function Specialist({ name }: { name: string }) {
         </TabsContent>
         <TabsContent value="data" className="space-y-4">
           {d.data && d.task_type === "classify" && <LabelChart data={d.data} />}
+          <YourData name={name} />
           <DataRows name={name} />
         </TabsContent>
         <TabsContent value="try">
