@@ -97,6 +97,37 @@ def segments(frames: list[str], hop_ms: float) -> list[dict]:
     return out
 
 
+OUTSIDE = "O"
+
+
+def _tag(tag: str) -> tuple[str, str]:
+    head, sep, kind = tag.partition("-")
+    if sep and head in ("B", "I"):
+        return head, kind
+    return ("", "") if tag == OUTSIDE else ("I", tag)
+
+
+def spans(tags: list[str]) -> list[tuple[str, int, int]]:
+    out, kind, start = [], "", 0
+    for i, t in enumerate([*tags, OUTSIDE]):
+        head, k = _tag(t)
+        if kind and (head != "I" or k != kind):
+            out.append((kind, start, i))
+            kind = ""
+        if k and not kind:
+            kind, start = k, i
+    return out
+
+
+def first_subtokens(word_ids: list[int | None]) -> list[int]:
+    out, prev = [], None
+    for j, w in enumerate(word_ids):
+        if w is not None and w != prev:
+            out.append(j)
+        prev = w
+    return out
+
+
 def _softmax(x: np.ndarray) -> np.ndarray:
     e = np.exp(x - x.max(-1, keepdims=True))
     return e / e.sum(-1, keepdims=True)
@@ -215,8 +246,13 @@ class Specialist:
     def labels(self) -> list[str]:
         return self.m["labels"]
 
+    def _encode_text(self, x: Any) -> Any:
+        if self.m["task_type"] == "frame":
+            return self.tok.encode(str(x).split(), is_pretokenized=True)
+        return self.tok.encode(x)
+
     def _text_inputs(self, x: Any, fe: dict) -> dict[str, np.ndarray]:
-        enc = self.tok.encode(x)
+        enc = self._encode_text(x)
         feeds = {"input_ids": np.array([enc.ids], np.int64), "attention_mask": np.array([enc.attention_mask], np.int64)}
         if "token_type_ids" in fe.get("inputs", []):
             feeds["token_type_ids"] = np.array([enc.type_ids], np.int64)
@@ -268,6 +304,8 @@ class Specialist:
         if self.m["task_type"] == "frame" and self.m["modality"] == "document":
             idx = decide(self.m, p)
             return {"pages": [self.labels[i] for i in idx], "probs": [_label_probs(self.labels, pi) for pi in p]}
+        if self.m["task_type"] == "frame" and self.m["modality"] == "text":
+            return self._tag_words(x, p)
         if self.m["task_type"] == "frame":
             idx = decide(self.m, p)
             frames = [self.labels[i] for i in idx]
@@ -278,6 +316,13 @@ class Specialist:
             }
         idx = decide(self.m, p[None])[0]
         return {"label": self.labels[idx], "probs": _label_probs(self.labels, p)}
+
+    def _tag_words(self, x: Any, p: np.ndarray) -> dict:
+        words = str(x).split()
+        first = first_subtokens(self._encode_text(x).word_ids)
+        tags = [self.labels[i] for i in p[first].argmax(-1)]
+        found = [{"label": k, "text": " ".join(words[a:b]), "start": a, "end": b} for k, a, b in spans(tags)]
+        return {"entities": found, "tags": tags, "words": words[: len(tags)]}
 
     def stream(self) -> StreamSession:
         if self.stream_sess is None:

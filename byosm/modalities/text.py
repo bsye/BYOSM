@@ -6,6 +6,7 @@ from typing import Any
 
 import torch
 
+from ..rt import first_subtokens
 from .base import IGNORE, Backbone, Modality, register
 
 
@@ -58,20 +59,25 @@ class Text(Modality):
         if frame_labels is None and self.spec.task_type != "frame":
             enc = self.tokenizer(raws, padding=True, truncation=True, max_length=max_len, return_tensors="pt")
             return dict(enc), None
-        words = [r.split() for r in raws]
-        enc = self.tokenizer(
-            words, is_split_into_words=True, padding=True, truncation=True, max_length=max_len, return_tensors="pt"
-        )
+        enc = self.encode_words(raws)
         targets = None
         if frame_labels is not None:
             targets = torch.full(enc["input_ids"].shape, IGNORE, dtype=torch.long)
             for i, labs in enumerate(frame_labels):
-                prev = None
-                for j, w in enumerate(enc.word_ids(i)):
-                    if w is not None and w != prev and w < len(labs):
-                        targets[i, j] = labs[w]
-                    prev = w
+                for w, j in enumerate(first_subtokens(enc.word_ids(i))[: len(labs)]):
+                    targets[i, j] = labs[w]
         return dict(enc), targets
+
+    def encode_words(self, raws: list[str]) -> Any:
+        words = [r.split() for r in raws]
+        return self.tokenizer(
+            words,
+            is_split_into_words=True,
+            padding=True,
+            truncation=True,
+            max_length=self.spec.train.max_len,
+            return_tensors="pt",
+        )
 
     def views(self, raw: str, rng: random.Random) -> tuple[list[str], list[str]]:
         words = raw.split() or [raw]

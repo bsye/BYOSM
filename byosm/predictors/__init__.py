@@ -4,7 +4,7 @@ from ..spec import TaskSpec
 from .audio import EnergyVAD, SileroVAD
 from .base import BASELINES, Predictor, register_baseline
 from .experiment import ExperimentPredictor
-from .hf import HFClassifier
+from .hf import HFClassifier, HFTagger
 from .zero_shot import ZeroShotLLM
 
 __all__ = [
@@ -12,6 +12,7 @@ __all__ = [
     "EnergyVAD",
     "ExperimentPredictor",
     "HFClassifier",
+    "HFTagger",
     "Predictor",
     "SileroVAD",
     "ZeroShotLLM",
@@ -22,7 +23,8 @@ __all__ = [
 
 def get_baseline(name: str, spec: TaskSpec) -> Predictor:
     if name.startswith("hf:"):
-        return HFClassifier(spec, name[3:])
+        tagger = spec.task_type == "frame" and spec.modality == "text"
+        return (HFTagger if tagger else HFClassifier)(spec, name[3:])
     if name.startswith("llm:"):
         return ZeroShotLLM(spec, role=name[4:])
     if name not in BASELINES:

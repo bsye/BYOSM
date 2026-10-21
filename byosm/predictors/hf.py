@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 import torch
 
+from ..rt import first_subtokens
 from ..spec import TaskSpec
 from ..text import match_label
 from .base import Predictor
@@ -30,7 +31,7 @@ class HFClassifier(Predictor):
         self.id = f"hf:{repo}"
         cfg = AutoConfig.from_pretrained(repo)
         self.visual = spec.modality in ("image", "document")
-        self.proc, self.model = load_model(repo, self.visual)
+        self.proc, self.model = self._load(repo)
         names = spec.label_names
         matched = {int(k): match_label(v, names) for k, v in cfg.id2label.items()}
         self.map = {k: names.index(m) for k, m in matched.items() if m is not None}
@@ -40,6 +41,15 @@ class HFClassifier(Predictor):
             raise ValueError(f"{repo}: none of its labels {theirs} match ours {spec.label_names}")
         self.missing = [spec.label_names[i] for i in sorted(missing)]
         self.params = sum(p.numel() for p in self.model.parameters())
+
+    def _load(self, repo: str) -> tuple[Any, Any]:
+        return load_model(repo, self.visual)
+
+    def _ours(self, p: np.ndarray) -> np.ndarray:
+        q = np.zeros((len(p), len(self.spec.labels)), np.float32)
+        for src, dst in self.map.items():
+            q[:, dst] += p[:, src]
+        return q / np.maximum(q.sum(1, keepdims=True), 1e-9)
 
     def _inputs(self, chunk: list[Any]) -> Any:
         if self.visual:
@@ -53,8 +63,18 @@ class HFClassifier(Predictor):
         for i in range(0, len(raws), BATCH):
             chunk = raws[i : i + BATCH]
             p = torch.softmax(self.model(**self._inputs(chunk)).logits.float(), -1).numpy()
-            q = np.zeros((len(chunk), len(self.spec.labels)), np.float32)
-            for src, dst in self.map.items():
-                q[:, dst] += p[:, src]
-            out.append(q / np.maximum(q.sum(1, keepdims=True), 1e-9))
+            out.append(self._ours(p))
         return np.concatenate(out)
+
+
+class HFTagger(HFClassifier):
+    def _load(self, repo: str) -> tuple[Any, Any]:
+        from transformers import AutoModelForTokenClassification, AutoTokenizer
+
+        return AutoTokenizer.from_pretrained(repo), AutoModelForTokenClassification.from_pretrained(repo).eval()
+
+    @torch.no_grad()
+    def frame_probs(self, raw: str) -> np.ndarray:
+        enc = self.proc(raw.split(), is_split_into_words=True, truncation=True, return_tensors="pt")
+        p = torch.softmax(self.model(**enc).logits.float(), -1)[0].numpy()
+        return self._ours(p[first_subtokens(enc.word_ids(0))])

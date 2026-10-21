@@ -8,7 +8,7 @@ from .backbones import DINOV2_SMALL, MINILM
 
 Modality = Literal["text", "audio", "image", "document"]
 TaskType = Literal["classify", "frame"]
-Metric = Literal["f1", "macro_f1", "accuracy", "recall_at_precision", "precision_at_recall"]
+Metric = Literal["f1", "macro_f1", "accuracy", "recall_at_precision", "precision_at_recall", "span_f1"]
 
 
 class Label(BaseModel):

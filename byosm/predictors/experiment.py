@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 import torch
 
+from ..rt import first_subtokens
 from ..spec import TaskSpec
 from .base import PROBE_RUNS, Predictor, frame_hop, probe_noise
 
@@ -42,9 +43,16 @@ class ExperimentPredictor(Predictor):
 
     @torch.no_grad()
     def frame_probs(self, raw: Any) -> np.ndarray:
+        if self.spec.modality == "text":
+            return self._word_frames(raw)
         if hasattr(self.bb, "stream"):
             return self._streamed_frames(raw)
         return self._windowed_frames(raw)
+
+    def _word_frames(self, raw: str) -> np.ndarray:
+        enc = self.sp.mod.encode_words([raw])
+        logits, _ = self.sp.model({k: v.to(self.device) for k, v in enc.items()})
+        return torch.softmax(logits.float(), -1)[0].cpu().numpy()[first_subtokens(enc.word_ids(0))]
 
     def _streamed_frames(self, raw: Any) -> np.ndarray:
         n = len(raw) // self.bb.hop * self.bb.hop

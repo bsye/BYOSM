@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import io
+import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+from ..rt import OUTSIDE
 from ..spec import TaskSpec
 from .base import Predictor, register_baseline
 
@@ -13,6 +15,7 @@ IMAGE_SIDE = 1000
 MIN_DOCUMENT_DPI = 100
 PAGE_TEXT_CHARS = 1500
 WORKERS = 8
+TAG_BATCH = 10
 SYSTEM = (
     "You are an expert annotator. Classify each item strictly according to the label definitions. "
     "Return exactly one label per item, in order."
@@ -41,7 +44,7 @@ def image_ref(first: int, last: int, count: int) -> str:
     "The LLM itself, zero-shot, given the label definitions (role `baseline` in byosm.yaml): the System-2 bar.",
 )
 class ZeroShotLLM(Predictor):
-    modalities, task_types = ("text", "document", "image"), ("classify",)
+    modalities, task_types = ("text", "document", "image"), ("classify", "frame")
     wants_rows = True
     batch = {"text": 40, "document": 4, "image": 6}
 
@@ -109,6 +112,35 @@ class ZeroShotLLM(Predictor):
         out = np.zeros((len(rows), len(names)), np.float32)
         for i, label in enumerate(label for part in parts for label in part):
             out[i, names.index(label) if label in names else 0] = 1.0
+        return out
+
+    def _tags(self, chunk: list[dict]) -> list[list[str]]:
+        from ..data.synth_text import _context
+
+        words = [str(r["input"]).split() for r in chunk]
+        body = "\n".join(f"Item {j + 1} words: {json.dumps(w, ensure_ascii=False)}" for j, w in enumerate(words))
+        ask = f"Return {len(chunk)} items; each item has exactly one label per word, in order."
+        tag = {"type": "array", "items": {"type": "string", "enum": self.spec.label_names}}
+        item = {"type": "object", "properties": {"tags": tag}}
+        schema = {"type": "object", "properties": {"items": {"type": "array", "items": item}}}
+        got = self.llm.json(SYSTEM, f"{_context(self.spec)}\n\n{body}\n\n{ask}", schema).get("items", [])
+        return [(got[j].get("tags", []) if j < len(got) else []) for j in range(len(chunk))]
+
+    def frame_rows(self, rows: list[dict], mod: Any) -> list[np.ndarray]:
+        from ..llm import pmap
+
+        names = self.spec.label_names
+        fallback = names.index(OUTSIDE) if OUTSIDE in names else 0
+        chunks = [rows[i : i + TAG_BATCH] for i in range(0, len(rows), TAG_BATCH)]
+        tagged = [t for part in pmap(self._tags, chunks, WORKERS) for t in part]
+        out = []
+        for r, tags in zip(rows, tagged, strict=True):
+            n = len(str(r["input"]).split())
+            p = np.zeros((n, len(names)), np.float32)
+            for i in range(n):
+                t = tags[i] if i < len(tags) else None
+                p[i, names.index(t) if t in names else fallback] = 1.0
+            out.append(p)
         return out
 
     def probs_batch(self, raws: list[Any]) -> np.ndarray:

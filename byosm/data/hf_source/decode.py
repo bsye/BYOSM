@@ -34,7 +34,7 @@ def _decode_image(v: Any) -> Any:
 
 def _decode(v: Any, modality: str, sr: int) -> Any:
     if modality == "text":
-        return str(v)
+        return " ".join(map(str, v)) if isinstance(v, list) else str(v)
     if modality == "audio":
         return _decode_audio(v, sr)
     if modality in ("image", "document"):

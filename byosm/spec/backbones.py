@@ -19,6 +19,12 @@ BACKBONES: dict[str, list[dict]] = {
             "langs": "50+",
             "note": "small multilingual (most params are embeddings)",
         },
+        {
+            "id": "hf:distilbert/distilbert-base-cased",
+            "params_m": 65,
+            "langs": "en",
+            "note": "cased: keeps capitalisation, which names and token tagging need",
+        },
         {"id": "hf:distilbert-base-multilingual-cased", "params_m": 135, "langs": "104", "note": "distilled mBERT"},
         {"id": "hf:google-bert/bert-base-multilingual-cased", "params_m": 178, "langs": "104", "note": "mBERT"},
         {

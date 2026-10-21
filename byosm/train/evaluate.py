@@ -105,6 +105,7 @@ def evaluate_rows(
     tg = targets_of(spec, mod, rows)
     out = infer(model, mod, spec, raws, tg, dev, head)
     thr = metrics.calibrate(spec, out["y"], out["probs"]) if calibrate else threshold
-    m = metrics.compute(spec, out["y"], out["probs"], thr)
+    lengths = [len(p) for p in out["frame_probs"]] if "frame_probs" in out else None
+    m = metrics.compute(spec, out["y"], out["probs"], thr, lengths)
     errors = _classify_errors(spec, rows, out, thr) if spec.task_type == "classify" else _frame_errors(rows, out)
     return {"metrics": m, "threshold": thr, "errors": errors}

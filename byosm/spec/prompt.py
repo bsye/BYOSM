@@ -17,7 +17,7 @@ _SPEC_SCHEMA = {
         "positive_label": {"type": "string"},
         "objective_metric": {
             "type": "string",
-            "enum": ["f1", "macro_f1", "accuracy", "recall_at_precision", "precision_at_recall"],
+            "enum": ["f1", "macro_f1", "accuracy", "recall_at_precision", "precision_at_recall", "span_f1"],
         },
         "objective_target": {"type": "number"},
         "objective_constraint": {"type": "number"},
@@ -49,6 +49,9 @@ Rules:
 - Labels must be mutually exclusive and collectively exhaustive for the input distribution. Add a catch-all label \
 (e.g. "other"/"none") when real inputs can fall outside the named classes. Definitions must settle borderline cases explicitly.
 - task_type "frame" means one label per timestep/token (e.g. voice activity per 10ms frame, token tagging). Otherwise "classify".
+- Token tagging (finding names, amounts, dates, fields or other spans in text): task_type "frame", labels "O" (outside \
+any span) plus "B-<TYPE>" (first word) and "I-<TYPE>" (later words) for each span type, objective_metric "span_f1", \
+and a cased backbone when capitalisation matters.
 - positive_label: for binary detection tasks, the label whose precision/recall matters most; "" otherwise.
 - objective: choose what the deployer actually cares about. For triggers/detectors where false alarms are costly use \
 recall_at_precision with constraint e.g. 0.99 (maximize recall subject to precision >= constraint). target is the value of \

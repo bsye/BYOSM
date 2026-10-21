@@ -19,6 +19,7 @@ TASK_TAG = {
     ("audio", "frame"): "voice-activity-detection",
     ("text", "frame"): "token-classification",
 }
+SCORABLE_TAGS = {"text-classification", "image-classification", "token-classification"}
 
 HELD_OUT_SPLITS = ("test", "validation", "val", "valid")
 
@@ -44,7 +45,7 @@ def _search_models(q: str, tag: str) -> list[Any]:
 
 def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap: float = 0.6) -> list[tuple[str, str]]:
     tag = TASK_TAG.get((spec.modality, spec.task_type))
-    if not tag or spec.task_type != "classify":
+    if tag not in SCORABLE_TAGS:
         return []
     seen, found = set(), []
     for q in search_terms(queries):

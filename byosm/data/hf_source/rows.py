@@ -4,6 +4,7 @@ import itertools
 from collections.abc import Iterator
 from typing import Any
 
+from ...rt import OUTSIDE
 from ...spec import HFSource, TaskSpec
 from .decode import _decode
 from .hub import _no_decode
@@ -13,9 +14,15 @@ from .parquet import balanced_rows
 def _class_names(src: HFSource, ds: Any) -> list[str] | None:
     from datasets import ClassLabel
 
-    if src.label_column and isinstance((ds.features or {}).get(src.label_column), ClassLabel):
-        return ds.features[src.label_column].names
-    return None
+    feat = (ds.features or {}).get(src.label_column) if src.label_column else None
+    feat = getattr(feat, "feature", feat)
+    return feat.names if isinstance(feat, ClassLabel) else None
+
+
+def _tag_sequence(raw: list, names: list[str] | None, lmap: dict[str, str], spec: TaskSpec) -> list[str]:
+    ours = set(spec.label_names)
+    named = [names[t] if names is not None and isinstance(t, int) and t < len(names) else str(t) for t in raw]
+    return [lmap.get(t, t if not lmap and t in ours else OUTSIDE) for t in named]
 
 
 def _row_label(raw: Any, names: list[str] | None, lmap: dict[str, str]) -> str | None:
@@ -33,7 +40,9 @@ def _stream_rows(src: HFSource, spec: TaskSpec) -> Iterator[tuple[Any, str | Non
     n = 0
     for row in ds:
         lab = None
-        if src.label_column:
+        if src.label_column and isinstance(row[src.label_column], list):
+            lab = _tag_sequence(row[src.label_column], names, lmap, spec)
+        elif src.label_column:
             lab = _row_label(row[src.label_column], names, lmap)
             if lmap and lab is None:
                 continue

@@ -25,8 +25,9 @@ def _collect(
     mod = get_modality(spec, str(root))
     if spec.task_type == "frame":
         per = []
-        for r in rows:
-            pr = pred.frame_probs(mod.load(r))
+        listed = pred.frame_rows(rows, mod) if getattr(pred, "wants_rows", False) else None
+        for k, r in enumerate(rows):
+            pr = listed[k] if listed is not None else pred.frame_probs(mod.load(r))
             y = np.asarray(mod.frame_labels(r))
             n = min(len(pr), len(y))
             per.append((pr[:n], y[:n]))
@@ -108,11 +109,11 @@ def _cross_fit_rows(spec: TaskSpec, yc: np.ndarray, pc: np.ndarray, thr: float |
     return dec_c
 
 
-def _decide_rows(spec: TaskSpec, yt: np.ndarray, pt: np.ndarray, yc: Any, pc: Any) -> tuple:
+def _decide_rows(spec: TaskSpec, yt: np.ndarray, pt: np.ndarray, yc: Any, pc: Any, lengths: Any = None) -> tuple:
     thr = spec.decision.threshold
     if thr is None and pc is not None:
         thr = metrics.calibrate(spec, yc, pc)
-    m = metrics.compute(spec, yt, pt, thr)
+    m = metrics.compute(spec, yt, pt, thr, lengths)
     dec_c = _cross_fit_rows(spec, yc, pc, thr) if pc is not None else None
     return m, metrics.predict(spec, pt, thr), dec_c
 
@@ -134,7 +135,7 @@ def _add_speed(out: dict[str, Any], pred: Predictor, spec: TaskSpec, test: list[
         out["stream_ms_per_chunk"], out["chunk_ms"] = round(ck, 4), pred.chunk_ms
         return
     mod = get_modality(spec, str(root))
-    timed = spec.task_type == "classify" and not getattr(pred, "wants_rows", False)
+    timed = (spec.task_type == "classify" or spec.modality == "text") and not getattr(pred, "wants_rows", False)
     lat = pred.latency_ms(mod.load(test[0])) if timed else None
     out["latency_ms"] = round(lat, 3) if lat is not None and not math.isnan(lat) else None
 
@@ -151,12 +152,13 @@ def score(
     if spec.decision.kind == "hysteresis" and spec.task_type == "frame":
         m, dec_t, dec_c = _decide_frames(spec, yt, perc, pert)
     else:
-        m, dec_t, dec_c = _decide_rows(spec, yt, pt, yc, pc)
-    out["units"] = {"test": metrics.units(n_labels, yt, dec_t, _groups(pert))}
+        m, dec_t, dec_c = _decide_rows(spec, yt, pt, yc, pc, _groups(pert))
+    names = spec.label_names if metrics.is_span(spec) else None
+    out["units"] = {"test": metrics.units(n_labels, yt, dec_t, _groups(pert), names)}
     m["ci95"] = metrics.bootstrap(spec, out["units"]["test"], n=CI_RESAMPLES)
     if dec_c is not None:
-        out["units"]["calib"] = metrics.units(n_labels, yc, dec_c, _groups(perc))
-        out["calib_objective"] = metrics.objective_from_cm(spec, metrics._cms(out["units"]["calib"], n_labels).sum(0))
+        out["units"]["calib"] = metrics.units(n_labels, yc, dec_c, _groups(perc), names)
+        out["calib_objective"] = metrics.objective_of_units(spec, out["units"]["calib"])
     _add_threshold_free(m, spec, yt, pt)
     out.update(
         metrics=m, objective=m["objective"], n_test=len(test), n_calib=len(calib), seconds=round(time.time() - t0, 1)

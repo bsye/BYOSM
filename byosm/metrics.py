@@ -5,7 +5,27 @@ from typing import Any
 import numpy as np
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_recall_fscore_support, roc_auc_score
 
+from .rt import spans
 from .spec import TaskSpec
+
+
+def is_span(spec: TaskSpec) -> bool:
+    return spec.objective.metric == "span_f1"
+
+
+def span_counts(names: list[str], y: np.ndarray, pred: np.ndarray, lengths: list[int]) -> np.ndarray:
+    out, s = [], 0
+    for n in lengths:
+        gold = set(spans([names[i] for i in y[s : s + n]]))
+        found = set(spans([names[i] for i in pred[s : s + n]]))
+        out.append([len(gold & found), len(found - gold), len(gold - found)])
+        s += n
+    return np.asarray(out, np.int64).reshape(-1, 3)
+
+
+def _span_f1(counts: np.ndarray) -> float:
+    tp, fp, fn = counts.astype(float)
+    return 2 * tp / max(1.0, 2 * tp + fp + fn)
 
 
 def _binary(spec: TaskSpec) -> int | None:
@@ -56,7 +76,9 @@ def calibrate(spec: TaskSpec, y: np.ndarray, probs: np.ndarray) -> float | None:
     return best_thr
 
 
-def compute(spec: TaskSpec, y: np.ndarray, probs: np.ndarray, threshold: float | None) -> dict[str, Any]:
+def compute(
+    spec: TaskSpec, y: np.ndarray, probs: np.ndarray, threshold: float | None, lengths: list[int] | None = None
+) -> dict[str, Any]:
     names = spec.label_names
     pred = predict(spec, probs, threshold)
     labels = list(range(len(names)))
@@ -78,6 +100,10 @@ def compute(spec: TaskSpec, y: np.ndarray, probs: np.ndarray, threshold: float |
         out.update(precision=float(p[pos]), recall=float(r[pos]), f1=float(f[pos]))
         if 0 < yb.sum() < len(yb):
             out["roc_auc"] = float(roc_auc_score(yb, probs[:, pos]))
+    if is_span(spec):
+        tp, fp, fn = span_counts(names, y, pred, lengths or [len(y)]).sum(0).astype(float)
+        out.update(span_precision=tp / max(1.0, tp + fp), span_recall=tp / max(1.0, tp + fn))
+        out["span_f1"] = _span_f1(np.array([tp, fp, fn]))
     out["objective"] = objective_value(spec, out)
     return out
 
@@ -93,7 +119,11 @@ def objective_value(spec: TaskSpec, m: dict[str, Any]) -> float:
     return float(m[o.metric])
 
 
-def units(n_labels: int, y: np.ndarray, pred: np.ndarray, groups: list[int] | None = None) -> dict[str, Any]:
+def units(
+    n_labels: int, y: np.ndarray, pred: np.ndarray, groups: list[int] | None = None, names: list[str] | None = None
+) -> dict[str, Any]:
+    if names is not None:
+        return {"spans": span_counts(names, np.asarray(y), np.asarray(pred), groups or [len(y)]).tolist()}
     if groups is None:
         return {"y": np.asarray(y).astype(int).tolist(), "pred": np.asarray(pred).astype(int).tolist()}
     cms, s = [], 0
@@ -123,30 +153,43 @@ def objective_from_cm(spec: TaskSpec, cm: np.ndarray) -> float:
     return objective_value(spec, m)
 
 
-def _resample(spec: TaskSpec, cms_a: np.ndarray, cms_b: np.ndarray | None, n: int, seed: int) -> np.ndarray:
+def _unit_stats(spec: TaskSpec, u: dict[str, Any]) -> np.ndarray:
+    if "spans" in u:
+        return np.asarray(u["spans"], np.int64).reshape(-1, 3)
+    return _cms(u, len(spec.labels))
+
+
+def _objective_of_stats(spec: TaskSpec, summed: np.ndarray) -> float:
+    return _span_f1(summed) if summed.ndim == 1 else objective_from_cm(spec, summed)
+
+
+def objective_of_units(spec: TaskSpec, u: dict[str, Any]) -> float:
+    return _objective_of_stats(spec, _unit_stats(spec, u).sum(0))
+
+
+def _resample(spec: TaskSpec, sa: np.ndarray, sb: np.ndarray | None, n: int, seed: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
     vals = []
     for _ in range(n):
-        idx = rng.integers(0, len(cms_a), len(cms_a))
-        va = objective_from_cm(spec, cms_a[idx].sum(0))
-        vals.append(va - objective_from_cm(spec, cms_b[idx].sum(0)) if cms_b is not None else va)
+        idx = rng.integers(0, len(sa), len(sa))
+        va = _objective_of_stats(spec, sa[idx].sum(0))
+        vals.append(va - _objective_of_stats(spec, sb[idx].sum(0)) if sb is not None else va)
     return np.asarray(vals)
 
 
 def bootstrap(
     spec: TaskSpec, a: dict[str, Any], b: dict[str, Any] | None = None, n: int = 1000, seed: int = 0
 ) -> dict[str, float]:
-    n_labels = len(spec.labels)
-    cms_a = _cms(a, n_labels)
-    cms_b = _cms(b, n_labels) if b is not None else None
-    if cms_b is not None and len(cms_b) != len(cms_a):
+    sa = _unit_stats(spec, a)
+    sb = _unit_stats(spec, b) if b is not None else None
+    if sb is not None and sb.shape != sa.shape:
         raise ValueError("paired bootstrap needs the same units")
-    v = _resample(spec, cms_a, cms_b, n, seed)
+    v = _resample(spec, sa, sb, n, seed)
     lo, hi = np.quantile(v, [0.025, 0.975])
     out = {"lo": float(lo), "hi": float(hi)}
-    if cms_b is not None:
+    if sb is not None:
         out.update(
-            delta=objective_from_cm(spec, cms_a.sum(0)) - objective_from_cm(spec, cms_b.sum(0)),
+            delta=_objective_of_stats(spec, sa.sum(0)) - _objective_of_stats(spec, sb.sum(0)),
             p_better=float((v > 0).mean() + 0.5 * (v == 0).mean()),
         )
     return out
