@@ -1,0 +1,16 @@
+{
+  "parent": "spec.yaml",
+  "applied": [
+    {
+      "id": "manual",
+      "why": "data.teachers=[]",
+      "ops": [
+        {
+          "op": "set",
+          "path": "data.teachers",
+          "value": []
+        }
+      ]
+    }
+  ]
+}

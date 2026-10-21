@@ -58,6 +58,7 @@ public fine-tuned checkpoints.
 |---|---|---|---|---|---|---|---|
 | Which words of a request fill an action's arguments, and their type (MASSIVE slots) | AmazonScience/massive (span_f1) | v2 (70.73M) | 0.734 [0.717, 0.751] | no outside baseline scored yet | - | - | - |
 | Which of the assistant's 60 actions a request asks for (MASSIVE intents) | AmazonScience/massive (accuracy) | stream (22.74M) | 0.890 [0.877, 0.901] | jev (-) | 0.815 [0.799, 0.831] | +0.075, P(better) = 1.00 | 0.894 vs 0.824 (ahead) |
+| 77-way banking intent classification | mteb/banking77 (accuracy) | v1 (22.74M) | 0.797 [0.780, 0.812] | jev (-) | 0.807 [0.792, 0.822] | -0.010, P(better) = 0.09 | 0.747 vs 0.776 (behind) |
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
 | Classify the primary emotion expressed in a short English text (single sentence, tweet-style or short social media string) into one of six named emotions (sadness, joy, love, anger, fear, surprise). Any text that does not clearly express one of these dominates falls into a catch-all neutral-other class (including neutral statements, irony/sarcasm without a dominant named emotion, ambiguity, or non-English). | dair-ai/emotion (accuracy) | v1 (22.72M) | 0.898 [0.883, 0.913] | hf:j-hartmann/emotion-english-distilroberta-base (82.12M) | 0.838 [0.819, 0.856] | +0.060, P(better) = 1.00 | 0.904 vs 0.813 (ahead) |
 | 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | jev (-) | 0.808 [0.792, 0.822] | +0.129, P(better) = 1.00 | 0.948 vs 0.784 (ahead) |
@@ -127,6 +128,28 @@ Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses cali
 
 - `llm` is Qwen 3.8 27B, zero-shot, given all 77 label definitions. No fine-tuned Banking77 model has been scored
   against us yet.
+
+### Few labels, many teachers: Banking77 with 6 labelled rows per intent
+
+<!-- report:bank-panel -->
+| model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
+|---|---|---|---|---|---|---|
+| jev | outside baseline | - | - | 372.94ms | 0.807 [0.792, 0.822] | 0.776 |
+| **v1** (promoted) | no recorded parent | 4228 (+70 builtin test) | 22.74M | 2.38ms | 0.797 [0.780, 0.812] | 0.747 |
+| panel | outside baseline | - | - | - | 0.779 [0.763, 0.794] | 0.750 |
+| llm | outside baseline | - | - | - | 0.770 [0.752, 0.787] | 0.716 |
+| gold | spec.yaml + `data.teachers=[]` | 416 (+70 builtin test) | 22.74M | 2.54ms | 0.749 [0.731, 0.767] | 0.734 |
+
+Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+<!-- /report:bank-panel -->
+
+- The same task as above, but the specialist sees only 6 human-labelled rows per intent. Qwen and Jev label rows
+  from the Banking77 train split whose gold labels are hidden; each teacher is weighted by its accuracy on the
+  labelled rows, and the student trains on the panel's soft labels (`data.teachers`).
+- `gold` is the control: the same few labelled rows and nothing else. `panel` is the teachers' combined vote, scored
+  as a rival. The test split is the one the full specialist above is scored on.
+- The student beats its control and the panel it learned from, and is still behind Jev alone: combining a teacher
+  that only gives labels (Qwen) with one that gives probabilities (Jev) under a fixed formula costs accuracy.
 
 ### Emotion: one sentence, end to end
 
