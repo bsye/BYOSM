@@ -6,11 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from ..spec import HFSource, TaskSpec
-from . import audio_mix, hf_source, segments, synth_text
+from . import audio_mix, hf_source, panel, segments, synth_text
 from .store import DEV_SHARE, TEST_SHARE, Dataset, dedupe, record, write
 from .table import is_table, table_rows
 
 MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
+UNLABELED_PER_SOURCE = 2000
 
 Log = Callable[[str], None]
 
@@ -126,7 +127,8 @@ def _add_hf(
             for s, part in _split3([x for x, _ in rows], rng).items():
                 pools[src.role][s] += part
         else:
-            for x, _ in rows[:2000]:
+            cap = max(UNLABELED_PER_SOURCE, spec.data.teacher_rows if spec.data.teachers else 0)
+            for x, _ in rows[:cap]:
                 inp = x if spec.modality == "text" else _save_media(spec, data_dir, "unlabeled", x)
                 unlabeled.append(record(inp, None, f"hf:{src.dataset}"))
     return pools
@@ -177,6 +179,8 @@ def build(
             "data stage produced no training examples - check the data plan in spec.yaml (sources, synthetic, local_dir), "
             "or run `byosm request-data <name>` for a template to fill"
         )
+    if spec.data.teachers:
+        splits["train"] += panel.label_pool(spec, splits, unlabeled, data_dir, log)
     for s, rows in splits.items():
         ds.save(s, rows)
     unlabeled += [record(r["input"], None, "train-inputs") for r in splits["train"]]

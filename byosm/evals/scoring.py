@@ -34,8 +34,11 @@ def _collect(
         return np.concatenate([a for a, _ in per]), np.concatenate([b for _, b in per]), per
     idx = spec.label_index
     y = np.array([idx[r["label"]] for r in rows])
-    probs = pred.probs_rows(rows, mod) if getattr(pred, "wants_rows", False) else pred.probs_batch(mod.load_many(rows))
-    return _within(probs, spec, pred.label_space), y, []
+    return _within(row_probs(pred, rows, mod), spec, pred.label_space), y, []
+
+
+def row_probs(pred: Predictor, rows: list[dict], mod: Any) -> np.ndarray:
+    return pred.probs_rows(rows, mod) if getattr(pred, "wants_rows", False) else pred.probs_batch(mod.load_many(rows))
 
 
 def _within(probs: np.ndarray, spec: TaskSpec, space: list[str] | None) -> np.ndarray:

@@ -55,3 +55,10 @@ def soft_batch(
     lens = torch.tensor([len(soft[i]) for i in b], device=dev)
     valid = (torch.arange(tp.shape[1], device=dev)[None] < lens[:, None]).float()
     return align_targets(tp, logits.shape[1]), align_targets(valid[..., None], logits.shape[1])[..., 0] * mask.float()
+
+
+def row_soft_targets(spec: TaskSpec, rows: list[dict]) -> list[np.ndarray] | None:
+    if not any(r.get("meta", {}).get("soft") for r in rows):
+        return None
+    eye = np.eye(len(spec.labels), dtype=np.float32)
+    return [np.asarray(r["meta"].get("soft") or eye[spec.label_index[r["label"]]], np.float32) for r in rows]

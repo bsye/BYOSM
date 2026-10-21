@@ -18,7 +18,7 @@ from ..spec import TaskSpec
 from .common import build_model, cpu_state, targets_of
 from .evaluate import evaluate_rows
 from .outputs import build_meta, save_run
-from .teacher import _teacher_targets
+from .teacher import _teacher_targets, row_soft_targets
 from .trainer import Trainer, class_weight
 
 PATIENCE = 4
@@ -142,7 +142,7 @@ def fit(
     tc = spec.train
     t0 = time.time()
     jepa_hist = _pretrain(spec, model, mod, ds, train_raw, dev, log, seed)
-    soft: list[Any] | None = None
+    soft: list[Any] | None = row_soft_targets(spec, train_rows)
     n_labeled = len(train_raw)
     if tc.distill_from:
         teacher_dir = run_dir.parent / tc.distill_from

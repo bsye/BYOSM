@@ -76,6 +76,8 @@ class DataPlan(BaseModel):
     hf_queries: list[str] = Field(default_factory=list)
     hf_sources: list[HFSource] = Field(default_factory=list)
     local_dir: str | None = None
+    teachers: list[str] = Field(default_factory=list)
+    teacher_rows: int = 2000
     audio: AudioCfg = Field(default_factory=AudioCfg)
 
 

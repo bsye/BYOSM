@@ -9,8 +9,9 @@ from typing import Any
 
 class OCRStore:
     def __init__(self, root: Path | None = None):
-        base = Path(os.environ.get("BYOSM_CACHE") or Path.home() / ".cache" / "byosm")
-        self.root = root or base / "ocr"
+        from ...config import cache_root
+
+        self.root = root or cache_root() / "ocr"
 
     @cached_property
     def tag(self) -> str:

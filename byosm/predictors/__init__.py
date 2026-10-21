@@ -6,6 +6,7 @@ from .base import BASELINES, Predictor, register_baseline
 from .experiment import ExperimentPredictor
 from .hf import HFClassifier, HFTagger
 from .jev import Jev
+from .panel import Panel
 from .zero_shot import ZeroShotLLM
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "HFClassifier",
     "HFTagger",
     "Jev",
+    "Panel",
     "Predictor",
     "SileroVAD",
     "ZeroShotLLM",
