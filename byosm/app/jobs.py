@@ -17,6 +17,9 @@ from .hub import Hub
 from .store import JOB_FIELDS, JobStore
 
 ALLOWED_COMMANDS = (
+    "ls",
+    "show",
+    "board",
     "new",
     "build",
     "data",

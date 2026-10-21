@@ -17,6 +17,7 @@ from .jobs import Runner
 STATIC_DIR = Path(__file__).parent / "static"
 LOCAL_HOSTS = ["127.0.0.1", "localhost"]
 BEARER = "Bearer "
+UNAUTHORIZED_CLOSE = 4401
 
 
 class JobRequest(BaseModel):
@@ -117,10 +118,10 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.websocket("/api/events")
     async def events(sock: WebSocket, token: str = "") -> None:
-        if not secrets.compare_digest(token, app.state.token):
-            await sock.close(code=4401)
-            return
         await sock.accept()
+        if not secrets.compare_digest(token, app.state.token):
+            await sock.close(code=UNAUTHORIZED_CLOSE)
+            return
         sub = hub.subscribe()
         try:
             for j in runner.jobs.values():
