@@ -19,6 +19,7 @@ from .store import JOB_FIELDS, JobStore
 
 ALLOWED_COMMANDS = (
     "ls",
+    "containerize",
     "show",
     "board",
     "new",

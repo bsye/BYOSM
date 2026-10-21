@@ -21,6 +21,7 @@ import { Proposals } from "./Proposals"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
 import { Team, useTeam } from "./Team"
+import { UseIt } from "./UseIt"
 import { YourData } from "./YourData"
 
 const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] }[] = [
@@ -207,6 +208,7 @@ function Model({ name }: { name: string }) {
           <TabsTrigger value="data">Data</TabsTrigger>
           {hasTeachers(d) && <TabsTrigger value="teachers">Teachers</TabsTrigger>}
           <TabsTrigger value="try">Test</TabsTrigger>
+          <TabsTrigger value="use">Use it</TabsTrigger>
           <TabsTrigger value="spec">Spec</TabsTrigger>
         </TabsList>
         <TabsContent value="board" className="space-y-4">
@@ -225,6 +227,9 @@ function Model({ name }: { name: string }) {
         <TabsContent value="teachers">{hasTeachers(d) && <Panel name={name} />}</TabsContent>
         <TabsContent value="try">
           <Playground d={d} />
+        </TabsContent>
+        <TabsContent value="use">
+          <UseIt d={d} />
         </TabsContent>
         <TabsContent value="spec">
           <SpecEditor d={d} onSaved={load} />
