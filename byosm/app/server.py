@@ -13,6 +13,7 @@ from ..config import MAX_PARALLEL_JOBS
 from . import catalog, keys
 from .hub import Hub
 from .jobs import Runner
+from .systems_routes import systems_router
 
 STATIC_DIR = Path(__file__).parent / "static"
 LOCAL_HOSTS = ["127.0.0.1", "localhost"]
@@ -149,6 +150,7 @@ def create_app(ws: Path, token: str, hosts: list[str] | None = None, parallel: i
             raise HTTPException(401, "missing or wrong token: open the link `byosm app` printed")
 
     _routes(app, ws, runner, hub, Depends(check))
+    app.include_router(systems_router(ws, Depends(check)))
     if STATIC_DIR.exists():
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
     return app
