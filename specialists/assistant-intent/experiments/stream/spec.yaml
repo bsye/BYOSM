@@ -1,0 +1,608 @@
+name: assistant-intent
+description: Which of the assistant's 60 actions a request asks for (MASSIVE intents)
+modality: text
+task_type: classify
+summary: Which of the assistant's 60 actions a request asks for (MASSIVE intents)
+input_description: ''
+labels:
+- name: datetime_query
+  definition: datetime query
+- name: iot_hue_lightchange
+  definition: iot hue lightchange
+- name: transport_ticket
+  definition: transport ticket
+- name: takeaway_query
+  definition: takeaway query
+- name: qa_stock
+  definition: qa stock
+- name: general_greet
+  definition: general greet
+- name: recommendation_events
+  definition: recommendation events
+- name: music_dislikeness
+  definition: music dislikeness
+- name: iot_wemo_off
+  definition: iot wemo off
+- name: cooking_recipe
+  definition: cooking recipe
+- name: qa_currency
+  definition: qa currency
+- name: transport_traffic
+  definition: transport traffic
+- name: general_quirky
+  definition: general quirky
+- name: weather_query
+  definition: weather query
+- name: audio_volume_up
+  definition: audio volume up
+- name: email_addcontact
+  definition: email addcontact
+- name: takeaway_order
+  definition: takeaway order
+- name: email_querycontact
+  definition: email querycontact
+- name: iot_hue_lightup
+  definition: iot hue lightup
+- name: recommendation_locations
+  definition: recommendation locations
+- name: play_audiobook
+  definition: play audiobook
+- name: lists_createoradd
+  definition: lists createoradd
+- name: news_query
+  definition: news query
+- name: alarm_query
+  definition: alarm query
+- name: iot_wemo_on
+  definition: iot wemo on
+- name: general_joke
+  definition: general joke
+- name: qa_definition
+  definition: qa definition
+- name: social_query
+  definition: social query
+- name: music_settings
+  definition: music settings
+- name: audio_volume_other
+  definition: audio volume other
+- name: calendar_remove
+  definition: calendar remove
+- name: iot_hue_lightdim
+  definition: iot hue lightdim
+- name: calendar_query
+  definition: calendar query
+- name: email_sendemail
+  definition: email sendemail
+- name: iot_cleaning
+  definition: iot cleaning
+- name: audio_volume_down
+  definition: audio volume down
+- name: play_radio
+  definition: play radio
+- name: cooking_query
+  definition: cooking query
+- name: datetime_convert
+  definition: datetime convert
+- name: qa_maths
+  definition: qa maths
+- name: iot_hue_lightoff
+  definition: iot hue lightoff
+- name: iot_hue_lighton
+  definition: iot hue lighton
+- name: transport_query
+  definition: transport query
+- name: music_likeness
+  definition: music likeness
+- name: email_query
+  definition: email query
+- name: play_music
+  definition: play music
+- name: audio_volume_mute
+  definition: audio volume mute
+- name: social_post
+  definition: social post
+- name: alarm_set
+  definition: alarm set
+- name: qa_factoid
+  definition: qa factoid
+- name: calendar_set
+  definition: calendar set
+- name: play_game
+  definition: play game
+- name: alarm_remove
+  definition: alarm remove
+- name: lists_remove
+  definition: lists remove
+- name: transport_taxi
+  definition: transport taxi
+- name: recommendation_movies
+  definition: recommendation movies
+- name: iot_coffee
+  definition: iot coffee
+- name: music_query
+  definition: music query
+- name: play_podcasts
+  definition: play podcasts
+- name: lists_query
+  definition: lists query
+positive_label: null
+objective:
+  metric: accuracy
+  target: 0.9
+  constraint: 0.99
+languages:
+- en
+diversity_axes: []
+hard_cases: []
+backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+latency_budget_ms: 10.0
+frame_hop_ms: 10.0
+data:
+  synthetic: false
+  train_size: 3000
+  dev_size: 400
+  test_size: 600
+  per_call: 25
+  judge: true
+  hf_queries: []
+  hf_sources:
+  - dataset: AmazonScience/massive
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: stream
+    per_label: 100
+    config: en-US
+    split: train
+    input_column: utt
+    label_column: intent
+    label_map:
+    - - datetime_query
+      - datetime_query
+    - - iot_hue_lightchange
+      - iot_hue_lightchange
+    - - transport_ticket
+      - transport_ticket
+    - - takeaway_query
+      - takeaway_query
+    - - qa_stock
+      - qa_stock
+    - - general_greet
+      - general_greet
+    - - recommendation_events
+      - recommendation_events
+    - - music_dislikeness
+      - music_dislikeness
+    - - iot_wemo_off
+      - iot_wemo_off
+    - - cooking_recipe
+      - cooking_recipe
+    - - qa_currency
+      - qa_currency
+    - - transport_traffic
+      - transport_traffic
+    - - general_quirky
+      - general_quirky
+    - - weather_query
+      - weather_query
+    - - audio_volume_up
+      - audio_volume_up
+    - - email_addcontact
+      - email_addcontact
+    - - takeaway_order
+      - takeaway_order
+    - - email_querycontact
+      - email_querycontact
+    - - iot_hue_lightup
+      - iot_hue_lightup
+    - - recommendation_locations
+      - recommendation_locations
+    - - play_audiobook
+      - play_audiobook
+    - - lists_createoradd
+      - lists_createoradd
+    - - news_query
+      - news_query
+    - - alarm_query
+      - alarm_query
+    - - iot_wemo_on
+      - iot_wemo_on
+    - - general_joke
+      - general_joke
+    - - qa_definition
+      - qa_definition
+    - - social_query
+      - social_query
+    - - music_settings
+      - music_settings
+    - - audio_volume_other
+      - audio_volume_other
+    - - calendar_remove
+      - calendar_remove
+    - - iot_hue_lightdim
+      - iot_hue_lightdim
+    - - calendar_query
+      - calendar_query
+    - - email_sendemail
+      - email_sendemail
+    - - iot_cleaning
+      - iot_cleaning
+    - - audio_volume_down
+      - audio_volume_down
+    - - play_radio
+      - play_radio
+    - - cooking_query
+      - cooking_query
+    - - datetime_convert
+      - datetime_convert
+    - - qa_maths
+      - qa_maths
+    - - iot_hue_lightoff
+      - iot_hue_lightoff
+    - - iot_hue_lighton
+      - iot_hue_lighton
+    - - transport_query
+      - transport_query
+    - - music_likeness
+      - music_likeness
+    - - email_query
+      - email_query
+    - - play_music
+      - play_music
+    - - audio_volume_mute
+      - audio_volume_mute
+    - - social_post
+      - social_post
+    - - alarm_set
+      - alarm_set
+    - - qa_factoid
+      - qa_factoid
+    - - calendar_set
+      - calendar_set
+    - - play_game
+      - play_game
+    - - alarm_remove
+      - alarm_remove
+    - - lists_remove
+      - lists_remove
+    - - transport_taxi
+      - transport_taxi
+    - - recommendation_movies
+      - recommendation_movies
+    - - iot_coffee
+      - iot_coffee
+    - - music_query
+      - music_query
+    - - play_podcasts
+      - play_podcasts
+    - - lists_query
+      - lists_query
+    max_rows: 200000
+  - dataset: AmazonScience/massive
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: stream
+    per_label: 100
+    config: en-US
+    split: validation
+    input_column: utt
+    label_column: intent
+    label_map:
+    - - datetime_query
+      - datetime_query
+    - - iot_hue_lightchange
+      - iot_hue_lightchange
+    - - transport_ticket
+      - transport_ticket
+    - - takeaway_query
+      - takeaway_query
+    - - qa_stock
+      - qa_stock
+    - - general_greet
+      - general_greet
+    - - recommendation_events
+      - recommendation_events
+    - - music_dislikeness
+      - music_dislikeness
+    - - iot_wemo_off
+      - iot_wemo_off
+    - - cooking_recipe
+      - cooking_recipe
+    - - qa_currency
+      - qa_currency
+    - - transport_traffic
+      - transport_traffic
+    - - general_quirky
+      - general_quirky
+    - - weather_query
+      - weather_query
+    - - audio_volume_up
+      - audio_volume_up
+    - - email_addcontact
+      - email_addcontact
+    - - takeaway_order
+      - takeaway_order
+    - - email_querycontact
+      - email_querycontact
+    - - iot_hue_lightup
+      - iot_hue_lightup
+    - - recommendation_locations
+      - recommendation_locations
+    - - play_audiobook
+      - play_audiobook
+    - - lists_createoradd
+      - lists_createoradd
+    - - news_query
+      - news_query
+    - - alarm_query
+      - alarm_query
+    - - iot_wemo_on
+      - iot_wemo_on
+    - - general_joke
+      - general_joke
+    - - qa_definition
+      - qa_definition
+    - - social_query
+      - social_query
+    - - music_settings
+      - music_settings
+    - - audio_volume_other
+      - audio_volume_other
+    - - calendar_remove
+      - calendar_remove
+    - - iot_hue_lightdim
+      - iot_hue_lightdim
+    - - calendar_query
+      - calendar_query
+    - - email_sendemail
+      - email_sendemail
+    - - iot_cleaning
+      - iot_cleaning
+    - - audio_volume_down
+      - audio_volume_down
+    - - play_radio
+      - play_radio
+    - - cooking_query
+      - cooking_query
+    - - datetime_convert
+      - datetime_convert
+    - - qa_maths
+      - qa_maths
+    - - iot_hue_lightoff
+      - iot_hue_lightoff
+    - - iot_hue_lighton
+      - iot_hue_lighton
+    - - transport_query
+      - transport_query
+    - - music_likeness
+      - music_likeness
+    - - email_query
+      - email_query
+    - - play_music
+      - play_music
+    - - audio_volume_mute
+      - audio_volume_mute
+    - - social_post
+      - social_post
+    - - alarm_set
+      - alarm_set
+    - - qa_factoid
+      - qa_factoid
+    - - calendar_set
+      - calendar_set
+    - - play_game
+      - play_game
+    - - alarm_remove
+      - alarm_remove
+    - - lists_remove
+      - lists_remove
+    - - transport_taxi
+      - transport_taxi
+    - - recommendation_movies
+      - recommendation_movies
+    - - iot_coffee
+      - iot_coffee
+    - - music_query
+      - music_query
+    - - play_podcasts
+      - play_podcasts
+    - - lists_query
+      - lists_query
+    max_rows: 200000
+  local_dir: null
+  audio:
+    sample_rate: 16000
+    clip_seconds: 4.0
+    snr_db:
+    - -5.0
+    - 30.0
+    max_events: 3
+    label_by_energy: true
+    fill_ms: 60
+train:
+  pretrain_steps: 200
+  pretrain_lambda: 0.05
+  epochs: 12
+  batch_size: 32
+  lr_backbone: 5.0e-05
+  lr_head: 0.001
+  freeze_backbone: false
+  max_len: 128
+  refine_rounds: 2
+  refine_examples: 300
+  pool: mean
+  layer_decay_floor: 0.5
+  probe_epochs: 0
+  ema: true
+  seed: 0
+  holdout_test: auto
+  precision: auto
+  distill_from: null
+  distill_alpha: 0.3
+  distill_temperature: 2.0
+  distill_unlabeled: 20000
+  prefix_rate: 0.5
+decision:
+  kind: threshold
+  threshold: null
+  deactivation_offset: 0.15
+  min_on_ms: 50.0
+  min_off_ms: 550.0
+  smooth_alpha_per_32ms: 0.35
+document:
+  route: fused
+  text_backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+  image_backbone: hf:facebook/dinov2-small
+  image_pool: mean
+  max_pages: 8
+  max_len: 256
+  image_size: 224
+  dpi: 100
+  ocr: auto
+  dim: 256
+  modality_dropout: 0.2
+evals:
+- name: massive
+  kind: hf
+  source:
+    dataset: AmazonScience/massive
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: stream
+    per_label: 100
+    config: en-US
+    split: test
+    input_column: utt
+    label_column: intent
+    label_map:
+    - - datetime_query
+      - datetime_query
+    - - iot_hue_lightchange
+      - iot_hue_lightchange
+    - - transport_ticket
+      - transport_ticket
+    - - takeaway_query
+      - takeaway_query
+    - - qa_stock
+      - qa_stock
+    - - general_greet
+      - general_greet
+    - - recommendation_events
+      - recommendation_events
+    - - music_dislikeness
+      - music_dislikeness
+    - - iot_wemo_off
+      - iot_wemo_off
+    - - cooking_recipe
+      - cooking_recipe
+    - - qa_currency
+      - qa_currency
+    - - transport_traffic
+      - transport_traffic
+    - - general_quirky
+      - general_quirky
+    - - weather_query
+      - weather_query
+    - - audio_volume_up
+      - audio_volume_up
+    - - email_addcontact
+      - email_addcontact
+    - - takeaway_order
+      - takeaway_order
+    - - email_querycontact
+      - email_querycontact
+    - - iot_hue_lightup
+      - iot_hue_lightup
+    - - recommendation_locations
+      - recommendation_locations
+    - - play_audiobook
+      - play_audiobook
+    - - lists_createoradd
+      - lists_createoradd
+    - - news_query
+      - news_query
+    - - alarm_query
+      - alarm_query
+    - - iot_wemo_on
+      - iot_wemo_on
+    - - general_joke
+      - general_joke
+    - - qa_definition
+      - qa_definition
+    - - social_query
+      - social_query
+    - - music_settings
+      - music_settings
+    - - audio_volume_other
+      - audio_volume_other
+    - - calendar_remove
+      - calendar_remove
+    - - iot_hue_lightdim
+      - iot_hue_lightdim
+    - - calendar_query
+      - calendar_query
+    - - email_sendemail
+      - email_sendemail
+    - - iot_cleaning
+      - iot_cleaning
+    - - audio_volume_down
+      - audio_volume_down
+    - - play_radio
+      - play_radio
+    - - cooking_query
+      - cooking_query
+    - - datetime_convert
+      - datetime_convert
+    - - qa_maths
+      - qa_maths
+    - - iot_hue_lightoff
+      - iot_hue_lightoff
+    - - iot_hue_lighton
+      - iot_hue_lighton
+    - - transport_query
+      - transport_query
+    - - music_likeness
+      - music_likeness
+    - - email_query
+      - email_query
+    - - play_music
+      - play_music
+    - - audio_volume_mute
+      - audio_volume_mute
+    - - social_post
+      - social_post
+    - - alarm_set
+      - alarm_set
+    - - qa_factoid
+      - qa_factoid
+    - - calendar_set
+      - calendar_set
+    - - play_game
+      - play_game
+    - - alarm_remove
+      - alarm_remove
+    - - lists_remove
+      - lists_remove
+    - - transport_taxi
+      - transport_taxi
+    - - recommendation_movies
+      - recommendation_movies
+    - - iot_coffee
+      - iot_coffee
+    - - music_query
+      - music_query
+    - - play_podcasts
+      - play_podcasts
+    - - lists_query
+      - lists_query
+    max_rows: 8000
+  path: null
+  max_items: 4000
+  primary: true
+baselines: []
+search: {}
