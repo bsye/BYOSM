@@ -779,6 +779,17 @@ servers, profiles or exec rules; auth still comes from `CODEX_HOME`), `--ephemer
 JSON string, which is also a valid TOML string. With no `model` the CLI picks its own default. Text only, like
 `claude-code`: images raise `LLMError`. Not yet run against a real Codex install; the tests mock `subprocess.run`.
 
+**Provider detection lists every known provider, found or not.**
+`byosm/llm/detect.py` `detect`, `GET /api/llm/providers`: `KNOWN` names each provider once (label, kind, install hint,
+probe), and the probes run in parallel with a 3 s timeout each. Agents are found on `PATH` (`claude`, `codex`), local
+models by their listing endpoint (Ollama `/api/tags`, LM Studio `/v1/models`), hosted APIs by a key from `secret`
+(environment or `.env`), whose `/v1/models` then fills the model list. Each entry carries a role `config` ready to paste
+into `byosm.yaml`; LM Studio and Ollama use the `openai` provider with a `base_url`, so they need no class of their own.
+A hosted config names `api_key_env`, never the key, so no key value leaves the server. A provider that is not found has
+`available: false`, `config: null` and a one-line `hint`, so the app can show it greyed out. Gotcha: `anthropic` and
+`openai` read `api_key_env` from the process environment; app jobs get `.env` merged in (`byosm/app/jobs.py`), but a
+plain CLI run with a key only in `.env` is detected yet must export it.
+
 **Retries are bounded.**
 `byosm/llm/base.py` `_retry`: JSON parse errors and `LLMError` retry at once; other errors retry only when they look
 transient (rate limit, overload, timeout, connect), with 2, 4, 8 s backoff. `pmap` reports failed items through
