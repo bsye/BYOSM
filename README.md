@@ -250,6 +250,7 @@ Suite `massive` (AmazonScience/massive): 2379 test and 595 calib items. Selectio
 <!-- report:assistant-args -->
 | model | built from | train rows | params | CPU | test span_f1 [95% CI] | calib span_f1 |
 |---|---|---|---|---|---|---|
+| v3 | v1 + train-longer | 12136 (+1977 builtin test) | 70.73M | 11.08ms | 0.734 [0.717, 0.751] | 0.756 |
 | **v2** (promoted) | v1 + train-longer | 12136 (+1977 builtin test) | 70.73M | 14.91ms | 0.734 [0.717, 0.751] | 0.756 |
 | v1 | no recorded parent | 12136 (+1977 builtin test) | 70.73M | 12.87ms | 0.691 [0.673, 0.708] | 0.710 |
 
