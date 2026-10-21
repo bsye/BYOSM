@@ -5,6 +5,7 @@ from .audio import EnergyVAD, SileroVAD
 from .base import BASELINES, Predictor, register_baseline
 from .experiment import ExperimentPredictor
 from .hf import HFClassifier, HFTagger
+from .jev import Jev
 from .zero_shot import ZeroShotLLM
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "ExperimentPredictor",
     "HFClassifier",
     "HFTagger",
+    "Jev",
     "Predictor",
     "SileroVAD",
     "ZeroShotLLM",

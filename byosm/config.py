@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from .spec import TaskSpec
 
 CONFIG_NAME = "byosm.yaml"
+ENV_FILE = ".env"
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "llm": {
@@ -29,6 +30,15 @@ def find_workspace(start: Path | None = None) -> Path:
         if (d / CONFIG_NAME).exists():
             return d
     return p
+
+
+def secret(name: str, ws: Path | None = None) -> str | None:
+    if os.environ.get(name):
+        return os.environ[name]
+    env = (ws or find_workspace()) / ENV_FILE
+    lines = env.read_text().splitlines() if env.exists() else []
+    found = [v.strip().strip("'\"") for k, _, v in (ln.partition("=") for ln in lines) if k.strip() == name]
+    return found[-1] if found else None
 
 
 def load_config(ws: Path | None = None) -> dict[str, Any]:

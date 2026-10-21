@@ -10,6 +10,10 @@ def baseline_identity(pid: str) -> str | None:
         return _llm_identity(pid[4:] or "baseline")
     if pid.startswith("hf:"):
         return pid[3:]
+    if pid == "jev":
+        from ..predictors.jev import jev_identity
+
+        return jev_identity()
     return None
 
 

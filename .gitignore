@@ -19,3 +19,4 @@ specialists/*/experiments/*/report.json
 # Systems: keep the spec, results and board; not data or exports.
 systems/*/evals/
 systems/*/export/
+.env

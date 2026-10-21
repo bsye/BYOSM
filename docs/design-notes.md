@@ -367,6 +367,13 @@ about 800 calib items. Selection compares models on calib, and about 200 items c
 `byosm/evals/suites.py` `_fetch_segments`: frame tasks compute the calib objective per file, so few files make selection
 noisy; segment suites take `max(8, max_files // 4)` calib files.
 
+**Jev is scored like any rival.**
+`byosm/predictors/jev.py`: one choice question per item, the spec's label definitions as the criteria and its
+description as the instructions; the returned probabilities are kept whole. The key comes from `JEV_API_KEY` in the
+environment or the workspace `.env` (`byosm/config.py` `secret`, `.env` is gitignored). Identity is the endpoint and
+`jev-latest`, so a new Jev version behind the same name is not detected; rescore with `--force` after a release.
+Latency is measured through the API, so it includes the network.
+
 **Results are cached by fingerprint, and our weights are not in it.**
 `byosm/evals/suites.py` `fingerprint`, `byosm/evals/board.py` `_cached_or_scored`, `byosm/evals/identity.py`: the cache
 key covers the suite definition (without defaults, like the decision policy), the first `FINGERPRINT_CHARS_PER_FILE` (100,000) characters of each frozen suite file,
