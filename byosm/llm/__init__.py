@@ -8,6 +8,7 @@ from typing import Any
 from .anthropic_provider import AnthropicLLM
 from .base import LLM, LLMError, T
 from .claude_code_provider import ClaudeCodeLLM
+from .codex_provider import CodexLLM
 from .openai_provider import OpenAICompatLLM
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "PROVIDERS",
     "AnthropicLLM",
     "ClaudeCodeLLM",
+    "CodexLLM",
     "LLMError",
     "OpenAICompatLLM",
     "_cache",
@@ -27,6 +29,7 @@ PROVIDERS: dict[str, Callable[..., LLM]] = {
     "anthropic": AnthropicLLM,
     "openai": OpenAICompatLLM,
     "claude-code": ClaudeCodeLLM,
+    "codex": CodexLLM,
 }
 
 

@@ -768,6 +768,17 @@ appends the schema to the prompt.
 `byosm/llm/anthropic_provider.py`: only the model families in `_FALLBACK_PREFIXES` accept server-side refusal fallbacks;
 other models use the plain messages endpoint.
 
+**Codex runs as a sealed, read-only `codex exec`.**
+`byosm/llm/codex_provider.py`: the `codex` provider pipes the prompt on stdin (`codex exec -`) from an empty temp dir
+(`-C`), with `--output-schema` (the `_strict` schema, so the final message is the JSON) and `-o` (the final message is
+read from a file, not scraped from progress output). Isolation flags, taken from the openai/codex `exec` CLI source and
+the non-interactive docs: `--sandbox read-only` (no writes, no network from shell commands), `-c approval_policy="never"`
+(nothing waits for a human), `-c web_search="disabled"`, `--ignore-user-config` and `--ignore-rules` (no user MCP
+servers, profiles or exec rules; auth still comes from `CODEX_HOME`), `--ephemeral` (no session files) and
+`--skip-git-repo-check` (the temp dir is not a repo). The system prompt goes in as `-c developer_instructions=...`, a
+JSON string, which is also a valid TOML string. With no `model` the CLI picks its own default. Text only, like
+`claude-code`: images raise `LLMError`. Not yet run against a real Codex install; the tests mock `subprocess.run`.
+
 **Retries are bounded.**
 `byosm/llm/base.py` `_retry`: JSON parse errors and `LLMError` retry at once; other errors retry only when they look
 transient (rate limit, overload, timeout, connect), with 2, 4, 8 s backoff. `pmap` reports failed items through
