@@ -80,6 +80,14 @@ export type Detail = Summary & {
   baselines: string[]
   runs: Run[]
   data: Record<string, SplitSummary> | null
+  proposals: { from: string; proposals: Proposal[] } | null
+}
+
+export type Proposal = {
+  id: string
+  why: string
+  ops: { op: string; path: string; value: unknown }[]
+  cost?: { minutes: number; new_items: number }
 }
 
 export const runJob = (args: string[]) => post<Job>("/jobs", { args })

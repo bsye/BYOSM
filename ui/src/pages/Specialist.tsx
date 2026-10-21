@@ -13,6 +13,7 @@ import { BoardChart, boardRows } from "./BoardChart"
 import { DataRows } from "./DataRows"
 import { LabelChart } from "./LabelChart"
 import { Playground } from "./Playground"
+import { Proposals } from "./Proposals"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
 
@@ -160,8 +161,9 @@ export function Specialist({ name }: { name: string }) {
           <TabsTrigger value="try">Try it</TabsTrigger>
           <TabsTrigger value="spec">Spec</TabsTrigger>
         </TabsList>
-        <TabsContent value="board">
+        <TabsContent value="board" className="space-y-4">
           <Board d={d} />
+          <Proposals d={d} />
         </TabsContent>
         <TabsContent value="runs">
           <Runs d={d} />
