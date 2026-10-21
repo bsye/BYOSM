@@ -450,6 +450,9 @@ train partition.
 `byosm/improve/rules_data.py` `_more_balanced`: a balanced source asks for 4x per label, capped at what the rarest label
 has. When less than 1.5x is left, `new-split` adds the dataset's largest split that no suite or source reads (for
 example RVL-CDIP train while training on val). `availability()` counts rows after `label_map` and partition filtering.
+It grows the labeled source that supplied the most training rows (a source that failed to load supplied none), and
+fires for any gap to the best baseline: on topic, 1,000 -> 4,000 -> all AG News rows per label took test from 0.903 to
+0.921 to 0.947, the last two steps each under 0.02 behind or ahead of the best baseline.
 
 **Domain-pretrained encoders that never saw the benchmark.**
 `byosm/improve/rules_fit.py` `DOMAIN_ENCODERS`: when the primary suite lags the best baseline by more than 0.02, a

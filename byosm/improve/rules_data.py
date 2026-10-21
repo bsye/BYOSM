@@ -55,7 +55,7 @@ def _curve_note(dg: dict) -> str:
 def _more_data_evidence(dg: dict, lag: float, bb: tuple[str, float] | None) -> str:
     spec, primary = dg["spec"], dg["primary"]
     obj = dg["suites"][primary]["objective"]
-    gap_note = f"{lag:.3f} behind {bb[0]} ({bb[1]:.3f})" if lag > 0.02 else f"below target {spec.objective.target}"
+    gap_note = f"{lag:.3f} behind {bb[0]} ({bb[1]:.3f})" if lag > 0 else f"below target {spec.objective.target}"
     return f"{primary}: {obj:.3f}, " + gap_note + f", with {dg['n_train']} training examples" + _curve_note(dg)
 
 
@@ -84,7 +84,7 @@ def more_data(dg: dict) -> list[dict]:
     spec, out = dg["spec"], []
     lag, bb = gap(dg, dg["primary"])
     below = (dg["suites"].get(dg["primary"], {}).get("objective") or 0) < spec.objective.target
-    if not (lag > 0.02 or below):
+    if not (lag > 0 or below):
         return out
     ev = _more_data_evidence(dg, lag, bb)
     labeled = _richest_labeled(dg)

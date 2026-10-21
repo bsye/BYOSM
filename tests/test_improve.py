@@ -123,3 +123,9 @@ def test_more_data_grows_the_labeled_source_that_supplied_rows():
     assert _richest_labeled(dg)[0] == 1
     dg["rows_by_source"] = {}
     assert _richest_labeled(dg)[0] == 0
+
+
+def test_more_data_is_proposed_for_any_gap_to_a_baseline():
+    spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="a", definition="")])
+    spec.objective.target = 0.5
+    assert "more-data" in proposals(spec, 0.92, 0.93, PLATEAU, 2)
