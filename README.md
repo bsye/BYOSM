@@ -1,5 +1,20 @@
 # BYOSM: Build Your Own Specialist Model
 
+```
+ ____  __   __  ___   ____   __  __
+| __ ) \ \ / / / _ \ / ___| |  \/  |
+|  _ \  \ V / | | | |\___ \ | |\/| |
+| |_) |  | |  | |_| | ___) || |  | |
+|____/   |_|   \___/ |____/ |_|  |_|
+
+  one sentence  ->  a small model that beats the big ones at its job
+```
+
+**Models on Hugging Face:** [bsye](https://huggingface.co/bsye) ·
+[byosm-doctype](https://huggingface.co/bsye/byosm-doctype) ·
+[byosm-intent](https://huggingface.co/bsye/byosm-intent) ·
+[byosm-vad](https://huggingface.co/bsye/byosm-vad)
+
 ## Goal
 
 One sentence and one command give you a small specialist model that beats general models, LLMs included, in its
