@@ -4,6 +4,7 @@ import pytest
 
 from byosm import improve
 from byosm.config import Project
+from byosm.events import EVENTS_ENV, parse
 from byosm.export import export
 from byosm.pipeline import build
 from byosm.spec import compile_spec
@@ -14,7 +15,8 @@ def quiet(_):
 
 
 @pytest.mark.slow
-def test_text_pipeline_end_to_end(ws, load_runtime):
+def test_text_pipeline_end_to_end(ws, load_runtime, monkeypatch, capsys):
+    monkeypatch.setenv(EVENTS_ENV, "1")
     spec = compile_spec("isq", "detect questions")
     spec.data.dev_size, spec.data.per_call = 40, 20
     spec.train.epochs, spec.train.pretrain_steps, spec.train.refine_rounds = 3, 10, 1
@@ -25,6 +27,11 @@ def test_text_pipeline_end_to_end(ws, load_runtime):
     assert p.promoted == "v1"
     board = p.board()
     assert board["v1"]["builtin"]["objective"] > 0.9 and any(k.startswith("llm") for k in board)
+    events = [e for e in map(parse, capsys.readouterr().out.splitlines()) if e]
+    epochs = [e for e in events if e["kind"] == "epoch"]
+    assert epochs[0]["epoch"] == 1 and epochs[0]["epochs"] == 3 and epochs[0]["experiment"] == "v1"
+    scored = [(e["predictor"], e["suite"]) for e in events if e["kind"] == "scored"]
+    assert ("v1", "builtin") in scored
 
     _, _ = improve.propose("isq", use_llm=False, log=quiet)
     proposal = {"id": "x", "why": "", "ops": [{"op": "set", "path": "train.epochs", "value": 2}]}

@@ -12,6 +12,7 @@ import torch
 from .. import jepa
 from ..config import device as pick_device
 from ..data.store import Dataset
+from ..events import emit
 from ..modalities import Modality, get_modality
 from ..model import SpecialistModel, count_params
 from ..spec import TaskSpec
@@ -69,12 +70,14 @@ def _dev_epoch(
     dev_raw: list[Any],
     history: list[dict],
     log: Callable[[str], None],
+    exp: str,
 ) -> dict[str, Any]:
     spec = trainer.spec
     ev = evaluate_rows(trainer.selected, trainer.mod, spec, dev_rows, dev_raw, trainer.dev, None, calibrate=True)
     m = ev["metrics"]
     loss = float(np.mean(losses))
     history.append({"epoch": ep, "loss": loss, "dev_objective": m["objective"], "dev_macro_f1": m["macro_f1"]})
+    emit("epoch", **{**history[-1], "epoch": ep + 1}, epochs=spec.train.epochs, specialist=spec.name, experiment=exp)
     log(
         f"  epoch {ep + 1}/{spec.train.epochs} loss={np.mean(losses):.4f} "
         f"dev {spec.objective.metric}={m['objective']:.4f} macro_f1={m['macro_f1']:.4f}"
@@ -96,7 +99,7 @@ def _snapshot(sel: torch.nn.Module, ep: int, ev: dict[str, Any]) -> dict[str, An
 
 
 def _select(
-    trainer: Trainer, dev_rows: list[dict], dev_raw: list[Any], log: Callable[[str], None]
+    trainer: Trainer, dev_rows: list[dict], dev_raw: list[Any], log: Callable[[str], None], exp: str
 ) -> tuple[dict[str, Any], list[dict]]:
     tc = trainer.spec.train
     best: dict[str, Any] = {"objective": -1.0}
@@ -104,7 +107,7 @@ def _select(
     bad = 0
     for ep in range(tc.epochs):
         losses = trainer.epoch(ep)
-        ev = _dev_epoch(trainer, ep, losses, dev_rows, dev_raw, history, log)
+        ev = _dev_epoch(trainer, ep, losses, dev_rows, dev_raw, history, log, exp)
         m = ev["metrics"]
         if (m["objective"], m["macro_f1"]) > (best["objective"], best.get("macro_f1", -1)):
             best = _snapshot(trainer.selected, ep, ev)
@@ -153,7 +156,7 @@ def fit(
     weight = class_weight(spec, train_t[:n_labeled], dev)
     trainer = Trainer(spec, mod, model, dev, train_raw, train_t, soft, weight, rng)
     trainer.log_recipe(log)
-    best, history = _select(trainer, dev_rows, dev_raw, log)
+    best, history = _select(trainer, dev_rows, dev_raw, log, run_dir.name)
     counts = {
         "n_train": len(train_rows),
         "n_dev": len(dev_rows),

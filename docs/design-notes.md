@@ -742,3 +742,9 @@ registers their `@app.command`s, so a new command module must be imported there.
 **Commands that just scored print the detailed board.**
 `byosm/cli/train.py`, `byosm/cli/iterate.py`: `build`, `eval` and `auto` call `board(name, detail=True)`, so the CI and
 P/R columns appear after a run; plain `byosm board` hides them unless `--detail` is passed.
+
+**App jobs report progress as typed events on stdout.**
+`byosm/events.py`, `byosm/app/jobs.py`: a job is a `byosm` subprocess, so library code reports progress by printing
+one `@event <json>` line, and only when the app sets `BYOSM_EVENTS=1`. Plain CLI output stays unchanged, the library
+needs no import of the app, and the runner publishes each line as a `metric` event and stores it next to the job's log
+in `.byosm/app.sqlite`, so history and charts survive a restart.

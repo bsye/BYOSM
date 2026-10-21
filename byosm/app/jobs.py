@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import os
 import queue
 import subprocess
@@ -13,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from ..config import MAX_PARALLEL_JOBS
+from ..events import EVENTS_ENV, parse
+from .hub import Hub
 from .store import JOB_FIELDS, JobStore
 
 ALLOWED_COMMANDS = (
@@ -56,28 +57,6 @@ class Job:
         return {k: getattr(self, k) for k in JOB_FIELDS}
 
 
-class Hub:
-    def __init__(self) -> None:
-        self.subs: set[tuple[asyncio.AbstractEventLoop, asyncio.Queue]] = set()
-        self.lock = threading.Lock()
-
-    def publish(self, event: dict[str, Any]) -> None:
-        with self.lock:
-            subs = list(self.subs)
-        for loop, q in subs:
-            loop.call_soon_threadsafe(q.put_nowait, event)
-
-    def subscribe(self) -> tuple[asyncio.AbstractEventLoop, asyncio.Queue]:
-        sub = (asyncio.get_running_loop(), asyncio.Queue())
-        with self.lock:
-            self.subs.add(sub)
-        return sub
-
-    def unsubscribe(self, sub: tuple[asyncio.AbstractEventLoop, asyncio.Queue]) -> None:
-        with self.lock:
-            self.subs.discard(sub)
-
-
 class Runner:
     def __init__(self, ws: Path, hub: Hub, parallel: int = MAX_PARALLEL_JOBS) -> None:
         self.ws, self.hub, self.store = ws, hub, JobStore(ws)
@@ -108,8 +87,9 @@ class Runner:
             proc.terminate()
         return job
 
-    def lines(self, job_id: str) -> list[str]:
-        return self.store.lines(self.jobs[job_id].id)
+    def detail(self, job_id: str) -> dict[str, Any]:
+        job = self.jobs[job_id]
+        return {**job.public(), "lines": self.store.lines(job.id), "events": self.store.events(job.id)}
 
     def _restored(self, row: dict[str, Any]) -> Job:
         job = Job(**row)
@@ -135,6 +115,17 @@ class Runner:
         self.store.line(job.id, line)
         self.hub.publish({"type": "log", "job": job.id, "line": line})
 
+    def _metric(self, job: Job, data: dict[str, Any]) -> None:
+        self.store.event(job.id, data)
+        self.hub.publish({"type": "metric", "job": job.id, "data": data})
+
+    def _output(self, job: Job, line: str) -> None:
+        data = parse(line)
+        if data is None:
+            self._line(job, line)
+        else:
+            self._metric(job, data)
+
     def _work(self) -> None:
         while True:
             job = self.todo.get()
@@ -144,7 +135,14 @@ class Runner:
     def _run(self, job: Job) -> None:
         from ..config import env_file
 
-        env = {**os.environ, **env_file(self.ws), "PYTHONUNBUFFERED": "1", "COLUMNS": TERMINAL_COLUMNS, "NO_COLOR": "1"}
+        env = {
+            **os.environ,
+            **env_file(self.ws),
+            "PYTHONUNBUFFERED": "1",
+            "COLUMNS": TERMINAL_COLUMNS,
+            "NO_COLOR": "1",
+            EVENTS_ENV: "1",
+        }
         job.started = time.time()
         self._status(job, "running")
         proc = subprocess.Popen(
@@ -164,7 +162,7 @@ class Runner:
         for raw in proc.stdout or []:
             for line in raw.rstrip("\n").split("\r"):
                 if line.strip():
-                    self._line(job, line)
+                    self._output(job, line)
         job.code, job.ended = proc.wait(), time.time()
         with self.lock:
             del self.procs[job.id]

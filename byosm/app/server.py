@@ -11,7 +11,8 @@ from pydantic import BaseModel
 
 from ..config import MAX_PARALLEL_JOBS
 from . import catalog, keys
-from .jobs import Hub, Runner
+from .hub import Hub
+from .jobs import Runner
 
 STATIC_DIR = Path(__file__).parent / "static"
 LOCAL_HOSTS = ["127.0.0.1", "localhost"]
@@ -94,8 +95,7 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.get("/api/jobs/{job_id}", dependencies=[auth])
     def job(job_id: str) -> dict:
-        lines = _missing(runner.lines, job_id)
-        return {**runner.jobs[job_id].public(), "lines": lines}
+        return _missing(runner.detail, job_id)
 
     @app.post("/api/jobs/{job_id}/cancel", dependencies=[auth])
     def cancel(job_id: str) -> dict:

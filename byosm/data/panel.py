@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 
+from ..events import emit
 from ..spec import TaskSpec
 from .store import record, write
 
@@ -71,6 +72,7 @@ def teacher_probs(
             db.executemany("insert or replace into probs values (?, ?, ?)", [(tkey, k, v) for k, v in fresh.items()])
             db.commit()
             got.update(fresh)
+            emit("teacher", teacher=teacher, done=start + len(part), total=len(todo), specialist=spec.name)
     return np.array([json.loads(got[k]) for k in keys], np.float32)
 
 

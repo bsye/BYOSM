@@ -14,6 +14,8 @@ create table if not exists jobs (
 );
 create table if not exists lines (job text, line text);
 create index if not exists lines_job on lines (job);
+create table if not exists events (job text, data text);
+create index if not exists events_job on events (job);
 """
 
 
@@ -42,9 +44,16 @@ class JobStore:
     def line(self, job_id: str, line: str) -> None:
         self._write("insert into lines values (?, ?)", (job_id, line))
 
+    def event(self, job_id: str, data: dict[str, Any]) -> None:
+        self._write("insert into events values (?, ?)", (job_id, json.dumps(data)))
+
     def jobs(self) -> list[dict[str, Any]]:
         rows = self._read(f"select {', '.join(JOB_FIELDS)} from jobs order by created")
         return [{**dict(zip(JOB_FIELDS, r, strict=True)), "args": json.loads(r[1])} for r in rows]
 
     def lines(self, job_id: str) -> list[str]:
         return [r[0] for r in self._read("select line from lines where job = ? order by rowid", (job_id,))]
+
+    def events(self, job_id: str) -> list[dict[str, Any]]:
+        rows = self._read("select data from events where job = ? order by rowid", (job_id,))
+        return [json.loads(r[0]) for r in rows]

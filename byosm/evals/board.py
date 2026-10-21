@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import Project
+from ..events import emit
 from ..predictors import ExperimentPredictor, Predictor, get_baseline
 from ..spec import EvalSuite, TaskSpec
 from .dumps import _dumps
@@ -82,6 +83,7 @@ def _cached_or_scored(
     except Exception as ex:
         log(f"  {pid} failed on {suite}: {type(ex).__name__}: {ex}")
         return None
+    emit("scored", predictor=pid, predictor_kind=kind, suite=suite, objective=r.get("objective"), specialist=base.name)
     r["fingerprint"] = fp
     if identity is not None:
         r["identity"] = identity
