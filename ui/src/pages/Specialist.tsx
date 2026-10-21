@@ -14,6 +14,7 @@ import { DataRows } from "./DataRows"
 import { LabelChart } from "./LabelChart"
 import { Playground } from "./Playground"
 import { Runs } from "./Runs"
+import { SizeChart } from "./SizeChart"
 
 const ACTIONS: { label: string; args: (n: string) => string[] }[] = [
   { label: "Build", args: (n) => ["build", n] },
@@ -46,6 +47,7 @@ function Board({ d }: { d: Detail }) {
       </CardHeader>
       <CardContent className="space-y-6">
         {rows.length ? <BoardChart rows={rows} /> : <p className="text-muted-foreground text-sm">Nothing scored yet.</p>}
+        <SizeChart d={d} />
         <Table>
           <TableHeader>
             <TableRow>

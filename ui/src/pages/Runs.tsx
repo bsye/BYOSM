@@ -41,7 +41,7 @@ export function Runs({ d }: { d: Detail }) {
               <LineChart data={data} margin={{ left: 8, right: 8 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="epoch" tickLine={false} axisLine={false} />
-                <YAxis domain={["auto", "auto"]} tickLine={false} axisLine={false} width={44} />
+                <YAxis domain={["auto", "auto"]} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => Number(v).toFixed(2)} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
                 {runs.map((r) => (

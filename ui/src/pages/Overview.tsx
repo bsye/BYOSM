@@ -27,7 +27,7 @@ export function Overview({ items }: { items: Summary[] }) {
           <BarChart data={data}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="name" tickLine={false} axisLine={false} />
-            <YAxis domain={[0, 1]} tickLine={false} axisLine={false} width={40} />
+            <YAxis domain={[0, 1]} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => Number(v).toFixed(2)} />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
             <Bar dataKey="ours" fill="var(--color-ours)" radius={4} />

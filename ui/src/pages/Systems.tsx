@@ -35,7 +35,7 @@ function SuiteCard({ name, suite }: { name: string; suite: Suite }) {
           <BarChart data={data}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="rival" tickLine={false} axisLine={false} />
-            <YAxis domain={[0, 1]} tickLine={false} axisLine={false} width={40} />
+            <YAxis domain={[0, 1]} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => Number(v).toFixed(2)} />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
             {Object.keys(config).map((k) => (
