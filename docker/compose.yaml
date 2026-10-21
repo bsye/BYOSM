@@ -1,0 +1,38 @@
+name: byosm
+
+x-hardened: &hardened
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: [/tmp]
+  restart: unless-stopped
+
+services:
+  app:
+    <<: *hardened
+    build:
+      context: ..
+      dockerfile: docker/app.Dockerfile
+    image: byosm-app
+    ports: ["127.0.0.1:8765:8765"]
+    volumes:
+      - ${BYOSM_WORKSPACE:-..}:/workspace
+      - byosm-cache:/cache
+    env_file:
+      - path: ${BYOSM_WORKSPACE:-..}/.env
+        required: false
+    environment:
+      BYOSM_APP_TOKEN: ${BYOSM_APP_TOKEN:?set BYOSM_APP_TOKEN to a long random string}
+      BYOSM_APP_HOSTS: ${BYOSM_APP_HOSTS:-}
+      XDG_CACHE_HOME: /cache
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  intent:
+    <<: *hardened
+    profiles: [models]
+    image: byosm-intent
+    pull_policy: never
+    ports: ["127.0.0.1:8800:8800"]
+
+volumes:
+  byosm-cache:
