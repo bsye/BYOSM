@@ -243,6 +243,8 @@ byosm export vad && byosm predict vad clip.wav
 |---|---|
 | `byosm "<task>" [--budget 6] [--publish repo]` | the whole thing: spec, benchmark, rivals, experiments, distill, export |
 | `byosm auto <name>` | resume a specialist where it stopped |
+| `byosm request-data <name>` | a template to fill (csv and xlsx) and the rows needed per label; written for you when no dataset fits |
+| `byosm check-data <name> <file>` | check a filled table (format, coverage, leaks, likely mislabels), then train on it |
 | `byosm new <name> "<task>"` | just compile the spec |
 | `byosm build <name> [--exp vN]` | data, pretrain, train, evaluate, promote |
 | `byosm eval <name>` · `byosm board <name>` | score everything, show the leaderboard |

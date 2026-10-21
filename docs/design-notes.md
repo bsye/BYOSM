@@ -143,6 +143,21 @@ get their Audio/Image columns cast to `decode=False`, so the `datasets` decoder 
 `byosm/data/hf_source/parquet.py` `_class_names`: the `huggingface` metadata in the parquet schema is read when present,
 which avoids loading the dataset builder; the builder info is loaded only as a fallback.
 
+**When no dataset fits, ask for one instead of failing.**
+`byosm/data/request.py`, `check.py`, `probe.py`: the autopilot stops before the first build when some labels have no
+labeled source and the input cannot be generated (anything but text with `synthetic`), and writes
+`data_request/`: `template.csv`, `template.xlsx` (label and split dropdowns, a `labels` sheet with definitions and
+borderline tips), `request.md` and `request.json`. Test rows are sized so accuracy is measured to within 3 points at
+95%: `1.96² p(1-p) / 0.03²` with `p` the target capped at 0.9, because a near-perfect target would otherwise ask for
+almost nothing. Training rows start at 50 per label (200 recommended) and double for labels the LLM calls confusable;
+the learning curve in `byosm improve` refines that after the first build. `check-data` blocks on rows that would
+corrupt training or the score (unknown labels, missing files, empty inputs, the same input with two labels, a test row
+duplicated in training) and warns on shortfalls. Likely mislabels come from a cross-validated logistic probe on MiniLM
+embeddings of the text (or of the document's text, OCR'd and cached): only rows where the probe is confident and
+disagrees are flagged, and the judge LLM reviews at most 50 of them. A usable table becomes `data.local_dir`; a table
+path there reads rows, a folder keeps the one-sub-folder-per-label layout, so no new `data:` field (and no data key
+change) was needed. Filled tables are data and are git-ignored.
+
 ## OCR and documents
 
 **A page has two views and the model uses both.**
