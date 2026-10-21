@@ -11,7 +11,9 @@ import { ms, params, score } from "@/format"
 import { go } from "@/route"
 import { BoardChart, boardRows } from "./BoardChart"
 import { DataRows } from "./DataRows"
+import { LabelChart } from "./LabelChart"
 import { Playground } from "./Playground"
+import { Runs } from "./Runs"
 
 const ACTIONS: { label: string; args: (n: string) => string[] }[] = [
   { label: "Build", args: (n) => ["build", n] },
@@ -151,6 +153,7 @@ export function Specialist({ name }: { name: string }) {
       <Tabs defaultValue="board">
         <TabsList>
           <TabsTrigger value="board">Board</TabsTrigger>
+          <TabsTrigger value="runs">Experiments</TabsTrigger>
           <TabsTrigger value="data">Data</TabsTrigger>
           <TabsTrigger value="try">Try it</TabsTrigger>
           <TabsTrigger value="spec">Spec</TabsTrigger>
@@ -158,7 +161,11 @@ export function Specialist({ name }: { name: string }) {
         <TabsContent value="board">
           <Board d={d} />
         </TabsContent>
-        <TabsContent value="data">
+        <TabsContent value="runs">
+          <Runs d={d} />
+        </TabsContent>
+        <TabsContent value="data" className="space-y-4">
+          {d.data && d.task_type === "classify" && <LabelChart data={d.data} />}
           <DataRows name={name} />
         </TabsContent>
         <TabsContent value="try">

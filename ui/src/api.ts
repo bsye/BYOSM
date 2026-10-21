@@ -57,10 +57,24 @@ export type Summary = {
   exported: boolean
 }
 
+export type Run = {
+  name: string
+  parent: string | null
+  params: number | null
+  n_train: number | null
+  train_seconds: number | null
+  best_epoch: number | null
+  history: { epoch: number; loss: number; dev: number }[]
+}
+
+export type SplitSummary = { n: number; labels: Record<string, number> }
+
 export type Detail = Summary & {
   spec: Record<string, unknown>
   board: Record<string, Record<string, Result>>
   baselines: string[]
+  runs: Run[]
+  data: Record<string, SplitSummary> | null
 }
 
 export const runJob = (args: string[]) => post<Job>("/jobs", { args })
