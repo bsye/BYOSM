@@ -45,7 +45,7 @@ def _listed(p: Project, hidden: int) -> str:
 def _footer(p: Project, spec: TaskSpec, prim: str, notes: tuple[set[str], int, bool]) -> str:
     stale, hidden, any_folded = notes
     r = p.board().get(p.promoted or "", {}).get(prim, {})
-    unit = "recordings" if spec.task_type == "frame" else "items"
+    unit = "recordings" if spec.modality == "audio" else "items"
     sizes = f"{r.get('n_test', '-')} test and {r.get('n_calib', '-')} calib {unit}"
     text = (
         f"Suite `{prim}` ({suite_dataset(spec, prim)[0]}): {sizes}. Selection uses calib; test is only reported. "
