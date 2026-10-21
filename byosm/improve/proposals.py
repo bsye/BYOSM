@@ -11,6 +11,8 @@ from .diagnosis import diagnose
 from .paths import apply_ops
 from .registry import rule_proposals, unique
 
+PROPOSALS_FILE = "proposals.json"
+
 
 def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print) -> tuple[dict, list[dict]]:
     dg = diagnose(name)
@@ -18,7 +20,7 @@ def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print)
     for pr in props:
         pr["cost"] = estimate(dg, pr)
     p = Project(name)
-    (p.root / "proposals.json").write_text(json.dumps({"from": dg["experiment"], "proposals": props}, indent=2))
+    (p.root / PROPOSALS_FILE).write_text(json.dumps({"from": dg["experiment"], "proposals": props}, indent=2))
     return dg, props
 
 
@@ -26,7 +28,7 @@ def apply(name: str, ids: list[str], exp: str | None = None) -> str:
     from ..pipeline import next_exp
 
     p = Project(name)
-    saved = json.loads((p.root / "proposals.json").read_text())
+    saved = json.loads((p.root / PROPOSALS_FILE).read_text())
     chosen = [pr for pr in saved["proposals"] if pr["id"] in ids]
     if len(chosen) != len(ids):
         raise KeyError(f"unknown proposal ids: {set(ids) - {pr['id'] for pr in chosen}}")

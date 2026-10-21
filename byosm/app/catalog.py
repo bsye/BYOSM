@@ -8,6 +8,7 @@ from typing import Any
 from ..auto.standing import best_baseline
 from ..config import Project, list_projects
 from ..data.store import SPLITS, Dataset
+from ..improve.proposals import PROPOSALS_FILE
 from ..spec import TaskSpec
 
 MAX_PAGE = 500
@@ -85,6 +86,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "board": board,
         "baselines": spec.baselines,
         "runs": [_run(p, e) for e in p.experiments()],
+        "proposals": json.loads(proposals.read_text()) if (proposals := p.root / PROPOSALS_FILE).exists() else None,
         "data": Dataset(dd).summary() if (dd / "train.jsonl").exists() else None,
     }
 
