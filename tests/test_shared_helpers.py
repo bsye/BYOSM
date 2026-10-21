@@ -48,3 +48,12 @@ def test_compiled_specs_keep_only_datasets_that_exist(monkeypatch):
     monkeypatch.setattr(hub, "exists", lambda d: d == "real/one")
     kept = compiler._real([{"dataset": "real/one", "role": "labeled"}, {"dataset": "made/up", "role": "labeled"}])
     assert [c["dataset"] for c in kept] == ["real/one"]
+
+
+def test_label_names_match_exactly_or_by_abbreviation():
+    from byosm.text import match_label
+
+    ours = ["world", "sports", "business", "science_technology", "other"]
+    assert [match_label(t, ours) for t in ["World", "Sci/Tech", "neutral"]] == ["world", "science_technology", None]
+    assert match_label("fear", ["fear", "fearful"]) == "fear"
+    assert match_label("sci", ["science", "scifi"]) is None

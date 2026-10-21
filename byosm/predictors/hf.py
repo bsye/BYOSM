@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from ..spec import TaskSpec
-from ..text import normalize
+from ..text import match_label
 from .base import Predictor
 
 BATCH = 32
@@ -31,8 +31,9 @@ class HFClassifier(Predictor):
         cfg = AutoConfig.from_pretrained(repo)
         self.visual = spec.modality in ("image", "document")
         self.proc, self.model = load_model(repo, self.visual)
-        ours = {normalize(n): i for i, n in enumerate(spec.label_names)}
-        self.map = {int(k): ours[normalize(v)] for k, v in cfg.id2label.items() if normalize(v) in ours}
+        names = spec.label_names
+        matched = {int(k): match_label(v, names) for k, v in cfg.id2label.items()}
+        self.map = {k: names.index(m) for k, m in matched.items() if m is not None}
         missing = set(range(len(spec.labels))) - set(self.map.values())
         if not self.map:
             theirs = list(cfg.id2label.values())[:8]

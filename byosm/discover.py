@@ -9,7 +9,7 @@ from .data import hf_source
 from .data.hf_source.hub import search_terms
 from .llm import get_llm
 from .spec import EvalSuite, HFSource, TaskSpec
-from .text import normalize
+from .text import match_label
 
 TASK_TAG = {
     ("text", "classify"): "text-classification",
@@ -23,14 +23,14 @@ TASK_TAG = {
 HELD_OUT_SPLITS = ("test", "validation", "val", "valid")
 
 
-def _model_labels(repo: str) -> set[str] | None:
+def _model_labels(repo: str) -> list[str] | None:
     from huggingface_hub import hf_hub_download
 
     try:
         cfg = json.loads(Path(hf_hub_download(repo, "config.json")).read_text())
     except Exception:
         return None
-    return {normalize(v) for v in (cfg.get("id2label") or {}).values()}
+    return list((cfg.get("id2label") or {}).values())
 
 
 def _search_models(q: str, tag: str) -> list[Any]:
@@ -46,7 +46,6 @@ def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap:
     tag = TASK_TAG.get((spec.modality, spec.task_type))
     if not tag or spec.task_type != "classify":
         return []
-    ours = {normalize(n) for n in spec.label_names}
     seen, found = set(), []
     for q in search_terms(queries):
         for m in _search_models(q, tag):
@@ -56,7 +55,7 @@ def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap:
             theirs = _model_labels(m.id)
             if theirs is None:
                 continue
-            cover = len(ours & theirs) / max(1, len(ours))
+            cover = len({match_label(t, spec.label_names) for t in theirs} - {None}) / max(1, len(spec.label_names))
             if cover >= min_overlap:
                 dl = getattr(m, "downloads", 0) or 0
                 found.append((dl, m.id, f"{tag} model, {dl} downloads, covers {cover:.0%} of our labels"))
