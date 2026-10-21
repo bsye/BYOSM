@@ -33,9 +33,16 @@ def _collect(
         return np.concatenate([a for a, _ in per]), np.concatenate([b for _, b in per]), per
     idx = spec.label_index
     y = np.array([idx[r["label"]] for r in rows])
-    if getattr(pred, "wants_rows", False):
-        return pred.probs_rows(rows, mod), y, []
-    return pred.probs_batch(mod.load_many(rows)), y, []
+    probs = pred.probs_rows(rows, mod) if getattr(pred, "wants_rows", False) else pred.probs_batch(mod.load_many(rows))
+    return _within(probs, spec, pred.label_space), y, []
+
+
+def _within(probs: np.ndarray, spec: TaskSpec, space: list[str] | None) -> np.ndarray:
+    if not space:
+        return probs
+    out = np.array(probs, np.float32)
+    out[:, [i for i, n in enumerate(spec.label_names) if n not in space]] = 0
+    return out
 
 
 def _hyst(spec: TaskSpec, per: list, act: float) -> tuple[np.ndarray, np.ndarray]:
@@ -132,8 +139,11 @@ def _add_speed(out: dict[str, Any], pred: Predictor, spec: TaskSpec, test: list[
     out["latency_ms"] = round(lat, 3) if lat is not None and not math.isnan(lat) else None
 
 
-def score(pred: Predictor, spec: TaskSpec, calib: list[dict], test: list[dict], root: Path) -> dict[str, Any]:
+def score(
+    pred: Predictor, spec: TaskSpec, calib: list[dict], test: list[dict], root: Path, space: list[str] | None = None
+) -> dict[str, Any]:
     t0 = time.time()
+    pred.label_space = space if space and space != spec.label_names else None
     pc, yc, perc = _collect(pred, spec, calib, root) if calib else (None, None, [])
     pt, yt, pert = _collect(pred, spec, test, root)
     out: dict[str, Any] = {"predictor": pred.id, "kind": pred.kind, "params": pred.params}

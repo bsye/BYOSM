@@ -33,7 +33,7 @@ class Scorer:
         self.failing = set()
         self.downloads = False
 
-    def __call__(self, pred, spec, calib, test, root):
+    def __call__(self, pred, spec, calib, test, root, space=None):
         self.calls.append(pred)
         if self.downloads and pred.startswith("hf:"):
             _set_hf_revision(self.ws, "fresh")

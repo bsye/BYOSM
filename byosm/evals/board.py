@@ -14,7 +14,7 @@ from .scoring import score
 from .suites import fingerprint, materialize
 
 Job = tuple[str, str, Callable[[], Predictor]]
-SuiteData = tuple[list[dict], list[dict], Path]
+SuiteData = tuple[list[dict], list[dict], Path, list[str]]
 
 
 def _cache(p: Project, pred_kind: str, pid: str, suite: str) -> Path:
@@ -70,14 +70,14 @@ def _cached_or_scored(
     p: Project, base: TaskSpec, suite: str, job: Job, fp: str, force: bool, data: SuiteData, log: Callable[[str], None]
 ) -> dict | None:
     kind, pid, make = job
-    calib, test, root = data
+    calib, test, root, space = data
     cache = _cache(p, kind, pid, suite)
     cached = json.loads(cache.read_text()) if not force and cache.exists() else {}
     if _fresh(cache, cached, fp, kind, pid, log):
         return cached
     log(f"  scoring {pid} on {suite} ({len(test)} test items)...")
     try:
-        r = score(make(), base, calib, test, root)
+        r = score(make(), base, calib, test, root, space)
         identity = _identity(kind, pid)
     except Exception as ex:
         log(f"  {pid} failed on {suite}: {type(ex).__name__}: {ex}")
@@ -112,7 +112,7 @@ def run(
     for suite in base.evals:
         if suites and suite.name not in suites:
             continue
-        data = materialize(p, base, suite, log)
+        data = (*materialize(p, base, suite, log), suite.label_space(base.label_names))
         if not data[1]:
             log(f"  suite {suite.name}: empty, skipped")
             continue

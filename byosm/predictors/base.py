@@ -22,6 +22,7 @@ class Predictor:
     modalities: tuple[str, ...] = ()
     task_types: tuple[str, ...] = ("classify", "frame")
     chunk_ms: float | None = None
+    label_space: list[str] | None = None
 
     def __init__(self, spec: TaskSpec):
         self.spec = spec

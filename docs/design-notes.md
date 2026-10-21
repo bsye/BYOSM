@@ -275,6 +275,13 @@ fallback for tiny-cnn or when the processor has none.
 spec's labels and is scored by the same code. Calib probabilities fit the decision policy; test probabilities give the
 objective, P/R/F1 and, for binary tasks with both classes present, ROC-AUC and AP.
 
+**Every predictor answers inside the benchmark's label space.**
+`EvalSuite.label_space`, `byosm/evals/scoring.py` `_within`, `byosm/predictors/zero_shot.py`: a spec may carry labels
+a public benchmark never uses (the autopilot adds a catch-all `other`). The suite's declared `label_map` targets are
+that benchmark's label space; the LLM is offered only those labels and every other predictor has the rest masked before
+the argmax. It comes from the suite definition, never from the gold labels. Without it, Qwen 3.8 put 37% of
+dair-ai/emotion test items in `other` and scored 0.40. A narrowed space is part of the suite fingerprint.
+
 **Every experiment is scored with the base decision policy.**
 `byosm/evals/board.py` `_experiment_predictor`: the experiment's own `decision` is replaced by the base spec's, so all
 experiments and baselines are compared under one policy. `decision.*` is not an improve path.

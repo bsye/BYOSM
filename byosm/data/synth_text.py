@@ -10,14 +10,14 @@ from .prompts import ANALYZE_SYSTEM, EVAL_SYSTEM, GEN_SYSTEM, JUDGE_SYSTEM, REFI
 from .store import dedupe, record
 
 
-def _label_block(spec: TaskSpec) -> str:
-    return "\n".join(f'- "{lab.name}": {lab.definition}' for lab in spec.labels)
+def _label_block(spec: TaskSpec, names: list[str] | None = None) -> str:
+    return "\n".join(f'- "{lab.name}": {lab.definition}' for lab in spec.labels if names is None or lab.name in names)
 
 
-def _context(spec: TaskSpec) -> str:
+def _context(spec: TaskSpec, names: list[str] | None = None) -> str:
     return (
         f"Task: {spec.summary or spec.description}\nInputs: {spec.input_description}\nLanguages: {', '.join(spec.languages)}\n"
-        f"Labels:\n{_label_block(spec)}"
+        f"Labels:\n{_label_block(spec, names)}"
     )
 
 

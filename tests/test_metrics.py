@@ -50,3 +50,16 @@ def test_frame_units_are_files_with_the_flat_objective():
     good = np.where(rng.random(600) < 0.9, y, (y + 1) % 3)
     fu = units(3, y, good, groups=[100, 200, 300])
     assert len(fu["cm"]) == 3 and abs(objective_from_cm(spec, _cms(fu, 3).sum(0)) - (good == y).mean()) < 1e-9
+
+
+def test_scoring_stays_inside_the_benchmark_label_space():
+    from byosm.evals.scoring import _within
+    from byosm.spec import EvalSuite, HFSource
+
+    spec = TaskSpec(name="t", description="", modality="text", labels=labels("joy", "anger", "other"))
+    suite = EvalSuite(name="b", kind="hf", source=HFSource(dataset="d", label_map=[["0", "joy"], ["1", "anger"]]))
+    space = suite.label_space(spec.label_names)
+    assert space == ["joy", "anger"]
+    assert EvalSuite(name="builtin").label_space(spec.label_names) == spec.label_names
+    probs = np.array([[0.2, 0.3, 0.5], [0.6, 0.1, 0.3]], np.float32)
+    assert _within(probs, spec, space).argmax(-1).tolist() == [1, 0]

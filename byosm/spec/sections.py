@@ -96,6 +96,10 @@ class EvalSuite(BaseModel):
     max_items: int = 400
     primary: bool = False
 
+    def label_space(self, names: list[str]) -> list[str]:
+        targets = {b for _, b in self.source.label_map} if self.source else set()
+        return [n for n in names if n in targets] or names
+
 
 class TrainCfg(BaseModel):
     pretrain_steps: int = 300
