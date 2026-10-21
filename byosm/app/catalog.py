@@ -8,6 +8,7 @@ from typing import Any
 from ..auto.standing import best_baseline
 from ..config import Project, list_projects
 from ..data.store import SPLITS, Dataset
+from ..hub.facts import suite_dataset
 from ..improve.proposals import PROPOSALS_FILE
 from ..spec import TaskSpec
 
@@ -43,6 +44,7 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
         "labels": len(s.labels),
         "metric": s.objective.metric,
         "primary_suite": prim,
+        "benchmark": suite_dataset(s, prim)[0].rpartition("/")[2],
         "promoted": p.promoted,
         "score": best.get("objective"),
         "rival": {"name": rival[0], "score": board[rival[0]][prim].get("objective")} if rival else None,
