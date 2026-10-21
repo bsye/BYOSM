@@ -85,6 +85,10 @@ class Project:
         return self.data_dir_for(TaskSpec.load(sp if sp.exists() else self.spec_path))
 
     @property
+    def reviewed_path(self) -> Path:
+        return self.root / "reviewed.jsonl"
+
+    @property
     def runs_dir(self) -> Path:
         return self.root / "experiments"
 

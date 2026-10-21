@@ -12,11 +12,10 @@ import numpy as np
 
 from ..events import emit
 from ..spec import TaskSpec
-from .store import record, write
+from .review import REVIEW_FILE, REVIEWED_SOURCE, review_rows, write_review
+from .store import record
 
 PANEL_FILE = "panel.json"
-REVIEW_FILE = "panel_review.jsonl"
-REVIEW_ROWS = 200
 CACHE_DB = "teachers.sqlite"
 CACHE_EVERY = 400
 ACCURACY_FLOOR_MARGIN = 0.01
@@ -97,22 +96,13 @@ def load_panel(data_dir: Path) -> dict | None:
     return json.loads(path.read_text()) if path.exists() else None
 
 
-def _review(spec: TaskSpec, pool: list[dict], post: np.ndarray, votes: dict[str, np.ndarray]) -> list[dict]:
-    names = spec.label_names
-    order = np.argsort(post.max(1))[:REVIEW_ROWS]
-    return [
-        {
-            "input": pool[i]["input"],
-            "panel": names[int(post[i].argmax())],
-            "sure": round(float(post[i].max()), 3),
-            **{t: names[int(v[i].argmax())] for t, v in votes.items()},
-        }
-        for i in order
-    ]
-
-
 def label_pool(
-    spec: TaskSpec, splits: dict[str, list[dict]], unlabeled: list[dict], data_dir: Path, log: Callable[[str], None]
+    spec: TaskSpec,
+    splits: dict[str, list[dict]],
+    unlabeled: list[dict],
+    data_dir: Path,
+    log: Callable[[str], None],
+    reviewed: dict[str, str] | None = None,
 ) -> list[dict]:
     if spec.task_type != "classify":
         raise ValueError("teachers label classification tasks only")
@@ -120,7 +110,8 @@ def label_pool(
     seen = {str(r["input"]) for part in splits.values() for r in part}
     pool = list({str(r["input"]): r for r in unlabeled if str(r["input"]) not in seen}.values())
     random.Random(spec.name).shuffle(pool)
-    pool = pool[: spec.data.teacher_rows]
+    human = {k: v for k, v in (reviewed or {}).items() if v in spec.label_index}
+    pool = sorted(pool, key=lambda r: str(r["input"]) not in human)[: spec.data.teacher_rows]
     y = np.array([spec.label_index[r["label"]] for r in gold])
     teachers = spec.data.teachers
     on_gold = {t: teacher_probs(spec, t, gold, data_dir, log) for t in teachers}
@@ -135,11 +126,12 @@ def label_pool(
         "panel_on_labelled": accuracy(combine([on_gold[t] for t in teachers], accs, prior), y),
         "n_labelled": len(gold),
         "n_pool": len(pool),
+        "n_reviewed": sum(str(r["input"]) in human for r in pool),
         "all_agree": float((votes == votes[0]).all(0).mean()) if len(pool) else 0.0,
         "prior": prior.round(6).tolist(),
     }
     (data_dir / PANEL_FILE).write_text(json.dumps(summary, indent=2))
-    write(data_dir / REVIEW_FILE, _review(spec, pool, post, on_pool))
+    write_review(data_dir, review_rows(spec, pool, post, on_pool))
     log(
         f"  panel: {len(pool)} inputs labelled by {', '.join(teachers)}; all agree on {summary['all_agree']:.0%}; "
         f"accuracy on {len(gold)} labelled rows: "
@@ -149,6 +141,8 @@ def label_pool(
     source = "teachers:" + "+".join(teachers)
     names = spec.label_names
     return [
-        record(r["input"], names[int(p.argmax())], source, soft=p.round(5).tolist(), sure=round(float(p.max()), 4))
+        record(r["input"], human[str(r["input"])], REVIEWED_SOURCE)
+        if str(r["input"]) in human
+        else record(r["input"], names[int(p.argmax())], source, soft=p.round(5).tolist(), sure=round(float(p.max()), 4))
         for r, p in zip(pool, post, strict=True)
     ]

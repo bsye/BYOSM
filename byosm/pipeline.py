@@ -9,6 +9,7 @@ from . import data as data_stage
 from . import evals
 from .config import Project, load_config
 from .data import synth_text
+from .data.review import reviewed_labels
 from .data.store import Dataset
 from .spec import TaskSpec
 from .train import fit
@@ -31,7 +32,7 @@ def ensure_data(p: Project, spec: TaskSpec, cfg: dict, log: Callable[[str], None
     if force or not (dd / "train.jsonl").exists():
         log(f"[data] {spec.name} -> data/{spec.data_key()}")
         dd.mkdir(parents=True, exist_ok=True)
-        summary = data_stage.build(spec, dd, cfg, log)
+        summary = data_stage.build(spec, dd, cfg, log, reviewed_labels(p.reviewed_path))
         for s, v in summary.items():
             log(f"  {s}: {v['n']} examples {v['labels'] if spec.task_type == 'classify' else ''}")
     else:

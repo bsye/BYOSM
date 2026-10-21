@@ -3,7 +3,8 @@ import json
 import numpy as np
 
 from byosm.data.panel import PANEL_FILE, combine, label_pool
-from byosm.data.store import record
+from byosm.data.review import REVIEWED_SOURCE, reviewed_labels, save_review
+from byosm.data.store import read, record
 from byosm.events import EVENTS_ENV, parse
 from byosm.predictors import Predictor, register_baseline
 from byosm.spec import Label, TaskSpec
@@ -64,3 +65,26 @@ def test_gold_rows_train_on_one_hot_targets_next_to_teacher_rows():
     soft = row_soft_targets(spec, rows)
     assert soft[0].tolist() == [0.0, 1.0] and np.allclose(soft[1], [0.7, 0.3])
     assert row_soft_targets(spec, rows[:1]) is None
+
+
+def test_a_human_review_overrides_the_panel_with_a_one_hot_label(tmp_path, monkeypatch):
+    monkeypatch.setenv("BYOSM_CACHE", str(tmp_path / "cache"))
+    gold = [record(f"pasta {i}", "food", "local") for i in range(2)] + [record("bus", "travel", "local")]
+    splits = {"train": gold, "dev": [], "test": []}
+    pool = [record(x, None, "hf:x") for x in ("more pasta", "a flight")]
+    reviewed = {"more pasta": "travel", "a flight": "not a label"}
+    rows = label_pool(_spec(["test-keyword"]), splits, pool, tmp_path, print, reviewed)
+    by_input = {r["input"]: r for r in rows}
+    assert by_input["more pasta"]["label"] == "travel" and by_input["more pasta"]["source"] == REVIEWED_SOURCE
+    assert "soft" not in by_input["more pasta"]["meta"] and by_input["a flight"]["source"] != REVIEWED_SOURCE
+    targets = row_soft_targets(_spec([]), rows)
+    assert targets[[r["input"] for r in rows].index("more pasta")].tolist() == [0.0, 1.0]
+    assert json.loads((tmp_path / PANEL_FILE).read_text())["n_reviewed"] == 1
+
+
+def test_a_second_review_of_the_same_input_replaces_the_first(tmp_path):
+    path = tmp_path / "reviewed.jsonl"
+    save_review(path, "a", "food")
+    save_review(path, "b", "food")
+    save_review(path, "a", "travel")
+    assert reviewed_labels(path) == {"b": "food", "a": "travel"} and len(read(path)) == 2

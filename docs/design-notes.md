@@ -265,6 +265,13 @@ trains on `alpha * gold loss + (1 - alpha) * T^2 KL(teacher || student)`. Up to 
 already in train) are labelled only by the teacher and get `IGNORE` as gold. The vision student is DeiT-tiny, because a
 pretrained small student beats a from-scratch CNN on small data. Frame-task teachers run on CPU.
 
+**A human review beats the panel.**
+`byosm/data/review.py`, `byosm/data/panel.py`: `specialists/NAME/reviewed.jsonl` holds one label per input (the latest
+wins). Reviewed inputs are kept first when the pool is capped at `teacher_rows`, still go through the teachers so the
+review table can show their votes, and then train on the human label as a one-hot target with source `reviewed`. The
+file sits next to the spec, not in the data folder, so a review survives a data rebuild; it is read only when the data is
+built, which is why a review needs `byosm data NAME --force` (or a new data key) to take effect.
+
 **TinyCRNN is causal and streams exactly.**
 `byosm/modalities/audio.py` `TinyCRNN`: the waveform is left-padded by one window minus one hop, so mel frame `t` ends at
 sample `(t+1)*hop` and lines up with the frame labels. `stream()` carries the waveform tail, per-conv left context and

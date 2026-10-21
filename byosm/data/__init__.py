@@ -170,7 +170,11 @@ def _collect(spec: TaskSpec, data_dir: Path, cfg: dict | None, log: Log) -> tupl
 
 
 def build(
-    spec: TaskSpec, data_dir: Path, cfg: dict | None = None, log: Callable[[str], None] = print
+    spec: TaskSpec,
+    data_dir: Path,
+    cfg: dict | None = None,
+    log: Callable[[str], None] = print,
+    reviewed: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     ds = Dataset(data_dir)
     splits, unlabeled = _collect(spec, data_dir, cfg, log)
@@ -180,7 +184,7 @@ def build(
             "or run `byosm request-data <name>` for a template to fill"
         )
     if spec.data.teachers:
-        splits["train"] += panel.label_pool(spec, splits, unlabeled, data_dir, log)
+        splits["train"] += panel.label_pool(spec, splits, unlabeled, data_dir, log, reviewed)
     for s, rows in splits.items():
         ds.save(s, rows)
     unlabeled += [record(r["input"], None, "train-inputs") for r in splits["train"]]
