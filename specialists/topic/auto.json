@@ -1,0 +1,97 @@
+{
+  "decisions": [
+    {
+      "t": "2026-10-21 02:42:16",
+      "step": "define",
+      "choice": "text/classify, 5 labels, backbone hf:sentence-transformers/all-MiniLM-L6-v2",
+      "why": "compiled from the prompt; objective accuracy >= 0.92"
+    },
+    {
+      "t": "2026-10-21 02:47:27",
+      "step": "discover:benchmark",
+      "choice": "fancyzhx/ag_news",
+      "why": "fancyzhx/ag_news: Matches the classic AG News task (headlines+summary, English news topic classification) with the four core labels (world, sports, business, science/tech) and includes held-out test/train splits; widely used established benchmark. (eval on `test`, train on `train`)"
+    },
+    {
+      "t": "2026-10-21 02:47:27",
+      "step": "discover:baseline",
+      "choice": "llm",
+      "why": "the zero-shot LLM is the System-2 bar the specialist must beat"
+    },
+    {
+      "t": "2026-10-21 02:47:27",
+      "step": "discover:baseline",
+      "choice": "hf:mrm8488/bert-mini-finetuned-age_news-classification",
+      "why": "text-classification model, 1025 downloads, covers 60% of our labels"
+    },
+    {
+      "t": "2026-10-21 02:47:27",
+      "step": "discover:baseline",
+      "choice": "hf:Maddyhf1/ag-news-topic-classification-distilbert",
+      "why": "text-classification model, 27 downloads, covers 60% of our labels"
+    },
+    {
+      "t": "2026-10-21 09:35:45",
+      "step": "build",
+      "choice": "v1",
+      "why": "bench accuracy 0.9141; best baseline ('llm', 0.8)"
+    },
+    {
+      "t": "2026-10-21 09:35:45",
+      "step": "stop",
+      "choice": "time budget: -4.0h left < ~6.8h per experiment",
+      "why": ""
+    },
+    {
+      "t": "2026-10-21 09:35:45",
+      "step": "distill",
+      "choice": null,
+      "why": "skipped: it did not win, so there is no winner to shrink"
+    },
+    {
+      "t": "2026-10-21 09:35:52",
+      "step": "export",
+      "choice": "specialists/topic/export",
+      "why": "torch-free ONNX bundle (encode / predict / serve); local only, it did not win"
+    }
+  ],
+  "final": {
+    "suite": "bench",
+    "ours": 0.9140625,
+    "exp": "v1",
+    "baselines": {
+      "llm": 0.8,
+      "hf:mrm8488/bert-mini-finetuned-age_news-classification": 0.7296875,
+      "hf:Maddyhf1/ag-news-topic-classification-distilbert": 0.721875
+    },
+    "best_baseline": [
+      "llm",
+      0.8
+    ],
+    "beats": true,
+    "meets": false,
+    "won": false,
+    "metric": "accuracy",
+    "target": 0.92,
+    "test": {
+      "ours": 0.902734375,
+      "ci95": {
+        "lo": 0.890625,
+        "hi": 0.912890625
+      },
+      "baselines": {
+        "llm": 0.814453125,
+        "hf:mrm8488/bert-mini-finetuned-age_news-classification": 0.73046875,
+        "hf:Maddyhf1/ag-news-topic-classification-distilbert": 0.71796875
+      },
+      "vs_best_baseline": {
+        "lo": 0.07343749999999993,
+        "hi": 0.10352539062499999,
+        "delta": 0.08828124999999998,
+        "p_better": 1.0
+      }
+    },
+    "hours": 6.96,
+    "stop_reason": "time budget: -4.0h left < ~6.8h per experiment"
+  }
+}

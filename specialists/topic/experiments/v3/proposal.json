@@ -1,0 +1,16 @@
+{
+  "parent": "v2",
+  "applied": [
+    {
+      "id": "manual",
+      "why": "data.hf_sources.3.per_label=30000",
+      "ops": [
+        {
+          "op": "set",
+          "path": "data.hf_sources.3.per_label",
+          "value": 30000
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,300 @@
+name: topic
+description: 'Classify a news article (headline and short summary) into its topic: world, sports, business or science/technology'
+modality: text
+task_type: classify
+summary: 'Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology,
+  with an explicit ''other'' catch-all for items that fit none of the four.'
+input_description: 'Two fields concatenated for the model: <headline> ... <summary> (a short 1-3 sentence lede/summary).
+  Input is plain English text, typically 15-80 tokens total. No HTML, no URLs needed. Leading/trailing whitespace
+  trimmed. Articles are current-events style (breaking news, feature leads).'
+labels:
+- name: world
+  definition: 'International current events and geopolitics: wars/conflicts & peace talks; diplomacy, summits, elections
+    or coups in foreign countries; international disasters/humanitarian crises; UN/NGO actions; immigration/cross-border
+    issues. Includes domestic news ONLY when it is fundamentally about international relations or foreign actors.
+    Excludes pure sports, pure markets, and pure scientific discovery.'
+- name: sports
+  definition: 'Any competitive or recreational physical activity and its business/entertainment side: match results,
+    scores, transfers, injuries, coaching changes, league/regulation/ruling decisions, athletes'' personal lives
+    when tied to their sporting role, Olympics/World Cups/Grand Slams, esports, and fantasy/gambling tied to sports.
+    Excludes non-sport physical events (e.g. a marathon is sports; a mountain rescue is world/other).'
+- name: business
+  definition: 'Money, companies, and the economy: mergers/earnings/layoffs/CEO changes; stocks, crypto, banking,
+    inflation, interest rates, taxes, trade policy when its primary lens is economic impact; startup funding/valuation;
+    consumer-product market news (e.g. ''X phone launches, priced at Y''); regulatory actions on companies. Excludes
+    government political maneuvering per se (world) and pure technology/science breakthroughs.'
+- name: science_technology
+  definition: 'New knowledge, invention, or engineering: scientific discoveries (physics, biology, medicine, space);
+    new products/technologies and their capabilities (AI models, chips, drugs in trials, rockets); research papers;
+    climate-science findings; cybersecurity; space launches; tech-industry R&D that is news because of WHAT it can
+    do, not its stock price. Excludes the market/earnings angle (business) unless the article is 50%+ about the
+    technology itself.'
+- name: other
+  definition: 'Fallback for inputs that clearly fit none of the four (e.g. purely local/crime/entertainment-opinion/religion/funny-animals
+    pieces, or malformed/empty input). Borderline: if the piece is about an election, choose ''world'' if it is
+    a foreign election or cross-border implications dominant; ''other'' otherwise if it is a purely domestic political-opinion
+    piece that is not geopolitics. If a business story is 70% about product/tech -> ''science_technology''; if 70%
+    about price/market/finance -> ''business''.'
+positive_label: null
+objective:
+  metric: accuracy
+  target: 0.92
+  constraint: 0.92
+languages:
+- en
+diversity_axes:
+- name: topic_mix
+  values:
+  - world
+  - sports
+  - business
+  - science_technology
+  - other
+  - mixed_two_topics
+- name: register
+  values:
+  - wire-service (Reuters/AP)
+  - tabloid
+  - broadsheet
+  - Bloomberg/FT tone
+  - ESPN tone
+  - BBC/National Geog tone
+- name: length
+  values:
+  - headline-only (<20 tok)
+  - short summary (20-40 tok)
+  - medium summary (40-80 tok)
+  - longer summary (80-150 tok)
+- name: ambiguity
+  values:
+  - clear_one_topic
+  - business+science (e.g. Apple chip launch)
+  - world+business (e.g. sanctions)
+  - world+science (e.g. vaccine in war zone)
+  - sports+business (e.g. stadium deal)
+  - other (entertainment/politics-domestic)
+- name: recency
+  values:
+  - breaking
+  - within_48h
+  - within_week
+  - retrospective/feature
+- name: entity_density
+  values:
+  - no_named_entities
+  - 1-2_named
+  - 3-4_named
+  - many_named (lists of countries/teams/companies)
+hard_cases:
+- A startup raises $200M to build quantum sensors -> business or science_technology? (tech content dominant -> science_technology
+  only if capability is the hook; if it is a funding-round story without deep tech detail -> business)
+- FIFA bans two leagues over gambling scandal -> sports (regulation) even though gambling is a business topic
+- NASA contracts SpaceX to launch a Mars sample-return -> science_technology (space/tech), not business or world
+- OPEC+ cuts oil output after a meeting with G7 -> business, NOT world (economic-policy lens), but borderline ->
+  business preferred
+- Election in a foreign country that will change tech export rules -> world (geopolitics dominant) NOT business
+- Olympic host city changes due to budget shortfall -> sports (event) even if money is mentioned
+- A new AI model is released by OpenAI; headline focuses on the model's capabilities -> science_technology; if headline
+  focuses on OpenAI's share -> business
+- An earthquake destroys a factory in Chile -> world (disaster), NOT business
+- Apple unveils new iPhone with a new GPU; article details the chip architecture -> science_technology; if it details
+  price and analyst forecasts -> business
+- A celebrity announces a new sports team ownership -> sports (ownership/league) even though it is celebrity news
+- WHO declares a novel virus outbreak -> world (international health crisis), NOT science_technology unless the
+  article is about the viral genome itself
+- 'A country passes a data-protection law -> world (foreign policy) or business (compliance)? Treat as ''world''
+  if it is the political act; ''business'' if the article is about firm impact. Specify: political act -> world'
+- An esports tournament sponsor changes -> sports (esports), NOT business
+- 'A biotech drug gets FDA approval and the company stock jumps -> science_technology if the news is the approval/efficacy;
+  business if the news is only the stock move. Default: efficacy/approval -> science_technology'
+- Climate scientists warn of a specific regional flood; no policy, no market -> science_technology (climate science),
+  not world
+- 'A stadium roof collapses injuring players -> sports (incident in a sporting venue) borderline world (tragedy);
+  rule: venue-and-victims both in sports context -> sports'
+- A new cryptocurrency exchange opens in a country -> business (markets), not science_technology (crypto as asset;
+  not a tech breakthrough)
+- An AI company's earnings beat expectations -> business (results), NOT science_technology, even though the firm
+  is AI
+- A foreign government nationalizes a tech company -> world (foreign political action dominant) NOT business
+- Empty or near-empty headline/summary -> other
+backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+latency_budget_ms: 50.0
+frame_hop_ms: 10.0
+data:
+  synthetic: true
+  train_size: 5000
+  dev_size: 400
+  test_size: 1000
+  per_call: 25
+  judge: true
+  hf_queries:
+  - news topic classification
+  - ag news dataset
+  - financial news sentiment
+  - sports news headlines
+  - reuters news classification
+  - hate-speech news
+  - x-summarize news summaries
+  - news summarization dataset
+  - gigaword news
+  - cnn daily mail headlines
+  hf_sources:
+  - dataset: ag_news
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: stream
+    per_label: 100
+    config: null
+    split: train
+    input_column: null
+    label_column: null
+    label_map: []
+    max_rows: 5000
+  - dataset: xsum
+    role: unlabeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: stream
+    per_label: 100
+    config: null
+    split: train
+    input_column: null
+    label_column: null
+    label_map: []
+    max_rows: 5000
+  - dataset: cnn_dailymail
+    role: unlabeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: stream
+    per_label: 100
+    config: null
+    split: train
+    input_column: null
+    label_column: null
+    label_map: []
+    max_rows: 5000
+  - dataset: fancyzhx/ag_news
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: balanced
+    per_label: 30000
+    config: default
+    split: train
+    input_column: text
+    label_column: label
+    label_map:
+    - - World
+      - world
+    - - Sports
+      - sports
+    - - Business
+      - business
+    - - Sci/Tech
+      - science_technology
+    max_rows: 5000
+  local_dir: null
+  audio:
+    sample_rate: 16000
+    clip_seconds: 4.0
+    snr_db:
+    - -5.0
+    - 30.0
+    max_events: 3
+    label_by_energy: true
+    fill_ms: 60
+train:
+  pretrain_steps: 200
+  pretrain_lambda: 0.05
+  epochs: 8
+  batch_size: 32
+  lr_backbone: 5.0e-05
+  lr_head: 0.001
+  freeze_backbone: false
+  max_len: 128
+  refine_rounds: 2
+  refine_examples: 300
+  pool: mean
+  layer_decay_floor: 0.5
+  probe_epochs: 0
+  ema: true
+  seed: 0
+  holdout_test: auto
+  precision: auto
+  distill_from: null
+  distill_alpha: 0.3
+  distill_temperature: 2.0
+  distill_unlabeled: 20000
+decision:
+  kind: threshold
+  threshold: null
+  deactivation_offset: 0.15
+  min_on_ms: 50.0
+  min_off_ms: 550.0
+  smooth_alpha_per_32ms: 0.35
+document:
+  route: fused
+  text_backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+  image_backbone: hf:facebook/dinov2-small
+  image_pool: mean
+  max_pages: 8
+  max_len: 256
+  image_size: 224
+  dpi: 100
+  ocr: auto
+  dim: 256
+  modality_dropout: 0.2
+evals:
+- name: builtin
+  kind: builtin
+  source: null
+  path: null
+  max_items: 400
+  primary: false
+- name: bench
+  kind: hf
+  source:
+    dataset: fancyzhx/ag_news
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: balanced
+    per_label: 800
+    config: default
+    split: test
+    input_column: text
+    label_column: label
+    label_map:
+    - - World
+      - world
+    - - Sports
+      - sports
+    - - Business
+      - business
+    - - Sci/Tech
+      - science_technology
+    max_rows: 5000
+  path: null
+  max_items: 5000
+  primary: true
+baselines:
+- llm
+- hf:mrm8488/bert-mini-finetuned-age_news-classification
+- hf:Maddyhf1/ag-news-topic-classification-distilbert
+search:
+  benchmark:
+  - ag news classification benchmark
+  - news topic classification benchmark
+  - four-class news classification
+  baseline:
+  - bert ag news classifier
+  - distilbert news topic classification
+  - fine-tuned minilm news classification
+  - transformers news classifier hub

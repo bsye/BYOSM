@@ -1,0 +1,42 @@
+{
+  "patterns": [
+    {
+      "name": "Tech/Product News Misclassified as Business",
+      "explanation": "The model conflates 'company' with 'business'. The label definitions strictly separate these: `business` is for money, markets, earnings, and financial impact, while `science_technology` is for new products, capabilities, R&D, and 'what it can do'. The model is failing to suppress the business label when the core content is technical or product-focused, even if a company is mentioned. Conversely, it misses business labels when the primary focus is financial (e.g., M&A, pricing disputes) rather than technical capability.",
+      "data_recipe": "Create contrasting pairs:\n1. **Sci/Tech vs Business (Tech Focus:**\n   - Positive Sci/Tech: 'Intel releases 10nm chip with 20% better power efficiency.' (Focus: capability/engineering).\n   - Positive Business: 'Intel stock dips 5% after Q3 earnings miss expectations.' (Focus: market/finance).\n   - Positive Sci/Tech: 'New AI model achieves state-of-the-art accuracy in medical imaging.' (Focus: discovery/performance).\n   - Negative Business: 'AI startup X raises $100M Series C to expand sales team.' (Focus: funding/valuation).\n2. **Business vs Sci/Tech (Money/Market Focus):**\n   - Positive Business: 'Microsoft sued for antitrust violations over Windows monopoly pricing.' (Focus: legal/market control).\n   - Negative Sci/Tech: 'Microsoft releases new Windows security patch.' (Focus: software feature).\n   - Positive Business: 'Amazon announces price cut for Prime members.' (Focus: consumer pricing/market strategy).\n   - Negative Sci/Tech: 'Amazon develops new drone delivery system.' (Focus: engineering/product).",
+      "share": 45.0
+    },
+    {
+      "name": "'World' vs 'Business' in Economic/Political Contexts",
+      "explanation": "The model struggles with news that is simultaneously geopolitical and economic. The definition allows `world` to include domestic/foreign events if 'fundamentally about international relations' or `business` if 'primary lens is economic impact'. The model often defaults to `business` when it sees money words (trade, oil, output, tax) in a geopolitical context, and defaults to `world` when it sees political figures (leaders, treaties) in a business context. It fails to apply the 'primary lens' heuristic. It also incorrectly classifies purely domestic economic news or international humanitarian/health crises as `business` or `other` when they fit `world` (international disasters/humanitarian crises).",
+      "data_recipe": "Create boundary-exploration examples:\n1. **Trade/Policy:**\n   - Positive World: 'EU and US agree on tariff reduction to ease trade tensions.' (Diplomacy/International relations).\n   - Positive Business: 'Apple warns of 10% revenue hit due to new EU privacy taxes.' (Economic impact on company/market).\n2. **Disasters/Crises:**\n   - Positive World: 'Earthquake in Peru kills 50; international aid groups mobilize.' (Humanitarian crisis/disaster).\n   - Negative Business: 'Peru mining stocks drop after earthquake disrupts supply chains.' (Market reaction).\n   - Positive World: 'National flu vaccine shortage affects hospital supplies.' (Public health/international supply chain crisis context, though domestic, often fits 'world' if cross-border implications or humanitarian scale; note: pure domestic crime/health is 'other', but definitions say 'international disasters/humanitarian crises' are world, and domestic is *only* world if international relations are involved. *Correction*: The definition says 'international disasters'. Domestic health crises without foreign actors are 'other'. However, dev error 5c957126ed88 (Flu Vaccine) was gold=world. This suggests a looseness in 'world' for major national crises or if the supplier is international (Chiron). Recipe: Label major national health/safety crises as `world` if they have significant cross-border supply chain or humanitarian dimensions, otherwise `other`.",
+      "share": 25.0
+    },
+    {
+      "name": "Sports vs World/Other Confusion (Events/Names)",
+      "explanation": "The model misclassifies sports events as `world` or `other`, particularly when the location is foreign (e.g., Olympics in Athens, Ferret Olympics in Oregon) or when the athletes are famous globally. It also confuses non-sport physical events (rescues, accidents) with sports. Additionally, it misclassifies `other` items (entertainment, crime, quirky local news) as `world` if they occur in a foreign city (Rome, Italy) or involve a foreign country, failing to recognize that `world` is reserved for geopolitics/current events, not all international news.",
+      "data_recipe": "Create distinct feature sets:\n1. **True Sports:**\n   - Positive: 'Phelps wins gold in Athens Olympics.' (Competitive physical activity, international event -> Sports).\n   - Positive: 'Formula 1 Brazil Grand Prix: Ferrari leads practice.' (Sporting event, even if foreign location -> Sports).\n   - Negative World: 'US and China discuss trade restrictions.' (Geopolitics -> World).\n2. **Non-Sport 'World'/'Other':**\n   - Positive World: 'Peace talks resume in Beirut.' (Diplomacy -> World).\n   - Negative Sports: 'Beach cleanup event held in Rio.' (Not competitive sports -> Other/World depending on significance, but *not* Sports).\n3. **Quirky/Local 'Other':**\n   - Positive Other: 'Grandpa finds new home as au pair in Rome.' (Human interest/local news, not geopolitics -> Other).\n   - Negative World: 'Italian government passes new immigration law.' (Geopolitics/Domestic policy with international implications -> World).\n   - Positive Other: 'Funniest animal video of the week goes viral.' (Entertainment -> Other).\n   - Negative World: 'UN condemns animal cruelty in international trade.' (International organization acting -> World).",
+      "share": 20.0
+    },
+    {
+      "name": "Entertainment/Local News Misclassified as World or Business",
+      "explanation": "The model incorrectly labels local, entertainment, or purely domestic human-interest stories as `world` (often due to foreign city names in datelines like Rome, Athens, London) or `business` (if a company/brand is mentioned). It fails to recognize that `world` requires 'International current events and geopolitics' or 'domestic news... fundamentally about international relations'. Most local/entertainment news, even if in a foreign capital, falls under `other` unless it involves diplomacy, war, or major international policy.",
+      "data_recipe": "Create examples distinguishing location from topic:\n1. **Foreign Location, Local/Entertainment Topic -> Other:**\n   - Positive Other: 'New restaurant opening in Paris creates long lines.' (Local entertainment/business, not geopolitics).\n   - Positive World: 'French government protests against US military base expansion.' (Geopolitics).\n2. **Domestic Location, Local/Crime/Entertainment -> Other:**\n   - Positive Other: 'Martha Stewart’s prison visit describes community.' (Human interest/lifestyle, not international relations -> Other. Note: definition says 'purely local... pieces' are other).\n   - Positive World: 'US Supreme Court rules on extradition of foreign terrorist suspect.' (Domestic but involves international legal relations -> World).\n3. **Business in Local Context -> Business:**\n   - Positive Business: 'Local tech startup acquires small competitor.' (Money/companies -> Business, even if local).\n   - Positive World: 'City council votes on international water treaty implementation.' (Geopolitical treaty -> World).",
+      "share": 10.0
+    }
+  ],
+  "suspect_gold_ids": [
+    "3d9aabdffeac",
+    "e498d42e34f6",
+    "5c957126ed88",
+    "2f46082c4500",
+    "1709a32c919e",
+    "3b6215fb1123",
+    "7134728ebf1b",
+    "678d3c313b4a",
+    "83de8c2d2c84",
+    "1854d98ca3f9",
+    "231d76f46d6e",
+    "47249e69e4cd"
+  ]
+}

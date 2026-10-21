@@ -1,0 +1,50 @@
+{
+  "from": "v2",
+  "proposals": [
+    {
+      "id": "hard-pairs",
+      "ops": [
+        {
+          "op": "set",
+          "path": "hard_cases",
+          "value": [
+            "A startup raises $200M to build quantum sensors -> business or science_technology? (tech content dominant -> science_technology only if capability is the hook; if it is a funding-round story without deep tech detail -> business)",
+            "FIFA bans two leagues over gambling scandal -> sports (regulation) even though gambling is a business topic",
+            "NASA contracts SpaceX to launch a Mars sample-return -> science_technology (space/tech), not business or world",
+            "OPEC+ cuts oil output after a meeting with G7 -> business, NOT world (economic-policy lens), but borderline -> business preferred",
+            "Election in a foreign country that will change tech export rules -> world (geopolitics dominant) NOT business",
+            "Olympic host city changes due to budget shortfall -> sports (event) even if money is mentioned",
+            "A new AI model is released by OpenAI; headline focuses on the model's capabilities -> science_technology; if headline focuses on OpenAI's share -> business",
+            "An earthquake destroys a factory in Chile -> world (disaster), NOT business",
+            "Apple unveils new iPhone with a new GPU; article details the chip architecture -> science_technology; if it details price and analyst forecasts -> business",
+            "A celebrity announces a new sports team ownership -> sports (ownership/league) even though it is celebrity news",
+            "WHO declares a novel virus outbreak -> world (international health crisis), NOT science_technology unless the article is about the viral genome itself",
+            "A country passes a data-protection law -> world (foreign policy) or business (compliance)? Treat as 'world' if it is the political act; 'business' if the article is about firm impact. Specify: political act -> world",
+            "An esports tournament sponsor changes -> sports (esports), NOT business",
+            "A biotech drug gets FDA approval and the company stock jumps -> science_technology if the news is the approval/efficacy; business if the news is only the stock move. Default: efficacy/approval -> science_technology",
+            "Climate scientists warn of a specific regional flood; no policy, no market -> science_technology (climate science), not world",
+            "A stadium roof collapses injuring players -> sports (incident in a sporting venue) borderline world (tragedy); rule: venue-and-victims both in sports context -> sports",
+            "A new cryptocurrency exchange opens in a country -> business (markets), not science_technology (crypto as asset; not a tech breakthrough)",
+            "An AI company's earnings beat expectations -> business (results), NOT science_technology, even though the firm is AI",
+            "A foreign government nationalizes a tech company -> world (foreign political action dominant) NOT business",
+            "Empty or near-empty headline/summary -> other",
+            "business that looks like science_technology (it is business)",
+            "science_technology that looks like business (it is science_technology)",
+            "world that looks like business (it is world)",
+            "business that looks like world (it is business)"
+          ]
+        },
+        {
+          "op": "set",
+          "path": "train.refine_rounds",
+          "value": 3
+        }
+      ],
+      "why": "most confused: business->science_technology (56), science_technology->business (47), world->business (25), business->world (18); write targeted examples for these boundaries.",
+      "cost": {
+        "minutes": 4.9,
+        "new_items": 0
+      }
+    }
+  ]
+}
