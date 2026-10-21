@@ -786,3 +786,9 @@ P/R columns appear after a run; plain `byosm board` hides them unless `--detail`
 one `@event <json>` line, and only when the app sets `BYOSM_EVENTS=1`. Plain CLI output stays unchanged, the library
 needs no import of the app, and the runner publishes each line as a `metric` event and stores it next to the job's log
 in `.byosm/app.sqlite`, so history and charts survive a restart.
+
+**Feature routes are routers.**
+`byosm/app/panel_routes.py`: a feature with its own endpoints is an `APIRouter` that `create_app` includes with the
+token dependency, so `server.py` stays small. The panel endpoint reshapes each review row so teacher votes sit under
+`votes` and cannot collide with `input`, `panel` or `sure`; a review is validated against the spec's labels before it is
+written.

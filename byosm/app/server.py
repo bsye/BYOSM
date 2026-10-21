@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from ..config import MAX_PARALLEL_JOBS
-from . import catalog, keys
+from . import catalog, keys, panel_routes
 from .config_routes import config_router
 from .data_routes import data_router
 from .errors import missing
@@ -151,6 +151,7 @@ def create_app(ws: Path, token: str, hosts: list[str] | None = None, parallel: i
     app.include_router(systems_router(ws, Depends(check)))
     app.include_router(config_router(ws, Depends(check)))
     app.include_router(data_router(ws), dependencies=[Depends(check)])
+    app.include_router(panel_routes.router(ws), dependencies=[Depends(check)])
     if STATIC_DIR.exists():
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
     return app
