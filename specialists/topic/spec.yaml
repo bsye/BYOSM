@@ -231,6 +231,7 @@ train:
   distill_alpha: 0.3
   distill_temperature: 2.0
   distill_unlabeled: 20000
+  prefix_rate: 0.0
 decision:
   kind: threshold
   threshold: null
@@ -288,6 +289,7 @@ baselines:
 - llm
 - hf:mrm8488/bert-mini-finetuned-age_news-classification
 - hf:Maddyhf1/ag-news-topic-classification-distilbert
+- jev
 search:
   benchmark:
   - ag news classification benchmark

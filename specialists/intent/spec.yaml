@@ -225,6 +225,7 @@ train:
   distill_alpha: 0.3
   distill_temperature: 2.0
   distill_unlabeled: 20000
+  prefix_rate: 0.0
 decision:
   kind: threshold
   threshold: null
@@ -272,4 +273,5 @@ evals:
   primary: true
 baselines:
 - llm
+- jev
 search: {}

@@ -49,14 +49,18 @@ Still open:
 Every table below is generated from `specialists/*/board.json` by `byosm report`, never typed by hand.
 `byosm report --check` fails the tests if one is stale.
 
+Rivals: `llm` is Qwen 3.8 27B, local and zero-shot. `jev` is TypeSafe's Jev judgment model, zero-shot over the same
+label definitions, one API request per item; its time column is the API round trip, not local CPU. `hf:` rivals are
+public fine-tuned checkpoints.
+
 <!-- report:summary -->
 | task | benchmark (metric) | our model | our test score [95% CI] | best outside baseline (on calib) | its test score | ours minus baseline on test (paired bootstrap) | calib, the selection split: ours vs baseline |
 |---|---|---|---|---|---|---|---|
 | Which words of a request fill an action's arguments, and their type (MASSIVE slots) | AmazonScience/massive (span_f1) | v2 (70.73M) | 0.734 [0.717, 0.751] | no outside baseline scored yet | - | - | - |
-| Which of the assistant's 60 actions a request asks for (MASSIVE intents) | AmazonScience/massive (accuracy) | stream (22.74M) | 0.890 [0.877, 0.901] | no outside baseline scored yet | - | - | - |
+| Which of the assistant's 60 actions a request asks for (MASSIVE intents) | AmazonScience/massive (accuracy) | stream (22.74M) | 0.890 [0.877, 0.901] | jev (-) | 0.815 [0.799, 0.831] | +0.075, P(better) = 1.00 | 0.894 vs 0.824 (ahead) |
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
 | Classify the primary emotion expressed in a short English text (single sentence, tweet-style or short social media string) into one of six named emotions (sadness, joy, love, anger, fear, surprise). Any text that does not clearly express one of these dominates falls into a catch-all neutral-other class (including neutral statements, irony/sarcasm without a dominant named emotion, ambiguity, or non-English). | dair-ai/emotion (accuracy) | v1 (22.72M) | 0.898 [0.883, 0.913] | hf:j-hartmann/emotion-english-distilroberta-base (82.12M) | 0.838 [0.819, 0.856] | +0.060, P(better) = 1.00 | 0.904 vs 0.813 (ahead) |
-| 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | llm (-) | 0.772 [0.756, 0.788] | +0.165, P(better) = 1.00 | 0.948 vs 0.713 (ahead) |
+| 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | jev (-) | 0.808 [0.792, 0.822] | +0.129, P(better) = 1.00 | 0.948 vs 0.784 (ahead) |
 | Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
@@ -114,10 +118,11 @@ Suite `rvl` (chainyo/rvl-cdip): 3200 test and 800 calib items. Selection uses ca
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
 | **final-s1** (promoted) | ampemallrd-s1 + `train.holdout_test=auto` | 8964 (+1470 builtin test) | 22.74M | 2.36ms | 0.937 [0.928, 0.948] | 0.948 |
-| ampemallrd-s1† | spec.yaml + `train.layer_decay_floor=0.5 train.probe_epochs=0 train.ema=true train.seed=1` | 7494 | 22.74M | 3.37ms | 0.934 [0.924, 0.943] | 0.943 |
+| ampemallrd-s1 | spec.yaml + `train.layer_decay_floor=0.5 train.probe_epochs=0 train.ema=true train.seed=1` | 7494 | 22.74M | 3.37ms | 0.934 [0.924, 0.943] | 0.943 |
+| jev | outside baseline | - | - | 394.55ms | 0.808 [0.792, 0.822] | 0.784 |
 | llm | outside baseline | - | - | - | 0.772 [0.756, 0.788] | 0.713 |
 
-Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 27 seed replicates off the promoted lineage, which are summarised in the recipe table (`intent:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on. † = scored on a different version of this suite or its decision policy than the promoted model; rerun `byosm eval` to refresh.
+Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 27 seed replicates off the promoted lineage, which are summarised in the recipe table (`intent:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:intent -->
 
 - `llm` is Qwen 3.8 27B, zero-shot, given all 77 label definitions. No fine-tuned Banking77 model has been scored
@@ -130,6 +135,7 @@ Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses cali
 |---|---|---|---|---|---|---|
 | **v1** (promoted) | no recorded parent | 5241 (+781 builtin test) | 22.72M | 3.61ms | 0.898 [0.883, 0.913] | 0.904 |
 | hf:j-hartmann/emotion-english-distilroberta-base | outside baseline | - | 82.12M | 25.05ms | 0.838 [0.819, 0.856] | 0.813 |
+| jev | outside baseline | - | - | 397.88ms | 0.590 [0.564, 0.613] | 0.583 |
 | llm | outside baseline | - | - | - | 0.549 [0.519, 0.572] | 0.489 |
 | hf:SamLowe/roberta-base-go_emotions | outside baseline | - | 124.67M | 26.37ms | 0.548 [0.523, 0.570] | 0.519 |
 
@@ -152,6 +158,7 @@ Suite `bench` (dair-ai/emotion): 1492 test and 374 calib items. Selection uses c
 | v2 | v1 + more-data | 14383 (+2383 builtin test) | 22.72M | 3.10ms | 0.921 [0.910, 0.930] | 0.925 |
 | hf:Maddyhf1/ag-news-topic-classification-distilbert | outside baseline | - | 66.96M | 9.07ms | 0.914 [0.902, 0.923] | 0.917 |
 | v1 | no recorded parent | 5999 (+917 builtin test) | 22.72M | 3.19ms | 0.903 [0.891, 0.913] | 0.914 |
+| jev | outside baseline | - | - | 356.66ms | 0.855 [0.841, 0.869] | 0.838 |
 | llm | outside baseline | - | - | - | 0.814 [0.799, 0.830] | 0.800 |
 
 Suite `bench` (fancyzhx/ag_news): 2560 test and 640 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
@@ -212,6 +219,7 @@ While typing (gate tuned on calib: confidence 0.95, 1 agreeing keystroke): the a
 |---|---|---|---|---|---|---|
 | **stream** (promoted) | v1 + `train.prefix_rate=0.5 train.epochs=12` | 12138 (+1979 builtin test) | 22.74M | 2.28ms | 0.890 [0.877, 0.901] | 0.894 |
 | v1 | no recorded parent | 12138 (+1979 builtin test) | 22.74M | 2.24ms | 0.888 [0.876, 0.900] | 0.889 |
+| jev | outside baseline | - | - | 406.07ms | 0.815 [0.799, 0.831] | 0.824 |
 
 Suite `massive` (AmazonScience/massive): 2379 test and 595 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:assistant-intent -->
@@ -258,19 +266,19 @@ builtin suite's held-out split, so they see more data.
 <!-- report:intent:seeds -->
 | recipe | seeds | train rows | ema | holdout_test | layer_decay_floor | precision | probe_epochs | test accuracy % | calib accuracy % |
 |---|---|---|---|---|---|---|---|---|---|
-| full† | 3 | 7494 | true | keep | 0.5 | auto | 1 | 92.97 ± 0.29 | 94.70 ± 0.19 |
-| no-ema† | 2 | 7494 | false | - | 0.1 | auto | 1 | 93.13 ± 0.75 | 94.24 ± 0.57 |
-| no-probe† | 2 | 7494 | true | - | 0.1 | auto | 0 | 93.25 ± 0.34 | 94.24 ± 0.34 |
-| final† | 2 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 93.29 ± 0.11 | 94.16 ± 0.00 |
-| ampemallrd† | 3 | 7494 | true | keep | 0.5 | auto | 0 | 93.14 ± 0.21 | 94.10 ± 0.37 |
-| ampllrd† | 3 | 7494 | false | keep | 0.5 | auto | 0 | 92.59 ± 0.42 | 93.94 ± 0.52 |
-| no-llrd† | 2 | 7494 | true | - | 1.0 | auto | 1 | 92.99 ± 0.14 | 93.91 ± 0.11 |
-| new† | 2 | 7494 | true | - | 0.1 | auto | 1 | 92.72 ± 0.23 | 93.83 ± 0.69 |
-| ampema† | 3 | 7494 | true | keep | 1.0 | auto | 0 | 93.01 ± 0.21 | 93.72 ± 1.06 |
-| amp† | 3 | 7494 | false | keep | 1.0 | auto | 0 | 92.53 ± 0.31 | 93.67 ± 0.56 |
-| old† | 3 | 7494 | false | - | 1.0 | fp32 | 0 | 92.52 ± 0.25 | 93.67 ± 0.56 |
+| full | 3 | 7494 | true | keep | 0.5 | auto | 1 | 92.97 ± 0.29 | 94.70 ± 0.19 |
+| **final** | 3 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 93.44 ± 0.27 | 94.37 ± 0.37 |
+| no-ema | 2 | 7494 | false | - | 0.1 | auto | 1 | 93.13 ± 0.75 | 94.24 ± 0.57 |
+| no-probe | 2 | 7494 | true | - | 0.1 | auto | 0 | 93.25 ± 0.34 | 94.24 ± 0.34 |
+| ampemallrd | 3 | 7494 | true | keep | 0.5 | auto | 0 | 93.14 ± 0.21 | 94.10 ± 0.37 |
+| ampllrd | 3 | 7494 | false | keep | 0.5 | auto | 0 | 92.59 ± 0.42 | 93.94 ± 0.52 |
+| no-llrd | 2 | 7494 | true | - | 1.0 | auto | 1 | 92.99 ± 0.14 | 93.91 ± 0.11 |
+| new | 2 | 7494 | true | - | 0.1 | auto | 1 | 92.72 ± 0.23 | 93.83 ± 0.69 |
+| ampema | 3 | 7494 | true | keep | 1.0 | auto | 0 | 93.01 ± 0.21 | 93.72 ± 1.06 |
+| amp | 3 | 7494 | false | keep | 1.0 | auto | 0 | 92.53 ± 0.31 | 93.67 ± 0.56 |
+| old | 3 | 7494 | false | - | 1.0 | fp32 | 0 | 92.52 ± 0.25 | 93.67 ± 0.56 |
 
-Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); no recipe has seeds on the promoted model's suite version. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on. † = scored on a different version of this suite or its decision policy than the promoted model; rerun `byosm eval` to refresh.
+Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `full`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:intent:seeds -->
 
 - The current default (EMA, layer decay floor 0.5, no probe epoch, mixed precision, `holdout_test: auto`) was picked

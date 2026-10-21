@@ -487,14 +487,12 @@
     "ci95": {
       "lo": 0.9203252032520325,
       "hi": 0.9398373983739837
-    },
-    "roc_auc": 0.9997054491899853,
-    "avg_precision": 0.9849273552936151
+    }
   },
   "objective": 0.9300813008130081,
   "n_test": 2460,
   "n_calib": 616,
-  "seconds": 9.5,
-  "latency_ms": 3.13,
-  "fingerprint": "60133719a5"
+  "seconds": 6.9,
+  "latency_ms": 2.358,
+  "fingerprint": "2ae723179d"
 }

@@ -492,7 +492,7 @@
   "objective": 0.9288617886178862,
   "n_test": 2460,
   "n_calib": 616,
-  "seconds": 9.2,
-  "latency_ms": 3.209,
-  "fingerprint": "60133719a5"
+  "seconds": 6.9,
+  "latency_ms": 2.29,
+  "fingerprint": "2ae723179d"
 }
