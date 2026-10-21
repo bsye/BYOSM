@@ -45,7 +45,9 @@ function Steps({ items }: { items: Step[] }) {
 
 function Log({ lines }: { lines: string[] }) {
   const end = useRef<HTMLDivElement>(null)
-  useEffect(() => end.current?.scrollIntoView({ block: "nearest" }), [lines.length])
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: "nearest" })
+  }, [lines.length])
   return (
     <div className="bg-muted h-[28rem] overflow-auto rounded-md p-3 font-mono text-xs leading-5 whitespace-pre">
       {lines.map((l, i) => (
