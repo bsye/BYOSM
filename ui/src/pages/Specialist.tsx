@@ -21,8 +21,14 @@ const ACTIONS: { label: string; args: (n: string) => string[] }[] = [
   { label: "Autopilot", args: (n) => ["auto", n] },
 ]
 
+const FOCUS_OTHERS = 5
+
 function Board({ d }: { d: Detail }) {
-  const rows = boardRows(d.board, d.primary_suite)
+  const [all, setAll] = useState(false)
+  const every = boardRows(d.board, d.primary_suite)
+  const keep = new Set([d.promoted, ...d.baselines])
+  const others = every.filter((r) => !keep.has(r.model)).slice(0, FOCUS_OTHERS).map((r) => r.model)
+  const rows = all ? every : every.filter((r) => keep.has(r.model) || others.includes(r.model))
   return (
     <Card>
       <CardHeader>
@@ -30,6 +36,11 @@ function Board({ d }: { d: Detail }) {
           {d.metric} on {d.primary_suite}
         </CardTitle>
         <CardDescription>Test with its 95% interval and calib, the split that chooses. Test is only reported.</CardDescription>
+        {every.length > rows.length || all ? (
+          <Button variant="outline" size="sm" className="w-fit" onClick={() => setAll(!all)}>
+            {all ? "Promoted, rivals and the best others" : `Show all ${every.length}`}
+          </Button>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-6">
         {rows.length ? <BoardChart rows={rows} /> : <p className="text-muted-foreground text-sm">Nothing scored yet.</p>}

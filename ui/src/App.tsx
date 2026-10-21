@@ -15,7 +15,8 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { LiveProvider, useLive } from "@/events"
+import { Toaster } from "@/components/ui/sonner"
+import { LiveProvider, useLive, useJobToasts } from "@/events"
 import { Jobs, Running } from "@/pages/Jobs"
 import { Keys } from "@/pages/Keys"
 import { Specialist } from "@/pages/Specialist"
@@ -42,6 +43,7 @@ function Page({ route }: { route: string[] }) {
 function Shell() {
   const route = useRoute()
   const live = useLive()
+  useJobToasts()
   const running = Object.values(live.jobs).filter((j) => j.status === "running" || j.status === "queued").length
   const section = route[0] ?? "specialists"
   return (
@@ -90,6 +92,7 @@ export default function App() {
   return (
     <LiveProvider>
       <Shell />
+      <Toaster />
     </LiveProvider>
   )
 }

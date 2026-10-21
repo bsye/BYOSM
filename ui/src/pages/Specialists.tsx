@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
 import { score } from "@/format"
 import { go, href } from "@/route"
+import { Overview } from "./Overview"
 
 function NewSpecialist() {
   const [prompt, setPrompt] = useState("")
@@ -49,7 +50,9 @@ export function Specialists() {
     api<Summary[]>("/specialists").then(setItems)
   }, [finished])
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="space-y-4">
+      <Overview items={items ?? []} />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <NewSpecialist />
       {(items ?? []).map((s) => (
         <a key={s.name} href={href("specialists", s.name)}>
@@ -68,10 +71,17 @@ export function Specialists() {
                 {s.metric} on {s.primary_suite}
               </Badge>
               {s.exported && <Badge>exported</Badge>}
+              {s.rival?.score != null && s.score != null && (
+                <Badge variant="outline">
+                  {s.score > s.rival.score ? "+" : ""}
+                  {(s.score - s.rival.score).toFixed(3)} vs {s.rival.name}
+                </Badge>
+              )}
             </CardFooter>
           </Card>
         </a>
       ))}
+      </div>
     </div>
   )
 }

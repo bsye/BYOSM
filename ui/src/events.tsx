@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import { toast } from "sonner"
 import { api, eventsUrl, type Job } from "@/api"
 
 type Live = { jobs: Record<string, Job>; lines: Record<string, string[]>; connected: boolean }
@@ -50,4 +51,22 @@ export function useJobLines(id: string): string[] {
       .catch(() => setBacklog({ lines: [], offset: 0 }))
   }, [id])
   return [...backlog.lines, ...fresh.slice(backlog.offset)]
+}
+
+const ENDED = new Set(["done", "failed", "cancelled"])
+
+export function useJobToasts() {
+  const { jobs } = useLive()
+  const last = useRef<Record<string, Job["status"]>>({})
+  useEffect(() => {
+    for (const j of Object.values(jobs)) {
+      const before = last.current[j.id]
+      if (before && before !== j.status && ENDED.has(j.status)) {
+        const title = `byosm ${j.args.slice(0, 2).join(" ")}`
+        if (j.status === "done") toast.success(title, { description: "finished" })
+        else toast.error(title, { description: j.status })
+      }
+      last.current[j.id] = j.status
+    }
+  }, [jobs])
 }

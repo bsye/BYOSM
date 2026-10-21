@@ -1,6 +1,6 @@
 const TOKEN_KEY = "byosm-token"
 
-function readToken(): string {
+export function readToken(): string {
   const fromHash = new URLSearchParams(window.location.hash.slice(1)).get("token")
   if (fromHash) {
     sessionStorage.setItem(TOKEN_KEY, fromHash)
@@ -9,12 +9,10 @@ function readToken(): string {
   return sessionStorage.getItem(TOKEN_KEY) ?? ""
 }
 
-export const token = readToken()
-
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init.headers },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${readToken()}`, ...init.headers },
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(body.detail ?? res.statusText)
@@ -54,6 +52,7 @@ export type Summary = {
   primary_suite: string
   promoted: string | null
   score: number | null
+  rival: { name: string; score: number | null } | null
   experiments: string[]
   exported: boolean
 }
@@ -68,5 +67,5 @@ export const runJob = (args: string[]) => post<Job>("/jobs", { args })
 
 export function eventsUrl(): string {
   const scheme = window.location.protocol === "https:" ? "wss" : "ws"
-  return `${scheme}://${window.location.host}/api/events?token=${encodeURIComponent(token)}`
+  return `${scheme}://${window.location.host}/api/events?token=${encodeURIComponent(readToken())}`
 }
