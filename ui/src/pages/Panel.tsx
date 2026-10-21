@@ -1,3 +1,4 @@
+import { RefreshCw } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from "recharts"
 import { api, put, runJob, type Detail, type PanelView, type ReviewRow } from "@/api"
@@ -129,6 +130,7 @@ function Review({ name, view, onSaved }: { name: string; view: PanelView; onSave
               Run <code>byosm data {name} --force</code>, or an experiment with a new data key, to train on them.
             </span>
             <Button size="sm" variant="outline" onClick={rebuild}>
+              <RefreshCw />
               Rebuild the data
             </Button>
           </AlertDescription>

@@ -1,3 +1,4 @@
+import { Download, FilePlus, ShieldCheck } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, download, runJob, upload, type CheckReport as Report, type DataRequest } from "@/api"
 import { Button } from "@/components/ui/button"
@@ -59,6 +60,7 @@ function Uploads({ name, req, onUploaded }: { name: string; req: DataRequest; on
         <div key={path} className="flex items-center justify-between gap-3">
           <span className="font-mono text-xs">{path}</span>
           <Button size="sm" onClick={() => open(["check-data", name, path])}>
+            <ShieldCheck />
             Check
           </Button>
         </div>
@@ -91,11 +93,13 @@ export function YourData({ name }: { name: string }) {
             {req.request ? (
               req.templates.map((kind) => (
                 <Button key={kind} variant="outline" size="sm" onClick={() => download(`/specialists/${name}/request/template.${kind}`, `${name}-template.${kind}`)}>
+                  <Download />
                   Download template.{kind}
                 </Button>
               ))
             ) : (
               <Button variant="outline" size="sm" onClick={() => open(["request-data", name])}>
+                <FilePlus />
                 Write a data request
               </Button>
             )}

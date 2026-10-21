@@ -1,3 +1,4 @@
+import { Lightbulb, Play } from "lucide-react"
 import { runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,7 @@ export function Proposals({ d }: { d: Detail }) {
           </CardDescription>
         </div>
         <Button variant="outline" onClick={ask}>
+          <Lightbulb />
           Ask for proposals
         </Button>
       </CardHeader>
@@ -49,6 +51,7 @@ export function Proposals({ d }: { d: Detail }) {
                 </div>
               </div>
               <Button size="sm" onClick={() => run(p.id)}>
+                <Play />
                 Run it
               </Button>
             </div>

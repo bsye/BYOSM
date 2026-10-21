@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api } from "@/api"
 import { Button } from "@/components/ui/button"
@@ -68,10 +69,12 @@ export function DataRows({ name }: { name: string }) {
         </Table>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>
+            <ChevronLeft />
             Previous
           </Button>
           <Button variant="outline" size="sm" disabled={offset + PAGE >= page.total} onClick={() => setOffset(offset + PAGE)}>
             Next
+            <ChevronRight />
           </Button>
           <span className="text-muted-foreground text-xs">
             {page.total ? `${offset + 1} to ${Math.min(offset + PAGE, page.total)}` : ""}

@@ -1,3 +1,4 @@
+import { Play } from "lucide-react"
 import { useState } from "react"
 import { post, type Detail } from "@/api"
 import { Button } from "@/components/ui/button"
@@ -34,6 +35,7 @@ export function Playground({ d }: { d: Detail }) {
       <CardContent className="space-y-4">
         <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="type an input" />
         <Button disabled={!text.trim()} onClick={run}>
+          <Play />
           Predict
         </Button>
         {error && <p className="text-destructive text-sm">{error}</p>}

@@ -1,4 +1,4 @@
-import { Activity, Boxes, KeyRound, Network, Settings, Sparkles } from "lucide-react"
+import { Activity, Boxes, Github, KeyRound, Network, Settings, Smile } from "lucide-react"
 import type { ComponentProps } from "react"
 import {
   Sidebar,
@@ -24,6 +24,11 @@ const SECONDARY = [
   { key: "settings", label: "Settings", icon: Settings },
 ]
 
+const LINKS = [
+  { label: "GitHub", handle: "bsye", href: "https://github.com/bsye", icon: Github },
+  { label: "Hugging Face", handle: "bsye", href: "https://huggingface.co/bsye", icon: Smile },
+]
+
 type Props = ComponentProps<typeof Sidebar> & { section: string; running: number }
 
 export function AppSidebar({ section, running, ...props }: Props) {
@@ -45,7 +50,6 @@ export function AppSidebar({ section, running, ...props }: Props) {
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:p-1.5!">
               <a href={href("specialists")}>
-                <Sparkles className="size-5!" />
                 <span className="text-base font-semibold">byosm</span>
               </a>
             </SidebarMenuButton>
@@ -65,7 +69,19 @@ export function AppSidebar({ section, running, ...props }: Props) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <p className="text-muted-foreground px-2 text-xs">Small specialists, local, no LLM at runtime.</p>
+        <SidebarMenu>
+          {LINKS.map((l) => (
+            <SidebarMenuItem key={l.href}>
+              <SidebarMenuButton asChild size="sm" tooltip={l.label}>
+                <a href={l.href} target="_blank" rel="noreferrer">
+                  <l.icon />
+                  <span>{l.label}</span>
+                  <span className="text-muted-foreground/70 ml-auto text-xs">{l.handle}</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   )

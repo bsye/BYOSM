@@ -1,3 +1,4 @@
+import { Save } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, put } from "@/api"
 import { Button } from "@/components/ui/button"
@@ -65,7 +66,10 @@ export function Settings() {
         <CardContent className="space-y-3">
           <Textarea className="h-80 font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} />
           <div className="flex items-center gap-3">
-            <Button onClick={save}>Save</Button>
+            <Button onClick={save}>
+              <Save />
+              Save changes
+            </Button>
             <span className="text-muted-foreground text-sm">{note}</span>
           </div>
         </CardContent>

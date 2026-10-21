@@ -13,3 +13,14 @@ export function took(a: number | null, b: number | null): string {
   const s = (b ?? Date.now() / 1000) - a
   return s < MINUTE ? `${Math.round(s)} s` : `${Math.round((s / MINUTE) * 10) / 10} min`
 }
+
+const RIVAL_NAMES: Record<string, string> = { llm: "the LLM", jev: "Jev", panel: "the teacher panel", silero: "Silero", energy: "an energy threshold" }
+
+export function rivalName(id: string | null | undefined): string {
+  if (!id) return "-"
+  if (RIVAL_NAMES[id]) return RIVAL_NAMES[id]
+  const repo = id.startsWith("hf:") ? id.slice(3) : id
+  return repo.slice(repo.lastIndexOf("/") + 1)
+}
+
+export const metricName = (metric: string) => metric.split("_").join(" ").replace("f1", "F1")

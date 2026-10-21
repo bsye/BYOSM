@@ -1,3 +1,4 @@
+import { Save, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, del, put } from "@/api"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -49,10 +50,12 @@ export function Keys() {
                 onChange={(e) => setDraft({ ...draft, [k.name]: e.target.value })}
               />
               <Button size="sm" disabled={!draft[k.name]} onClick={() => save(k.name)}>
+                <Save />
                 Save
               </Button>
               {k.in_file && (
                 <Button size="sm" variant="outline" onClick={() => del(`/keys/${k.name}`).then(load)}>
+                  <Trash2 />
                   Remove
                 </Button>
               )}

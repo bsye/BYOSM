@@ -72,6 +72,7 @@ export type Summary = {
   labels: number
   metric: string
   primary_suite: string
+  benchmark: string
   promoted: string | null
   score: number | null
   rival: { name: string; score: number | null } | null

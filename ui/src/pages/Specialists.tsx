@@ -1,4 +1,4 @@
-import { Minus, Plus, TrendingDown, TrendingUp } from "lucide-react"
+import { Hammer, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, runJob, type Summary } from "@/api"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +17,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
-import { score } from "@/format"
+import { metricName, rivalName, score } from "@/format"
 import { go, href } from "@/route"
 import { Overview } from "./Overview"
 import { SectionCards } from "./SectionCards"
@@ -47,6 +47,7 @@ function NewSpecialist({ children }: { children: React.ReactNode }) {
         {error && <p className="text-destructive text-sm">{error}</p>}
         <DialogFooter>
           <Button disabled={!prompt.trim()} onClick={start}>
+            <Hammer />
             Build it
           </Button>
         </DialogFooter>
@@ -60,13 +61,13 @@ function Delta({ s }: { s: Summary }) {
   const d = s.score - s.rival.score
   const Icon = d > 0 ? TrendingUp : d < 0 ? TrendingDown : Minus
   return (
-    <span className="flex w-full min-w-0 items-center gap-1.5">
-      <Icon className="size-4 shrink-0" />
-      <span className="tabular-nums">
+    <span className="text-muted-foreground flex w-full min-w-0 items-center gap-1">
+      <Icon className="size-3.5 shrink-0" />
+      <span className="text-foreground font-medium tabular-nums">
         {d > 0 ? "+" : ""}
         {d.toFixed(3)}
       </span>
-      <span className="text-muted-foreground min-w-0 truncate">against {s.rival.name}</span>
+      <span className="min-w-0 truncate">vs {rivalName(s.rival.name)}</span>
     </span>
   )
 }
@@ -77,15 +78,16 @@ function SpecialistCard({ s }: { s: Summary }) {
       <Card className="h-full">
         <CardHeader>
           <CardTitle>{s.name}</CardTitle>
-          <CardDescription className="line-clamp-2">{s.description}</CardDescription>
+          <CardDescription className="line-clamp-1">{s.description}</CardDescription>
           <CardAction>{s.exported && <Badge variant="outline">Exported</Badge>}</CardAction>
         </CardHeader>
-        <CardFooter className="mt-auto flex-col items-start gap-1 text-sm">
-          <span className="text-muted-foreground">
-            Test {s.metric.replace("_", " ")} on {s.primary_suite}
+        <CardFooter className="mt-auto flex-col items-start gap-1">
+          <span className="text-3xl font-semibold tabular-nums" title={`Test ${metricName(s.metric)}, ${s.benchmark}`}>
+            {score(s.score)}
           </span>
-          <span className="text-2xl font-semibold tabular-nums">{score(s.score)}</span>
-          <Delta s={s} />
+          <span className="w-full text-xs">
+            <Delta s={s} />
+          </span>
         </CardFooter>
       </Card>
     </a>
@@ -126,7 +128,10 @@ export function Specialists() {
           </EmptyHeader>
           <EmptyContent>
             <NewSpecialist>
-              <Button>New specialist</Button>
+              <Button>
+                <Plus />
+                New specialist
+              </Button>
             </NewSpecialist>
           </EmptyContent>
         </Empty>

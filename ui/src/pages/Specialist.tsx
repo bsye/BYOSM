@@ -1,13 +1,14 @@
+import { Gauge, Hammer, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, del, put, runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
-import { ms, params, score } from "@/format"
+import { metricName, ms, params, rivalName, score } from "@/format"
 import { go } from "@/route"
 import { BoardChart, boardRows } from "./BoardChart"
 import { DataRows } from "./DataRows"
@@ -19,15 +20,16 @@ import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
 import { YourData } from "./YourData"
 
-const ACTIONS: { label: string; args: (n: string) => string[] }[] = [
-  { label: "Build", args: (n) => ["build", n] },
-  { label: "Score", args: (n) => ["eval", n] },
-  { label: "Improve", args: (n) => ["improve", n] },
-  { label: "Export", args: (n) => ["export", n] },
-  { label: "Autopilot", args: (n) => ["auto", n] },
+const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] }[] = [
+  { label: "Build", icon: Hammer, args: (n) => ["build", n] },
+  { label: "Score", icon: Gauge, args: (n) => ["eval", n] },
+  { label: "Improve", icon: Lightbulb, args: (n) => ["improve", n] },
+  { label: "Export", icon: Package, args: (n) => ["export", n] },
 ]
 
 const FOCUS_OTHERS = 5
+
+const display = (d: Detail, model: string) => (d.baselines.includes(model) ? rivalName(model) : model)
 
 function Board({ d }: { d: Detail }) {
   const [all, setAll] = useState(false)
@@ -39,26 +41,32 @@ function Board({ d }: { d: Detail }) {
     <Card>
       <CardHeader>
         <CardTitle>
-          {d.metric} on {d.primary_suite}
+          Test {metricName(d.metric)} on {d.benchmark}
         </CardTitle>
-        <CardDescription>Test with its 95% interval and calib, the split that chooses. Test is only reported.</CardDescription>
-        {every.length > rows.length || all ? (
-          <Button variant="outline" size="sm" className="w-fit" onClick={() => setAll(!all)}>
-            {all ? "Promoted, rivals and the best others" : `Show all ${every.length}`}
-          </Button>
-        ) : null}
+        <CardDescription>Each test score with its 95% interval, next to calib, the split used to choose.</CardDescription>
+        {(every.length > rows.length || all) && (
+          <CardAction>
+            <Button variant="outline" size="sm" onClick={() => setAll(!all)}>
+              <ListFilter />
+              {all ? "Show the key models" : `Show all ${every.length}`}
+            </Button>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
-        {rows.length ? <BoardChart rows={rows} /> : <p className="text-muted-foreground text-sm">Nothing scored yet.</p>}
-        <SizeChart d={d} />
+        {rows.length ? (
+          <BoardChart rows={rows.map((r) => ({ ...r, model: display(d, r.model) }))} />
+        ) : (
+          <p className="text-muted-foreground text-sm">Nothing scored yet. Build or score this specialist to fill the board.</p>
+        )}
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>model</TableHead>
-              <TableHead>test [95% CI]</TableHead>
-              <TableHead>calib</TableHead>
-              <TableHead>params</TableHead>
-              <TableHead>CPU</TableHead>
+              <TableHead>Model</TableHead>
+              <TableHead>Test [95% CI]</TableHead>
+              <TableHead>Calib</TableHead>
+              <TableHead>Params</TableHead>
+              <TableHead>CPU per input</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -66,21 +74,32 @@ function Board({ d }: { d: Detail }) {
               const res = d.board[r.model][d.primary_suite]
               return (
                 <TableRow key={r.model}>
-                  <TableCell className="font-medium">
-                    {r.model} {r.model === d.promoted && <Badge className="ml-2">promoted</Badge>}
-                    {d.baselines.includes(r.model) && <Badge variant="outline" className="ml-2">rival</Badge>}
+                  <TableCell>
+                    <span className="flex items-center gap-2">
+                      <span className="font-medium" title={r.model}>
+                        {display(d, r.model)}
+                      </span>
+                      {r.model === d.promoted && <Badge>Promoted</Badge>}
+                      {d.baselines.includes(r.model) && <Badge variant="outline">Rival</Badge>}
+                    </span>
                   </TableCell>
                   <TableCell className="tabular-nums">
-                    {score(r.test)} {res.ci && `[${score(res.ci.lo)}, ${score(res.ci.hi)}]`}
+                    <span className="font-medium">{score(r.test)}</span>{" "}
+                    {res.ci && (
+                      <span className="text-muted-foreground/70">
+                        [{score(res.ci.lo)}, {score(res.ci.hi)}]
+                      </span>
+                    )}
                   </TableCell>
-                  <TableCell className="tabular-nums">{score(r.calib)}</TableCell>
-                  <TableCell>{params(res.params)}</TableCell>
-                  <TableCell>{ms(res.latency_ms)}</TableCell>
+                  <TableCell className="text-foreground/70 tabular-nums">{score(r.calib)}</TableCell>
+                  <TableCell className="text-foreground/70 tabular-nums">{params(res.params)}</TableCell>
+                  <TableCell className="text-foreground/70 tabular-nums">{ms(res.latency_ms)}</TableCell>
                 </TableRow>
               )
             })}
           </TableBody>
         </Table>
+        <SizeChart d={d} />
       </CardContent>
     </Card>
   )
@@ -107,7 +126,10 @@ function SpecEditor({ d, onSaved }: { d: Detail; onSaved: () => void }) {
       <CardContent className="space-y-3">
         <Textarea className="h-[32rem] font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} />
         <div className="flex items-center gap-3">
-          <Button onClick={save}>Save</Button>
+          <Button onClick={save}>
+            <Save />
+            Save changes
+          </Button>
           <span className="text-muted-foreground text-sm">{note}</span>
         </div>
       </CardContent>
@@ -134,24 +156,26 @@ export function Specialist({ name }: { name: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="space-y-1">
           <h1 className="text-2xl font-semibold">{d.name}</h1>
           <p className="text-muted-foreground max-w-3xl text-sm">{d.description}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Badge variant="secondary">{d.modality}</Badge>
-            <Badge variant="secondary">{d.task_type}</Badge>
-            <Badge variant="outline">{d.labels} labels</Badge>
-            <Badge variant="outline">{d.experiments.length} experiments</Badge>
-          </div>
+          <p className="text-muted-foreground/70 text-xs">
+            {d.modality} {d.task_type}, {d.labels} labels, {d.experiments.length} experiments
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {ACTIONS.map((a) => (
             <Button key={a.label} variant="outline" onClick={() => runJob(a.args(name)).then((j) => go("jobs", j.id))}>
+              <a.icon />
               {a.label}
             </Button>
           ))}
-          <Button variant="destructive" onClick={remove}>
-            Delete
+          <Button onClick={() => runJob(["auto", name]).then((j) => go("jobs", j.id))}>
+            <Wand2 />
+            Autopilot
+          </Button>
+          <Button variant="destructive" size="icon" aria-label="Delete this specialist" title="Delete" onClick={remove}>
+            <Trash2 />
           </Button>
         </div>
       </div>

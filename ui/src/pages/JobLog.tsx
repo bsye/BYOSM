@@ -1,3 +1,4 @@
+import { Square } from "lucide-react"
 import { useEffect, useRef } from "react"
 import { post, type Job } from "@/api"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +38,7 @@ export function JobLog({ id }: { id: string }) {
           <StatusBadge status={job.status} />
           {active && (
             <Button size="sm" variant="outline" onClick={() => post(`/jobs/${id}/cancel`, {})}>
+              <Square />
               Cancel
             </Button>
           )}

@@ -1,3 +1,4 @@
+import { KeyRound } from "lucide-react"
 import { useState, type CSSProperties } from "react"
 import { saveToken } from "@/api"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -38,6 +39,7 @@ function TokenPrompt() {
         <div className="flex gap-2">
           <Input value={value} onChange={(e) => setValue(e.target.value)} placeholder="http://127.0.0.1:8765/#token=..." />
           <Button disabled={!value.trim()} onClick={() => saveToken(value)}>
+            <KeyRound />
             Use it
           </Button>
         </div>

@@ -28,7 +28,7 @@ export function BoardChart({ rows }: { rows: Row[] }) {
     <ChartContainer config={config} className="h-80 w-full">
       <BarChart data={rows} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
-        <XAxis dataKey="model" tickLine={false} axisLine={false} interval={0} angle={-30} textAnchor="end" height={70} />
+        <XAxis dataKey="model" tickLine={false} tickMargin={10} axisLine={false} interval={0} />
         <YAxis domain={[low, 1]} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => Number(v).toFixed(2)} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <ChartLegend content={<ChartLegendContent />} />
