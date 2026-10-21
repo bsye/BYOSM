@@ -47,8 +47,8 @@
       "objective": 0.8450678494539549,
       "n_test": 20,
       "n_calib": 8,
-      "seconds": 26.4,
-      "stream_ms_per_chunk": 0.1742,
+      "seconds": 24.5,
+      "stream_ms_per_chunk": 0.1694,
       "chunk_ms": 30.0,
       "fingerprint": "27b33d5b13"
     }
@@ -101,8 +101,8 @@
       "objective": 0.8484563623750178,
       "n_test": 20,
       "n_calib": 8,
-      "seconds": 25.6,
-      "stream_ms_per_chunk": 0.1771,
+      "seconds": 24.2,
+      "stream_ms_per_chunk": 0.1696,
       "chunk_ms": 30.0,
       "fingerprint": "27b33d5b13"
     }
@@ -155,8 +155,8 @@
       "objective": 0.87630336749145,
       "n_test": 20,
       "n_calib": 8,
-      "seconds": 25.5,
-      "stream_ms_per_chunk": 0.1724,
+      "seconds": 23.9,
+      "stream_ms_per_chunk": 0.1764,
       "chunk_ms": 30.0,
       "fingerprint": "27b33d5b13"
     }
@@ -209,8 +209,8 @@
       "objective": 0.8815767806329065,
       "n_test": 20,
       "n_calib": 8,
-      "seconds": 25.5,
-      "stream_ms_per_chunk": 0.1857,
+      "seconds": 23.7,
+      "stream_ms_per_chunk": 0.1687,
       "chunk_ms": 30.0,
       "fingerprint": "27b33d5b13"
     }
@@ -263,7 +263,7 @@
       "objective": 0.7307834293012657,
       "n_test": 20,
       "n_calib": 8,
-      "seconds": 7.7,
+      "seconds": 7.3,
       "latency_ms": null,
       "fingerprint": "27b33d5b13"
     }
@@ -316,8 +316,8 @@
       "objective": 0.8653005754570743,
       "n_test": 20,
       "n_calib": 8,
-      "seconds": 61.6,
-      "stream_ms_per_chunk": 0.0806,
+      "seconds": 59.7,
+      "stream_ms_per_chunk": 0.0659,
       "chunk_ms": 32.0,
       "fingerprint": "27b33d5b13"
     }

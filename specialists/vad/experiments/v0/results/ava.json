@@ -45,8 +45,8 @@
   "objective": 0.8450678494539549,
   "n_test": 20,
   "n_calib": 8,
-  "seconds": 26.4,
-  "stream_ms_per_chunk": 0.1742,
+  "seconds": 24.5,
+  "stream_ms_per_chunk": 0.1694,
   "chunk_ms": 30.0,
   "fingerprint": "27b33d5b13"
 }
