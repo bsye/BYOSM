@@ -126,7 +126,7 @@
   "objective": 0.94,
   "n_test": 3200,
   "n_calib": 800,
-  "seconds": 118.0,
-  "latency_ms": 37.256,
+  "seconds": 112.8,
+  "latency_ms": 36.758,
   "fingerprint": "d979142919"
 }

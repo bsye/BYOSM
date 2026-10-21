@@ -94,6 +94,16 @@ train:
   refine_rounds: 0
   refine_examples: 300
   pool: attention
+  layer_decay_floor: 0.5
+  probe_epochs: 0
+  ema: true
+  seed: 0
+  holdout_test: auto
+  precision: auto
+  distill_from: null
+  distill_alpha: 0.3
+  distill_temperature: 2.0
+  distill_unlabeled: 20000
 decision:
   kind: threshold
   threshold: null
@@ -105,6 +115,7 @@ document:
   route: fused
   text_backbone: hf:sentence-transformers/all-MiniLM-L6-v2
   image_backbone: hf:facebook/dinov2-small
+  image_pool: mean
   max_pages: 1
   max_len: 256
   image_size: 224
@@ -140,3 +151,5 @@ evals:
   primary: true
 baselines:
 - hf:microsoft/dit-base-finetuned-rvlcdip
+- llm
+search: {}
