@@ -37,6 +37,7 @@ ALLOWED_COMMANDS = (
     "exp",
     "suite",
     "baseline",
+    "testset",
     "system",
 )
 BACKLOG_LINES = 5000
