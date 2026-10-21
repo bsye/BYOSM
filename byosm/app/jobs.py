@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import queue
 import subprocess
@@ -55,6 +56,7 @@ class Job:
     code: int | None = None
     lines: list[str] = field(default_factory=list)
     cancel: bool = False
+    llm: dict[str, Any] | None = None
 
     def public(self) -> dict[str, Any]:
         return {k: getattr(self, k) for k in JOB_FIELDS}
@@ -70,10 +72,10 @@ class Runner:
         for _ in range(max(1, parallel)):
             threading.Thread(target=self._work, daemon=True).start()
 
-    def submit(self, args: list[str]) -> Job:
+    def submit(self, args: list[str], llm: dict[str, Any] | None = None) -> Job:
         if not args or args[0] not in ALLOWED_COMMANDS:
             raise ValueError(f"command must be one of {', '.join(ALLOWED_COMMANDS)}")
-        job = Job(id=uuid.uuid4().hex[:10], args=[str(a) for a in args])
+        job = Job(id=uuid.uuid4().hex[:10], args=[str(a) for a in args], llm=llm)
         self.jobs[job.id] = job
         self._status(job, "queued")
         self.todo.put(job)
@@ -136,7 +138,7 @@ class Runner:
                 self._run(job)
 
     def _run(self, job: Job) -> None:
-        from ..config import env_file
+        from ..config import LLM_OVERRIDE_ENV, env_file
 
         env = {
             **os.environ,
@@ -145,6 +147,7 @@ class Runner:
             "COLUMNS": TERMINAL_COLUMNS,
             "NO_COLOR": "1",
             EVENTS_ENV: "1",
+            **({LLM_OVERRIDE_ENV: json.dumps(job.llm)} if job.llm else {}),
         }
         job.started = time.time()
         self._status(job, "running")

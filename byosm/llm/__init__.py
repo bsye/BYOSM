@@ -38,6 +38,7 @@ _cache: dict[str, LLM] = {}
 
 
 CONNECTION = ("provider", "base_url", "api_key", "api_key_env")
+PREVIEW_CHARS = 600
 
 
 def role_config(roles: dict, role: str) -> dict:
@@ -72,15 +73,21 @@ class Observed:
 
     def json(self, system: str, prompt: str, schema: dict, images: list[bytes] | None = None) -> dict:
         import time
+        import uuid
 
         from ..events import emit
 
-        t0 = time.time()
-        emit("llm", role=self.role, model=self.name, state="waiting")
+        t0, call = time.time(), uuid.uuid4().hex[:8]
+        base = {"call": call, "role": self.role, "model": self.name}
+        emit("llm", **base, state="waiting", prompt=prompt[:PREVIEW_CHARS], images=len(images or []))
         try:
-            return self.llm.json(system, prompt, schema, **({"images": images} if images else {}))
-        finally:
-            emit("llm", role=self.role, model=self.name, state="done", seconds=round(time.time() - t0, 1))
+            out = self.llm.json(system, prompt, schema, **({"images": images} if images else {}))
+        except Exception as e:
+            emit("llm", **base, state="failed", seconds=round(time.time() - t0, 1), error=str(e)[:PREVIEW_CHARS])
+            raise
+        answer = json.dumps(out, ensure_ascii=False)[:PREVIEW_CHARS]
+        emit("llm", **base, state="done", seconds=round(time.time() - t0, 1), answer=answer)
+        return out
 
 
 def pmap(

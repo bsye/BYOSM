@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 CONFIG_NAME = "byosm.yaml"
 ENV_FILE = ".env"
+LLM_OVERRIDE_ENV = "BYOSM_LLM"
 MAX_PARALLEL_JOBS = 2
 
 DEFAULT_CONFIG: dict[str, Any] = {
@@ -54,6 +55,8 @@ def load_config(ws: Path | None = None) -> dict[str, Any]:
     cfg = yaml.safe_load(path.read_text()) if path.exists() else {}
     merged = {**DEFAULT_CONFIG, **(cfg or {})}
     merged["llm"] = {**DEFAULT_CONFIG["llm"], **((cfg or {}).get("llm") or {})}
+    if os.environ.get(LLM_OVERRIDE_ENV):
+        merged["llm"]["default"] = json.loads(os.environ[LLM_OVERRIDE_ENV])
     return merged
 
 

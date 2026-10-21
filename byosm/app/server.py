@@ -29,6 +29,7 @@ WARM_MODULE = "byosm.export.bundle"
 
 class JobRequest(BaseModel):
     args: list[str]
+    llm: dict[str, Any] | None = None
 
 
 class KeyValue(BaseModel):
@@ -90,7 +91,7 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.post("/api/jobs", dependencies=[auth])
     def submit(body: JobRequest) -> dict:
-        return missing(runner.submit, body.args).public()
+        return missing(runner.submit, body.args, body.llm).public()
 
     @app.get("/api/jobs/{job_id}", dependencies=[auth])
     def job(job_id: str) -> dict:
