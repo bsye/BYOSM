@@ -9,6 +9,18 @@ from rich.table import Table
 from ..config import PUBLISH_LICENSE, Project, find_workspace, list_projects
 from .base import _spec, app, console, log
 
+MODEL_DOCKERFILE = Path(__file__).resolve().parents[2] / "docker" / "model.Dockerfile"
+MODEL_PORT = 8800
+
+
+def _bundle(name: str) -> Path:
+    from ..export.bundle import is_exported
+
+    p, _ = _spec(name)
+    if not is_exported(p.root / "export"):
+        raise typer.BadParameter(f"export first: byosm export {name}")
+    return p.root / "export"
+
 
 @app.command()
 def export(
@@ -51,16 +63,35 @@ def publish(
 def predict(name: str, input: str) -> None:
     """Run the exported (or promoted) specialist on one input: text, or a path to an audio/image file."""
     from .. import rt
-    from ..export.bundle import is_exported
 
-    p, _ = _spec(name)
-    if not is_exported(p.root / "export"):
-        raise typer.BadParameter(f"export first: byosm export {name}")
-    rt._main(["predict", str(p.root / "export"), input])
+    rt._main(["predict", str(_bundle(name)), input])
 
 
 @app.command()
-def serve(names: list[str], port: int = 8800, host: str = "127.0.0.1") -> None:
+def containerize(
+    name: str, tag: Annotated[str | None, typer.Option(help="image tag (default: byosm-<name>)")] = None
+) -> None:
+    """Build a Docker image that serves one exported bundle in isolation: python-slim, the bundle's requirements, non-root."""
+    import shutil
+    import subprocess
+
+    bundle = _bundle(name)
+    docker = shutil.which("docker")
+    if not docker or not MODEL_DOCKERFILE.exists():
+        log(f"needs the docker CLI on PATH and {MODEL_DOCKERFILE} (a source checkout of byosm)")
+        raise typer.Exit(1)
+    image = tag or f"byosm-{name.lower()}"
+    built = subprocess.run([docker, "build", "-f", str(MODEL_DOCKERFILE), "-t", image, str(bundle)])
+    if built.returncode:
+        raise typer.Exit(built.returncode)
+    log(
+        f"built {image}\n  docker run --rm --read-only -p {MODEL_PORT}:{MODEL_PORT} {image}\n"
+        f'  curl -d \'{{"input": "..."}}\' http://127.0.0.1:{MODEL_PORT}/v1/{name}/predict'
+    )
+
+
+@app.command()
+def serve(names: list[str], port: int = MODEL_PORT, host: str = "127.0.0.1") -> None:
     """Local HTTP API over exported bundles: GET /v1/models, POST /v1/<name>/predict|encode, POST /v1/predict."""
     from .. import rt
 

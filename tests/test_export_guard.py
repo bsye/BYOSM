@@ -179,3 +179,25 @@ def test_private_publish_refuses_an_existing_public_repo(ws, monkeypatch, tmp_pa
         upload.publish("x", "me/x", private=True, log=lambda m: None)
     assert "already exists and is public" in str(err.value)
     assert calls == ["create"]
+
+
+def test_containerize_builds_the_export_folder_and_refuses_an_unexported_specialist(ws, monkeypatch):
+    import shutil
+    import subprocess
+
+    from byosm.cli.ship import MODEL_DOCKERFILE
+    from byosm.spec import Label, TaskSpec
+
+    root = ws / "specialists" / "q"
+    root.mkdir(parents=True)
+    TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")]).save(
+        root / "spec.yaml"
+    )
+    assert "export first" in CliRunner().invoke(app, ["containerize", "q"]).output
+    (root / "export").mkdir()
+    (root / "export" / "manifest.json").write_text("{}")
+    calls = []
+    monkeypatch.setattr(shutil, "which", lambda cmd: f"/bin/{cmd}")
+    monkeypatch.setattr(subprocess, "run", lambda cmd: calls.append(cmd) or SimpleNamespace(returncode=0))
+    assert CliRunner().invoke(app, ["containerize", "q", "--tag", "me/q:1"]).exit_code == 0
+    assert calls == [["/bin/docker", "build", "-f", str(MODEL_DOCKERFILE), "-t", "me/q:1", str(root / "export")]]
