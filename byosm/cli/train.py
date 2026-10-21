@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
+from ..config import TESTSET_PER_LABEL, TESTSET_SUITE
 from ..format import cpu, fmt, interval, params
 from .base import _spec, app, console, exp_app, log
 
@@ -84,6 +85,26 @@ def _suite_cells(r: dict, s: str, best: float | None, prim: str, detail: bool) -
         cells.append(f"{pr[0]:.3f}/{pr[1]:.3f}" if pr and pr[0] is not None else "")
     cells.append(f"{auc:.3f}" if auc else "")
     return cells
+
+
+@app.command()
+def testset(
+    name: str,
+    per_label: Annotated[int, typer.Option(help="examples the LLM writes per label")] = TESTSET_PER_LABEL,
+    suite: Annotated[str, typer.Option(help="name of the new suite")] = TESTSET_SUITE,
+) -> None:
+    """Have the LLM write a new test set, freeze it as a suite and score the promoted model and baselines on it."""
+    from .. import evals
+    from ..evals.testset import write_testset
+
+    p, spec = _spec(name)
+    try:
+        es = write_testset(p, spec, per_label, suite, log=log)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    log(f"suite {es.name}: written by {es.written_by}, judged by {es.judged_by or 'nobody'}; not a public benchmark")
+    evals.run(name, [p.promoted] if p.promoted else [], None, [es.name], log=log)
+    board(name, detail=True)
 
 
 @app.command()

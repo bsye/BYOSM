@@ -51,10 +51,15 @@ def materialize(
     d = suite_dir(p, suite)
     d.mkdir(parents=True, exist_ok=True)
     calib, test, suite = _fetch(p, base, suite, d, log)
+    freeze(d, suite, calib, test)
+    return calib, test, d
+
+
+def freeze(d: Path, suite: EvalSuite, calib: list[dict], test: list[dict]) -> None:
+    d.mkdir(parents=True, exist_ok=True)
     write(d / "calib.jsonl", calib)
     write(d / "test.jsonl", test)
     (d / "suite.json").write_text(suite.model_dump_json(indent=2))
-    return calib, test, d
 
 
 def _fetch(

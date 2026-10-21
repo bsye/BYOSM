@@ -23,6 +23,7 @@ __all__ = [
     "get_llm",
     "pmap",
     "register_provider",
+    "role_model",
 ]
 
 PROVIDERS: dict[str, Callable[..., LLM]] = {
@@ -50,6 +51,13 @@ def role_config(roles: dict, role: str) -> dict:
     if any(k in own for k in CONNECTION):
         return {"provider": default.get("provider", "anthropic"), **own}
     return {**default, **own}
+
+
+def role_model(role: str, cfg: dict | None = None) -> str:
+    from ..config import load_config
+
+    conf = role_config((cfg or load_config())["llm"], role)
+    return conf.get("model") or conf.get("provider", "anthropic")
 
 
 def get_llm(role: str = "default", cfg: dict | None = None) -> LLM:

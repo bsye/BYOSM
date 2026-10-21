@@ -14,6 +14,8 @@ CONFIG_NAME = "byosm.yaml"
 ENV_FILE = ".env"
 LLM_OVERRIDE_ENV = "BYOSM_LLM"
 MAX_PARALLEL_JOBS = 2
+TESTSET_PER_LABEL = 20
+TESTSET_SUITE = "llm-written"
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "llm": {

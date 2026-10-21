@@ -53,11 +53,12 @@ def _to_records(spec: TaskSpec, out: dict, source: str, **meta: Any) -> list[dic
     return rows
 
 
-def _jobs(spec: TaskSpec, n: int, rng: random.Random, adversarial: bool) -> list[dict]:
+def _jobs(spec: TaskSpec, n: int, rng: random.Random, adversarial: bool, labels: list[str] | None = None) -> list[dict]:
     k = spec.data.per_call
+    labels = labels or spec.label_names
     jobs = []
     for i in range(max(1, -(-n // k))):
-        label = spec.label_names[i % len(spec.label_names)]
+        label = labels[i % len(labels)]
         combo = {a.name: rng.choice(a.values) for a in spec.diversity_axes if a.values}
         hard = rng.sample(spec.hard_cases, min(len(spec.hard_cases), 4 if adversarial else 2))
         jobs.append({"label": label, "combo": combo, "hard": hard, "k": k, "seed": rng.randint(0, 10**6)})
@@ -117,12 +118,13 @@ def generate(
     against: list[dict] | None = None,
     jobs: list[dict] | None = None,
     log: Callable[[str], None] = print,
+    labels: list[str] | None = None,
 ) -> list[dict]:
     concurrency = (cfg or {}).get("concurrency", 8)
     adversarial = split in ("dev", "test")
     llm = get_llm("eval" if adversarial else "generate", cfg)
     rng = random.Random(f"{spec.name}-{split}-{len(against or [])}")
-    jobs = jobs or _jobs(spec, n, rng, adversarial)
+    jobs = jobs or _jobs(spec, n, rng, adversarial, labels)
     pool = [r["input"] for r in (against or [])]
     system = EVAL_SYSTEM if adversarial else GEN_SYSTEM
     schema = _schema(spec)

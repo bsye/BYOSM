@@ -76,7 +76,8 @@ class TaskSpec(BaseModel):
         return hashlib.sha1(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:10]
 
     def primary_suite(self) -> str:
-        return next((e.name for e in self.evals if e.primary), self.evals[0].name if self.evals else "builtin")
+        public = (e.name for e in self.evals if e.kind != "generated")
+        return next((e.name for e in self.evals if e.primary), next(public, "builtin"))
 
     def trains_on_test_split(self) -> bool:
         h = self.train.holdout_test

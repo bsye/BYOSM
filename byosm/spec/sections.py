@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .backbones import DINOV2_SMALL, MINILM
 
@@ -92,11 +92,19 @@ class Decision(BaseModel):
 
 class EvalSuite(BaseModel):
     name: str
-    kind: Literal["builtin", "hf", "local"] = "builtin"
+    kind: Literal["builtin", "hf", "local", "generated"] = "builtin"
     source: HFSource | None = None
     path: str | None = None
     max_items: int = 400
     primary: bool = False
+    written_by: str | None = None
+    judged_by: str | None = None
+
+    @model_validator(mode="after")
+    def _public_primary(self) -> EvalSuite:
+        if self.primary and self.kind == "generated":
+            raise ValueError(f"suite {self.name}: an LLM-written suite cannot be the primary benchmark")
+        return self
 
     def label_space(self, names: list[str]) -> list[str]:
         targets = {b for _, b in self.source.label_map} if self.source else set()
