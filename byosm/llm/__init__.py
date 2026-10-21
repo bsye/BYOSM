@@ -81,7 +81,7 @@ class Observed:
         from ..events import emit
 
         t0, call = time.time(), uuid.uuid4().hex[:8]
-        base = {"call": call, "role": self.role, "model": self.name}
+        base = {"call": call, "role": self.role, "model": self.name, "at": round(t0, 2)}
         emit("llm", **base, state="waiting", prompt=prompt[:PREVIEW_CHARS], images=len(images or []))
         try:
             out = self.llm.json(system, prompt, schema, **({"images": images} if images else {}))
