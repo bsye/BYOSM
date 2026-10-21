@@ -60,4 +60,10 @@ def config_router(ws: Path, auth: Any) -> APIRouter:
         path.write_text(yaml.safe_dump(_unmasked(new, stored()), sort_keys=False))
         return read()
 
+    @router.get("/api/llm/providers")
+    def providers() -> dict:
+        from ..llm.detect import detect
+
+        return detect()
+
     return router

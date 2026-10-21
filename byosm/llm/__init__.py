@@ -7,12 +7,14 @@ from typing import Any
 
 from .anthropic_provider import AnthropicLLM
 from .base import LLM, LLMError, T
+from .claude_code_provider import ClaudeCodeLLM
 from .openai_provider import OpenAICompatLLM
 
 __all__ = [
     "LLM",
     "PROVIDERS",
     "AnthropicLLM",
+    "ClaudeCodeLLM",
     "LLMError",
     "OpenAICompatLLM",
     "_cache",
@@ -21,7 +23,11 @@ __all__ = [
     "register_provider",
 ]
 
-PROVIDERS: dict[str, Callable[..., LLM]] = {"anthropic": AnthropicLLM, "openai": OpenAICompatLLM}
+PROVIDERS: dict[str, Callable[..., LLM]] = {
+    "anthropic": AnthropicLLM,
+    "openai": OpenAICompatLLM,
+    "claude-code": ClaudeCodeLLM,
+}
 
 
 def register_provider(name: str, factory: Callable[..., LLM]) -> None:
@@ -52,8 +58,29 @@ def get_llm(role: str = "default", cfg: dict | None = None) -> LLM:
         provider = conf.pop("provider", "anthropic")
         if provider not in PROVIDERS:
             raise LLMError(f"unknown provider {provider!r}; known: {sorted(PROVIDERS)}")
-        _cache[key] = PROVIDERS[provider](**conf)
+        _cache[key] = Observed(PROVIDERS[provider](**conf), role)
     return _cache[key]
+
+
+class Observed:
+    def __init__(self, llm: LLM, role: str):
+        self.llm, self.role = llm, role
+        self.name = getattr(llm, "name", type(llm).__name__)
+
+    def __getattr__(self, attr: str) -> Any:
+        return getattr(self.llm, attr)
+
+    def json(self, system: str, prompt: str, schema: dict, images: list[bytes] | None = None) -> dict:
+        import time
+
+        from ..events import emit
+
+        t0 = time.time()
+        emit("llm", role=self.role, model=self.name, state="waiting")
+        try:
+            return self.llm.json(system, prompt, schema, **({"images": images} if images else {}))
+        finally:
+            emit("llm", role=self.role, model=self.name, state="done", seconds=round(time.time() - t0, 1))
 
 
 def pmap(
