@@ -21,7 +21,7 @@ def suite_dir(p: Project, suite: EvalSuite) -> Path:
 
 def fingerprint(p: Project, spec: TaskSpec, suite: EvalSuite) -> str:
     d = suite_dir(p, suite)
-    blob = suite.model_dump_json()
+    blob = suite.model_dump_json(exclude_defaults=True)
     if d.exists():
         blob += "".join(f.read_text()[:FINGERPRINT_CHARS_PER_FILE] for f in sorted(d.glob("*.jsonl")))
     if suite.kind == "builtin":
@@ -29,7 +29,7 @@ def fingerprint(p: Project, spec: TaskSpec, suite: EvalSuite) -> str:
     space = suite.label_space(spec.label_names)
     if space != spec.label_names:
         blob += ",".join(space)
-    blob += spec.decision.model_dump_json() + SCORE_VERSION
+    blob += spec.decision.model_dump_json(exclude_defaults=True) + SCORE_VERSION
     return hashlib.sha1(blob.encode()).hexdigest()[:10]
 
 

@@ -74,6 +74,6 @@
   "n_calib": 426,
   "seconds": 11.4,
   "latency_ms": 26.373,
-  "fingerprint": "997fed0fff",
+  "fingerprint": "785efaf3e9",
   "identity": "SamLowe/roberta-base-go_emotions"
 }

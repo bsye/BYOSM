@@ -74,6 +74,6 @@
   "n_calib": 426,
   "seconds": 6.0,
   "latency_ms": 25.048,
-  "fingerprint": "997fed0fff",
+  "fingerprint": "785efaf3e9",
   "identity": "j-hartmann/emotion-english-distilroberta-base"
 }

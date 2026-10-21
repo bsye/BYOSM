@@ -26960,7 +26960,7 @@
       "n_calib": 616,
       "seconds": 7.1,
       "latency_ms": 2.363,
-      "fingerprint": "8ab3f45456"
+      "fingerprint": "2ae723179d"
     }
   },
   "final-s2": {
@@ -27960,7 +27960,7 @@
       "n_calib": 984,
       "seconds": 726.8,
       "latency_ms": null,
-      "fingerprint": "0c391bc327",
+      "fingerprint": "52aea48f7b",
       "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
     },
     "b77": {
@@ -28459,7 +28459,7 @@
       "n_calib": 616,
       "seconds": 782.8,
       "latency_ms": null,
-      "fingerprint": "8ab3f45456",
+      "fingerprint": "2ae723179d",
       "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
     }
   }

@@ -87,6 +87,6 @@
   "n_calib": 691,
   "seconds": 7773.6,
   "latency_ms": null,
-  "fingerprint": "98f0d9d4fc",
+  "fingerprint": "d2d6700715",
   "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
 }

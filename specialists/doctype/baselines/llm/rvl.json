@@ -128,6 +128,6 @@
   "n_calib": 800,
   "seconds": 38119.1,
   "latency_ms": null,
-  "fingerprint": "d979142919",
+  "fingerprint": "396b1d5000",
   "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
 }

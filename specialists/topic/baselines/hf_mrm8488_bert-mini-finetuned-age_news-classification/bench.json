@@ -62,6 +62,6 @@
   "n_calib": 640,
   "seconds": 3.1,
   "latency_ms": 1.596,
-  "fingerprint": "370188698c",
+  "fingerprint": "b14e3c42c1",
   "identity": "mrm8488/bert-mini-finetuned-age_news-classification"
 }

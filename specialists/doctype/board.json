@@ -130,7 +130,7 @@
       "n_calib": 800,
       "seconds": 53505.6,
       "latency_ms": 10.683,
-      "fingerprint": "d979142919"
+      "fingerprint": "396b1d5000"
     }
   },
   "fused": {
@@ -264,7 +264,7 @@
       "n_calib": 800,
       "seconds": 81.3,
       "latency_ms": 24.392,
-      "fingerprint": "d979142919"
+      "fingerprint": "396b1d5000"
     },
     "builtin": {
       "predictor": "fused",
@@ -396,7 +396,7 @@
       "n_calib": 320,
       "seconds": 21.8,
       "latency_ms": 35.31,
-      "fingerprint": "16062e5ffa"
+      "fingerprint": "315bfa46f6"
     }
   },
   "fused-dit": {
@@ -530,7 +530,7 @@
       "n_calib": 800,
       "seconds": 138.8,
       "latency_ms": 46.895,
-      "fingerprint": "d979142919"
+      "fingerprint": "396b1d5000"
     },
     "builtin": {
       "predictor": "fused-dit",
@@ -662,7 +662,7 @@
       "n_calib": 320,
       "seconds": 37.8,
       "latency_ms": 63.581,
-      "fingerprint": "16062e5ffa"
+      "fingerprint": "315bfa46f6"
     }
   },
   "r2": {
@@ -796,7 +796,7 @@
       "n_calib": 800,
       "seconds": 136.3,
       "latency_ms": 48.11,
-      "fingerprint": "d979142919"
+      "fingerprint": "396b1d5000"
     }
   },
   "text": {
@@ -930,7 +930,7 @@
       "n_calib": 800,
       "seconds": 35.4,
       "latency_ms": 6.743,
-      "fingerprint": "d979142919"
+      "fingerprint": "396b1d5000"
     },
     "builtin": {
       "predictor": "text",
@@ -1062,7 +1062,7 @@
       "n_calib": 320,
       "seconds": 9.7,
       "latency_ms": 12.265,
-      "fingerprint": "16062e5ffa"
+      "fingerprint": "315bfa46f6"
     }
   },
   "v1": {
@@ -1196,7 +1196,7 @@
       "n_calib": 800,
       "seconds": 143.3,
       "latency_ms": 44.645,
-      "fingerprint": "d979142919"
+      "fingerprint": "396b1d5000"
     }
   },
   "visual": {
@@ -1330,7 +1330,7 @@
       "n_calib": 800,
       "seconds": 57.4,
       "latency_ms": 18.826,
-      "fingerprint": "d979142919"
+      "fingerprint": "396b1d5000"
     },
     "builtin": {
       "predictor": "visual",
@@ -1462,7 +1462,7 @@
       "n_calib": 320,
       "seconds": 14.9,
       "latency_ms": 23.442,
-      "fingerprint": "16062e5ffa"
+      "fingerprint": "315bfa46f6"
     }
   },
   "hf:microsoft/dit-base-finetuned-rvlcdip": {
@@ -1596,7 +1596,7 @@
       "n_calib": 800,
       "seconds": 112.8,
       "latency_ms": 36.758,
-      "fingerprint": "d979142919"
+      "fingerprint": "396b1d5000"
     },
     "builtin": {
       "predictor": "hf:microsoft/dit-base-finetuned-rvlcdip",
@@ -1728,7 +1728,7 @@
       "n_calib": 320,
       "seconds": 31.2,
       "latency_ms": 50.88,
-      "fingerprint": "16062e5ffa"
+      "fingerprint": "315bfa46f6"
     }
   },
   "v2-ditft": {
@@ -1862,7 +1862,7 @@
       "n_calib": 800,
       "seconds": 139.1,
       "latency_ms": 43.265,
-      "fingerprint": "d979142919"
+      "fingerprint": "396b1d5000"
     }
   },
   "llm": {
@@ -1996,7 +1996,7 @@
       "n_calib": 800,
       "seconds": 38119.1,
       "latency_ms": null,
-      "fingerprint": "d979142919",
+      "fingerprint": "396b1d5000",
       "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
     }
   }

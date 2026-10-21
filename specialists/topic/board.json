@@ -64,7 +64,7 @@
       "n_calib": 397,
       "seconds": 472.8,
       "latency_ms": null,
-      "fingerprint": "aa9340e009",
+      "fingerprint": "0cd2dca5c2",
       "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
     },
     "bench": {
@@ -131,7 +131,7 @@
       "n_calib": 640,
       "seconds": 1151.3,
       "latency_ms": null,
-      "fingerprint": "370188698c",
+      "fingerprint": "b14e3c42c1",
       "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
     }
   },
@@ -200,7 +200,7 @@
       "n_calib": 397,
       "seconds": 1.2,
       "latency_ms": 1.466,
-      "fingerprint": "aa9340e009",
+      "fingerprint": "0cd2dca5c2",
       "identity": "mrm8488/bert-mini-finetuned-age_news-classification"
     },
     "bench": {
@@ -267,7 +267,7 @@
       "n_calib": 640,
       "seconds": 3.1,
       "latency_ms": 1.596,
-      "fingerprint": "370188698c",
+      "fingerprint": "b14e3c42c1",
       "identity": "mrm8488/bert-mini-finetuned-age_news-classification"
     }
   },
@@ -336,7 +336,7 @@
       "n_calib": 397,
       "seconds": 10.0,
       "latency_ms": 9.067,
-      "fingerprint": "aa9340e009",
+      "fingerprint": "0cd2dca5c2",
       "identity": "Maddyhf1/ag-news-topic-classification-distilbert"
     },
     "bench": {
@@ -403,7 +403,7 @@
       "n_calib": 640,
       "seconds": 25.3,
       "latency_ms": 8.354,
-      "fingerprint": "370188698c",
+      "fingerprint": "b14e3c42c1",
       "identity": "Maddyhf1/ag-news-topic-classification-distilbert"
     }
   },
@@ -472,7 +472,7 @@
       "n_calib": 640,
       "seconds": 8.8,
       "latency_ms": 3.19,
-      "fingerprint": "370188698c"
+      "fingerprint": "b14e3c42c1"
     }
   },
   "v2": {
@@ -540,7 +540,7 @@
       "n_calib": 640,
       "seconds": 8.8,
       "latency_ms": 3.1,
-      "fingerprint": "370188698c"
+      "fingerprint": "b14e3c42c1"
     }
   },
   "v3": {
@@ -608,7 +608,7 @@
       "n_calib": 640,
       "seconds": 8.7,
       "latency_ms": 3.243,
-      "fingerprint": "370188698c"
+      "fingerprint": "b14e3c42c1"
     }
   }
 }

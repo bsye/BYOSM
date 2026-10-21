@@ -31,7 +31,7 @@ also decides that the builtin test split goes into training.
 
 **`data_key` decides when data is shared.**
 `byosm/spec/task.py` `data_key`, `SYNTH_FIELDS`: the key hashes the modality, task type, label names, frame hop and the
-whole `data` section, so experiments with equal keys reuse the same `data/<key>/`. With `data.synthetic` on it also
+`data` section without its default values, so a new `data:` field with a default leaves every key unchanged. Experiments with equal keys reuse the same `data/<key>/`. With `data.synthetic` on it also
 hashes what the LLM reads to write data: label definitions, `description`, `name`, `summary`, `input_description`,
 `languages`, `diversity_axes` and `hard_cases`. Editing those on a real-data spec keeps the cached data, because no
 generator reads them. Gotcha: refine rounds append to the shared `train.jsonl`, so a later experiment with the same
@@ -369,7 +369,7 @@ noisy; segment suites take `max(8, max_files // 4)` calib files.
 
 **Results are cached by fingerprint, and our weights are not in it.**
 `byosm/evals/suites.py` `fingerprint`, `byosm/evals/board.py` `_cached_or_scored`, `byosm/evals/identity.py`: the cache
-key covers the suite definition, the first `FINGERPRINT_CHARS_PER_FILE` (100,000) characters of each frozen suite file,
+key covers the suite definition (without defaults, like the decision policy), the first `FINGERPRINT_CHARS_PER_FILE` (100,000) characters of each frozen suite file,
 the decision policy, the `data_key` for builtin, and `SCORE_VERSION`. Bump `SCORE_VERSION` whenever `score()` output
 changes. `llm` and `hf:` baselines also store an `identity`: the role's resolved LLM config without `api_key`, or the
 Hub repo plus the revision in the local Hugging Face cache. A changed identity rescores that baseline, so does any
@@ -667,10 +667,8 @@ A missing item is an empty frame and counts as wrong, the same as a wrong answer
 tool's `call` (`module:function`) and runs it. Tools are filled by argument type; a missing argument is `None`.
 
 **Inline markup is a source format, not a new field.**
-`HFSource.format`: `markup` means the label column holds `[type : words]` spans. It is a value of the existing field
-because the data key hashes the whole `data:` section: a new field, even with a default, changes every specialist's
-key, orphans its data folder and invalidates its cached builtin scores. Gotcha: that still holds for any new `data:`
-field; fixing it for good means hashing without defaults and migrating the local data folders once.
+`HFSource.format`: `markup` means the label column holds `[type : words]` spans. It reuses the existing field
+because a value is clearer than a flag next to it.
 
 **A bare sentence runs the autopilot.**
 `byosm/cli/base.py` `PromptFirst`: an argument that is not a command is treated as `byosm auto <sentence>`. The compiler

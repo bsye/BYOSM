@@ -76,7 +76,7 @@
       "n_calib": 426,
       "seconds": 1051.3,
       "latency_ms": null,
-      "fingerprint": "997fed0fff",
+      "fingerprint": "785efaf3e9",
       "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
     },
     "bench": {
@@ -155,7 +155,7 @@
       "n_calib": 374,
       "seconds": 1290.7,
       "latency_ms": null,
-      "fingerprint": "384088fedf",
+      "fingerprint": "d85526c152",
       "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
     }
   },
@@ -236,7 +236,7 @@
       "n_calib": 426,
       "seconds": 11.4,
       "latency_ms": 26.373,
-      "fingerprint": "997fed0fff",
+      "fingerprint": "785efaf3e9",
       "identity": "SamLowe/roberta-base-go_emotions"
     },
     "bench": {
@@ -315,7 +315,7 @@
       "n_calib": 374,
       "seconds": 17.2,
       "latency_ms": 14.355,
-      "fingerprint": "384088fedf",
+      "fingerprint": "d85526c152",
       "identity": "SamLowe/roberta-base-go_emotions"
     }
   },
@@ -396,7 +396,7 @@
       "n_calib": 426,
       "seconds": 6.0,
       "latency_ms": 25.048,
-      "fingerprint": "997fed0fff",
+      "fingerprint": "785efaf3e9",
       "identity": "j-hartmann/emotion-english-distilroberta-base"
     },
     "bench": {
@@ -475,7 +475,7 @@
       "n_calib": 374,
       "seconds": 9.2,
       "latency_ms": 7.305,
-      "fingerprint": "384088fedf",
+      "fingerprint": "d85526c152",
       "identity": "j-hartmann/emotion-english-distilroberta-base"
     }
   },
@@ -556,7 +556,7 @@
       "n_calib": 374,
       "seconds": 3.8,
       "latency_ms": 3.606,
-      "fingerprint": "384088fedf"
+      "fingerprint": "d85526c152"
     }
   }
 }

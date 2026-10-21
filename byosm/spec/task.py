@@ -68,7 +68,7 @@ class TaskSpec(BaseModel):
             "t": self.task_type,
             "l": self.label_names,
             "hop": self.frame_hop_ms,
-            "d": dump["data"],
+            "d": self.data.model_dump(mode="json", exclude_defaults=True),
             "desc": "",
         }
         if self.data.synthetic:

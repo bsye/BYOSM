@@ -494,6 +494,6 @@
   "n_calib": 616,
   "seconds": 782.8,
   "latency_ms": null,
-  "fingerprint": "8ab3f45456",
+  "fingerprint": "2ae723179d",
   "identity": "{\"base_url\": \"http://localhost:11434/v1\", \"model\": \"qwen3.8:27b\", \"provider\": \"openai\", \"reasoning_effort\": \"none\"}"
 }
