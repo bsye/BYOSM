@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
+from ..report.systems import stream_line
 from .base import console, log, system_app
 
 
@@ -32,6 +33,8 @@ def _show(board: dict) -> None:
             ms = f"{v['latency_ms']:.1f}" if v["latency_ms"] else "-"
             t.add_row(r, ci, _fmt(v["calib"]), f"{v['test']['action_accuracy']:.3f}", f"{v['test']['arg_f1']:.3f}", ms)
         console.print(t)
+        if b.get("stream"):
+            log(stream_line(b["stream"]))
         for r, pv in b["paired"].items():
             test, calib = pv["test"], pv["calib"]
             log(
@@ -66,9 +69,20 @@ def board(name: str) -> None:
     _show(json.loads((_project(name).root / "board.json").read_text()))
 
 
+def _typed(system, text: str) -> dict:
+    st = system.stream()
+    for i in range(1, len(text) + 1):
+        if st.step(text[:i])["fired"]:
+            log(f"fired after {i}/{len(text)} characters: {text[:i]!r}")
+    return st.finish(text)
+
+
 @system_app.command("run")
-def run(name: str, text: str) -> None:
+def run(
+    name: str, text: str, stream: Annotated[bool, typer.Option(help="feed the text one keystroke at a time")] = False
+) -> None:
     """Run the exported team on one request: action, arguments and the tool call it maps to."""
     from ..rt import System
 
-    log(json.dumps(System(_project(name).export_dir).run(text), indent=2))
+    system = System(_project(name).export_dir)
+    log(json.dumps(_typed(system, text) if stream else system.run(text), indent=2))

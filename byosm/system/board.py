@@ -10,10 +10,11 @@ from ..config import Project
 from ..evals.identity import baseline_identity
 from ..rt import System, tag_parts
 from ..spec import TaskSpec
-from .bundle import system_manifest
+from .bundle import set_gate, system_manifest
 from .frames import SPLITS, exact_bootstrap, materialize, summary, units
 from .rival import PROMPT_VERSION, llm_frames
 from .spec import SystemProject, SystemSpec, SystemSuite
+from .streaming import stream_board
 
 OURS = "system"
 BOARD_FILE = "board.json"
@@ -69,6 +70,9 @@ def _suite_board(sp: SystemProject, suite: SystemSuite, log: Callable, force: bo
     res = {r: _result(sp, suite.name, r, data, log, force) for r in rivals}
     u = {r: {s: units(res[r]["frames"][s], data[s]) for s in SPLITS} for r in rivals}
     out = {"rows": {s: len(data[s]) for s in SPLITS}, "rivals": {}, "paired": {}}
+    if sp.spec().role("router"):
+        texts = [r["input"] for s in SPLITS for r in data[s]]
+        out["stream"] = stream_board(sp, suite.name, _fingerprint(sp, OURS, texts), data, log)
     for r in rivals:
         out["rivals"][r] = {
             **{s: summary(u[r][s]) for s in SPLITS},
@@ -82,5 +86,8 @@ def _suite_board(sp: SystemProject, suite: SystemSuite, log: Callable, force: bo
 
 def evaluate(sp: SystemProject, log: Callable[[str], None] = print, force: bool = False) -> dict:
     board = {s.name: _suite_board(sp, s, log, force) for s in sp.spec().evals}
+    first = next(iter(board.values()), {})
+    if "stream" in first:
+        set_gate(sp, first["stream"]["gate"])
     (sp.root / BOARD_FILE).write_text(json.dumps(board, indent=2))
     return board

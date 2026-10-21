@@ -10,6 +10,7 @@ from ..config import find_workspace
 from ..spec import HFSource
 
 SYSTEM_FILE = "system.yaml"
+GATE_FILE = "gate.json"
 
 
 class Node(BaseModel):
@@ -27,6 +28,10 @@ class Tool(BaseModel):
     call: str | None = None
 
 
+class StreamCfg(BaseModel):
+    max_extra_wrong: float = 1.0
+
+
 class SystemSuite(BaseModel):
     name: str
     split: str = "test"
@@ -40,6 +45,7 @@ class SystemSpec(BaseModel):
     tools: dict[str, Tool] = Field(default_factory=dict)
     evals: list[SystemSuite] = Field(default_factory=list)
     baselines: list[str] = Field(default_factory=lambda: ["llm"])
+    stream: StreamCfg = Field(default_factory=StreamCfg)
 
     def role(self, role: str) -> tuple[str, Node] | None:
         return next(((k, n) for k, n in self.nodes.items() if n.role == role), None)
@@ -62,6 +68,10 @@ class SystemProject:
     @property
     def spec_path(self) -> Path:
         return self.root / SYSTEM_FILE
+
+    @property
+    def gate_path(self) -> Path:
+        return self.root / GATE_FILE
 
     @property
     def export_dir(self) -> Path:

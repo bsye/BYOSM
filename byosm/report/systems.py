@@ -39,7 +39,23 @@ def _suite(name: str, suite: str, b: dict) -> list[str]:
         "every argument right. CPU is the whole team per request (every node), from the exported bundle. "
         f"Paired bootstrap on exact frame: {'; '.join(paired)}."
     )
-    return [HEAD, *rows, "", foot]
+    return [HEAD, *rows, "", foot, *(["", stream_line(b["stream"])] if b.get("stream") else [])]
+
+
+def stream_line(st: dict) -> str:
+    t, end = st["test"], st["test_at_end"]
+    if not st["gate"]:
+        return (
+            "While typing: no gate kept wrong actions within the allowance on calib, so the action waits for the end."
+        )
+    g = st["gate"]
+    return (
+        f"While typing (gate tuned on calib: confidence {g['min_confidence']}, {g['stable_for']} agreeing keystroke{'s' if g['stable_for'] > 1 else ''}): "
+        f"the action fires after {t['typed_share']:.0%} of the request on average, {t['early_share']:.0%} of requests "
+        f"before the last keystroke, with {t['wrong_per_100']:.1f} wrong actions per 100 against "
+        f"{end['wrong_per_100']:.1f} when waiting for the end; {st['ms_per_keystroke']:.1f}ms per keystroke. "
+        "The LLM needs the whole request."
+    )
 
 
 def system_block(name: str) -> str:

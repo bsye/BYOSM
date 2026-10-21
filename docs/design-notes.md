@@ -666,6 +666,24 @@ A missing item is an empty frame and counts as wrong, the same as a wrong answer
 `byosm_rt.py`; `predict` on a system folder returns the action, its arguments and the tool call. `act` imports the
 tool's `call` (`module:function`) and runs it. Tools are filled by argument type; a missing argument is `None`.
 
+**The text gate fires once, when it is sure for long enough.**
+`byosm/rt.py` `TextGate`, `SystemStream`: each keystroke runs the router on the text so far; the gate fires when the top
+action reaches `min_confidence` for `stable_for` keystrokes in a row, and never changes its mind. `finish` runs the
+tagger on the whole text and keeps the fired action. Gotcha: one gate, one runtime class; the eval replays the same
+`TextGate` over cached router traces, so offline and live behaviour cannot drift.
+
+**The gate is tuned on calib, against waiting for the end.**
+`byosm/system/streaming.py` `tune`: a grid over `CONFIDENCE_GRID` x `STABLE_GRID` picks the gate that fires earliest
+while wrong actions per 100 stay within `stream.max_extra_wrong` of the end-of-request router. `system eval` writes it
+to `systems/<name>/gate.json` and the bundle's `system.json`. Traces (the router's top action and confidence after
+every keystroke) are cached under `evals/<suite>/trace-<fingerprint>.json`. When no gate meets the allowance, the
+action waits for the end.
+
+**Prefix training is a train setting, not new data.**
+`TrainCfg.prefix_rate`, `byosm/text.py` `prefix`: each epoch that share of text inputs is cut at a random keystroke and
+keeps its label, so the data key and the data folder stay the same. Taggers keep the tags of the words that remain.
+It is off by default and draws from the RNG only when on, so seeded runs without it are unchanged.
+
 **Inline markup is a source format, not a new field.**
 `HFSource.format`: `markup` means the label column holds `[type : words]` spans. It reuses the existing field
 because a value is clearer than a flag next to it.

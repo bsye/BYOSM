@@ -409,13 +409,19 @@ class System:
     def _role(self, role: str) -> str | None:
         return next((k for k, n in self.m["nodes"].items() if n["role"] == role), None)
 
-    def run(self, text: str) -> dict:
-        out = {k: m.predict(text) for k, m in self.nodes.items()}
+    def run(self, text: str, action: str | None = None) -> dict:
         router, tagger = self._role("router"), self._role("tagger")
-        action = out[router]["label"] if router else None
-        args = [{"type": e["label"], "text": e["text"]} for e in out[tagger]["entities"]] if tagger else []
+        if action is None and router:
+            action = self.nodes[router].predict(text)["label"]
+        found = self.nodes[tagger].predict(text)["entities"] if tagger else []
+        args = [{"type": e["label"], "text": e["text"]} for e in found]
         tool = next((t for t, spec in self.m["tools"].items() if spec["when"] == action), None)
         return {"action": action, "args": args, "tool": tool, "call": self._call_args(tool, args)}
+
+    def stream(self) -> SystemStream:
+        if not self.m.get("gate"):
+            raise ValueError(f"{self.m['name']} has no tuned gate: run `byosm system eval` to tune it on calib")
+        return SystemStream(self)
 
     def _call_args(self, tool: str | None, args: list[dict]) -> dict:
         wanted = self.m["tools"][tool]["args"] if tool else {}
@@ -425,6 +431,43 @@ class System:
         r = self.run(text)
         ref = self.m["tools"][r["tool"]].get("call") if r["tool"] else None
         return {**r, "result": _function(ref)(**r["call"])} if ref else r
+
+
+class TextGate:
+    def __init__(self, min_confidence: float, stable_for: int):
+        self.min_conf, self.need = min_confidence, stable_for
+        self.label: str | None = None
+        self.streak = 0
+        self.fired: str | None = None
+
+    def push(self, label: str, confidence: float) -> str | None:
+        if self.fired is not None:
+            return None
+        sure = confidence >= self.min_conf
+        self.streak = self.streak + 1 if sure and label == self.label else int(sure)
+        self.label = label
+        if self.streak >= self.need:
+            self.fired = label
+            return label
+        return None
+
+
+class SystemStream:
+    def __init__(self, system: System):
+        self.s = system
+        g = system.m["gate"]
+        self.gate = TextGate(g["min_confidence"], g["stable_for"])
+        self.router = system._role("router")
+
+    def step(self, text: str) -> dict:
+        if not text.strip() or self.router is None:
+            return {"action": None, "confidence": 0.0, "fired": None}
+        p = self.s.nodes[self.router].predict(text)
+        conf = p["probs"][p["label"]]
+        return {"action": p["label"], "confidence": conf, "fired": self.gate.push(p["label"], conf)}
+
+    def finish(self, text: str) -> dict:
+        return {**self.s.run(text, self.gate.fired), "fired_early": self.gate.fired is not None}
 
 
 def is_system(path: str | Path) -> bool:
