@@ -1,5 +1,5 @@
 import { InfoTip } from "@/components/info-tip"
-import { Gauge, Hammer, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
+import { ExternalLink, Gauge, Hammer, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, del, put, runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
@@ -15,7 +15,7 @@ import { BoardChart, boardRows } from "./BoardChart"
 import { DataRows } from "./DataRows"
 import { LabelChart } from "./LabelChart"
 import { hasTeachers, Panel } from "./Panel"
-import { Playground } from "./Playground"
+import { Playground, useExamples } from "./Playground"
 import { Proposals } from "./Proposals"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
@@ -146,6 +146,7 @@ export function Specialist({ name }: { name: string }) {
 }
 
 function Model({ name }: { name: string }) {
+  const repo = useExamples(name)?.repos[0]
   const [d, setD] = useState<Detail | null>(null)
   const [error, setError] = useState("")
   const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
@@ -178,6 +179,14 @@ function Model({ name }: { name: string }) {
               {a.label}
             </Button>
           ))}
+          {repo && (
+            <Button variant="outline" asChild>
+              <a href={`https://huggingface.co/${repo}`} target="_blank" rel="noreferrer">
+                <ExternalLink />
+                Hugging Face
+              </a>
+            </Button>
+          )}
           <Button onClick={() => runJob(["auto", name]).then((j) => go("jobs", j.id))}>
             <Wand2 />
             Autopilot
@@ -193,7 +202,7 @@ function Model({ name }: { name: string }) {
           <TabsTrigger value="runs">Experiments</TabsTrigger>
           <TabsTrigger value="data">Data</TabsTrigger>
           {hasTeachers(d) && <TabsTrigger value="teachers">Teachers</TabsTrigger>}
-          <TabsTrigger value="try">Try it</TabsTrigger>
+          <TabsTrigger value="try">Test</TabsTrigger>
           <TabsTrigger value="spec">Spec</TabsTrigger>
         </TabsList>
         <TabsContent value="board" className="space-y-4">
