@@ -1,8 +1,14 @@
+import random
+
 from .rt import OUTSIDE, bio
 
 
 def normalize(text: str) -> str:
     return " ".join("".join(c if c.isalnum() else " " for c in str(text).lower()).split())
+
+
+def prefix(text: str, rng: random.Random) -> str:
+    return text[: rng.randint(1, len(text))] if len(text) > 1 else text
 
 
 def slug(text: str, max_words: int = 3) -> str:

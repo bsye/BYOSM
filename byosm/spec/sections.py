@@ -123,3 +123,4 @@ class TrainCfg(BaseModel):
     distill_alpha: float = 0.3
     distill_temperature: float = 2.0
     distill_unlabeled: int = 20000
+    prefix_rate: float = 0.0

@@ -12,6 +12,7 @@ import torch
 from ..modalities import IGNORE, Modality
 from ..model import SpecialistModel, distill_loss, task_loss, warmup_cosine
 from ..spec import TaskSpec
+from ..text import prefix
 from .common import amp_dtype, autocast, batches, param_groups, pretrained_encoders, to_device
 from .teacher import soft_batch
 
@@ -70,10 +71,15 @@ class Trainer:
             for p in m.parameters():
                 p.requires_grad = not on
 
+    def _view(self, raw: Any) -> Any:
+        rate = self.spec.train.prefix_rate
+        cut = rate > 0 and self.spec.modality == "text" and self.rng.random() < rate
+        return prefix(raw, self.rng) if cut else raw
+
     def _loss(self, b: list[int]) -> torch.Tensor:
         tc, dev = self.spec.train, self.dev
         fl = [self.train_t[i] for i in b] if self.spec.task_type == "frame" else None
-        inputs, ft = self.mod.collate([self.train_raw[i] for i in b], fl)
+        inputs, ft = self.mod.collate([self._view(self.train_raw[i]) for i in b], fl)
         with autocast(dev, self.amp):
             logits, mask = self.model(to_device(inputs, dev))
         logits = logits.float()
