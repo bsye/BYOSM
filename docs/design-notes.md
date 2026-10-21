@@ -621,6 +621,46 @@ repeated (`tests/test_report.py`). Run it before committing results; run `byosm 
 model's, whichever is newer. On intent the promoted `final-s1` is the only `b77` row on its version, so every other row
 carries the dagger. `byosm eval` rescores them onto one version.
 
+## Systems
+
+**A system is a team of ordinary specialists.**
+`byosm/system/spec.py`, `nodes.py`: `systems/<name>/system.yaml` lists nodes (a router that picks the action, a tagger
+that finds its arguments), the tools they map to and the system suites. `byosm system build` turns each node into a
+normal specialist under `specialists/`, with its own board, so every node is proved alone before the team is. The node
+spec comes from its dataset, not from an LLM: labels are the dataset's class names, or `O` plus `B-`/`I-` tags for every
+argument type found in its markup (`source_labels`); the role sets the task type, metric and default backbone; the
+source's train and validation splits train it and its test split is the frozen suite.
+
+**The system suite is materialised once, from the benchmark.**
+`byosm/system/frames.py` `materialize`: node suites each read and shuffle their own rows and drop unlabeled ones, so
+their calib/test halves need not line up. The system reads the benchmark's split itself, keeps the raw request as the
+input and the gold action plus `(type, words)` arguments as the answer, and splits calib/test with the same every-fifth
+rule as specialist suites. Every rival is scored on exactly these rows.
+
+**Exact frame is the headline score.**
+`units`: a request counts only if the action and the whole multiset of arguments are right (types exact, words compared
+after `normalize`), which is MASSIVE's exact-match accuracy. Action accuracy and argument F1 are reported beside it.
+Each request's hit is its bootstrap unit; `byosm/resample.py` is the same paired bootstrap the specialists use.
+
+**The LLM rival does the whole task alone.**
+`byosm/system/rival.py`: it gets the action list and the argument types and returns frames for ten requests per call.
+A missing item is an empty frame and counts as wrong, the same as a wrong answer.
+
+**One runtime runs the team.**
+`byosm/rt.py` `System`: the bundle is `system.json`, one exported specialist per node under `nodes/` and a single
+`byosm_rt.py`; `predict` on a system folder returns the action, its arguments and the tool call. `act` imports the
+tool's `call` (`module:function`) and runs it. Tools are filled by argument type; a missing argument is `None`.
+
+**Inline markup is a source format, not a new field.**
+`HFSource.format`: `markup` means the label column holds `[type : words]` spans. It is a value of the existing field
+because the data key hashes the whole `data:` section: a new field, even with a default, changes every specialist's
+key, orphans its data folder and invalidates its cached builtin scores. Gotcha: that still holds for any new `data:`
+field; fixing it for good means hashing without defaults and migrating the local data folders once.
+
+**A bare sentence runs the autopilot.**
+`byosm/cli/base.py` `PromptFirst`: an argument that is not a command is treated as `byosm auto <sentence>`. The compiler
+names the task (`free_name` appends `-2`, `-3` when the name is taken) and infers the modality and task type.
+
 ## CLI and configuration
 
 **LLM roles fall back to `default`.**
@@ -658,7 +698,7 @@ transient (rate limit, overload, timeout, connect), with 2, 4, 8 s backoff. `pma
 `on_error` and skips them.
 
 **Commands register by import.**
-`byosm/cli/__init__.py`: importing the command modules (`define`, `iterate`, `report`, `ship`, `train`) is what
+`byosm/cli/__init__.py`: importing the command modules (`define`, `iterate`, `report`, `ship`, `system`, `train`) is what
 registers their `@app.command`s, so a new command module must be imported there.
 
 **Commands that just scored print the detailed board.**

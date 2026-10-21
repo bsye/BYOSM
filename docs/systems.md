@@ -1,6 +1,7 @@
 # Systems: teams of specialists
 
-Status: design, not built. Everything below the "Built" table is a proposal.
+Status: the router, the tagger, tools, the system spec, its bundle and its end-to-end board are built. Streaming text,
+the text gate, normalisers and the planner are not.
 
 ## Goal
 
@@ -27,8 +28,8 @@ input stream ─▶ ① router ──────────────▶ ④
 | ② tagger | a label per word: which words are the arguments | ✅ `frame` on text, `span_f1` |
 | ③ normaliser | text to value: "next fri 3pm", "€1.2k" | ❌ rules first, small models where rules fail |
 | ④ gate | "sure enough, for long enough": hysteresis over a stream | ✅ for audio; ❌ for text prefixes |
-| ⑤ action | a typed function you write; the team only picks it and fills its arguments | ❌ `tools:` in the system spec |
-| the team | one spec wiring the pieces, one bundle running them | ❌ |
+| ⑤ action | a typed function you write; the team only picks it and fills its arguments | ✅ `tools:` in the system spec |
+| the team | one spec wiring the pieces, one bundle running them | ✅ `byosm system build` |
 
 Audio clips (a wake word, a voice command) and documents (a page type, its fields) are more input kinds for ① and ②.
 
@@ -73,7 +74,7 @@ First benchmark: **MASSIVE** (60 intents, 55 slot types, 51 languages). SNIPS an
 ## Order of work
 
 1. ✅ Tagging (this commit): the ② piece, proved alone on CoNLL-2003.
-2. The system spec and runtime, with ① + ② + ⑤ on MASSIVE, scored end to end against Qwen.
+2. ✅ The system spec and runtime, with ① + ② + ⑤ on MASSIVE, scored end to end against Qwen (`systems/assistant`).
 3. Streaming text: train on prefixes, the text gate, characters-before-action.
 4. Normalisers for dates, times, amounts, durations.
 5. Layout documents (LayoutLMv3 or LiLT) as another tagger input; audio clips as another router input.
