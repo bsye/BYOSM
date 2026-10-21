@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 CONFIG_NAME = "byosm.yaml"
 ENV_FILE = ".env"
+MAX_PARALLEL_JOBS = 2
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "llm": {

@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ..config import MAX_PARALLEL_JOBS
 from .store import JOB_FIELDS, JobStore
 
 ALLOWED_COMMANDS = (
@@ -78,12 +79,14 @@ class Hub:
 
 
 class Runner:
-    def __init__(self, ws: Path, hub: Hub) -> None:
+    def __init__(self, ws: Path, hub: Hub, parallel: int = MAX_PARALLEL_JOBS) -> None:
         self.ws, self.hub, self.store = ws, hub, JobStore(ws)
         self.jobs = {j.id: j for j in map(self._restored, self.store.jobs())}
         self.todo: queue.Queue[Job] = queue.Queue()
-        self.proc: subprocess.Popen | None = None
-        threading.Thread(target=self._work, daemon=True).start()
+        self.procs: dict[str, subprocess.Popen] = {}
+        self.lock = threading.Lock()
+        for _ in range(max(1, parallel)):
+            threading.Thread(target=self._work, daemon=True).start()
 
     def submit(self, args: list[str]) -> Job:
         if not args or args[0] not in ALLOWED_COMMANDS:
@@ -96,11 +99,13 @@ class Runner:
 
     def cancel(self, job_id: str) -> Job:
         job = self.jobs[job_id]
-        job.cancel = True
+        with self.lock:
+            job.cancel = True
+            proc = self.procs.get(job.id)
         if job.status == "queued":
             self._status(job, "cancelled")
-        elif job.status == "running" and self.proc is not None:
-            self.proc.terminate()
+        elif proc is not None:
+            proc.terminate()
         return job
 
     def lines(self, job_id: str) -> list[str]:
@@ -115,8 +120,10 @@ class Runner:
         return job
 
     def shutdown(self) -> None:
-        if self.proc is not None and self.proc.poll() is None:
-            self.proc.terminate()
+        with self.lock:
+            procs = list(self.procs.values())
+        for proc in procs:
+            proc.terminate()
 
     def _status(self, job: Job, status: str) -> None:
         job.status = status
@@ -140,7 +147,7 @@ class Runner:
         env = {**os.environ, **env_file(self.ws), "PYTHONUNBUFFERED": "1", "COLUMNS": TERMINAL_COLUMNS, "NO_COLOR": "1"}
         job.started = time.time()
         self._status(job, "running")
-        self.proc = subprocess.Popen(
+        proc = subprocess.Popen(
             [sys.executable, "-c", ENTRY, *job.args],
             cwd=self.ws,
             env=env,
@@ -149,10 +156,16 @@ class Runner:
             text=True,
             bufsize=1,
         )
-        for raw in self.proc.stdout or []:
+        with self.lock:
+            self.procs[job.id] = proc
+            stop = job.cancel
+        if stop:
+            proc.terminate()
+        for raw in proc.stdout or []:
             for line in raw.rstrip("\n").split("\r"):
                 if line.strip():
                     self._line(job, line)
-        job.code, job.ended = self.proc.wait(), time.time()
-        self.proc = None
+        job.code, job.ended = proc.wait(), time.time()
+        with self.lock:
+            del self.procs[job.id]
         self._status(job, "cancelled" if job.cancel else "done" if job.code == 0 else "failed")

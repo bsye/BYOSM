@@ -5,7 +5,7 @@ from typing import Annotated
 
 import typer
 
-from ..config import find_workspace
+from ..config import MAX_PARALLEL_JOBS, find_workspace
 from .base import app, log
 
 DEFAULT_PORT = 8765
@@ -18,6 +18,7 @@ def app_(
     ] = "127.0.0.1",
     port: int = DEFAULT_PORT,
     open_browser: Annotated[bool, typer.Option("--open/--no-open", help="open the UI in the browser")] = True,
+    parallel: Annotated[int, typer.Option(help="how many jobs run at the same time")] = MAX_PARALLEL_JOBS,
 ) -> None:
     """Local web app and API: manage specialists, run jobs and watch them live (REST + WebSocket, token protected)."""
     import webbrowser
@@ -31,4 +32,4 @@ def app_(
     log(f"byosm app on {url}\nAPI docs: http://{host}:{port}/docs (send Authorization: Bearer <token>)")
     if open_browser:
         webbrowser.open(url)
-    uvicorn.run(create_app(find_workspace(), token, [host]), host=host, port=port, log_level="warning")
+    uvicorn.run(create_app(find_workspace(), token, [host], parallel), host=host, port=port, log_level="warning")
