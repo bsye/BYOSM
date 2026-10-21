@@ -25,6 +25,12 @@ BACKBONES: dict[str, list[dict]] = {
             "langs": "en",
             "note": "cased: keeps capitalisation, which names and token tagging need",
         },
+        {
+            "id": "hf:microsoft/deberta-v3-xsmall",
+            "params_m": 71,
+            "langs": "en",
+            "note": "strongest small English encoder for token tagging (most params are its 128k vocabulary)",
+        },
         {"id": "hf:distilbert-base-multilingual-cased", "params_m": 135, "langs": "104", "note": "distilled mBERT"},
         {"id": "hf:google-bert/bert-base-multilingual-cased", "params_m": 178, "langs": "104", "note": "mBERT"},
         {
