@@ -131,6 +131,10 @@ class Project:
     def board_path(self) -> Path:
         return self.root / "board.json"
 
+    @property
+    def overfit_path(self) -> Path:
+        return self.root / "overfit.json"
+
     def board(self) -> dict[str, Any]:
         return json.loads(self.board_path.read_text()) if self.board_path.exists() else {}
 

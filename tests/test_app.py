@@ -1,3 +1,4 @@
+import json
 import time
 
 import pytest
@@ -35,6 +36,13 @@ def test_specialists_are_listed_read_and_edited(client):
     assert client.put("/api/specialists/q/spec", headers=AUTH, json=spec).json()["description"] == "a new description"
     assert client.get("/api/specialists/missing", headers=AUTH).status_code == 404
     assert client.delete("/api/specialists/q", headers=AUTH, params={"confirm": "x"}).status_code == 422
+
+
+def test_the_specialist_detail_carries_the_overfitting_check(client, ws):
+    assert client.get("/api/specialists/q", headers=AUTH).json()["overfit"] is None
+    report = {"experiment": "v1", "verdict": "warn", "findings": []}
+    (ws / "specialists" / "q" / "overfit.json").write_text(json.dumps(report))
+    assert client.get("/api/specialists/q", headers=AUTH).json()["overfit"] == report
 
 
 def test_keys_are_stored_in_the_workspace_and_never_returned(client, ws):

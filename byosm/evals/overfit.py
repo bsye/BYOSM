@@ -24,16 +24,11 @@ from .suites import fingerprint, stored
 TRAIN_SAMPLE = 1000
 SAMPLE_SEED = 0
 OVERFIT_VERSION = "1"
-OVERFIT_FILE = "overfit.json"
 VERDICTS = {
     "ok": "No sign of overfitting or leakage.",
     "warn": "Some signs of overfitting: read the findings.",
     "fail": "Overfitting or leakage found.",
 }
-
-
-def output_path(p: Project) -> Path:
-    return p.root / OVERFIT_FILE
 
 
 def _hash(*parts: str) -> str:
@@ -144,7 +139,7 @@ def check(
     exp = exp or scored_experiment(p, board)
     if base.primary_suite() not in board.get(exp, {}):
         raise RuntimeError(f"{exp} has no {base.primary_suite()} result yet - run `byosm eval {name}` first")
-    target = out or output_path(p)
+    target = out or p.overfit_path
     old = json.loads(target.read_text()) if target.exists() and not force else {}
     fp, train_fp = _fingerprints(p, base, exp)
     if old.get("fingerprint") == fp:

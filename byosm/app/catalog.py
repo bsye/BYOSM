@@ -94,6 +94,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "runs": [_run(p, e) for e in p.experiments()],
         "proposals": json.loads(proposals.read_text()) if (proposals := p.root / PROPOSALS_FILE).exists() else None,
         "data": Dataset(dd).summary() if (dd / "train.jsonl").exists() else None,
+        "overfit": json.loads(p.overfit_path.read_text()) if p.overfit_path.exists() else None,
     }
 
 

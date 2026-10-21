@@ -91,7 +91,7 @@ def test_the_check_finds_memorisation_leakage_and_calib_overuse(toy):
     assert found["overlap"]["severity"] == "fail" and (leak["exact"], leak["near"]) == (2, 0)
     assert leak["test_without_overlap"] == 0.5 and leak["same_label"] == 2
     assert found["curve"]["severity"] == "warn" and "still rising" in found["curve"]["explanation"]
-    assert json.loads(overfit.output_path(p).read_text())["verdict"] == "fail"
+    assert json.loads(p.overfit_path.read_text())["verdict"] == "fail"
 
 
 def test_the_check_is_cached_and_reuses_the_train_score_when_only_the_board_changes(toy):
