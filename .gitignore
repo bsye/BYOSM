@@ -21,3 +21,4 @@ systems/*/evals/
 systems/*/export/
 .env
 byosm/app/static/
+.byosm/

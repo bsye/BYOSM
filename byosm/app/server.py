@@ -93,8 +93,8 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.get("/api/jobs/{job_id}", dependencies=[auth])
     def job(job_id: str) -> dict:
-        j = _missing(runner.jobs.__getitem__, job_id)
-        return {**j.public(), "lines": j.lines}
+        lines = _missing(runner.lines, job_id)
+        return {**runner.jobs[job_id].public(), "lines": lines}
 
     @app.post("/api/jobs/{job_id}/cancel", dependencies=[auth])
     def cancel(job_id: str) -> dict:

@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .store import JOB_FIELDS, JobStore
+
 ALLOWED_COMMANDS = (
     "new",
     "build",
@@ -33,6 +35,8 @@ ALLOWED_COMMANDS = (
 BACKLOG_LINES = 5000
 TERMINAL_COLUMNS = "160"
 ENTRY = "from byosm.cli import app; app()"
+UNFINISHED = ("queued", "running")
+STOPPED_LINE = "server stopped while this job ran"
 
 
 @dataclass
@@ -48,8 +52,7 @@ class Job:
     cancel: bool = False
 
     def public(self) -> dict[str, Any]:
-        keys = ("id", "args", "status", "created", "started", "ended", "code")
-        return {k: getattr(self, k) for k in keys}
+        return {k: getattr(self, k) for k in JOB_FIELDS}
 
 
 class Hub:
@@ -76,8 +79,8 @@ class Hub:
 
 class Runner:
     def __init__(self, ws: Path, hub: Hub) -> None:
-        self.ws, self.hub = ws, hub
-        self.jobs: dict[str, Job] = {}
+        self.ws, self.hub, self.store = ws, hub, JobStore(ws)
+        self.jobs = {j.id: j for j in map(self._restored, self.store.jobs())}
         self.todo: queue.Queue[Job] = queue.Queue()
         self.proc: subprocess.Popen | None = None
         threading.Thread(target=self._work, daemon=True).start()
@@ -100,16 +103,29 @@ class Runner:
             self.proc.terminate()
         return job
 
+    def lines(self, job_id: str) -> list[str]:
+        return self.store.lines(self.jobs[job_id].id)
+
+    def _restored(self, row: dict[str, Any]) -> Job:
+        job = Job(**row)
+        if job.status in UNFINISHED:
+            self.store.line(job.id, STOPPED_LINE)
+            job.status, job.ended = "failed", job.ended or time.time()
+            self.store.save(job.public())
+        return job
+
     def shutdown(self) -> None:
         if self.proc is not None and self.proc.poll() is None:
             self.proc.terminate()
 
     def _status(self, job: Job, status: str) -> None:
         job.status = status
+        self.store.save(job.public())
         self.hub.publish({"type": "job", "job": job.public()})
 
     def _line(self, job: Job, line: str) -> None:
         job.lines = (job.lines + [line])[-BACKLOG_LINES:]
+        self.store.line(job.id, line)
         self.hub.publish({"type": "log", "job": job.id, "line": line})
 
     def _work(self) -> None:

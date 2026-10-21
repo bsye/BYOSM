@@ -1,11 +1,16 @@
+import time
+
 import pytest
 from fastapi.testclient import TestClient
 
 from byosm.app import create_app
+from byosm.app.jobs import STOPPED_LINE
+from byosm.app.store import JobStore
 from byosm.spec import Label, TaskSpec
 
 TOKEN = "t0ken"
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
+POLL_SECONDS = 0.05
 
 
 @pytest.fixture
@@ -51,3 +56,17 @@ def test_a_job_runs_the_cli_and_streams_its_output(client):
                 status = ev["job"]["status"]
     done = client.get(f"/api/jobs/{job['id']}", headers=AUTH).json()
     assert done["status"] == "done" and any("suite" in line for line in done["lines"])
+
+
+def test_job_history_survives_a_restart(client, ws):
+    job = client.post("/api/jobs", headers=AUTH, json={"args": ["suite", "--help"]}).json()
+    runner = client.app.state.runner
+    while runner.jobs[job["id"]].status != "done":
+        time.sleep(POLL_SECONDS)
+    done = client.get(f"/api/jobs/{job['id']}", headers=AUTH).json()
+    JobStore(ws).save({**done, "id": "stale", "status": "running"})
+    with TestClient(create_app(ws, TOKEN), base_url="http://127.0.0.1") as again:
+        assert again.get(f"/api/jobs/{job['id']}", headers=AUTH).json()["lines"] == done["lines"]
+        stale = again.get("/api/jobs/stale", headers=AUTH).json()
+    assert stale["status"] == "failed" and stale["lines"] == [STOPPED_LINE]
+    assert (ws / ".byosm" / "app.sqlite").exists()
