@@ -61,6 +61,15 @@ they are the same kind of thing.
   header ends at the same height, and the footer is pinned to the bottom (`mt-auto`) so no empty band appears under it.
 - Numbers in the same position on neighbouring cards sit on the same baseline.
 
+## Less text
+
+- First glance wins: a user who has never seen BYOSM must know what each page is for, and what to click, in five
+  seconds. Use the archetype the user already knows (list, detail, tabs, stat cards, table, prompt bar).
+- Default to no `CardDescription`. Add one only when the title alone is ambiguous, and keep it under ten words.
+- Labels are one to three words: "Test accuracy", "vs Jev", "Typed before firing". No sentences in labels.
+- Methodology (calib vs test, how a rival is chosen, what a gate is) lives in an info tooltip or the docs, not on screen.
+- Count the words on a page before shipping; if a section has more words than numbers, cut.
+
 ## Text
 
 - Every label says what the number is and against what: "Test accuracy on Banking77", not "Score". Units and

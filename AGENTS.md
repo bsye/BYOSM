@@ -42,6 +42,12 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 - The web app in `ui/` follows `docs/ui-guidelines.md`: stock shadcn components only, standard shadcn layout, clear
   hierarchy, equal-height cards in a grid, informative labels, every state designed. Screenshot before committing.
 - No regex and no comments in TypeScript either.
+- **Understandable at first glance.** Archetypal elements only: a list of cards that opens a detail page, the primary
+  action top right, tabs for sections, stat cards, tables, a centred prompt bar. If a page needs a paragraph to be
+  understood, change the page, not the paragraph.
+- **Cut text.** No description under a title unless the title alone is ambiguous. Labels are one to three words.
+  Explanations go in a tooltip on an info icon, never as visible paragraphs. Every sentence on screen must change
+  what the user does next; delete the rest.
 
 ## Docs
 
