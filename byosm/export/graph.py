@@ -72,7 +72,7 @@ class _Stream(nn.Module):
 
 def export_model(
     sp: Specialist, kind: str, names: list[str], example: tuple, dyn: dict, out: Path, log: Callable[[str], None]
-) -> None:
+) -> list[str]:
     full = _Full(sp, kind).eval()
     full.doc_inputs = names if kind == "document" else []
     axes = {0: "batch", 1: "frames"} if sp.spec.task_type == "frame" else {0: "batch"}
@@ -88,6 +88,9 @@ def export_model(
         dynamo=False,
     )
     log(f"  model.onnx ({(out / 'model.onnx').stat().st_size / 1e6:.2f} MB)")
+    import onnx
+
+    return [i.name for i in onnx.load(str(out / "model.onnx"), load_external_data=False).graph.input]
 
 
 def export_stream(sp: Specialist, out: Path, log: Callable[[str], None]) -> None:

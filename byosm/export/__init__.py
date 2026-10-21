@@ -51,7 +51,9 @@ def export(
     kind = frontend_kind(sp)
     clear_out_dir(out)
     frontend, names, example, dyn = build_frontend(sp, kind, out)
-    export_model(sp, kind, names, example, dyn, out, log)
+    used = export_model(sp, kind, names, example, dyn, out, log)
+    if "inputs" in frontend:
+        frontend["inputs"] = [n for n in frontend["inputs"] if n in used]
     if kind == "logmel":
         export_stream(sp, out, log)
     write_bundle(out, sp, kind, manifest_for(sp, exp, decision, frontend, metrics))
