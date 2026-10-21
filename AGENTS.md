@@ -37,6 +37,12 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 - Never claim what has not been run. If a feature exists but has not been measured, say so.
 - Measure speed and accuracy before and after a change that could affect them.
 
+## UI
+
+- The web app in `ui/` follows `docs/ui-guidelines.md`: stock shadcn components only, standard shadcn layout, clear
+  hierarchy, equal-height cards in a grid, informative labels, every state designed. Screenshot before committing.
+- No regex and no comments in TypeScript either.
+
 ## Docs
 
 - README order: goal, then assumptions (the thesis), then results, then methodology and benchmarks, then details.
