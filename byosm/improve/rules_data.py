@@ -75,15 +75,15 @@ def _more_stream(dg: dict, i: int, s: Any, ev: str) -> list[dict]:
     from ..data import hf_source
 
     size = hf_source.split_sizes(s.dataset, s.config).get(s.split)
-    if size is not None and size <= s.max_rows:
+    read = dg.get("read_by_source", {}).get(f"hf:{s.dataset}", 0)
+    cap = sum(x.max_rows for x in dg["spec"].data.hf_sources if x.dataset == s.dataset)
+    if size is not None and size <= s.max_rows or size is None and 0 < read < cap:
         alt = _unused_split(dg, hf_source, s)
         if not alt:
             return []
+        used = f"all {size} rows read" if size is not None else f"it ran out at {read} rows, below the {cap} cap"
+        why = ev + f". {s.split} is used up ({used}); `{alt[0]}` has {alt[1]} rows that no eval suite reads."
         value = s.model_copy(update={"split": alt[0], "max_rows": alt[1]}).model_dump(mode="json")
-        why = (
-            ev
-            + f". {s.split} is used up (all {size} rows read); `{alt[0]}` has {alt[1]} rows that no eval suite reads."
-        )
         return [{"id": "new-split", "ops": [{"op": "append", "path": "data.hf_sources", "value": value}], "why": why}]
     ops = [{"op": "set", "path": f"data.hf_sources.{i}.max_rows", "value": s.max_rows * 4}]
     return [{"id": "more-data", "ops": ops, "why": ev + f". Read 4x more rows from {s.dataset}."}]

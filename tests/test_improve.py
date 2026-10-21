@@ -138,3 +138,13 @@ def test_streamed_source_read_to_the_end_proposes_an_unused_split(monkeypatch):
     ids = proposals(spec, 0.8, 0.9, RISING, 7)
     value = ids["new-split"]["ops"][0]["value"]
     assert (value["split"], value["max_rows"]) == ("validation", 30) and "more-data" not in ids
+
+
+def test_a_source_that_ran_out_below_its_cap_is_not_asked_for_more(monkeypatch):
+    monkeypatch.setattr(hf_source, "split_sizes", lambda ds, cfg=None: {})
+    spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="a", definition="")])
+    spec.data.synthetic = False
+    spec.data.hf_sources = [HFSource(dataset="org/d", role="labeled", split="train", max_rows=80)]
+    dg = diagnosis(spec, 0.8, 0.9, RISING, 7)
+    dg["read_by_source"] = {"hf:org/d": 50}
+    assert [p for p in rule_proposals(dg) if p["id"] in ("more-data", "new-split")] == []
