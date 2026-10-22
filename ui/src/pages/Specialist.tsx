@@ -21,6 +21,7 @@ import { Playground, useExamples } from "./Playground"
 import { Proposals } from "./Proposals"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
+import { PageSkeleton } from "@/components/page-skeleton"
 import { Team, useTeam } from "./Team"
 import { UseIt } from "./UseIt"
 import { YourData } from "./YourData"
@@ -143,7 +144,7 @@ function SpecEditor({ d, onSaved }: { d: Detail; onSaved: () => void }) {
 
 export function Specialist({ name }: { name: string }) {
   const team = useTeam(name)
-  if (team === undefined) return null
+  if (team === undefined) return <PageSkeleton />
   if (team) return <Team view={team} />
   return <Model name={name} />
 }
@@ -183,7 +184,7 @@ function Model({ name }: { name: string }) {
     load()
   }, [load, finished])
   if (error) return <p className="text-destructive">{error}</p>
-  if (!d) return null
+  if (!d) return <PageSkeleton />
   const remove = async () => {
     if (window.prompt(`Type ${name} to delete it and everything it built`) === name) {
       await del(`/specialists/${name}?confirm=${encodeURIComponent(name)}`)
