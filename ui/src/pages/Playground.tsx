@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { rivalName } from "@/format"
 import { GeneratedSuites } from "./GeneratedSuites"
+import { LiveVad } from "./LiveVad"
 
 type Prediction = { label?: string; probs?: Record<string, number>; entities?: { label: string; text: string }[] }
 type Rival = { label?: string; confidence?: number; ms: number; error?: string }
@@ -196,7 +197,7 @@ function TryIt({ d }: { d: Detail }) {
 export function Playground({ d }: { d: Detail }) {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
-      <TryIt d={d} />
+      {d.modality === "audio" && d.exported ? <LiveVad name={d.name} /> : <TryIt d={d} />}
       <GeneratedSuites d={d} />
     </div>
   )
