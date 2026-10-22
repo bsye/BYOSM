@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>Build Your Own Specialist Model.</b><br>
-  One sentence in, a small model out that beats the big ones at its job, on a public benchmark, on any CPU.
+  One sentence in, a small model for that one job, scored against LLMs, Jev and fine-tuned models on public benchmarks, on any CPU.
   <br><br>
   <a href="#run-it"><strong>Run it »</strong></a>
   &nbsp;·&nbsp;
@@ -40,6 +40,21 @@
 | ✅ Hugging Face datasets | ✅ Overfitting check | ✅ Tokens per task and model | ✅ Publish to Hugging Face |
 | ✅ LLM data, judge-checked | ✅ Health score | ✅ Test sets, Excel export | ✅ Teams that act as you type |
 | ✅ Experiments and autopilot | ✅ Hugging Face rivals | ✅ Paged tables, live counts | ✅ SQLite or Postgres |
+
+## What's new, and what isn't
+
+The recipe is not new: fine-tune a small pretrained encoder on labelled examples. BYOSM automates everything around it
+from one sentence. It finds a public benchmark and training data on Hugging Face, or has an LLM write the data and a
+second LLM check the labels. It trains, proposes and runs experiments, and scores the result against the models you
+would otherwise use, with the same code and a paired bootstrap:
+
+- **LLMs** called zero-shot (Claude, GPT, Qwen through Ollama, ...).
+- **[Jev](https://typesafe.ai)**, TypeSafe's judgment model: a fast hosted classifier that takes label definitions instead of training.
+- **Models already fine-tuned on the same benchmark**, found on Hugging Face by a web-searching LLM. These are the fairest bar.
+
+Close relatives: [SetFit](https://github.com/huggingface/setfit) (few-shot fine-tuning of sentence encoders) and
+[AutoTrain](https://huggingface.co/autotrain) (no-code fine-tuning on your data). BYOSM starts from a sentence instead
+of a dataset, and its output is a comparison you can trust as much as the model.
 
 ## Run it
 
@@ -116,6 +131,19 @@ Models on Hugging Face: [bsye](https://huggingface.co/bsye) ·
 [byosm-doctype](https://huggingface.co/bsye/byosm-doctype) ·
 [byosm-intent](https://huggingface.co/bsye/byosm-intent) ·
 [byosm-vad](https://huggingface.co/bsye/byosm-vad)
+
+## Limitations
+
+Where it does not win, from the [results](docs/results.md):
+
+| Case | What happened |
+|---|---|
+| Banking77, first model | 0.797 against Jev's 0.807; it took several rounds of experiments to reach 0.937 |
+| Named entities (CoNLL-2003) | 0.913 against 0.910 for `bert-base-NER`: a tie (P(better) 0.86) |
+| Card spend, insurance intents | Scored on held-out splits of their own data, not public benchmarks |
+| Insurance intents on LLM-written inputs | 0.410 against Jev's 0.885: it does not yet hold on new inputs |
+| Turn detection | The LLM has the higher accuracy (0.952 against 0.944); BYOSM wins only at 98% precision |
+| Languages | Every specialist so far is English only |
 
 ## Why the numbers hold up
 
