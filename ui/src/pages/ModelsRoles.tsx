@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { tokens } from "@/format"
+import { compact } from "@/format"
 import { roleTask } from "@/jobs"
 import { matchChoice, roleConfig, useProviders, type Provider } from "@/providers"
 import type { Role, Roles } from "./models-api"
@@ -116,7 +116,7 @@ export function LimitsCard({ roles, biggest, onSaved }: { roles: Roles; biggest:
           Limits
           <InfoTip>A job stops calling its LLM once it has used the token budget, input and output together. Parallel caps the calls a job sends at once; local servers take one at a time when it is empty.</InfoTip>
         </CardTitle>
-        <CardAction className="text-muted-foreground text-sm tabular-nums">largest job so far {tokens(biggest)}</CardAction>
+        <CardAction className="text-muted-foreground text-sm tabular-nums">largest job so far {compact(biggest)}</CardAction>
       </CardHeader>
       <CardContent className="flex flex-wrap items-end gap-4">
         <div className="space-y-2">
