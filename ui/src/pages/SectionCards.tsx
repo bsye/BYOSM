@@ -11,7 +11,7 @@ import { bestSteps, unblock, untilReady } from "./stat-actions"
 const PRIMARY = 0
 
 type Llm = Record<string, unknown> | null
-type Stat = { label: string; value: string; badge?: string; line: string; action?: { label: string; run: (llm: Llm) => Promise<void> } }
+type Stat = { label: string; value: string; badge?: string; line: string; hint?: string; action?: { label: string; run: (llm: Llm) => Promise<void> } }
 
 function counted<T>(xs: T[]): [T, number][] {
   const c = new Map<T, number>()
@@ -34,26 +34,27 @@ function stats(items: Summary[], healths: Healths): Stat[] {
       value: `${ready} / ${items.length}`,
       badge: items.length ? `${Math.round((ready / items.length) * 100)}%` : undefined,
       line: pending ? `checking ${pending} more` : `${items.length - ready} need work`,
-      action: notReady.length ? { label: "Auto until ready", run: (llm) => untilReady(notReady, llm) } : undefined,
+      action: notReady.length ? { label: "Auto", run: (llm) => untilReady(notReady, llm) } : undefined,
     },
     {
       label: "Average health",
       value: mean == null ? "-" : String(mean),
       badge: mean == null ? undefined : `ready at ${known[0].h.ready_score}`,
       line: `across ${known.length} models`,
-      action: known.length ? { label: "Run all next actions", run: (llm) => bestSteps(known.map((k) => k.s.name), llm) } : undefined,
+      action: known.length ? { label: "Run all", run: (llm) => bestSteps(known.map((k) => k.s.name), llm) } : undefined,
     },
     {
       label: "Closest to ready",
       value: close ? String(close.h.score) : "-",
-      line: close ? `${close.s.title || close.s.name}, blocked by ${close.h.blockers[0] ?? "a low score"}` : "every model is ready",
-      action: close ? { label: "Auto until ready", run: (llm) => untilReady([close.s.name], llm) } : undefined,
+      line: close ? close.s.title || close.s.name : "every model is ready",
+      hint: close ? `blocked by ${close.h.blockers.join(", ") || "a low score"}` : undefined,
+      action: close ? { label: "Auto", run: (llm) => untilReady([close.s.name], llm) } : undefined,
     },
     {
       label: "Top blocker",
       value: blocker ?? "None",
       line: blocker ? `holds back ${blocks} of ${known.length} models` : "nothing blocks production",
-      action: blocker ? { label: "Fix for all", run: (llm) => unblock(blocked, blocker, llm) } : undefined,
+      action: blocker ? { label: "Fix all", run: (llm) => unblock(blocked, blocker, llm) } : undefined,
     },
   ]
 }
@@ -93,7 +94,9 @@ export function SectionCards({ items, healths }: { items: Summary[]; healths: He
             )}
           </CardHeader>
           <CardFooter className="text-muted-foreground mt-auto flex-col items-start gap-3 text-sm">
-            <span className="line-clamp-1">{s.line}</span>
+            <span className="line-clamp-1" title={s.hint}>
+              {s.line}
+            </span>
             {s.action && <Action action={s.action} />}
           </CardFooter>
         </Card>
