@@ -69,7 +69,7 @@ class Project:
     @property
     def promoted(self) -> str | None:
         with session(self.ws) as s:
-            return s.scalar(select(Specialist.promoted).where(Specialist.name == self.name))
+            return s.scalar(select(Specialist.promoted).where(Specialist.id == self._need(s)))
 
     def promote(self, exp: str) -> None:
         with session(self.ws) as s:
