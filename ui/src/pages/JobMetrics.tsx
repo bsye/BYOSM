@@ -69,6 +69,32 @@ function Teachers({ items }: { items: Teacher[] }) {
   )
 }
 
+type Writing = { split: string; done: number; total: number }
+
+function Writes({ items }: { items: Writing[] }) {
+  const last = Object.values(Object.fromEntries(items.map((w) => [w.split, w])))
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Writing data</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {last.map((w) => (
+          <div key={w.split} className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span>{w.split}</span>
+              <span className="text-foreground/70 tabular-nums">
+                {w.done} / {w.total} calls
+              </span>
+            </div>
+            <Progress value={(w.done / Math.max(1, w.total)) * 100} />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
 type Scored = { predictor: string; predictor_kind: string; suite: string; objective: number | null }
 
 function Scores({ items }: { items: Scored[] }) {
@@ -108,10 +134,12 @@ export function JobMetrics({ metrics }: { metrics: Metric[] }) {
   const epochs = of<Epoch>("epoch")
   const teachers = of<Teacher>("teacher")
   const scored = of<Scored>("scored")
-  if (!epochs.length && !teachers.length && !scored.length) return null
+  const writes = of<Writing>("writing")
+  if (!epochs.length && !teachers.length && !scored.length && !writes.length) return null
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {epochs.length > 0 && <Epochs items={epochs} />}
+      {writes.length > 0 && <Writes items={writes} />}
       {teachers.length > 0 && <Teachers items={teachers} />}
       {scored.length > 0 && <Scores items={scored} />}
     </div>

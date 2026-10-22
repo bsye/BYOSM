@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import itertools
 import random
 from collections.abc import Callable
 from typing import Any
 
+from ..events import emit
 from ..llm import get_llm, pmap
 from ..spec import TaskSpec
 from .prompts import ANALYZE_SYSTEM, EVAL_SYSTEM, GEN_SYSTEM, JUDGE_SYSTEM, REFINE_SCHEMA
@@ -144,12 +146,16 @@ def generate(
     schema = _schema(spec)
     log(f"  generating {split}: {len(jobs)} calls x {spec.data.per_call} with {llm.name}")
 
+    done = itertools.count(1)
+
     def run(job: dict) -> list[dict]:
         avoid = random.Random(job["seed"]).sample(pool, min(8, len(pool)))
         prompt = job.get("prompt") or _gen_prompt(spec, job, adversarial, avoid)
-        return _to_records(
+        out = _to_records(
             spec, llm.json(system, prompt, schema), f"llm:{llm.name}", split=split, combo=job.get("combo")
         )
+        emit("writing", split=split, done=next(done), total=len(jobs), specialist=spec.name)
+        return out
 
     rows = [
         r for part in pmap(run, jobs, workers, on_error=lambda e: log(f"  generation call failed: {e}")) for r in part

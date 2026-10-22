@@ -39,6 +39,7 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   if (last?.kind === "llm" && last.state === "waiting") return `Asking ${modelName(String(last.model))} (${last.role})`
   if (last?.kind === "epoch") return `Training ${last.experiment}, epoch ${last.epoch}/${last.epochs}`
   if (last?.kind === "teacher") return `${last.teacher} labelling ${last.done}/${last.total}`
+  if (last?.kind === "writing") return `Writing ${last.split} data ${last.done}/${last.total}`
   if (last?.kind === "scored") return `Scored ${last.predictor} on ${last.suite}`
   return lines.at(-1)?.trim() || "Starting"
 }
@@ -85,6 +86,11 @@ export function steps(metrics: Metric[], running: boolean): Step[] {
     } else if (m.kind === "teacher") {
       const prev = out.at(-1)
       const step = { label: `Label with ${m.teacher}`, detail: `${m.done}/${m.total}`, state: "done" as const }
+      if (prev?.label === step.label) out[out.length - 1] = step
+      else out.push(step)
+    } else if (m.kind === "writing") {
+      const prev = out.at(-1)
+      const step = { label: `Write ${m.split} data`, detail: `${m.done}/${m.total} calls`, state: "done" as const }
       if (prev?.label === step.label) out[out.length - 1] = step
       else out.push(step)
     } else if (m.kind === "scored") {
