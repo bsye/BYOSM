@@ -33,7 +33,8 @@ export function useHealths(items: Summary[] | null): Healths {
 function Status({ h }: { h: Health | null | undefined }) {
   if (h === undefined) return <Loader2 className="text-muted-foreground size-4 animate-spin" />
   if (!h) return <span className="text-muted-foreground">-</span>
-  return <Badge variant={h.ready ? "default" : "outline"}>{h.ready ? "Ready" : "Not ready"}</Badge>
+  if (h.ready) return <Badge>Ready</Badge>
+  return <Badge variant="outline">{h.score >= h.ready_score ? "Blocked" : `Below ${h.ready_score}`}</Badge>
 }
 
 function AutoReady({ names, done }: { names: string[]; done: () => void }) {

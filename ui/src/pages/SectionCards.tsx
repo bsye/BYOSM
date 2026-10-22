@@ -39,7 +39,7 @@ function stats(items: Summary[], healths: Healths): Stat[] {
     {
       label: "Average health",
       value: mean == null ? "-" : String(mean),
-      badge: mean == null ? undefined : `ready at ${known[0].h.ready_score}`,
+      badge: mean == null ? undefined : `ready: ${known[0].h.ready_score}+ and unblocked`,
       line: `across ${known.length} models`,
       action: known.length ? { label: "Run all", run: (llm) => bestSteps(known.map((k) => k.s.name), llm) } : undefined,
     },
