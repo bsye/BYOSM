@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
-import { modelName } from "@/jobs"
+import { modelName, roleTask } from "@/jobs"
 
 const TICK_MS = 1000
 const SHOWN = 200
@@ -92,7 +92,7 @@ export function LlmInspector() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-8" />
-                  <TableHead>Role</TableHead>
+                  <TableHead>Task</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead>Job</TableHead>
                   <TableHead>State</TableHead>
@@ -107,7 +107,7 @@ export function LlmInspector() {
                     <Fragment key={c.call}>
                       <TableRow className="cursor-pointer" onClick={() => setOpen(expanded ? null : c.call)}>
                         <TableCell>{expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</TableCell>
-                        <TableCell className="font-medium">{c.role}</TableCell>
+                        <TableCell className="font-medium">{roleTask(c.role)}</TableCell>
                         <TableCell className="text-foreground/70">{modelName(c.model)}</TableCell>
                         <TableCell className="text-muted-foreground font-mono text-xs">byosm {c.command}</TableCell>
                         <TableCell>

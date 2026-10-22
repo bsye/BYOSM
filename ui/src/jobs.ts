@@ -35,9 +35,20 @@ export function describe(job: Pick<Job, "args">): Described {
   return { title: verb, target: plain[0] ?? null, subject: plain.slice(1).join(" ") || null }
 }
 
+const ROLE_TASKS: Record<string, string> = {
+  spec: "draft the spec",
+  generate: "write training data",
+  eval: "write test data",
+  judge: "check labels",
+  analyze: "study the errors",
+  baseline: "answer as a rival",
+}
+
+export const roleTask = (role: unknown) => ROLE_TASKS[String(role)] ?? String(role)
+
 export function currentStep(metrics: Metric[], lines: string[]): string {
   const last = metrics.at(-1)
-  if (last?.kind === "llm" && last.state === "waiting") return `Asking ${modelName(String(last.model))} (${last.role})`
+  if (last?.kind === "llm" && last.state === "waiting") return `${modelName(String(last.model))}: ${roleTask(last.role)}`
   if (last?.kind === "epoch") return `Training ${last.experiment}, epoch ${last.epoch}/${last.epochs}`
   if (last?.kind === "teacher") return `${last.teacher} labelling ${last.done}/${last.total}`
   if (last?.kind === "writing") return `Writing ${last.split} data ${last.done}/${last.total}`
@@ -61,6 +72,24 @@ export function llmUsed(metrics: Metric[]): string | null {
 
 export type Step = { label: string; detail: string; state: "running" | "done" | "failed" }
 
+type CallGroup = { label: string; calls: number; failed: number; waiting: number; start: number; end: number }
+
+function callStep(g: CallGroup): Step {
+  const span = g.end - g.start
+  const time = span > 0 ? `, ${seconds(span)}` : ""
+  const failed = g.failed ? `, ${g.failed} failed` : ""
+  const detail = g.calls === 1 ? (g.waiting ? "waiting" : seconds(span)) : `${g.calls} calls${time}${failed}`
+  return { label: g.label, detail, state: g.waiting ? "running" : g.failed === g.calls ? "failed" : "done" }
+}
+
+function progressStep(m: Metric): Step | null {
+  if (m.kind === "epoch") return { label: `Train ${m.experiment}`, detail: `epoch ${m.epoch}/${m.epochs}, dev ${Number(m.dev_objective).toFixed(3)}`, state: "done" }
+  if (m.kind === "teacher") return { label: `Label with ${m.teacher}`, detail: `${m.done}/${m.total}`, state: "done" }
+  if (m.kind === "writing") return { label: `Write ${m.split} data`, detail: `${m.done}/${m.total} calls`, state: "done" }
+  if (m.kind === "scored") return { label: `Score ${m.predictor}`, detail: `${m.suite}: ${m.objective == null ? "-" : Number(m.objective).toFixed(3)}`, state: "done" }
+  return null
+}
+
 export function steps(metrics: Metric[], running: boolean): Step[] {
   const out: Step[] = []
   const calls = new Map<string, Metric>()
@@ -68,35 +97,29 @@ export function steps(metrics: Metric[], running: boolean): Step[] {
     if (m.kind === "llm") calls.set(String(m.call), { ...(calls.get(String(m.call)) ?? {}), ...m })
   }
   const seen = new Set<string>()
+  let group = null as CallGroup | null
   for (const m of metrics) {
     if (m.kind === "llm") {
       const id = String(m.call)
       if (seen.has(id)) continue
       seen.add(id)
       const c = calls.get(id) as Metric
-      out.push({
-        label: `Ask ${c.role}`,
-        detail: `${c.model}${c.seconds != null ? `, ${seconds(Number(c.seconds))}` : ""}`,
-        state: c.state === "waiting" ? "running" : c.state === "failed" ? "failed" : "done",
-      })
-    } else if (m.kind === "epoch") {
-      const prev = out.at(-1)
-      const step = { label: `Train ${m.experiment}`, detail: `epoch ${m.epoch}/${m.epochs}, dev ${Number(m.dev_objective).toFixed(3)}`, state: "done" as const }
-      if (prev?.label === step.label) out[out.length - 1] = step
-      else out.push(step)
-    } else if (m.kind === "teacher") {
-      const prev = out.at(-1)
-      const step = { label: `Label with ${m.teacher}`, detail: `${m.done}/${m.total}`, state: "done" as const }
-      if (prev?.label === step.label) out[out.length - 1] = step
-      else out.push(step)
-    } else if (m.kind === "writing") {
-      const prev = out.at(-1)
-      const step = { label: `Write ${m.split} data`, detail: `${m.done}/${m.total} calls`, state: "done" as const }
-      if (prev?.label === step.label) out[out.length - 1] = step
-      else out.push(step)
-    } else if (m.kind === "scored") {
-      out.push({ label: `Score ${m.predictor}`, detail: `${m.suite}: ${m.objective == null ? "-" : Number(m.objective).toFixed(3)}`, state: "done" })
+      const label = `${modelName(String(c.model))}: ${roleTask(c.role)}`
+      if (group?.label !== label || out.at(-1)?.label !== label) {
+        group = { label, calls: 0, failed: 0, waiting: 0, start: Number(c.at), end: Number(c.at) }
+        out.push(callStep(group))
+      }
+      group.calls += 1
+      group.failed += c.state === "failed" ? 1 : 0
+      group.waiting += c.state === "waiting" ? 1 : 0
+      group.end = Math.max(group.end, Number(c.at) + Number(c.seconds ?? 0))
+      out[out.length - 1] = callStep(group)
+      continue
     }
+    const step = progressStep(m)
+    if (!step) continue
+    if (m.kind !== "scored" && out.at(-1)?.label === step.label) out[out.length - 1] = step
+    else out.push(step)
   }
   if (running && out.length && out.at(-1)?.state === "done" && metrics.at(-1)?.kind !== "scored") out[out.length - 1] = { ...(out.at(-1) as Step), state: "running" }
   return out
