@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, ErrorBar, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, ErrorBar, LabelList, XAxis, YAxis } from "recharts"
 import type { Result } from "@/api"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 
@@ -7,7 +7,7 @@ const config = {
   calib: { label: "calib", color: "var(--chart-2)" },
 } satisfies ChartConfig
 
-type Row = { model: string; test: number; calib: number | null; ci: [number, number] }
+type Row = { model: string; test: number; calib: number | null; ci: [number, number]; reach: string | null }
 
 export function boardRows(board: Record<string, Record<string, Result>>, suite: string): Row[] {
   return Object.entries(board)
@@ -18,6 +18,7 @@ export function boardRows(board: Record<string, Record<string, Result>>, suite: 
       test: r.objective as number,
       calib: r.calib_objective,
       ci: r.ci ? ([(r.objective as number) - r.ci.lo, r.ci.hi - (r.objective as number)] as [number, number]) : [0, 0],
+      reach: r.unreached != null ? `reaches ${(r.unreached * 100).toFixed(1)}%` : null,
     }))
     .sort((a, b) => b.test - a.test)
 }
@@ -34,6 +35,7 @@ export function BoardChart({ rows }: { rows: Row[] }) {
         <ChartLegend content={<ChartLegendContent />} />
         <Bar dataKey="test" fill="var(--color-test)" radius={4}>
           <ErrorBar dataKey="ci" width={4} strokeWidth={1} />
+          <LabelList dataKey="reach" position="top" className="fill-muted-foreground" fontSize={11} formatter={(v) => (v == null ? "" : String(v))} />
         </Bar>
         <Bar dataKey="calib" fill="var(--color-calib)" radius={4} />
       </BarChart>
