@@ -13,6 +13,7 @@ DEFAULT_PORT = 8765
 TOKEN_ENV = "BYOSM_APP_TOKEN"
 HOSTS_ENV = "BYOSM_APP_HOSTS"
 ANY_ADDRESS = ("0.0.0.0", "::")
+SHUTDOWN_GRACE_S = 3
 
 
 def allowed_hosts(given: list[str] | None) -> list[str]:
@@ -57,4 +58,4 @@ def app_(
     except WorkspaceBusyError as e:
         log(str(e))
         raise typer.Exit(1) from e
-    uvicorn.run(api, host=host, port=port, log_level="warning")
+    uvicorn.run(api, host=host, port=port, log_level="warning", timeout_graceful_shutdown=SHUTDOWN_GRACE_S)
