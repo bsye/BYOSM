@@ -131,6 +131,19 @@ training.
 of train, so dev is not only procedural mixes. Gotcha: those clips are adjacent windows of the same recordings as the
 train clips.
 
+**LLM-written data is sized to the time it is allowed.**
+`byosm/data/budget.py`: the first `MEASURE_CALLS` generation calls are timed, the remaining calls for train, dev and test
+are estimated at that pace, and when they would overrun the allowance every split is cut by the same factor, down to
+floors (`MIN_TRAIN_PER_LABEL` per label, `MIN_DEV_ROWS`, `MIN_TEST_ROWS`) that win over the budget. The allowance is
+`data.max_minutes` for `byosm build` and `DATA_BUDGET_SHARE` of the time left for the autopilot (`byosm/auto/state.py`
+`Session.data_seconds`, the only place the autopilot's deadline is turned into a data budget). The pace is wall time per
+call times the calls that can really run at once (`Observed.parallel`: one for a local server), and includes the
+judge's pass over the timed rows. `fit.json` in the data folder keeps the planned, written and
+actual sizes, the pace and the budget, and the model card says when the set was shrunk. Gotchas: dev and test are
+assumed to run at the train model's pace even when the `eval` role is another model; `max_minutes` is left out of the
+data key, so a shrunk set is reused by later builds with the same plan (delete the data folder to regenerate);
+refinement rounds are not budgeted.
+
 **An empty dataset is never cached.**
 `byosm/data/__init__.py` `build`: it raises before writing any split when there are no training examples, so a bad data
 plan does not leave a `train.jsonl` that later runs would reuse.
