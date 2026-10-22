@@ -129,3 +129,19 @@ def test_a_stopped_run_resumes_from_the_inputs_it_already_wrote(qa, monkeypatch)
     monkeypatch.setattr(testset, "judge", lambda spec, rows, cfg, log: rows)
     write_testset(p, spec, PER_LABEL, "llm-written")
     assert asked[0] == ["statement"]
+
+
+def test_a_spec_edit_made_while_the_inputs_are_written_survives(qa, monkeypatch):
+    p, spec = qa
+    real = testset.generate
+
+    def edit_then_generate(*a, **k):
+        edited = TaskSpec.load(p.spec_path)
+        edited.baselines = [*edited.baselines, "jev"]
+        edited.save(p.spec_path)
+        return real(*a, **k)
+
+    monkeypatch.setattr(testset, "generate", edit_then_generate)
+    write_testset(p, spec, PER_LABEL, "llm-written")
+    saved = TaskSpec.load(p.spec_path)
+    assert "jev" in saved.baselines and "llm-written" in [e.name for e in saved.evals]

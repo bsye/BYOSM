@@ -106,6 +106,7 @@ def write_testset(
     judge = role_model(JUDGE_ROLE, cfg) if spec.data.judge else None
     es = EvalSuite(name=suite, kind="generated", written_by=role_model(WRITER_ROLE, cfg), judged_by=judge)
     freeze(suite_dir(p, es), es, calib, test)
-    spec.evals.append(es)
-    spec.save(p.spec_path)
+    fresh = TaskSpec.load(p.spec_path)
+    fresh.evals.append(es)
+    fresh.save(p.spec_path)
     return es
