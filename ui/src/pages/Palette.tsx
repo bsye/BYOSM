@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { api, runJob, type Summary } from "@/api"
 import {
+  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -8,8 +9,10 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command"
 import { go } from "@/route"
+import { newestFirst, titleOf } from "./specialist-groups"
 
 const PAGES = ["create", "specialists", "jobs", "settings"]
 const JOBS: { verb: string; args: (n: string) => string[] }[] = [
@@ -21,8 +24,8 @@ const JOBS: { verb: string; args: (n: string) => string[] }[] = [
 
 export function Palette() {
   const [open, setOpen] = useState(false)
-  const [names, setNames] = useState<string[]>([])
-  const [systems, setSystems] = useState<string[]>([])
+  const [items, setItems] = useState<Summary[]>([])
+  const models = items.filter((s) => s.kind !== "team").map((s) => s.name)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -34,9 +37,9 @@ export function Palette() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
   useEffect(() => {
-    if (!open) return
-    api<Summary[]>("/specialists").then((s) => setNames(s.map((x) => x.name))).catch(() => setNames([]))
-    api<{ name: string }[]>("/systems").then((s) => setSystems(s.map((x) => x.name))).catch(() => setSystems([]))
+    api<Summary[]>("/specialists")
+      .then(setItems)
+      .catch(() => setItems([]))
   }, [open])
   const pick = (fn: () => void) => () => {
     setOpen(false)
@@ -44,40 +47,38 @@ export function Palette() {
   }
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Go to a specialist, or start a job..." />
-      <CommandList>
-        <CommandEmpty>Nothing matches.</CommandEmpty>
-        <CommandGroup heading="Pages">
-          {PAGES.map((p) => (
-            <CommandItem key={p} onSelect={pick(() => go(p))}>
-              {p}
-            </CommandItem>
-          ))}
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Specialists">
-          {names.map((n) => (
-            <CommandItem key={n} onSelect={pick(() => go("specialists", n))}>
-              {n}
-            </CommandItem>
-          ))}
-          {systems.map((n) => (
-            <CommandItem key={`system-${n}`} onSelect={pick(() => go("specialists", n))}>
-              {n} (team)
-            </CommandItem>
-          ))}
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Jobs">
-          {names.flatMap((n) =>
-            JOBS.map((j) => (
-              <CommandItem key={`${j.verb}-${n}`} onSelect={pick(() => runJob(j.args(n)).then((job) => go("jobs", job.id)))}>
-                {j.verb} {n}
+      <Command>
+        <CommandInput placeholder="Go to a specialist, or start a job..." />
+        <CommandList>
+          <CommandEmpty>Nothing matches.</CommandEmpty>
+          <CommandGroup heading="Pages">
+            {PAGES.map((p) => (
+              <CommandItem key={p} onSelect={pick(() => go(p))}>
+                {p}
               </CommandItem>
-            )),
-          )}
-        </CommandGroup>
-      </CommandList>
+            ))}
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Specialists">
+            {newestFirst(items).map((s) => (
+              <CommandItem key={s.name} value={`${titleOf(s)} ${s.name}`} onSelect={pick(() => go("specialists", s.name))}>
+                {titleOf(s)}
+                <CommandShortcut className="font-mono tracking-normal">{s.name}</CommandShortcut>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Jobs">
+            {models.flatMap((n) =>
+              JOBS.map((j) => (
+                <CommandItem key={`${j.verb}-${n}`} onSelect={pick(() => runJob(j.args(n)).then((job) => go("jobs", job.id)))}>
+                  {j.verb} {n}
+                </CommandItem>
+              )),
+            )}
+          </CommandGroup>
+        </CommandList>
+      </Command>
     </CommandDialog>
   )
 }
