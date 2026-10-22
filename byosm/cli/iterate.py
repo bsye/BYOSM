@@ -139,3 +139,23 @@ def distill(
     p, spec = _spec(name)
     log(f"created {name}/{exp}: {STUDENTS[spec.modality][1]} student of {teacher or p.promoted}")
     _build_or_hint(name, exp, run)
+
+
+@app.command("next")
+def next_(
+    name: str,
+    run_all: Annotated[bool, typer.Option("--all", help="run every suggested step, in order")] = False,
+) -> None:
+    """Show what to do next for a specialist (a held-out set too small, rivals not scored, no overfitting check,
+    an untried proposal, a stale export), and with --all do it, one step after the other."""
+    from ..events import stage
+    from ..next_steps import suggestions
+
+    steps = suggestions(name)
+    for s in steps:
+        log(f"- {s['title']}: {s['why']}  (byosm {' '.join(s['args'])})")
+    if not steps:
+        log(f"{name}: nothing to do")
+    for s in steps if run_all else []:
+        with stage(s["title"]):
+            app(s["args"], standalone_mode=False)

@@ -10,6 +10,7 @@ from ..config import Project, list_projects
 from ..data.store import SPLITS, Dataset
 from ..hub.facts import suite_dataset
 from ..improve.proposals import PROPOSALS_FILE
+from ..next_steps import suggestions
 from ..spec import TaskSpec
 
 MAX_PAGE = 500
@@ -107,6 +108,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "proposals": json.loads(proposals.read_text()) if (proposals := p.root / PROPOSALS_FILE).exists() else None,
         "data": Dataset(dd).summary() if (dd / "train.jsonl").exists() else None,
         "overfit": json.loads(p.overfit_path.read_text()) if p.overfit_path.exists() else None,
+        "next": suggestions(name, ws),
     }
 
 

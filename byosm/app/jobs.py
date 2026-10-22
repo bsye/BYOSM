@@ -41,6 +41,7 @@ ALLOWED_COMMANDS = (
     "suite",
     "baseline",
     "testset",
+    "next",
     "system",
 )
 TERMINAL_COLUMNS = "160"
