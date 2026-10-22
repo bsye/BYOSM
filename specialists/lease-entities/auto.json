@@ -1,0 +1,90 @@
+{
+  "decisions": [
+    {
+      "t": "2026-10-22 00:47:54",
+      "step": "define",
+      "choice": "text/frame, 7 labels, backbone hf:microsoft/deberta-v3-xsmall",
+      "why": "compiled from the prompt; objective span_f1 >= 0.93"
+    },
+    {
+      "t": "2026-10-22 00:48:56",
+      "step": "discover:baseline",
+      "choice": "hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2",
+      "why": "token-classification model, 35398 downloads, covers 71% of our labels"
+    },
+    {
+      "t": "2026-10-22 00:48:56",
+      "step": "discover:baseline",
+      "choice": "hf:h2oai/deberta_finetuned_pii",
+      "why": "token-classification model, 7909 downloads, covers 71% of our labels"
+    },
+    {
+      "t": "2026-10-22 10:12:56",
+      "step": "build",
+      "choice": "v1",
+      "why": "builtin span_f1 0.6316; best baseline ('hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2', 0.37037037037037035)"
+    },
+    {
+      "t": "2026-10-22 10:12:56",
+      "step": "stop",
+      "choice": "time budget: 0.7h left < ~5.3h per experiment",
+      "why": ""
+    },
+    {
+      "t": "2026-10-22 10:12:56",
+      "step": "distill",
+      "choice": null,
+      "why": "skipped: it did not win, so there is no winner to shrink"
+    },
+    {
+      "t": "2026-10-22 10:13:03",
+      "step": "overfit",
+      "choice": "warn",
+      "why": "Some signs of overfitting: read the findings."
+    },
+    {
+      "t": "2026-10-22 10:13:15",
+      "step": "export",
+      "choice": "specialists/lease-entities/export",
+      "why": "torch-free ONNX bundle (encode / predict / serve); local only, it did not win"
+    }
+  ],
+  "final": {
+    "suite": "builtin",
+    "ours": 0.631578947368421,
+    "exp": "v1",
+    "baselines": {
+      "hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2": 0.37037037037037035,
+      "hf:h2oai/deberta_finetuned_pii": 0.3076923076923077
+    },
+    "best_baseline": [
+      "hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2",
+      0.37037037037037035
+    ],
+    "beats": true,
+    "meets": false,
+    "won": false,
+    "metric": "span_f1",
+    "target": 0.93,
+    "test": {
+      "ours": 0.5136612021857924,
+      "ci95": {
+        "lo": 0.3892485618051209,
+        "hi": 0.650916880652004
+      },
+      "baselines": {
+        "hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2": 0.3008849557522124,
+        "hf:h2oai/deberta_finetuned_pii": 0.35555555555555557
+      },
+      "vs_best_baseline": {
+        "lo": 0.05617730460054017,
+        "hi": 0.3711284428324999,
+        "delta": 0.21277624643357995,
+        "p_better": 0.998
+      }
+    },
+    "hours": 5.26,
+    "stop_reason": "time budget: 0.7h left < ~5.3h per experiment",
+    "name": "lease-entities"
+  }
+}

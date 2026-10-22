@@ -1,0 +1,55 @@
+{
+  "patterns": [
+    {
+      "name": "Date-Amount Boundary in Recitals",
+      "explanation": "The model confuses the legal context surrounding dates and amounts. In the first error, it likely treats 'Three Twenty Thousand Dollars' as ambiguous due to the typo/formatting, or fails to segment the two distinct monetary obligations. In the second error, it likely includes the verb 'commence' in the DATE span or splits the single lease term duration into separate DATE entities rather than recognizing the specific anchor dates.",
+      "data_recipe": "Generate contrastive pairs showing: (1) Correct isolation of typos in amounts (e.g., 'Two Thousand Dollars' vs 'Two Twenty Thousand Dollars' where the latter is tagged as B-AMOUNT/I-AMOUNT/O/I-AMOUNT if interpreted as $2,200 or similar, but strictly following the tokenized value present). (2) Explicit tagging of 'July 1, 2025' as B-DATE/I-DATE/I-DATE and 'June 30, 2026' as B-DATE/I-DATE/I-DATE, with 'commence on' and 'and end on' marked as O.",
+      "share": 14.44
+    },
+    {
+      "name": "Entity Role vs. Named Party",
+      "explanation": "The model fails to distinguish between generic roles ('Tenant', 'Guarantor') and specific named entities ('ABC Corporation', 'SolidRock Backing Co.'). It likely tags the role titles as PARTIES or misses the named parties entirely because they appear after colons or role labels. This is systematic across errors involving signature blocks and recitals.",
+      "data_recipe": "Create examples where role labels (e.g., 'Landlord:', 'Tenant:') are tagged as O, followed immediately by the named entity tagged as B-PARTY/I-PARTY. Include negative examples where generic references like 'the Tenant' are clearly O. Add examples of guarantors in formal 'GUARANTY' sections to solidify the B-PARTY for the named guarantor.",
+      "share": 25.0
+    },
+    {
+      "name": "Duration vs. Specific Calendar Date",
+      "explanation": "The model struggles with distinguishing between duration expressions (e.g., 'term of twenty years', '14 days of notice') and specific calendar dates. It may incorrectly tag durations as DATE or miss specific dates within complex sentences involving proration or notice periods.",
+      "data_recipe": "Provide examples where 'within 30 days of execution' is tagged as B-DATE/I-DATE/I-DATE/I-DATE/I-DATE per the definition, while 'a term of 10 years' is O. Contrast '15 August 2025' (B-DATE/I-DATE/I-DATE) with 'August 2025' (O, if no specific day/year anchor) or similar ambiguous but excluded cases per definition.",
+      "share": 13.89
+    },
+    {
+      "name": "Multi-Format Amount Segmentation",
+      "explanation": "The model has difficulty handling amounts expressed in both words and numbers ($1,500 One Thousand Five Hundred Dollars) or amounts with per-unit rates. It may tag the entire phrase as one unit or split incorrectly, failing to capture the specific monetary value tokens correctly.",
+      "data_recipe": "Generate examples of dual-format amounts (words + numbers) ensuring the numeric or word form is tagged as B-AMOUNT/I-AMOUNT and the other is O or included based on the 'specific monetary value' rule. Clarify that '1.50 per square foot' is B-AMOUNT/I-AMOUNT/I-AMOUNT/I-AMOUNT, but 'square foot' is O. Ensure clear separation of rent vs. deposit amounts in sequential sentences.",
+      "share": 19.44
+    },
+    {
+      "name": "Party Identification in Preamble/Recitals",
+      "explanation": "The model misses named parties when they are embedded in introductory clauses or exhibit references, or when multiple parties appear in close proximity. It may tag the entire clause or miss the corporate suffix entities.",
+      "data_recipe": "Create preamble examples with 'Between [Name1] ('Landlord') and [Name2] ('Tenant')' ensuring both names are B-PARTY/I-PARTY and roles are O. Add examples where a party is referred to in the body text (e.g., 'ABC Corporation shall...') to ensure consistency in tagging whether in preamble or clauses.",
+      "share": 12.5
+    },
+    {
+      "name": "Edge Case: Recurring Dates vs. Specific Dates",
+      "explanation": "The model may incorrectly tag recurring references ('1st day of each month') as DATE spans, failing to recognize that without a specific year/year-anchor, they are excluded per the definition. This leads to false positives for DATE.",
+      "data_recipe": "Provide negative examples where 'on the 1st of June' (no year) is O, contrasted with 'on June 1, 2025' which is B-DATE/I-DATE/I-DATE. Emphasize the 'specific calendar date' requirement in the tagging instructions for training data labels.",
+      "share": 8.33
+    },
+    {
+      "name": "Typo Handling in Monetary Values",
+      "explanation": "The model is sensitive to spelling errors in amount expressions (e.g., 'Three Twenty Thousand Dollars' likely meant 'Three Hundred Twenty Thousand' or is a typo). It may fail to tag the B-AMOUNT if the tokenization looks unexpected or if the value is invalid.",
+      "data_recipe": "Include realistic typos in training data for amounts, ensuring the model tags the intended value span if the definition allows interpretation, or follows strict token-based tagging. Clarify whether the model should tag the error-prone span or treat it as O if it doesn't parse as a standard amount. Standardize the training to reflect that 'Three Twenty Thousand' is tagged based on its token sequence as a value attempt.",
+      "share": 6.25
+    },
+    {
+      "name": "Proration and Formula-Related Dates/Amounts",
+      "explanation": "The model fails to identify DATE spans in proration formulas ('between 1/1/2025 and 12/31/2035') where the dates are part of a calculation context. It may miss these because they are not standalone obligation anchors.",
+      "data_recipe": "Provide examples of proration clauses ensuring the specific dates in 'between [Date1] and [Date2]' are tagged as B-DATE/I-DATE... spans, as they anchor the calculation period, per the 'date-range expression' inclusion in the definition.",
+      "share": 10.11
+    }
+  ],
+  "suspect_gold_ids": [
+    "6bc2fc8b3cb0"
+  ]
+}
