@@ -122,7 +122,7 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
     @app.websocket("/api/events")
     async def events(sock: WebSocket, token: str = "") -> None:
         await sock.accept()
-        if not secrets.compare_digest(token, app.state.token):
+        if app.state.token and not secrets.compare_digest(token, app.state.token):
             await sock.close(code=UNAUTHORIZED_CLOSE)
             return
         sub = hub.subscribe()
@@ -155,7 +155,7 @@ def create_app(
 
     def check(authorization: str = Header("")) -> None:
         given = authorization[len(BEARER) :] if authorization.startswith(BEARER) else ""
-        if not secrets.compare_digest(given, token):
+        if token and not secrets.compare_digest(given, token):
             raise HTTPException(401, "missing or wrong token: open the link `byosm app` printed")
 
     threading.Thread(target=importlib.import_module, args=(WARM_MODULE,), daemon=True).start()

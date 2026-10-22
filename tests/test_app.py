@@ -105,3 +105,8 @@ def test_a_second_app_on_the_same_workspace_is_refused(ws):
     (ws / LOCK_PATH).write_text(json.dumps({"pid": os.getppid(), "port": 1}))
     with pytest.raises(WorkspaceBusyError):
         create_app(ws, TOKEN)
+
+
+def test_a_local_app_without_a_token_needs_none(ws):
+    with TestClient(create_app(ws, ""), base_url="http://127.0.0.1") as c:
+        assert c.get("/api/specialists").status_code == 200

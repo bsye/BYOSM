@@ -13,6 +13,7 @@ DEFAULT_PORT = 8765
 TOKEN_ENV = "BYOSM_APP_TOKEN"
 HOSTS_ENV = "BYOSM_APP_HOSTS"
 ANY_ADDRESS = ("0.0.0.0", "::")
+LOOPBACK = ("127.0.0.1", "localhost", "::1")
 SHUTDOWN_GRACE_S = 3
 
 
@@ -32,7 +33,11 @@ def app_(
         int | None, typer.Option(help="most jobs at the same time (default: as many as CPUs and free memory allow)")
     ] = None,
     token: Annotated[
-        str, typer.Option(envvar=TOKEN_ENV, help="fixed API token (default: a new random one each start)")
+        str,
+        typer.Option(
+            envvar=TOKEN_ENV,
+            help="fixed API token (default: none on 127.0.0.1, a new random one when bound to another address)",
+        ),
     ] = "",
     allow_host: Annotated[
         list[str] | None,
@@ -49,10 +54,11 @@ def app_(
 
     ensure_built(log)
 
-    secret = token or secrets.token_urlsafe(24)
+    secret = token or ("" if host in LOOPBACK else secrets.token_urlsafe(24))
     shown = "<your token>" if token else secret
-    url = f"http://{'127.0.0.1' if host in ANY_ADDRESS else host}:{port}/#token={shown}"
-    log(f"byosm app on {url}\nAPI docs: http://{host}:{port}/docs (send Authorization: Bearer <token>)")
+    url = f"http://{'127.0.0.1' if host in ANY_ADDRESS else host}:{port}/" + (f"#token={shown}" if secret else "")
+    auth = " (send Authorization: Bearer <token>)" if secret else ", no token: it only listens on this machine"
+    log(f"byosm app on {url}\nAPI docs: http://{host}:{port}/docs{auth}")
     if open_browser:
         webbrowser.open(url)
     from ..app.lock import WorkspaceBusyError
