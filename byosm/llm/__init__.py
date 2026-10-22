@@ -21,7 +21,7 @@ __all__ = [
     "CodexLLM",
     "LLMError",
     "OpenAICompatLLM",
-    "_cache",
+    "clear_cache",
     "get_llm",
     "pmap",
     "register_provider",
@@ -36,11 +36,17 @@ PROVIDERS: dict[str, Callable[..., LLM]] = {
 }
 
 
+def clear_cache() -> None:
+    _cache.clear()
+    _providers.clear()
+
+
 def register_provider(name: str, factory: Callable[..., LLM]) -> None:
     PROVIDERS[name] = factory
 
 
-_cache: dict[str, LLM] = {}
+_cache: dict[tuple[str, str], LLM] = {}
+_providers: dict[str, LLM] = {}
 _gates: dict[str, threading.BoundedSemaphore] = {}
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "[::1]")
 LOCAL_MAX_PARALLEL = 1
@@ -71,13 +77,14 @@ def get_llm(role: str = "default", cfg: dict | None = None) -> LLM:
     cfg = cfg or load_config()
     conf = role_config(cfg["llm"], role)
     key = json.dumps(conf, sort_keys=True)
-    if key not in _cache:
+    if (role, key) not in _cache:
         provider = conf.pop("provider", "anthropic")
         if provider not in PROVIDERS:
             raise LLMError(f"unknown provider {provider!r}; known: {sorted(PROVIDERS)}")
         limit = _limit(conf)
-        _cache[key] = Observed(PROVIDERS[provider](**conf), role, _gate(conf, limit), limit)
-    return _cache[key]
+        shared = _providers.get(key) or _providers.setdefault(key, PROVIDERS[provider](**conf))
+        _cache[role, key] = Observed(shared, role, _gate(conf, limit), limit)
+    return _cache[role, key]
 
 
 def _limit(conf: dict) -> int | None:

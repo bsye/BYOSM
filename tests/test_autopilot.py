@@ -11,7 +11,7 @@ from byosm.spec import TaskSpec, compile_spec
 
 @pytest.mark.slow
 def test_autopilot_end_to_end(ws):
-    llm._cache.clear()
+    llm.clear_cache()
     p = Project("auto")
     spec = compile_spec("auto", "detect questions")
     spec.data.train_size, spec.data.dev_size, spec.data.test_size, spec.data.per_call = 120, 40, 60, 20

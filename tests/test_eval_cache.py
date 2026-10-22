@@ -7,8 +7,7 @@ from byosm.config import Project
 from byosm.evals import board, run
 from byosm.evals.identity import baseline_identity
 from byosm.evals.suites import fingerprint
-from byosm.llm import PROVIDERS
-from byosm.llm import _cache as _llm_cache
+from byosm.llm import PROVIDERS, clear_cache
 from byosm.spec import TaskSpec
 from byosm.spec.sections import EvalSuite, Label, Objective
 
@@ -150,7 +149,7 @@ def test_a_cached_llm_baseline_survives_a_machine_without_its_key(toy, tmp_path,
     monkeypatch.setenv("BYOSM_TEST_KEY", "x")
     _write_llm(tmp_path, provider="keyed", api_key_env="BYOSM_TEST_KEY")
     run("toy", log=lambda m: None)
-    _llm_cache.clear()
+    clear_cache()
     monkeypatch.delenv("BYOSM_TEST_KEY")
     toy.calls.clear()
     results = run("toy", log=lambda m: None)

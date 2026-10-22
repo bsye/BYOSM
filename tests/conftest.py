@@ -157,7 +157,7 @@ def make_pdf():
 @pytest.fixture
 def ws(tmp_path, monkeypatch):
     llm.register_provider("fake", FakeLLM)
-    llm._cache.clear()
+    llm.clear_cache()
     (tmp_path / "byosm.yaml").write_text(yaml.safe_dump({"llm": {"default": {"provider": "fake"}}, "concurrency": 2}))
     monkeypatch.chdir(tmp_path)
     return tmp_path
