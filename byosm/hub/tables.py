@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ..format import MISSING, fmt, interval, params
 from ..metrics import CONSTRAINED, metric_label, unreached
+from .data_release import data_repo, releasable
 from .facts import TASK_NAME, CardFacts, suite_dataset
 
 DETAIL_HEAD = "| suite | dataset | test items | {metric} | 95% CI | precision | recall | ROC-AUC | avg precision | decision threshold |"
@@ -10,6 +11,8 @@ EXTRA_METRICS = ("precision", "recall", "roc_auc", "avg_precision")
 
 def _suite_result(f: CardFacts, suite: str, r: dict) -> dict:
     ds_name, ds_type = suite_dataset(f.base, suite)
+    if suite == f.prim and releasable(f):
+        ds_name = ds_type = data_repo(f.repo_id)
     mm = r["metrics"]
     metric = f.base.objective.metric
     metrics = [
@@ -22,22 +25,27 @@ def _suite_result(f: CardFacts, suite: str, r: dict) -> dict:
     metrics += [{"type": k, "value": round(mm[k], 4), "name": k} for k in EXTRA_METRICS if mm.get(k) is not None]
     return {
         "task": {"type": f.tag, "name": TASK_NAME.get(f.tag, f.tag)},
-        "dataset": {"name": ds_name, "type": ds_type, "split": "test" if suite != "builtin" else "byosm-heldout"},
+        "dataset": {"name": ds_name, "type": ds_type, "split": "test"},
         "metrics": metrics,
     }
 
 
 def front_matter(f: CardFacts) -> dict:
-    results = [_suite_result(f, suite, r) for suite, r in f.results.items()]
-    tags = ["byosm", "onnx", "system-1", f.spec.modality] + (["jepa", "lejepa"] if f.jepa else []) + f.encoders
-    return {
+    results = [_suite_result(f, f.prim, f.results[f.prim])] if f.prim in f.results else []
+    tags = ["byosm", "onnx", f.spec.name, f.spec.modality] + (["jepa", "lejepa"] if f.jepa else [])
+    own = [data_repo(f.repo_id)] if releasable(f) else []
+    out = {
         "license": f.license,
+        "language": list(f.base.languages),
         "library_name": "onnx",
         "pipeline_tag": f.tag,
         "tags": tags,
-        "datasets": list(f.datasets),
+        "datasets": [*f.datasets, *own],
         "model-index": [{"name": f.repo_name, "results": results}],
     }
+    if f.encoders:
+        out |= {"base_model": f.encoders[0], "base_model_relation": "finetune"}
+    return out
 
 
 def _comparison_rows(f: CardFacts) -> list[tuple[str, dict]]:

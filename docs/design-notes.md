@@ -976,3 +976,11 @@ in the structure of livekit/turn-detector's card. Results tables, test-set table
 exact: the LLM places them through `{{RESULTS}}`-style placeholders. Every number in the prose must match a number in
 the facts or the exact blocks (rounding, percent and millions allowed); otherwise the LLM gets one retry with the
 offending numbers, and after that the template card is used.
+
+## Publishing the data next to the model
+
+For text specialists, `byosm publish` also uploads `<repo>-data` as a Hugging Face dataset (`byosm/hub/data_release.py`):
+the splits the published experiment trained on (with the split each row came from), the calib and test splits, and
+every test set, with each model's answer on every test row. Each row keeps its `source`; the dataset card lists the
+licence of every public source from its own card. The model card's metadata gets `language`, `base_model` and points
+its evaluation result at that dataset, so a reader can rescore any rival on the same rows.

@@ -10,8 +10,9 @@ from ..evals.dumps import _dumps
 from ..export.bundle import is_exported
 from ..model_refs import HUB_DIR, HUB_SEPARATOR
 from ..project import Project
-from . import test_sets
 from .card import model_card
+from .data_release import data_repo, publish_data, releasable
+from .data_release import stage as stage_data
 from .facts import lineage, load_facts
 
 
@@ -25,7 +26,11 @@ def _stage(p: Project, repo_id: str, license: str, experiment: str) -> Path:
     (stage / "board.json").write_text(_dumps(p.board()))
     (stage / "lineage.json").write_text(json.dumps(lineage(p, experiment), indent=2))
     (stage / "README.md").write_text(model_card(p.name, repo_id, license))
-    test_sets.write(load_facts(p.name, repo_id, license), stage)
+    f = load_facts(p.name, repo_id, license)
+    if releasable(f):
+        data_stage = p.root / HUB_DIR / data_repo(repo_id).replace("/", HUB_SEPARATOR)
+        shutil.rmtree(data_stage, ignore_errors=True)
+        stage_data(f, data_stage)
     return stage
 
 
@@ -57,4 +62,7 @@ def publish(
         raise RuntimeError(f"{repo_id} already exists and is public; pass --public to publish to it")
     api.upload_folder(folder_path=str(stage), repo_id=repo_id, commit_message=f"BYOSM publish {name}/{experiment}")
     log(f"  published https://huggingface.co/{repo_id} ({'private' if private else 'public'})")
+    f = load_facts(name, repo_id, license)
+    if releasable(f):
+        publish_data(f, p.root / HUB_DIR / data_repo(repo_id).replace("/", HUB_SEPARATOR), private, log)
     return stage

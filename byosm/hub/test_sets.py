@@ -1,22 +1,21 @@
 from __future__ import annotations
 
-import json
 from collections import Counter
-from pathlib import Path
 from typing import Any
 
 from ..evals.test_sets import test_sets
 from ..evals.workbench import OURS
 from ..model_refs import model_ref
+from .data_release import data_repo
 from .facts import CardFacts
 
-FOLDER = "test-sets"
 LLM_SOURCE = "llm:"
 HEAD = """
 ## Results on test sets written by an LLM
 
 Inputs an LLM wrote and labelled for this task, scored by the same code. They are not a public benchmark, and an LLM
-rival from the same family as the writer may have an edge. Every input, label and answer is in `{folder}/` in this repo.
+rival from the same family as the writer may have an edge. Every input, label and answer is in
+[{data}](https://huggingface.co/datasets/{data}).
 """
 
 
@@ -58,15 +57,4 @@ def section(f: CardFacts) -> str:
     sets = _sets(f)
     if not sets:
         return ""
-    return HEAD.format(folder=FOLDER) + "\n" + "\n".join(line for s in sets for line in _table(f, s))
-
-
-def write(f: CardFacts, stage: Path) -> None:
-    for s in _sets(f):
-        out = stage / FOLDER / f"{s['suite']}.jsonl"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        given = {_name(f, m).strip("*"): got for m in s["results"] if (got := _answers(f, s, m))}
-        with out.open("w") as fh:
-            for r in s["rows"]:
-                answers = {m: got.get(r["id"], {}).get("label") for m, got in given.items()}
-                fh.write(json.dumps({**r, "answers": answers}, ensure_ascii=False) + "\n")
+    return HEAD.format(data=data_repo(f.repo_id)) + "\n" + "\n".join(line for s in sets for line in _table(f, s))
