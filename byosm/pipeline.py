@@ -78,7 +78,7 @@ def build(
     log(f"[experiment] {name}/{exp}")
 
     dd = ensure_data(p, spec, cfg, log, force_data, data_seconds)
-    can_refine = spec.modality == "text" and spec.data.synthetic
+    can_refine = spec.modality == "text" and spec.task_type == "classify"
     rounds, analyses = [], []
     for r in range(spec.train.refine_rounds + 1):
         log(f"[train] round {r}")
