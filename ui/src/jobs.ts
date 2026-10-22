@@ -28,6 +28,7 @@ const VERBS: Record<string, string> = {
   ablate: "Measure a change",
   next: "Do next steps",
   datasets: "Find datasets",
+  ready: "Auto until ready",
 }
 
 const INPUT_VERBS: Record<string, string> = { write: "Write inputs", sample: "Sample inputs", run: "Score inputs" }
@@ -52,7 +53,8 @@ function fromArgs(args: string[]): Described {
   if (sub) return { title: sub, target: rest[1] ?? null, subject: rest[2] ?? null }
   if (cmd === "inputs") return { title: INPUT_VERBS[rest[0]] ?? "Test inputs", target: rest[1] ?? null, subject: rest[rest.indexOf("--set") + 1] ?? null }
   if (cmd === "system") return { title: `${rest[0] === "eval" ? "Score" : "Build"} team`, target: rest[1] ?? null, subject: null }
-  const verb = cmd === "improve" && rest.includes("--apply") ? "Run proposal" : (VERBS[cmd] ?? cmd)
+  const applied = rest.includes("--apply") ? rest[rest.indexOf("--apply") + 1].split(",").length : 0
+  const verb = cmd === "improve" && applied ? (applied === 1 ? "Run 1 experiment" : `Run ${applied} experiments`) : (VERBS[cmd] ?? cmd)
   const plain = rest.filter((a, i) => !a.startsWith("--") && !(rest[i - 1]?.startsWith("--") && !NAMED_FLAGS.has(rest[i - 1])))
   if (cmd === "auto" && plain.length === 1 && plain[0].includes(" ")) return { title: verb, target: null, subject: plain[0] }
   return { title: verb, target: plain[0] ?? null, subject: plain.slice(1).join(" ") || null }

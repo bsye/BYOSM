@@ -2,6 +2,7 @@ import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts"
 import type { Job } from "@/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart"
+import { describe } from "@/jobs"
 import { useNow } from "@/now"
 
 const SHOWN = 12
@@ -18,12 +19,12 @@ const config = { span: { label: "running" } } satisfies ChartConfig
 
 const clock = (t: number) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
-export function Timeline({ jobs }: { jobs: Job[] }) {
+export function Timeline({ jobs, titles }: { jobs: Job[]; titles: Record<string, string> }) {
   const recent = jobs.filter((j) => j.started != null).slice(0, SHOWN).reverse()
   const now = useNow(recent.some((j) => j.status === "running"))
   if (!recent.length) return null
   const data = recent.map((j) => ({
-    name: `${j.args.slice(0, 2).join(" ")} ${j.id.slice(0, 4)}`,
+    name: `${describe(j).title}, ${titles[describe(j).target ?? ""] ?? describe(j).target ?? j.id.slice(0, 6)}`,
     span: [j.started as number, j.ended ?? now],
     status: j.status,
     command: `byosm ${j.args.join(" ")}`,
@@ -39,7 +40,7 @@ export function Timeline({ jobs }: { jobs: Job[] }) {
           <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" domain={[start, "dataMax"]} tickFormatter={clock} tickLine={false} axisLine={false} />
-            <YAxis type="category" dataKey="name" width={150} tickLine={false} axisLine={false} interval={0} />
+            <YAxis type="category" dataKey="name" width={240} tickLine={false} axisLine={false} interval={0} />
             <ChartTooltip
               content={({ payload }) => {
                 const d = payload?.[0]?.payload

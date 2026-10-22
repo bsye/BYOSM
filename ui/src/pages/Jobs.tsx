@@ -1,11 +1,15 @@
 import { CircleCheck, CircleSlash, CircleX, Clock, Loader2 } from "lucide-react"
-import type { Job } from "@/api"
+import { useEffect, useState } from "react"
+import { api, type Job, type Summary } from "@/api"
+import { useShowMore } from "@/components/show-more"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
-import { took, when } from "@/format"
+import { took } from "@/format"
 import { currentStep, describe, llmUsed, timeLeft } from "@/jobs"
 import { openJob } from "@/job-sheet"
 import { go, href } from "@/route"
@@ -89,48 +93,108 @@ export function Running() {
   )
 }
 
+const STATUS_LABEL: Record<Job["status"], string> = { queued: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Cancelled" }
+const FILTERS = { all: () => true, running: (j: Job) => j.status === "running" || j.status === "queued", failed: (j: Job) => j.status === "failed", done: (j: Job) => j.status === "done" }
+type Filter = keyof typeof FILTERS
+const FILTER_LABELS: Record<Filter, string> = { all: "All", running: "Running", failed: "Failed", done: "Completed" }
+
+function StatusBadge({ status }: { status: Job["status"] }) {
+  return (
+    <Badge variant={status === "failed" ? "destructive" : status === "done" ? "secondary" : "outline"}>
+      <StatusIcon status={status} />
+      {STATUS_LABEL[status]}
+    </Badge>
+  )
+}
+
+function useTitles(): Record<string, string> {
+  const [titles, setTitles] = useState<Record<string, string>>({})
+  useEffect(() => {
+    api<Summary[]>("/specialists").then((s) => setTitles(Object.fromEntries(s.map((x) => [x.name, x.title || x.name]))), () => undefined)
+  }, [])
+  return titles
+}
+
+function JobList({ rows, titles }: { rows: ReturnType<typeof useRows>; titles: Record<string, string> }) {
+  const { shown, footer } = useShowMore(rows)
+  return (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-32">Status</TableHead>
+            <TableHead>Job</TableHead>
+            <TableHead>Now</TableHead>
+            <TableHead>Started</TableHead>
+            <TableHead className="text-right">Duration</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {shown.map(({ job, now, llm }) => {
+            const d = describe(job)
+            return (
+              <TableRow key={job.id} className="cursor-pointer" onClick={() => go("jobs", job.id)}>
+                <TableCell>
+                  <StatusBadge status={job.status} />
+                </TableCell>
+                <TableCell className="max-w-md">
+                  <div className="truncate font-medium" title={d.subject ?? undefined}>
+                    {d.title} {d.target == null && d.subject && <span className="text-muted-foreground font-normal">{d.subject}</span>}
+                  </div>
+                  <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    {d.target && (
+                      <a className="hover:underline" href={href("specialists", d.target)} onClick={(e) => e.stopPropagation()}>
+                        {titles[d.target] ?? d.target}
+                      </a>
+                    )}
+                    <span className="font-mono">{job.id.slice(0, 6)}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground max-w-xs text-xs">
+                  <div className="truncate">{now ?? "-"}</div>
+                  {llm && <div className="text-muted-foreground/70 truncate">{llm}</div>}
+                </TableCell>
+                <TableCell className="text-foreground/70 text-xs tabular-nums">{started(job.started)}</TableCell>
+                <TableCell className="text-foreground/70 text-right tabular-nums">{took(job.started, job.ended)}</TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+      {footer}
+    </>
+  )
+}
+
+const started = (t: number | null) =>
+  t == null ? "-" : new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+
 export function Jobs({ id }: { id?: string }) {
   const rows = useRows()
+  const titles = useTitles()
+  const [filter, setFilter] = useState<Filter>("all")
   if (id) return <JobDetail id={id} />
+  const count = (f: Filter) => rows.filter((r) => FILTERS[f](r.job)).length
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <h1 className="text-2xl font-semibold">Jobs</h1>
+      <Timeline jobs={rows.map((r) => r.job)} titles={titles} />
       <Card>
         <CardHeader>
-          <CardTitle>All jobs</CardTitle>
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+            <TabsList>
+              {(Object.keys(FILTERS) as Filter[]).map((f) => (
+                <TabsTrigger key={f} value={f}>
+                  {FILTER_LABELS[f]} <span className="text-muted-foreground tabular-nums">{count(f)}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8" />
-                <TableHead>Job</TableHead>
-                <TableHead>Now</TableHead>
-                <TableHead>LLM</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead className="text-right">Took</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map(({ job, now, llm }) => (
-                <TableRow key={job.id} className="cursor-pointer" onClick={() => go("jobs", job.id)}>
-                  <TableCell>
-                    <StatusIcon status={job.status} />
-                  </TableCell>
-                  <TableCell className="max-w-md">
-                    <JobTitle job={job} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground max-w-xs truncate text-xs">{now ?? job.status}</TableCell>
-                  <TableCell className="text-foreground/70 text-xs">{llm ?? "-"}</TableCell>
-                  <TableCell className="text-foreground/70 tabular-nums">{when(job.started)}</TableCell>
-                  <TableCell className="text-foreground/70 text-right tabular-nums">{took(job.started, job.ended)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <JobList key={filter} rows={rows.filter((r) => FILTERS[filter](r.job))} titles={titles} />
         </CardContent>
       </Card>
-      <Timeline jobs={rows.map((r) => r.job)} />
     </div>
   )
 }
