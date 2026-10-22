@@ -12,7 +12,7 @@ CLAUDE_MODEL = "claude-haiku-5-5"
 CLAUDE_MODELS = (CLAUDE_MODEL, "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1")
 CLAUDE_TIMEOUT_S = 600
 INPUT_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
-ISOLATION_FLAGS = ("--strict-mcp-config", "--setting-sources", "project", "--disable-slash-commands", "--tools", "")
+ISOLATION_FLAGS = ("--strict-mcp-config", "--setting-sources", "project", "--disable-slash-commands")
 
 
 class ClaudeCodeLLM:
@@ -22,15 +22,17 @@ class ClaudeCodeLLM:
         binary: str = CLAUDE_BINARY,
         timeout_s: int = CLAUDE_TIMEOUT_S,
         effort: str | None = None,
+        tools: str = "",
         **_: Any,
     ):
-        self.model, self.binary, self.timeout_s, self.effort = model, binary, timeout_s, effort
+        self.model, self.binary, self.timeout_s, self.effort, self.tools = model, binary, timeout_s, effort, tools
         self.name = f"claude-code:{model}"
 
     def _run(self, system: str, prompt: str, schema: dict) -> dict:
         cmd = [self.binary, "-p", prompt, "--model", self.model, "--output-format", "json"]
         cmd += ["--json-schema", json.dumps(schema), "--system-prompt", system, "--no-session-persistence"]
         cmd += ["--effort", self.effort] if self.effort else []
+        cmd += ["--tools", self.tools, *(["--allowedTools", self.tools] if self.tools else [])]
         with tempfile.TemporaryDirectory() as empty:
             done = subprocess.run(
                 [*cmd, *ISOLATION_FLAGS], cwd=empty, capture_output=True, text=True, timeout=self.timeout_s

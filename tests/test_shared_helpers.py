@@ -37,8 +37,8 @@ def test_search_terms_drop_filler_words_and_keep_the_id():
     from byosm.data.hf_source.hub import search_terms
 
     terms = search_terms(["dair-ai/emotion dataset", "go-emojis benchmark"])
-    assert terms[:2] == ["dair-ai/emotion dataset", "dair-ai/emotion"]
-    assert "go-emojis" in terms and "dataset" not in terms and "benchmark" not in terms
+    assert terms[:2] == ["dair-ai/emotion", "go-emojis"]
+    assert "dataset" not in terms and "benchmark" not in terms
 
 
 def test_datasets_the_spec_writer_names_become_search_terms_not_sources():

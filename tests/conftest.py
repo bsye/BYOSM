@@ -134,6 +134,13 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
+def no_web_research(monkeypatch):
+    from byosm.data.hf_source import research
+
+    monkeypatch.setattr(research, "research_config", lambda cfg: None)
+
+
+@pytest.fixture(autouse=True)
 def seeded():
     random.seed(SEED)
     np.random.seed(SEED)

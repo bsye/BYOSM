@@ -9,6 +9,7 @@ SCRIPT_ERROR = "Dataset scripts are no longer supported"
 
 
 CLOSEST_HITS = 10
+PHRASE_WEIGHT = 3
 MIN_NAME_LETTERS = 5
 NAME_COVER = 0.6
 
@@ -73,32 +74,60 @@ SEARCH_FILLER = {
     "huggingface",
     "hf",
     "classification",
+    "classify",
+    "classifier",
+    "detection",
+    "detect",
+    "prediction",
+    "predict",
+    "task",
+    "label",
+    "labels",
+    "labelled",
+    "english",
+    "text",
+    "data",
+    "corpus",
+    "from",
+    "with",
+    "that",
+    "this",
+    "into",
+    "whether",
+    "user",
+    "users",
 }
+MIN_KEYWORD_LETTERS = 4
+
+
+def keywords(queries: list[str]) -> list[str]:
+    words = (w.strip(".,:;()'\"").lower() for q in queries for w in q.replace("-", " ").replace("_", " ").split())
+    return list(dict.fromkeys(w for w in words if len(w) >= MIN_KEYWORD_LETTERS and w not in SEARCH_FILLER))
 
 
 def search_terms(queries: list[str]) -> list[str]:
-    terms = []
-    for q in queries:
-        words = [w for w in q.split() if w.lower() not in SEARCH_FILLER]
-        for t in [q, " ".join(words), *words]:
-            if t and t not in terms:
-                terms.append(t)
-    return terms
+    phrases = [" ".join(w for w in q.split() if w.lower() not in SEARCH_FILLER) for q in queries]
+    return list(dict.fromkeys([*(p for p in phrases if p), *keywords(queries)]))
+
+
+def relevance(dataset: str, queries: list[str]) -> int:
+    name = _letters(dataset)
+    phrases = sum(_letters(q) in name for q in queries if _letters(q))
+    return sum(w in name for w in keywords(queries)) + PHRASE_WEIGHT * phrases
 
 
 def search(queries: list[str], limit: int = 8) -> list[dict]:
     from huggingface_hub import HfApi
 
-    api, seen, out = HfApi(), set(), []
+    api, found = HfApi(), {}
     for q in search_terms(queries):
         try:
             for d in api.list_datasets(search=q, sort="downloads", limit=limit):
-                if d.id not in seen:
-                    seen.add(d.id)
-                    out.append(_hit(d))
+                found.setdefault(d.id, _hit(d))
         except Exception:
             continue
-    return out
+    ranked = sorted(found.values(), key=lambda h: (-relevance(h["id"], queries), -(h["downloads"] or 0)))
+    return [h for h in ranked if relevance(h["id"], queries) > 0]
 
 
 def exists(dataset: str) -> bool:

@@ -41,3 +41,20 @@ def test_a_failing_search_is_recorded_not_raised(monkeypatch):
     decisions = []
     ds.add_datasets(_spec(), None, print, decisions)
     assert decisions[0]["choice"] is None and "offline" in decisions[0]["why"]
+
+
+def test_datasets_found_on_the_web_come_first_and_only_if_they_exist(monkeypatch):
+    from byosm.data.hf_source import research
+
+    monkeypatch.setattr(research, "research_config", lambda cfg: {"provider": "fake"})
+    monkeypatch.setattr(
+        research,
+        "get_llm",
+        lambda role, cfg: type(
+            "L", (), {"json": lambda *a: {"datasets": [{"id": "org/real", "why": "turns"}, {"id": "org/made-up"}]}}
+        )(),
+    )
+    monkeypatch.setattr(research, "exists", lambda d: d == "org/real")
+    monkeypatch.setattr(research, "role_model", lambda role, cfg: "fake")
+    found = research.research(_spec(), {"llm": {"default": {"provider": "fake"}}}, print)
+    assert [d["id"] for d in found] == ["org/real"] and found[0]["why"] == "turns"

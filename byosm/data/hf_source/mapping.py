@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from ...llm import get_llm, role_model
 from ...spec import HFSource, TaskSpec
+from .cards import describe, listing
 from .hub import _features, closest, search
 
 MAP_SYSTEM = """You map a Hugging Face dataset onto a classifier's label space. Pick the config/split, the input column \
@@ -41,10 +42,9 @@ def _map_schema() -> dict:
 def pick_sources(spec: TaskSpec, hits: list[dict], cfg: dict | None) -> list[tuple[HFSource, str]]:
     if not hits:
         return []
-    listing = "\n".join(f"- {h['id']} (downloads={h['downloads']}, {', '.join(h['tags'])})" for h in hits)
     prompt = (
         f"Task: {spec.summary or spec.description}\nModality: {spec.modality}\nLabels: {spec.label_names}\n\n"
-        f"Search results:\n{listing}"
+        f"Search results:\n{listing(describe(hits))}"
     )
     out = get_llm(PICK_ROLE, cfg).json(PICK_SYSTEM, prompt, _pick_schema())
     ids = {h["id"] for h in hits}

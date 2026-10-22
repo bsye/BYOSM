@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 from .data import hf_source
+from .data.hf_source.cards import describe, listing
 from .data.hf_source.mapping import PICK_ROLE as PICKER_ROLE
 from .llm import get_llm, role_model
 from .spec import EvalSuite, HFSource, TaskSpec
@@ -45,10 +46,10 @@ def _dataset_alternatives(spec: TaskSpec, hits: list[dict], chosen: str, by: str
 
 
 def _pick(spec: TaskSpec, hits: list[dict], cfg: dict | None) -> dict[str, Any]:
-    listing = "\n".join(f"- {h['id']} (downloads={h['downloads']}, {', '.join(h['tags'])})" for h in hits)
+    found = listing(describe(hits))
     task = f"Task: {spec.summary or spec.description}\nModality: {spec.modality}\nLabels: {spec.label_names}"
     schema = {"type": "object", "properties": {"dataset": {"type": "string"}, "why": {"type": "string"}}}
-    return get_llm(PICKER_ROLE, cfg).json(PICK_BENCH, f"{task}\n\nResults:\n{listing}", schema)
+    return get_llm(PICKER_ROLE, cfg).json(PICK_BENCH, f"{task}\n\nResults:\n{found}", schema)
 
 
 def _balanced(src: HFSource, per_label: int, split: str | None = None) -> HFSource:

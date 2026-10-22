@@ -5,9 +5,10 @@ from collections.abc import Callable
 from typing import Any
 
 from .benchmark_search import PICKER_ROLE, RULE, prefer_real_rows, try_sources
-from .config import Project
+from .config import Project, load_config
 from .data import hf_source
 from .data.hf_source.mapping import pick_sources
+from .data.hf_source.research import research
 from .llm import role_model
 from .spec import HFSource, TaskSpec
 
@@ -20,7 +21,8 @@ UNMAPPED = "picked, but its columns or labels do not map onto ours"
 def find_datasets(spec: TaskSpec, cfg: dict | None, log: Callable[[str], None]) -> dict[str, Any]:
     have = {s.dataset for s in spec.data.hf_sources} | {e.source.dataset for e in spec.evals if e.source}
     queries = [*spec.data.hf_queries, *spec.search.get("benchmark", []), *([spec.title] if spec.title else [])]
-    hits = [h for h in hf_source.search(queries) if h["id"] not in have]
+    found = [*research(spec, cfg or load_config(), log), *hf_source.search(queries)]
+    hits = [h for h in {h["id"]: h for h in reversed(found)}.values() if h["id"] not in have][::-1]
     if not hits:
         return {"mapped": [], "why": {}, "unmapped": [], "by": RULE, "searched": False}
     picks = pick_sources(spec, hits, cfg)[:MAX_EXTRA_SOURCES]
