@@ -62,6 +62,9 @@ class Jev(Predictor):
             time.sleep(JEV_BACKOFF_S * 2**attempt)
         return {}
 
+    def rows_per_round(self) -> int:
+        return JEV_WORKERS
+
     def probs_batch(self, raws: list[Any]) -> np.ndarray:
         from ..llm import pmap
 

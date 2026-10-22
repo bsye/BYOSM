@@ -8,6 +8,8 @@ import numpy as np
 
 from ..spec import TaskSpec
 
+ROWS_PER_ROUND = 16
+
 LATENCY_WARMUP = 3
 LATENCY_RUNS = 20
 PROBE_RUNS = 1000
@@ -34,6 +36,9 @@ class Predictor:
 
     def frame_probs(self, raw: Any) -> np.ndarray:
         raise NotImplementedError
+
+    def rows_per_round(self) -> int:
+        return ROWS_PER_ROUND
 
     def stream_chunk_ms(self) -> float | None:
         return None

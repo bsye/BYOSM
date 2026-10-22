@@ -154,3 +154,6 @@ class ZeroShotLLM(Predictor):
 
     def latency_ms(self, x: Any) -> float:
         return float("nan")
+
+    def rows_per_round(self) -> int:
+        return self.batch[self.spec.modality] * _workers()

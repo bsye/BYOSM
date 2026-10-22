@@ -15,7 +15,6 @@ RESULTS_PREFIX = "workbench:"
 MODELS = "test-models"
 OURS = "ours"
 SAMPLE_SEED = 7
-SCORE_CHUNK = 16
 
 
 def _results_report(name: str) -> str:
@@ -105,11 +104,12 @@ def run(p: Project, spec: TaskSpec, name: str, models: list[str], log: Callable[
             continue
         with stage(f"Score {p.promoted if m == OURS else m}"):
             pred = _predictor(p, spec, m)
-            for i in range(0, len(todo), SCORE_CHUNK):
-                chunk = todo[i : i + SCORE_CHUNK]
+            step = pred.rows_per_round()
+            for i in range(0, len(todo), step):
+                chunk = todo[i : i + step]
                 _keep(out, m, chunk, row_probs(pred, chunk, mod), spec)
                 out = _save(p, name, m, out[m])
-                emit("writing", split=name, done=min(i + SCORE_CHUNK, len(todo)), total=len(todo), specialist=p.name)
+                emit("writing", split=name, done=min(i + step, len(todo)), total=len(todo), specialist=p.name)
         got = out[m]
         right = sum(got[r["id"]]["label"] == r["label"] for r in rows if r["id"] in got)
         emit("scored", predictor=m, suite=name, objective=round(right / max(1, len(got)), 4))
