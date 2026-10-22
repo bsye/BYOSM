@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
-import { toast } from "sonner"
 import { api, eventsUrl, type Job } from "@/api"
+import { announce } from "@/job-toast"
 
 export type Metric = { kind: string; [key: string]: unknown }
 
@@ -100,9 +100,7 @@ export function useJobToasts() {
     for (const j of Object.values(jobs)) {
       const before = last.current[j.id]
       if (before && before !== j.status && ENDED.has(j.status)) {
-        const title = `byosm ${j.args.slice(0, 2).join(" ")}`
-        if (j.status === "done") toast.success(title, { description: "finished" })
-        else toast.error(title, { description: j.status })
+        void announce(j)
       }
       last.current[j.id] = j.status
     }
