@@ -36,21 +36,28 @@ def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
     return _step("score-rivals", "Score the rivals", f"Not scored yet: {', '.join(missing)}.", ["eval", p.name])
 
 
-def _proposal(p: Project) -> dict[str, Any] | None:
+def tried_proposals(p: Project) -> set[str]:
+    out = set()
+    for exp in p.experiments():
+        f = p.exp_dir(exp) / "proposal.json"
+        if f.exists():
+            out |= {a["id"] for a in json.loads(f.read_text()).get("applied", [])}
+    return out
+
+
+def _proposals(p: Project) -> list[dict[str, Any]]:
     f = p.root / PROPOSALS_FILE
-    if not f.exists():
-        return _step("propose", "Find what to try next", "No improvement has been proposed yet.", ["improve", p.name])
-    saved = json.loads(f.read_text())
-    tried = set(p.experiments())
-    fresh = [pr for pr in saved.get("proposals", []) if f"{pr['id']}" not in tried]
+    saved = json.loads(f.read_text()) if f.exists() else {}
+    fresh = [pr for pr in saved.get("proposals", []) if pr["id"] not in tried_proposals(p)]
     if saved.get("from") != p.promoted or not fresh:
-        return _step(
-            "propose", "Find what to try next", "The saved proposals are for an older model.", ["improve", p.name]
+        why = "No untried proposal for the current model."
+        return [_step("propose", "Find what to try next", why, ["improve", p.name])]
+    return [
+        _step(
+            f"try-{pr['id']}", f"Try {pr['id']}", pr.get("why", ""), ["improve", p.name, "--apply", pr["id"], "--run"]
         )
-    top = fresh[0]
-    return _step(
-        f"try-{top['id']}", f"Try {top['id']}", top.get("why", ""), ["improve", p.name, "--apply", top["id"], "--run"]
-    )
+        for pr in fresh
+    ]
 
 
 def _overfit(p: Project) -> dict[str, Any] | None:
@@ -79,7 +86,5 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         return [_step("build", "Build the first model", "Nothing has been trained yet.", ["build", name])]
     prim = spec.primary_suite()
     held = _held_out(p, prim) if spec.task_type == "classify" else None
-    if held:
-        return [held]
-    steps = [_rivals(p, spec, prim), _overfit(p), _proposal(p), _export(p)]
+    steps = [held, _rivals(p, spec, prim), _overfit(p), *_proposals(p), _export(p)]
     return [s for s in steps if s]

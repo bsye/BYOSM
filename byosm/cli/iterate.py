@@ -61,11 +61,21 @@ def improve(
     name: str,
     apply: Annotated[str | None, typer.Option(help="comma-separated proposal ids")] = None,
     run: Annotated[bool, typer.Option("--run", help="build the new experiment")] = False,
+    each: Annotated[bool, typer.Option("--each", help="one experiment per proposal, one after the other")] = False,
     no_llm: Annotated[bool, typer.Option(help="rule-based proposals only")] = False,
 ) -> None:
     """Diagnose the board and propose the next experiment (spec edits with evidence)."""
     from .. import improve as imp
+    from ..events import stage
 
+    ids = [s.strip() for s in (apply or "").split(",") if s.strip()]
+    for pid in ids if each else []:
+        with stage(f"Try {pid}"):
+            exp = imp.apply(name, [pid])
+            log(f"created experiment {exp} from {pid}")
+            _build_or_hint(name, exp, run)
+    if each:
+        return
     if apply:
         exp = imp.apply(name, [s.strip() for s in apply.split(",")])
         log(f"created experiment {exp} -> {Project(name).exp_dir(exp) / 'spec.yaml'}")

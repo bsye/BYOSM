@@ -16,15 +16,24 @@ def _specialist(ws, n_test, n_calib, rivals=("jev",)):
     )
     spec.save(p.spec_path)
     p.exp_dir("v1").mkdir(parents=True)
+    (p.exp_dir("v1") / "meta.json").write_text("{}")
     p.promote("v1")
     p.board_path.write_text(json.dumps({"v1": {"builtin": {"objective": 0.9, "n_test": n_test, "n_calib": n_calib}}}))
     return p
 
 
-def test_a_tiny_held_out_set_comes_first_and_alone(ws):
+def test_a_tiny_held_out_set_comes_first(ws):
     _specialist(ws, n_test=5, n_calib=18)
-    (step,) = suggestions("qa")
-    assert step["args"] == ["build", "qa", "--force-data"] and "5 rows" in step["why"]
+    first, *rest = suggestions("qa")
+    assert first["args"] == ["build", "qa", "--force-data"] and "5 rows" in first["why"] and rest
+
+
+def test_every_untried_proposal_is_its_own_step(ws):
+    p = _specialist(ws, n_test=500, n_calib=200, rivals=())
+    proposals = [{"id": "more-data", "why": "a"}, {"id": "regularize", "why": "b"}]
+    (p.root / "proposals.json").write_text(json.dumps({"from": "v1", "proposals": proposals}))
+    (p.exp_dir("v1") / "proposal.json").write_text(json.dumps({"applied": [{"id": "regularize"}]}))
+    assert [s["id"] for s in suggestions("qa") if s["id"].startswith("try-")] == ["try-more-data"]
 
 
 def test_unscored_rivals_a_missing_overfit_check_and_a_stale_export_are_suggested_in_order(ws):

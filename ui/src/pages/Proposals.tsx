@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { openJob } from "@/job-sheet"
 
 const VALUE_CHARS = 60
+const TRY = "try-"
 
 const shown = (v: unknown) => {
   const text = typeof v === "string" ? v : JSON.stringify(v)
@@ -16,6 +17,8 @@ export function Proposals({ d }: { d: Detail }) {
   const saved = d.proposals
   const ask = () => runJob(["improve", d.name]).then((j) => openJob(j.id))
   const run = (id: string) => runJob(["improve", d.name, "--apply", id, "--run"]).then((j) => openJob(j.id))
+  const untried = new Set(d.next.filter((s) => s.id.startsWith(TRY)).map((s) => s.id.slice(TRY.length)))
+  const runAll = () => runJob(["improve", d.name, "--apply", [...untried].join(","), "--each", "--run"]).then((j) => openJob(j.id))
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
@@ -25,10 +28,18 @@ export function Proposals({ d }: { d: Detail }) {
             {saved && saved.from !== d.promoted && <Badge variant="outline">From {saved.from}, ask again</Badge>}
           </CardTitle>
         </div>
-        <Button variant="outline" onClick={ask}>
-          <Lightbulb />
-          Ask for proposals
-        </Button>
+        <div className="flex gap-2">
+          {untried.size > 1 && (
+            <Button onClick={runAll}>
+              <Play />
+              Run all {untried.size}
+            </Button>
+          )}
+          <Button variant="outline" onClick={ask}>
+            <Lightbulb />
+            Ask for proposals
+          </Button>
+        </div>
       </CardHeader>
       {saved && saved.proposals.length > 0 && (
         <CardContent className="space-y-4">
@@ -38,6 +49,7 @@ export function Proposals({ d }: { d: Detail }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{p.id}</span>
                   {p.cost && <Badge variant="outline">about {Math.round(p.cost.minutes)} min</Badge>}
+                  {saved.from === d.promoted && !untried.has(p.id) && <Badge variant="secondary">Tried</Badge>}
                 </div>
                 <p className="text-muted-foreground text-sm">{p.why}</p>
                 <div className="flex flex-wrap gap-1">
