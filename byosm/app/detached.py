@@ -13,7 +13,7 @@ LOG_SUFFIX = ".log"
 EXIT_SUFFIX = ".exit"
 KILL_GRACE_S = 10
 WRAPPER = """
-import os, signal, sys
+import os, signal, sys, traceback
 path, entry, code = sys.argv.pop(1), sys.argv.pop(1), 1
 
 
@@ -30,6 +30,8 @@ try:
     code = 0
 except SystemExit as stop:
     code = stop.code if isinstance(stop.code, int) else int(stop.code is not None)
+except BaseException:
+    traceback.print_exc()
 finally:
     sys.stdout.flush()
     sys.stderr.flush()
