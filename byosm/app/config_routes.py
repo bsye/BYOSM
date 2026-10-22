@@ -8,7 +8,7 @@ import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..config import CONFIG_NAME, HF_TOKEN_KEY, load_config, secret
+from ..config import HF_TOKEN_KEY, load_config, save_config, secret, stored_config
 from ..evals.identity import SECRET_KEYS
 
 MASK = "********"
@@ -52,15 +52,11 @@ def _hub_user(token: str | None) -> str | None:
 
 def config_router(ws: Path, auth: Any) -> APIRouter:
     router = APIRouter(dependencies=[auth])
-    path = ws / CONFIG_NAME
-
-    def stored() -> dict:
-        return (yaml.safe_load(path.read_text()) or {}) if path.exists() else {}
 
     @router.get("/api/config")
     def read() -> dict:
         return {
-            "text": yaml.safe_dump(_masked(stored()), sort_keys=False),
+            "text": yaml.safe_dump(_masked(stored_config(ws)), sort_keys=False),
             "effective": _masked(load_config(ws)),
         }
 
@@ -72,14 +68,14 @@ def config_router(ws: Path, auth: Any) -> APIRouter:
             raise HTTPException(422, f"not valid YAML: {e}") from e
         if not isinstance(new, dict) or not isinstance(new.get("llm", {}), dict):
             raise HTTPException(422, "byosm.yaml is a mapping with an optional llm: section of roles")
-        path.write_text(yaml.safe_dump(_unmasked(new, stored()), sort_keys=False))
+        save_config(ws, _unmasked(new, stored_config(ws)))
         return read()
 
     @router.put("/api/config/default-llm")
     def default_llm(body: DefaultLlm) -> dict:
-        cfg = stored()
+        cfg = stored_config(ws)
         cfg["llm"] = {**(cfg.get("llm") or {}), "default": {k: v for k, v in body.config.items() if v is not None}}
-        path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+        save_config(ws, cfg)
         return read()
 
     @router.get("/api/hub/user")

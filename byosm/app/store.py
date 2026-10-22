@@ -19,6 +19,19 @@ create index if not exists events_job on events (job);
 """
 
 
+USAGE_COLUMNS = ("job", "role", "model", "calls", "failed", "tokens_in", "tokens_out", "seconds", "last")
+USAGE_SQL = """
+select job, json_extract(data, '$.role'), json_extract(data, '$.model'),
+  sum(json_extract(data, '$.state') = 'done'), sum(json_extract(data, '$.state') = 'failed'),
+  coalesce(sum(json_extract(data, '$.tokens_in')), 0), coalesce(sum(json_extract(data, '$.tokens_out')), 0),
+  round(coalesce(sum(json_extract(data, '$.seconds')), 0), 1), max(json_extract(data, '$.at'))
+from events
+where json_extract(data, '$.kind') = 'llm' and json_extract(data, '$.state') in ('done', 'failed')
+group by 1, 2, 3
+order by 9 desc
+"""
+
+
 class JobStore:
     def __init__(self, ws: Path) -> None:
         path = ws / DB_PATH
@@ -64,3 +77,11 @@ class JobStore:
     def events(self, job_id: str) -> list[dict[str, Any]]:
         rows = self._read("select data from events where job = ? order by rowid", (job_id,))
         return [json.loads(r[0]) for r in rows]
+
+    def llm_usage(self) -> list[dict[str, Any]]:
+        rows = self._read(USAGE_SQL)
+        return [dict(zip(USAGE_COLUMNS, r, strict=True)) for r in rows]
+
+    def jobs_using(self, model: str) -> set[str]:
+        sql = "select distinct job from events where json_extract(data, '$.kind') = 'llm' and json_extract(data, '$.model') = ?"
+        return {r[0] for r in self._read(sql, (model,))}

@@ -27,15 +27,21 @@ CODEX_ISOLATION_FLAGS = (
 
 class CodexLLM:
     def __init__(
-        self, model: str | None = None, binary: str = CODEX_BINARY, timeout_s: int = CODEX_TIMEOUT_S, **_: Any
+        self,
+        model: str | None = None,
+        binary: str = CODEX_BINARY,
+        timeout_s: int = CODEX_TIMEOUT_S,
+        effort: str | None = None,
+        **_: Any,
     ):
-        self.model, self.binary, self.timeout_s = model, binary, timeout_s
+        self.model, self.binary, self.timeout_s, self.effort = model, binary, timeout_s, effort
         self.name = f"codex:{model or 'default'}"
 
     def _command(self, system: str, tmp: Path) -> list[str]:
         cmd = [self.binary, "exec", "-C", str(tmp / EMPTY_DIR), *CODEX_ISOLATION_FLAGS]
         cmd += ["--output-schema", str(tmp / SCHEMA_FILE), "-o", str(tmp / ANSWER_FILE)]
         cmd += ["-c", f"developer_instructions={json.dumps(system)}"]
+        cmd += ["-c", f"model_reasoning_effort={self.effort}"] if self.effort else []
         model = ["-m", self.model] if self.model else []
         return [*cmd, *model, "-"]
 

@@ -52,10 +52,18 @@ def secret(name: str, ws: Path | None = None) -> str | None:
     return os.environ.get(name) or env_file(ws).get(name)
 
 
+def stored_config(ws: Path) -> dict[str, Any]:
+    path = ws / CONFIG_NAME
+    return (yaml.safe_load(path.read_text()) or {}) if path.exists() else {}
+
+
+def save_config(ws: Path, cfg: dict[str, Any]) -> None:
+    (ws / CONFIG_NAME).write_text(yaml.safe_dump(cfg, sort_keys=False))
+
+
 def load_config(ws: Path | None = None) -> dict[str, Any]:
     ws = ws or find_workspace()
-    path = ws / CONFIG_NAME
-    cfg = yaml.safe_load(path.read_text()) if path.exists() else {}
+    cfg = stored_config(ws)
     merged = {**DEFAULT_CONFIG, **(cfg or {})}
     merged["llm"] = {**DEFAULT_CONFIG["llm"], **((cfg or {}).get("llm") or {})}
     if os.environ.get(LLM_OVERRIDE_ENV):

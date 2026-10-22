@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 SECRET_KEYS = ("api_key",)
+RUN_ONLY_KEYS = ("max_parallel",)
 
 
 def baseline_identity(pid: str) -> str | None:
@@ -22,4 +23,4 @@ def _llm_identity(role: str) -> str:
     from ..llm import role_config
 
     conf = role_config(load_config()["llm"], role)
-    return json.dumps({k: v for k, v in conf.items() if k not in SECRET_KEYS}, sort_keys=True)
+    return json.dumps({k: v for k, v in conf.items() if k not in (*SECRET_KEYS, *RUN_ONLY_KEYS)}, sort_keys=True)

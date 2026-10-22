@@ -16,14 +16,20 @@ ISOLATION_FLAGS = ("--strict-mcp-config", "--setting-sources", "project", "--dis
 
 class ClaudeCodeLLM:
     def __init__(
-        self, model: str = CLAUDE_MODEL, binary: str = CLAUDE_BINARY, timeout_s: int = CLAUDE_TIMEOUT_S, **_: Any
+        self,
+        model: str = CLAUDE_MODEL,
+        binary: str = CLAUDE_BINARY,
+        timeout_s: int = CLAUDE_TIMEOUT_S,
+        effort: str | None = None,
+        **_: Any,
     ):
-        self.model, self.binary, self.timeout_s = model, binary, timeout_s
+        self.model, self.binary, self.timeout_s, self.effort = model, binary, timeout_s, effort
         self.name = f"claude-code:{model}"
 
     def _run(self, system: str, prompt: str, schema: dict) -> dict:
         cmd = [self.binary, "-p", prompt, "--model", self.model, "--output-format", "json"]
         cmd += ["--json-schema", json.dumps(schema), "--system-prompt", system, "--no-session-persistence"]
+        cmd += ["--effort", self.effort] if self.effort else []
         with tempfile.TemporaryDirectory() as empty:
             done = subprocess.run(
                 [*cmd, *ISOLATION_FLAGS], cwd=empty, capture_output=True, text=True, timeout=self.timeout_s
