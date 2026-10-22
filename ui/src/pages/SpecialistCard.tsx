@@ -41,13 +41,11 @@ function Step({ steps }: { steps: NextStep[] }) {
     void runJob(first.args).then((j) => openJob(j.id))
   }
   return (
-    <div className="flex items-center gap-2 border-t pt-3 text-xs">
-      <span className="text-muted-foreground shrink-0">Next</span>
-      <span className="min-w-0 flex-1 truncate font-medium" title={first.why}>
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="text-foreground min-w-0 truncate" title={first.why}>
         {first.title}
       </span>
-      {steps.length > 1 && <span className="text-muted-foreground shrink-0 tabular-nums">+{steps.length - 1}</span>}
-      <Button size="sm" variant="outline" onClick={run}>
+      <Button size="xs" variant="outline" onClick={run}>
         <Play />
         Run
       </Button>
@@ -85,11 +83,14 @@ export function SpecialistCard({ s, running, showKind, steps }: { s: Summary; ru
             </p>
           )}
           <div className="text-xs">{s.score != null && <Lead s={s} />}</div>
-          {steps && steps.length > 0 && <Step steps={steps} />}
         </CardContent>
-        <CardFooter className="text-muted-foreground/80 justify-between text-xs">
-          <Status s={s} running={running} />
-          <span className="tabular-nums">{createdLabel(s)}</span>
+        <CardFooter className="text-muted-foreground/80 justify-between gap-3 text-xs">
+          <span className="flex shrink-0 items-center gap-1.5">
+            <Status s={s} running={running} />
+            <span>·</span>
+            <span className="tabular-nums">{createdLabel(s)}</span>
+          </span>
+          {steps && steps.length > 0 && <Step steps={steps} />}
         </CardFooter>
       </Card>
     </div>
