@@ -106,3 +106,11 @@ they are the same kind of thing.
 1. Take a screenshot in light and dark mode at desktop and phone width.
 2. Check each rule above; fix what fails.
 3. Remove one element that does not earn its place.
+
+## Progressive, never blocking
+
+Anything that generates or scores shows its results as they arrive, not at the end:
+
+- Work that takes more than a second runs as a job (it opens in the side sheet) or streams per item.
+- Rows, answers and scores appear one by one, with a spinner on the ones still pending.
+- Starting one action never disables another: queue as many jobs as you like.

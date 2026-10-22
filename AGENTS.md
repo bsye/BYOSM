@@ -45,6 +45,8 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 - **Understandable at first glance.** Archetypal elements only: a list of cards that opens a detail page, the primary
   action top right, tabs for sections, stat cards, tables, a centred prompt bar. If a page needs a paragraph to be
   understood, change the page, not the paragraph.
+- **Progressive, never blocking.** Anything that generates or scores shows results as they arrive (a job, or one
+  request per item), with a spinner per pending item, and never disables other actions while it runs.
 - **Cut text.** No description under a title unless the title alone is ambiguous. Labels are one to three words.
   Explanations go in a tooltip on an info icon, never as visible paragraphs. Every sentence on screen must change
   what the user does next; delete the rest.
