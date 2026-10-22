@@ -10,11 +10,13 @@ from byosm.spec import Label, TaskSpec
 from byosm.spec.sections import DataPlan
 
 CALLS = []
+PROMPTS = []
 
 
 class CountingLLM(FakeLLM):
     def json(self, system, prompt, schema, images=None):
         CALLS.append(prompt[:20])
+        PROMPTS.append(prompt)
         return super().json(system, prompt, schema)
 
 
@@ -61,3 +63,11 @@ def test_the_model_choice_is_saved_per_specialist(qa):
     assert workbench.chosen_models(p, spec) == ["ours", "llm"]
     workbench.choose_models(p, ["llm"])
     assert workbench.chosen_models(p, spec) == ["llm"]
+
+
+def test_extra_instructions_reach_the_writer(qa):
+    p, spec = qa
+    PROMPTS.clear()
+    workbench.write_more(p, spec, "noisy", 2, print, "use heavy phone-call fillers")
+    writes = [x for x in PROMPTS if "use heavy phone-call fillers" in x]
+    assert writes and len(read(written_path(p, "noisy"))) > 0

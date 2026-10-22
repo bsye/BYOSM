@@ -11,13 +11,16 @@ SetOpt = Annotated[str, typer.Option("--set", help="name of the input set")]
 
 @inputs_app.command("write")
 def write(
-    name: str, per_label: Annotated[int, typer.Option(help="new inputs per label")] = 10, set_: SetOpt = "workbench"
+    name: str,
+    per_label: Annotated[int, typer.Option(help="new inputs per label")] = 10,
+    set_: SetOpt = "workbench",
+    instructions: Annotated[str, typer.Option(help="extra instructions for the LLM that writes the inputs")] = "",
 ) -> None:
     """Have the LLM write new labelled inputs and add them to a set; nothing is scored."""
     from ..evals.workbench import write_more
 
     p, spec = _spec(name)
-    log(f"added {write_more(p, spec, set_, per_label, log)} inputs to {set_}")
+    log(f"added {write_more(p, spec, set_, per_label, log, instructions)} inputs to {set_}")
 
 
 @inputs_app.command("sample")

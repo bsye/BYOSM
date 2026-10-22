@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { rivalName } from "@/format"
 import { openJob } from "@/job-sheet"
+import { NewTestSet } from "./NewTestSet"
 import { accuracy, useWorkbench, type TestSet } from "./workbench-api"
 
 const OURS = "ours"
@@ -79,11 +80,15 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
   const [picked, setPicked] = useState<string | null>(null)
   const [perLabel, setPerLabel] = useState(DEFAULT_PER_LABEL)
   const [sample, setSample] = useState(DEFAULT_SAMPLE)
+  const [instructions, setInstructions] = useState("")
+  const [created, setCreated] = useState<string[]>([])
   const setName = picked ?? wb.sets[0]?.suite ?? DEFAULT_SET
   const set = wb.sets.find((s) => s.suite === setName)
   const chosen = wb.models?.chosen ?? []
   const unscored = set && !set.board ? Math.max(0, ...chosen.map((m) => set.rows.length - accuracy(set, m).scored)) : 0
   const fixed = Boolean(set?.board)
+  const names = [...new Set([DEFAULT_SET, BENCHMARK_SET, ...created, ...wb.sets.map((s) => s.suite)])]
+  const writeArgs = ["inputs", "write", name, "--per-label", String(perLabel), "--set", setName, ...(instructions.trim() ? ["--instructions", instructions.trim()] : [])]
   return (
     <Card>
       <CardHeader>
@@ -106,20 +111,27 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[...new Set([DEFAULT_SET, BENCHMARK_SET, ...wb.sets.map((s) => s.suite)])].map((s) => (
+              {names.map((s) => (
                 <SelectItem key={s} value={s}>
                   {s} {wb.sets.find((x) => x.suite === s)?.rows.length ?? 0}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <NewTestSet
+            taken={names}
+            onCreate={(n) => {
+              setCreated([...created, n])
+              setPicked(n)
+            }}
+          />
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <Input type="number" min={1} className="h-8 w-20 tabular-nums" aria-label="Inputs per label" value={perLabel} onChange={(e) => setPerLabel(Math.max(1, Number(e.target.value) || 1))} />
           <LlmPicker llm={llm} label="LLM that writes the inputs" />
-          <Button size="sm" variant="outline" disabled={!llm.choice || fixed} onClick={() => start(["inputs", "write", name, "--per-label", String(perLabel), "--set", setName], llm.config())}>
+          <Button size="sm" variant="outline" disabled={!llm.choice || fixed} onClick={() => start(writeArgs, llm.config())}>
             <Sparkles />
             Write {perLabel * labels}
           </Button>
@@ -129,6 +141,7 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
             Add from benchmark
           </Button>
         </div>
+        <Input placeholder="Extra instructions for the writer, e.g. noisy phone calls with fillers" aria-label="Extra instructions" disabled={fixed} value={instructions} onChange={(e) => setInstructions(e.target.value)} />
         <div className="flex flex-wrap items-center gap-2">
           <ToggleGroup type="multiple" variant="outline" size="sm" value={chosen} onValueChange={(v) => v.length && wb.choose(v)}>
             {(wb.models?.available ?? []).map((m) => (

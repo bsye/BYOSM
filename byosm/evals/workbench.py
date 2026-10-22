@@ -40,7 +40,9 @@ def _add(p: Project, name: str, rows: list[dict]) -> int:
     return len(rows)
 
 
-def write_more(p: Project, spec: TaskSpec, name: str, per_label: int, log: Callable[[str], None]) -> int:
+def write_more(
+    p: Project, spec: TaskSpec, name: str, per_label: int, log: Callable[[str], None], instructions: str = ""
+) -> int:
     from ..data.synth_text import generate
 
     path = written_path(p, name)
@@ -52,7 +54,10 @@ def write_more(p: Project, spec: TaskSpec, name: str, per_label: int, log: Calla
 
     against = existing_rows(p, spec) + read(path)
     n = per_label * len(spec.labels)
-    kept = generate(spec, n, WRITTEN_SPLIT, load_config(p.ws), against, log=log, labels=spec.label_names, on_rows=show)
+    cfg = load_config(p.ws)
+    kept = generate(
+        spec, n, WRITTEN_SPLIT, cfg, against, log=log, labels=spec.label_names, on_rows=show, instructions=instructions
+    )
     dropped = {r["id"] for r in shown} - {r["id"] for r in kept}
     if dropped:
         write(path, [r for r in read(path) if r["id"] not in dropped])

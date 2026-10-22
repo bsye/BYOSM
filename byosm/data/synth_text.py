@@ -11,6 +11,8 @@ from ..spec import TaskSpec
 from .prompts import ANALYZE_SYSTEM, EVAL_SYSTEM, GEN_SYSTEM, JUDGE_SYSTEM, REFINE_SCHEMA
 from .store import dedupe, record
 
+USER_INSTRUCTIONS = "\n\nFollow these extra instructions from the user: "
+
 
 def concurrency(cfg: dict | None) -> int:
     from ..resources import REMOTE_PARALLEL
@@ -134,6 +136,7 @@ def generate(
     log: Callable[[str], None] = print,
     labels: list[str] | None = None,
     on_rows: Callable[[list[dict]], None] | None = None,
+    instructions: str = "",
 ) -> list[dict]:
     workers = concurrency(cfg)
     adversarial = role(split) == "eval"
@@ -148,6 +151,7 @@ def generate(
     def run(job: dict) -> list[dict]:
         avoid = random.Random(job["seed"]).sample(pool, min(8, len(pool)))
         prompt = job.get("prompt") or _gen_prompt(spec, job, adversarial, avoid)
+        prompt += f"{USER_INSTRUCTIONS}{instructions.strip()}" if instructions.strip() else ""
         out = _to_records(
             spec, llm.json(system, prompt, _schema(spec)), f"llm:{llm.name}", split=split, combo=job.get("combo")
         )
