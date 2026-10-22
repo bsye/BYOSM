@@ -3,9 +3,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from ..config import ENV_FILE, env_file
+from ..config import ENV_FILE, HF_TOKEN_KEY, env_file
 
-KNOWN_KEYS = ("JEV_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "HF_TOKEN")
+KNOWN_KEYS = ("JEV_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", HF_TOKEN_KEY)
 OWNER_ONLY = 0o600
 
 

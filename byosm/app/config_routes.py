@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +8,7 @@ import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..config import CONFIG_NAME, load_config
+from ..config import CONFIG_NAME, HF_TOKEN_KEY, load_config, secret
 from ..evals.identity import SECRET_KEYS
 
 MASK = "********"
@@ -37,6 +38,16 @@ def _unmasked(new: dict, old: dict) -> dict:
             if role.get(f) == MASK:
                 role[f] = before.get(name, {}).get(f)
     return new
+
+
+@functools.cache
+def _hub_user(token: str | None) -> str | None:
+    from huggingface_hub import whoami
+
+    try:
+        return whoami(token=token)["name"]
+    except Exception:
+        return None
 
 
 def config_router(ws: Path, auth: Any) -> APIRouter:
@@ -70,6 +81,10 @@ def config_router(ws: Path, auth: Any) -> APIRouter:
         cfg["llm"] = {**(cfg.get("llm") or {}), "default": {k: v for k, v in body.config.items() if v is not None}}
         path.write_text(yaml.safe_dump(cfg, sort_keys=False))
         return read()
+
+    @router.get("/api/hub/user")
+    def hub_user() -> dict:
+        return {"user": _hub_user(secret(HF_TOKEN_KEY, ws))}
 
     @router.get("/api/llm/providers")
     def providers() -> dict:

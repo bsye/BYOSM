@@ -31,6 +31,7 @@ ALLOWED_COMMANDS = (
     "auto",
     "distill",
     "export",
+    "publish",
     "report",
     "request-data",
     "check-data",
