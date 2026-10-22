@@ -3,8 +3,9 @@ import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { api, runJob } from "@/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
+import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { useLive } from "@/events"
 import { rivalName, score } from "@/format"
 import { go, href } from "@/route"
@@ -39,26 +40,14 @@ const config = {
 
 const pct = (x: number) => `${Math.round(x * 100)}%`
 
-function Stat({ label, value, detail }: { label: string; value: string; detail?: React.ReactNode }) {
-  return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-3xl font-semibold tabular-nums">{value}</CardTitle>
-      </CardHeader>
-      {detail && <CardFooter className="text-muted-foreground mt-auto hidden text-xs @xl/main:flex">{detail}</CardFooter>}
-    </Card>
-  )
-}
-
 function Stats({ suite }: { suite: Suite }) {
   const ours = suite.rivals[OURS]?.test
   const llm = Object.entries(suite.rivals).find(([k]) => k !== OURS)
   const lead = ours && llm ? ours.exact_frame - llm[1].test.exact_frame : null
   const st = suite.stream
   return (
-    <div className="grid auto-rows-fr grid-cols-2 gap-4 @5xl/main:grid-cols-4">
-      <Stat
+    <div className={STAT_GRID}>
+      <StatCard
         label="Exact"
         value={score(ours?.exact_frame)}
         detail={
@@ -74,9 +63,9 @@ function Stats({ suite }: { suite: Suite }) {
           )
         }
       />
-      {st?.gate && <Stat label="Typed before firing" value={pct(st.test.typed_share)} detail={`${pct(st.test.early_share)} fire early`} />}
-      {st?.gate && <Stat label="Wrong per 100" value={st.test.wrong_per_100.toFixed(1)} detail={`${st.test_at_end.wrong_per_100.toFixed(1)} at the end`} />}
-      {st && <Stat label="Per keystroke" value={`${st.ms_per_keystroke.toFixed(1)} ms`} detail="CPU" />}
+      {st?.gate && <StatCard label="Typed before firing" value={pct(st.test.typed_share)} detail={`${pct(st.test.early_share)} fire early`} />}
+      {st?.gate && <StatCard label="Wrong per 100" value={st.test.wrong_per_100.toFixed(1)} detail={`${st.test_at_end.wrong_per_100.toFixed(1)} at the end`} />}
+      {st && <StatCard label="Per keystroke" value={`${st.ms_per_keystroke.toFixed(1)} ms`} detail="CPU" />}
     </div>
   )
 }

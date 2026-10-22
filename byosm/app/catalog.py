@@ -28,6 +28,14 @@ def _result(r: dict) -> dict[str, Any]:
     return {**{k: r.get(k) for k in RESULT_FIELDS}, "ci": r.get("metrics", {}).get("ci95")}
 
 
+def _benchmark(spec: TaskSpec, suite: str) -> str:
+    kind = next((e.kind for e in spec.evals if e.name == suite), None)
+    labeled = [h for h in spec.data.hf_sources if h.role == "labeled"]
+    if kind == "builtin" and labeled:
+        return f"{labeled[0].dataset.rpartition('/')[2]}, held out"
+    return suite_dataset(spec, suite)[0].rpartition("/")[2]
+
+
 def summary(ws: Path, name: str) -> dict[str, Any]:
     from ..export.bundle import is_exported
 
@@ -45,7 +53,7 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
         "labels": len(s.labels),
         "metric": s.objective.metric,
         "primary_suite": prim,
-        "benchmark": suite_dataset(s, prim)[0].rpartition("/")[2],
+        "benchmark": _benchmark(s, prim),
         "promoted": p.promoted,
         "score": best.get("objective"),
         "rival": {"name": rival[0], "score": board[rival[0]][prim].get("objective")} if rival else None,

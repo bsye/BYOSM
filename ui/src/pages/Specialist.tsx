@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
@@ -147,6 +148,28 @@ export function Specialist({ name }: { name: string }) {
   return <Model name={name} />
 }
 
+function ModelStats({ d }: { d: Detail }) {
+  const best = d.promoted ? d.board[d.promoted]?.[d.primary_suite] : undefined
+  if (!best || d.score == null) return null
+  const lead = d.rival?.score != null ? d.score - d.rival.score : null
+  return (
+    <div className={STAT_GRID}>
+      <StatCard
+        label={`Test ${metricName(d.metric)}`}
+        value={score(d.score)}
+        detail={best.ci ? `95% CI ${score(best.ci.lo)} to ${score(best.ci.hi)}, ${d.benchmark}` : d.benchmark}
+      />
+      <StatCard
+        label="Lead over best rival"
+        value={lead == null ? "-" : `${lead > 0 ? "+" : ""}${lead.toFixed(3)}`}
+        detail={d.rival ? `vs ${rivalName(d.rival.name)}` : "no rival scored yet"}
+      />
+      <StatCard label="CPU per input" value={ms(best.latency_ms)} detail={d.promoted ?? ""} />
+      <StatCard label="Size" value={params(best.params)} detail="parameters, ONNX on CPU" />
+    </div>
+  )
+}
+
 function Model({ name }: { name: string }) {
   const repo = useExamples(name)?.repos[0]
   const [d, setD] = useState<Detail | null>(null)
@@ -201,6 +224,7 @@ function Model({ name }: { name: string }) {
           </Button>
         </div>
       </div>
+      <ModelStats d={d} />
       <Tabs defaultValue="board">
         <TabsList>
           <TabsTrigger value="board">Board</TabsTrigger>
