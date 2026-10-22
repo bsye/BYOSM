@@ -339,6 +339,20 @@ byosm export vad && byosm predict vad clip.wav
 | `byosm bench <a> <b> ...` | specialists vs one generalist (not run yet, see above) |
 | `byosm report [--check]` | regenerate the tables in this README |
 
+## The app
+
+`byosm app` serves a local web UI over the same pipeline: start a specialist from one sentence with the LLM you have
+(local Ollama or LM Studio, Claude Code, Codex, or an API), watch every job and LLM call live, compare each model with
+its rivals, check it for overfitting, and copy the code to use it.
+
+| Create | Specialists |
+|---|---|
+| ![Create](docs/screenshots/create.jpg) | ![Specialists](docs/screenshots/specialists.jpg) |
+
+| A specialist's board | A team, acting while you type |
+|---|---|
+| ![Board](docs/screenshots/board.jpg) | ![Team](docs/screenshots/team.jpg) |
+
 ## Details
 
 **Modalities.** `text`, `audio` (streaming, 10 ms frames), `image`, `document` (PDF or scan: text layer or OCR plus
