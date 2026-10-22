@@ -5,6 +5,7 @@ from typing import Any
 
 OURS = "system"
 TEAM_METRIC = "exact_frame"
+MIN_FOLDED_MEMBERS = 2
 
 
 def team_names(ws: Path) -> list[str]:
@@ -15,7 +16,8 @@ def team_names(ws: Path) -> list[str]:
 def members(ws: Path) -> dict[str, str]:
     from ..system import SystemProject
 
-    return {n.specialist: t for t in team_names(ws) for n in SystemProject(t, ws).spec().nodes.values()}
+    nodes = {t: SystemProject(t, ws).spec().nodes.values() for t in team_names(ws)}
+    return {n.specialist: t for t, ns in nodes.items() if len(ns) >= MIN_FOLDED_MEMBERS for n in ns}
 
 
 def _best_rival(suite: dict) -> dict[str, Any] | None:
