@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import delete, func, insert, select
 
@@ -38,6 +39,14 @@ def read(path: Path) -> list[dict]:
     ws, owner, collection, split = _key(path)
     with session(ws) as s:
         return list(s.scalars(select(Row.data).where(*_where(s, owner, collection, split)).order_by(Row.position)))
+
+
+def tally(path: Path, key: str) -> list[tuple[Any, int]]:
+    ws, owner, collection, split = _key(path)
+    value = Row.data[key]
+    with session(ws) as s:
+        q = select(value, func.count()).where(*_where(s, owner, collection, split)).group_by(value)
+        return [(v, n) for v, n in s.execute(q).all()]
 
 
 def exists(path: Path) -> bool:

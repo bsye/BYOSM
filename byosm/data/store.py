@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 import uuid
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from ..db.rows import append, exists, read, write
+from ..db.rows import append, exists, read, tally, write
 from ..text import normalize
 
 DEV_SHARE = 0.1
@@ -101,13 +102,14 @@ def dedupe(rows: list[dict], against: list[dict] | None = None, near: float = NE
 
 
 def label_counts(rows: list[dict]) -> dict[str, int]:
+    return count_labels((r["label"], 1) for r in rows)
+
+
+def count_labels(tallied: Iterable[tuple[Any, int]]) -> dict[str, int]:
     c: Counter = Counter()
-    for r in rows:
-        lab = r["label"]
-        if isinstance(lab, list):
-            c.update(str(x) for x in lab)
-        else:
-            c[str(lab)] += 1
+    for lab, n in tallied:
+        for x in lab if isinstance(lab, list) else [lab]:
+            c[str(x)] += n
     return dict(c)
 
 
@@ -134,4 +136,5 @@ class Dataset:
         return exists(self.path("train"))
 
     def summary(self) -> dict[str, Any]:
-        return {s: {"n": len(rows := self.load(s)), "labels": label_counts(rows)} for s in SPLITS}
+        tallies = {s: tally(self.path(s), "label") for s in SPLITS}
+        return {s: {"n": sum(n for _, n in t), "labels": count_labels(t)} for s, t in tallies.items()}

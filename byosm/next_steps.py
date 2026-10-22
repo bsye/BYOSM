@@ -57,7 +57,8 @@ def _finetuned(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
 
 
 def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
-    scored = {k for k, r in p.board().items() if prim in r and k not in p.experiments()}
+    mine = set(p.experiments())
+    scored = {k for k, r in p.board().items() if prim in r and k not in mine}
     missing = [b for b in spec.baselines if b not in scored]
     if not missing:
         return None

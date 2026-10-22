@@ -7,7 +7,7 @@ from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-Json = JSON().with_variant(JSONB(), "postgresql")
+Json = JSON(none_as_null=True).with_variant(JSONB(none_as_null=True), "postgresql")
 
 
 def now() -> datetime:

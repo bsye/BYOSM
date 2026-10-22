@@ -107,8 +107,8 @@ class Project:
     def experiments(self) -> list[str]:
         with session(self.ws) as s:
             sid = self._id(s)
-            rows = s.scalars(select(Experiment).where(Experiment.specialist_id == sid)) if sid else []
-            return sorted(e.name for e in rows if e.meta is not None)
+            mine = Experiment.specialist_id == sid
+            return sorted(s.scalars(select(Experiment.name).where(mine, Experiment.meta.is_not(None)))) if sid else []
 
     def experiment(self, exp: str) -> dict[str, Any] | None:
         with session(self.ws) as s:
