@@ -1,4 +1,4 @@
-import { Hammer, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react"
+import { Hammer, Loader2, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, runJob, type Summary } from "@/api"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
 import { metricName, rivalName, score } from "@/format"
+import { describe } from "@/jobs"
 import { go, href } from "@/route"
 import { Overview } from "./Overview"
 import { SectionCards } from "./SectionCards"
@@ -72,7 +73,7 @@ function Delta({ s }: { s: Summary }) {
   )
 }
 
-function SpecialistCard({ s }: { s: Summary }) {
+function SpecialistCard({ s, building }: { s: Summary; building: boolean }) {
   return (
     <a href={href("specialists", s.name)} className="h-full">
       <Card className="h-full">
@@ -88,12 +89,21 @@ function SpecialistCard({ s }: { s: Summary }) {
           </CardAction>
         </CardHeader>
         <CardFooter className="mt-auto flex-col items-start gap-1">
-          <span className="text-3xl font-semibold tabular-nums" title={`Test ${metricName(s.metric)}, ${s.benchmark}`}>
-            {score(s.score)}
-          </span>
-          <span className="w-full text-xs">
-            <Delta s={s} />
-          </span>
+          {s.score == null ? (
+            <span className="text-muted-foreground flex items-center gap-2 text-sm">
+              {building ? <Loader2 className="size-4 animate-spin" /> : null}
+              {building ? "Building" : "Not built yet"}
+            </span>
+          ) : (
+            <span className="text-3xl font-semibold tabular-nums" title={`Test ${metricName(s.metric)}, ${s.benchmark}`}>
+              {score(s.score)}
+            </span>
+          )}
+          {s.score != null && (
+            <span className="w-full text-xs">
+              <Delta s={s} />
+            </span>
+          )}
         </CardFooter>
       </Card>
     </a>
@@ -103,7 +113,9 @@ function SpecialistCard({ s }: { s: Summary }) {
 export function Specialists() {
   const [items, setItems] = useState<Summary[] | null>(null)
   const [error, setError] = useState("")
-  const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
+  const jobs = Object.values(useLive().jobs)
+  const finished = jobs.filter((j) => j.status === "done").length
+  const busy = new Set(jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => describe(j).target ?? ""))
   useEffect(() => {
     api<Summary[]>("/specialists")
       .then(setItems)
@@ -145,8 +157,9 @@ export function Specialists() {
         {items == null && !error && Array.from({ length: SKELETONS }, (_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
         {(items ?? [])
           .filter((s) => !s.part_of)
+          .sort((a, b) => Number(a.score == null) - Number(b.score == null))
           .map((s) => (
-          <SpecialistCard key={s.name} s={s} />
+          <SpecialistCard key={s.name} s={s} building={busy.has(s.name)} />
         ))}
       </div>
     </div>
