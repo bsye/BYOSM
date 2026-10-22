@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react"
+import { Keyboard } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { Area, AreaChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts"
 import { post } from "@/api"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Input } from "@/components/ui/input"
 
 const DEBOUNCE_MS = 60
+const TYPE_MS = 90
 
 type Step = { chars: number; action: string | null; confidence: number }
 type Typed = {
@@ -17,8 +20,23 @@ type Typed = {
 
 const config = { confidence: { label: "confidence", color: "var(--chart-1)" } } satisfies ChartConfig
 
-export function TypeDemo({ system }: { system: string }) {
+function useTyping(setText: (text: string) => void): (example: string) => void {
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => () => clearInterval(timer.current ?? undefined), [])
+  return (example) => {
+    clearInterval(timer.current ?? undefined)
+    let n = 0
+    timer.current = setInterval(() => {
+      n += 1
+      setText(example.slice(0, n))
+      if (n >= example.length) clearInterval(timer.current ?? undefined)
+    }, TYPE_MS)
+  }
+}
+
+export function TypeDemo({ system, example }: { system: string; example: string }) {
   const [text, setText] = useState("")
+  const typeIt = useTyping(setText)
   const [out, setOut] = useState<Typed | null>(null)
   const [error, setError] = useState("")
   useEffect(() => {
@@ -43,9 +61,17 @@ export function TypeDemo({ system }: { system: string }) {
     <Card>
       <CardHeader>
         <CardTitle>Try it</CardTitle>
+        {example && (
+          <CardAction>
+            <Button variant="outline" size="sm" onClick={() => typeIt(example)}>
+              <Keyboard />
+              Type an example
+            </Button>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="wake me up at five am tomorrow" />
+        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={example} />
         {error && <p className="text-destructive text-sm">{error}</p>}
         {out && (
           <>

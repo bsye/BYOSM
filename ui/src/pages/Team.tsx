@@ -9,6 +9,7 @@ import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { useLive } from "@/events"
 import { signed, rivalName, score } from "@/format"
 import { go, href } from "@/route"
+import { useExamples } from "./Playground"
 import { SystemDiagram } from "./SystemDiagram"
 import { TypeDemo } from "./TypeDemo"
 
@@ -32,6 +33,7 @@ export type TeamView = {
 }
 
 const OURS = "system"
+const ROUTER = "router"
 const config = {
   exact_frame: { label: "Exact", color: "var(--chart-1)" },
   action_accuracy: { label: "Action", color: "var(--chart-2)" },
@@ -95,10 +97,18 @@ function Results({ name, suite }: { name: string; suite: Suite }) {
   )
 }
 
+function useExample(view: TeamView): string {
+  const router = Object.values(view.spec.nodes).find((n) => n.role === ROUTER)?.specialist ?? ""
+  const examples = useExamples(router)?.examples ?? {}
+  const first = Object.values(view.spec.tools ?? {})[0]?.when ?? ""
+  return examples[first]?.[0] ?? Object.values(examples)[0]?.[0] ?? ""
+}
+
 export function Team({ view }: { view: TeamView }) {
   const [suiteName, suite] = Object.entries(view.board ?? {})[0] ?? []
   const names = Object.values(view.spec.nodes).map((n) => n.specialist)
   const start = (args: string[]) => runJob(args).then((j) => go("jobs", j.id))
+  const example = useExample(view)
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -128,7 +138,7 @@ export function Team({ view }: { view: TeamView }) {
         </div>
       </div>
       {suite && <Stats suite={suite} />}
-      {view.exported && <TypeDemo system={view.name} />}
+      {view.exported && <TypeDemo system={view.name} example={example} />}
       <SystemDiagram nodes={view.spec.nodes} tools={view.spec.tools ?? {}} />
       {suite && suiteName && <Results name={suiteName} suite={suite} />}
     </div>
