@@ -4,7 +4,7 @@ import json
 import os
 from typing import Any
 
-from .base import _b64, _parse_json, _retry, _strict
+from .base import _b64, _parse_json, _retry, _strict, report_usage
 
 
 class OpenAICompatLLM:
@@ -62,6 +62,8 @@ class OpenAICompatLLM:
                 self._schema_mode = False
                 return self._call(system, prompt, schema, images)
             raise
+        used = getattr(resp, "usage", None)
+        report_usage(getattr(used, "prompt_tokens", None), getattr(used, "completion_tokens", None))
         return _parse_json(resp.choices[0].message.content or "")
 
     def json(self, system: str, prompt: str, schema: dict, images: list[bytes] | None = None) -> dict:

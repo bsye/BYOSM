@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from .base import LLMError, _b64, _parse_json, _retry, _strict
+from .base import LLMError, _b64, _parse_json, _retry, _strict, report_usage
 
 
 class AnthropicLLM:
@@ -58,6 +58,7 @@ class AnthropicLLM:
             raise LLMError(f"{self.name} refused: {getattr(resp, 'stop_details', None)}")
         if resp.stop_reason == "max_tokens":
             raise LLMError(f"{self.name} hit max_tokens={self.max_tokens}; lower batch size")
+        report_usage(resp.usage.input_tokens, resp.usage.output_tokens)
         text = "".join(b.text for b in resp.content if b.type == "text")
         return _parse_json(text)
 

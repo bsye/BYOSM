@@ -5,11 +5,12 @@ import subprocess
 import tempfile
 from typing import Any
 
-from .base import LLMError, _parse_json, _retry
+from .base import LLMError, _parse_json, _retry, report_usage
 
 CLAUDE_BINARY = "claude"
 CLAUDE_MODEL = "claude-haiku-5-5"
 CLAUDE_TIMEOUT_S = 600
+INPUT_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
 ISOLATION_FLAGS = ("--strict-mcp-config", "--setting-sources", "project", "--disable-slash-commands", "--tools", "")
 
 
@@ -33,6 +34,8 @@ class ClaudeCodeLLM:
             raise LLMError(f"claude -p gave no JSON (exit {done.returncode}): {done.stderr[-300:]}") from e
         if out.get("is_error"):
             raise LLMError(f"claude -p failed: {str(out.get('result'))[:300]}")
+        used = out.get("usage") or {}
+        report_usage(sum(int(used.get(k) or 0) for k in INPUT_KEYS), used.get("output_tokens"))
         return out.get("structured_output") or _parse_json(str(out.get("result", "")))
 
     def json(self, system: str, prompt: str, schema: dict, images: list[bytes] | None = None) -> dict:

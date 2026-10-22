@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from .anthropic_provider import AnthropicLLM
-from .base import LLM, LLMError, T
+from .base import LLM, LLMError, T, take_usage
 from .claude_code_provider import ClaudeCodeLLM
 from .codex_provider import CodexLLM
 from .openai_provider import OpenAICompatLLM
@@ -46,6 +46,8 @@ def register_provider(name: str, factory: Callable[..., LLM]) -> None:
 
 
 _cache: dict[tuple[str, str], LLM] = {}
+_spent = {"tokens": 0, "budget": 0}
+BUDGET_KEY = "tokens_per_job"
 _providers: dict[str, LLM] = {}
 _gates: dict[str, threading.BoundedSemaphore] = {}
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "[::1]")
@@ -75,6 +77,7 @@ def get_llm(role: str = "default", cfg: dict | None = None) -> LLM:
     from ..config import load_config
 
     cfg = cfg or load_config()
+    _spent["budget"] = int((cfg.get("budget") or {}).get(BUDGET_KEY) or 0)
     conf = role_config(cfg["llm"], role)
     key = json.dumps(conf, sort_keys=True)
     if (role, key) not in _cache:
@@ -119,6 +122,8 @@ class Observed:
 
         t0, call = time.time(), uuid.uuid4().hex[:8]
         base = {"call": call, "role": self.role, "model": self.name, "at": round(t0, 2)}
+        if _spent["budget"] and _spent["tokens"] >= _spent["budget"]:
+            raise LLMError(f"token budget reached: {_spent['tokens']} of {_spent['budget']} tokens for this job")
         emit("llm", **base, state="waiting", prompt=prompt[:PREVIEW_CHARS], images=len(images or []))
         try:
             with self.gate or contextlib.nullcontext():
@@ -127,7 +132,9 @@ class Observed:
             emit("llm", **base, state="failed", seconds=round(time.time() - t0, 1), error=str(e)[:PREVIEW_CHARS])
             raise
         answer = json.dumps(out, ensure_ascii=False)[:PREVIEW_CHARS]
-        emit("llm", **base, state="done", seconds=round(time.time() - t0, 1), answer=answer)
+        used = take_usage()
+        _spent["tokens"] += (used["tokens_in"] or 0) + (used["tokens_out"] or 0)
+        emit("llm", **base, state="done", seconds=round(time.time() - t0, 1), answer=answer, **used)
         return out
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import threading
 import time
 from collections.abc import Callable
 from typing import Protocol, TypeVar
@@ -13,6 +14,19 @@ TRANSIENT_MARKERS = ("rate", "overload", "timeout", "connect")
 
 class LLMError(RuntimeError):
     pass
+
+
+_usage = threading.local()
+
+
+def report_usage(tokens_in: int | None, tokens_out: int | None) -> None:
+    _usage.value = {"tokens_in": tokens_in, "tokens_out": tokens_out}
+
+
+def take_usage() -> dict[str, int | None]:
+    value = getattr(_usage, "value", None) or {"tokens_in": None, "tokens_out": None}
+    _usage.value = None
+    return value
 
 
 class LLM(Protocol):
