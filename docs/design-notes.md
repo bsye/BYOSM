@@ -502,7 +502,7 @@ only for labels still short), deduped against train, dev and test and judged whe
 label and split calib/test like `hf` suites (every 5th to calib), frozen under `evals/<suite>/` as kind `generated`,
 and only the promoted experiment and the baselines are scored on it. The suite records `written_by` and `judged_by`
 (model name from the role config, never keys or URLs), so a result reads "written by qwen3.8:27b". It cannot be
-primary (`EvalSuite` validator) and `primary_suite` skips it when no suite is marked, so the README never reports it.
+primary (`EvalSuite` validator) and `primary_suite` skips it when no suite is marked, so the results page never reports it.
 Gotchas: the writer can favour models of its own family, and the LLM baseline may be the same model that wrote the
 items; read its score there as self-agreement. Frame tasks are refused. An existing suite name is refused, so a rerun
 needs `--suite`.
@@ -718,13 +718,13 @@ workspace `.env` as `env_file`. `BYOSM_APP_TOKEN` is required. The model service
 image `byosm containerize intent` built, so `docker compose up` starts only the app. Gotcha: inside the container
 `localhost` is the container; an Ollama on the host is `http://host.docker.internal:11434/v1` in `byosm.yaml`.
 
-## README results
+## Results page
 
-**README tables are generated, never typed.**
-`byosm/report/`, `byosm/cli/report.py`: `byosm report` rewrites every block between `<!-- report:<name> -->` and
+**Result tables are generated, never typed.**
+`byosm/report/`, `byosm/cli/report.py`: `byosm report` rewrites every block in `docs/results.md` (`RESULTS_PAGE`) between `<!-- report:<name> -->` and
 `<!-- /report:<name> -->` from `specialists/*/board.json` (summary, one table per specialist, and seed groups), and
 appends a missing block at the end. The notes around the tables are written by hand and carry no numbers. Same idea as
-the model card: README numbers cannot drift from the results files.
+the model card: published numbers cannot drift from the results files.
 
 **Freshness is checked, not trusted.**
 `byosm report --check` writes nothing and exits 1 when a block is out of date or missing, or when a block is unknown or

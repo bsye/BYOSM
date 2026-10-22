@@ -29,7 +29,7 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 
 ## Evidence
 
-- Every number in the README, a model card or a commit comes from the database (`byosm db url`) and is
+- Every number in the docs, a model card or a commit comes from the database (`byosm db url`) and is
   regenerated, not typed by hand (`byosm report`).
 - Benchmarks are public and industry-standard (AVA-Speech, Banking77, RVL-CDIP). Baselines are scored by the same code.
 - Selection (promotion, autopilot keep/revert) decides on the calib split; test is only reported, with a 95% CI and a
@@ -53,8 +53,11 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 
 ## Docs
 
-- README order: name and one-line pitch, a full-width app screenshot, how to run it, a screenshot tour, then the goal,
-  assumptions (the thesis), results, methodology and benchmarks, then details. Retake the screenshots when the UI changes.
+- README order: name and one-line pitch, a full-width app screenshot, how to run it, a screenshot tour with a one-line
+  caption each. Nothing else: the goal and thesis live in `docs/assumptions.md`, methodology and benchmarks in
+  `docs/methodology.md`, results in `docs/results.md`, the rest in `docs/details.md`.
+- Every one of these pages starts and ends with the same contents line linking all of them.
+- Retake the screenshots in `docs/screenshots/` when the UI changes.
 - Short and visual. Fewer words, more tables and diagrams.
 - No em dashes.
 
@@ -75,6 +78,6 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 ```bash
 .venv/bin/python -m pytest -q tests     # tests
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
-.venv/bin/byosm report                  # regenerate the README result tables from the database
-.venv/bin/byosm report --check          # fails if the README result tables are stale
+.venv/bin/byosm report                  # regenerate the result tables in docs/results.md
+.venv/bin/byosm report --check          # fails if the tables in docs/results.md are stale
 ```

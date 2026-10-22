@@ -7,6 +7,7 @@ from .seeds import SEEDS, seeds_block
 from .systems import SYSTEM, reported_systems, system_block
 from .tables import SUMMARY_HEAD, specialist_block, summary_row
 
+RESULTS_PAGE = Path("docs/results.md")
 SUMMARY = "summary"
 OPEN = "<!-- report:"
 CLOSE = " -->"
@@ -64,10 +65,10 @@ def fill(text: str, rendered: dict[str, str]) -> tuple[str, list[str]]:
     return text, missing
 
 
-def sync(readme: Path, check: bool) -> tuple[bool, list[str], list[str]]:
-    old = readme.read_text() if readme.exists() else ""
+def sync(page: Path, check: bool) -> tuple[bool, list[str], list[str]]:
+    old = page.read_text() if page.exists() else ""
     rendered = blocks()
     new, missing = fill(old, rendered)
     if not check and new != old:
-        readme.write_text(new)
+        page.write_text(new)
     return new == old, missing, unexpected(old, rendered)

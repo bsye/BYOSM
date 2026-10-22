@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 from byosm.cli import app
 from byosm.format import cpu, fmt, interval, params
 from byosm.project import Project
-from byosm.report import blocks, fill, keys_in, replace_block, unexpected
+from byosm.report import RESULTS_PAGE, blocks, fill, keys_in, replace_block, unexpected
 from byosm.report.cells import num, score
 from byosm.spec import TaskSpec
 from byosm.spec.sections import EvalSuite, Label, Objective
@@ -99,22 +99,23 @@ def test_replace_block_keeps_surroundings():
 
 
 def test_cli_writes_then_check_passes_and_fails_when_stale(toy):
-    readme = toy / "README.md"
-    readme.write_text(
+    page = toy / RESULTS_PAGE
+    page.parent.mkdir(parents=True, exist_ok=True)
+    page.write_text(
         "# toy\n\n<!-- report:summary -->\n<!-- /report:summary -->\n\n<!-- report:toy -->\n<!-- /report:toy -->\n"
     )
     runner = CliRunner()
     assert runner.invoke(app, ["report", "--check"]).exit_code == 1
     assert runner.invoke(app, ["report"]).exit_code == 0
-    assert "| **v2** (promoted)" in readme.read_text() and readme.read_text().startswith("# toy\n")
+    assert "| **v2** (promoted)" in page.read_text() and page.read_text().startswith("# toy\n")
     assert runner.invoke(app, ["report", "--check"]).exit_code == 0
-    good = readme.read_text()
-    readme.write_text(good.replace("0.833", "0.999"))
+    good = page.read_text()
+    page.write_text(good.replace("0.833", "0.999"))
     assert runner.invoke(app, ["report", "--check"]).exit_code == 1
-    readme.write_text(good + "\n<!-- report:gone -->\n| x | 0.999 |\n<!-- /report:gone -->\n")
+    page.write_text(good + "\n<!-- report:gone -->\n| x | 0.999 |\n<!-- /report:gone -->\n")
     assert runner.invoke(app, ["report", "--check"]).exit_code == 1
     assert runner.invoke(app, ["report"]).exit_code == 1
-    readme.write_text(good + "\n<!-- report:toy -->\n| **v2** | 0.999 |\n<!-- /report:toy -->\n")
+    page.write_text(good + "\n<!-- report:toy -->\n| **v2** | 0.999 |\n<!-- /report:toy -->\n")
     assert runner.invoke(app, ["report", "--check"]).exit_code == 1
 
 
