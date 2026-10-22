@@ -1,8 +1,8 @@
-import yaml
 from fastapi.testclient import TestClient
 
 from byosm.app import create_app
 from byosm.app.teams import members
+from byosm.system import SystemProject, SystemSpec
 
 AUTH = {"Authorization": "Bearer t"}
 
@@ -15,12 +15,10 @@ def test_typing_to_a_system_that_is_not_exported_says_how_to_fix_it(ws):
 
 
 def _team(ws, name, specialists):
-    d = ws / "systems" / name
-    d.mkdir(parents=True)
     source = {"dataset": "org/data", "input_column": "text", "label_column": "label"}
     roles = ["router", "tagger"]
     nodes = {s: {"specialist": s, "role": roles[i], "task": s, "source": source} for i, s in enumerate(specialists)}
-    (d / "system.yaml").write_text(yaml.safe_dump({"name": name, "description": name, "nodes": nodes}))
+    SystemProject(name, ws).save_spec(SystemSpec(name=name, description=name, nodes=nodes))
 
 
 def test_only_teams_of_several_models_fold_their_members_into_one_entry(ws):

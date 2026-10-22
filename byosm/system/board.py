@@ -4,7 +4,6 @@ import hashlib
 import json
 import time
 from collections.abc import Callable
-from pathlib import Path
 
 from ..evals.identity import baseline_identity
 from ..events import stage
@@ -17,7 +16,8 @@ from .spec import SystemProject, SystemSpec, SystemSuite
 from .streaming import stream_board
 
 OURS = "system"
-BOARD_FILE = "board.json"
+BOARD = "board"
+RESULT = "result"
 
 
 def vocabulary(spec: SystemSpec) -> tuple[list[str], list[str]]:
@@ -50,17 +50,17 @@ def _frames(sp: SystemProject, rival: str, texts: list[str], log: Callable[[str]
 
 
 def _result(sp: SystemProject, suite: str, rival: str, data: dict, log: Callable, force: bool) -> dict:
-    path: Path = sp.root / "results" / rival.replace(":", "_") / f"{suite}.json"
+    kind = f"{RESULT}:{rival}:{suite}"
     texts = [r["input"] for s in SPLITS for r in data[s]]
     fp = _fingerprint(sp, rival, texts)
-    if not force and path.exists() and json.loads(path.read_text())["fingerprint"] == fp:
-        return json.loads(path.read_text())
+    cached = sp.report(kind)
+    if not force and cached and cached["fingerprint"] == fp:
+        return cached
     log(f"  scoring {rival} on {suite} ({len(texts)} requests)...")
     frames, ms = _frames(sp, rival, texts, log)
     cut = len(data[SPLITS[0]])
     res = {"fingerprint": fp, "latency_ms": ms, "frames": {SPLITS[0]: frames[:cut], SPLITS[1]: frames[cut:]}}
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(res))
+    sp.save_report(kind, res)
     return res
 
 
@@ -90,5 +90,5 @@ def evaluate(sp: SystemProject, log: Callable[[str], None] = print, force: bool 
     first = next(iter(board.values()), {})
     if "stream" in first:
         set_gate(sp, first["stream"]["gate"])
-    (sp.root / BOARD_FILE).write_text(json.dumps(board, indent=2))
+    sp.save_report(BOARD, board)
     return board

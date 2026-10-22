@@ -18,6 +18,9 @@ from ..hub.sections import CARD_NOTES
 from ..improve.proposals import PROPOSALS
 from ..project import Project
 from ..spec import TaskSpec
+from ..system.board import BOARD, RESULT
+from ..system.bundle import GATE
+from ..system.spec import SYSTEM_FILE, SystemProject, SystemSpec
 from . import rows
 
 JSON_REPORTS = {
@@ -34,6 +37,7 @@ WORKBENCH_RESULTS = ".results.json"
 ROW_DIRS = ("specialists", "systems")
 ROW_SKIP = {"export", "hub"}
 OLD_JOB_DB = Path(".byosm") / "app.sqlite"
+OLD_BOARD, OLD_GATE, TRACE_PREFIX = "board.json", "gate.json", "trace-"
 
 
 def _json(f: Path) -> Any:
@@ -119,10 +123,30 @@ def import_jobs(ws: Path, log: Callable[[str], None]) -> list[Path]:
     return [old]
 
 
+def import_system(root: Path, ws: Path) -> list[Path]:
+    sp = SystemProject(root.name, ws)
+    sp.save_spec(SystemSpec.load(root / SYSTEM_FILE))
+    done = [root / SYSTEM_FILE]
+    for name, kind in ((OLD_BOARD, BOARD), (OLD_GATE, GATE)):
+        if (root / name).exists():
+            sp.save_report(kind, _json(root / name))
+            done.append(root / name)
+    for f in sorted((root / "results").glob("*/*.json")):
+        sp.save_report(f"{RESULT}:{f.parent.name}:{f.stem}", _json(f))
+        done.append(f)
+    for f in sorted((root / "evals").glob(f"*/{TRACE_PREFIX}*.json")):
+        sp.save_report(f"trace:{f.parent.name}:{f.stem.removeprefix(TRACE_PREFIX)}", _json(f))
+        done.append(f)
+    return done
+
+
 def import_workspace(ws: Path, log: Callable[[str], None]) -> list[Path]:
     done: list[Path] = []
     for spec in sorted((ws / "specialists").glob("*/spec.yaml")):
         files = import_specialist(spec.parent, ws)
         log(f"  {spec.parent.name}: {len(files)} files imported")
         done += files
+    for spec in sorted((ws / "systems").glob(f"*/{SYSTEM_FILE}")):
+        done += import_system(spec.parent, ws)
+        log(f"  system {spec.parent.name} imported")
     return done + import_rows(ws, log) + import_jobs(ws, log)

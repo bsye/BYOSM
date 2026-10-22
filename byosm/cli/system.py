@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Annotated
 
 import typer
 from rich.table import Table
 
 from ..report.systems import stream_line
+from ..system.board import BOARD
 from .base import console, log, system_app
 
 
@@ -14,9 +16,18 @@ def _project(name: str):
     from ..system import SystemProject
 
     sp = SystemProject(name)
-    if not sp.spec_path.exists():
-        raise typer.BadParameter(f"no system {name!r} at {sp.spec_path}")
+    if not sp.exists():
+        raise typer.BadParameter(f"no system {name!r}: byosm system define {name} FILE.yaml")
     return sp
+
+
+@system_app.command("define")
+def define(name: str, file: Path) -> None:
+    """Define (or redefine) a team of specialists from a YAML file of nodes and suites."""
+    from ..system import SystemProject, SystemSpec
+
+    SystemProject(name).save_spec(SystemSpec.load(file))
+    log(f"defined system {name}; next: byosm system build {name}")
 
 
 def _fmt(summary: dict) -> str:
@@ -73,7 +84,7 @@ def eval_(name: str, force: Annotated[bool, typer.Option(help="rescore cached ri
 @system_app.command("board")
 def board(name: str) -> None:
     """Show the last end-to-end scores."""
-    _show(json.loads((_project(name).root / "board.json").read_text()))
+    _show(_project(name).report(BOARD))
 
 
 def _typed(system, text: str) -> dict:

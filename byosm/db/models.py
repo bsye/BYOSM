@@ -106,3 +106,22 @@ class JobEvent(Base):
     kind: Mapped[str | None] = mapped_column(String(40), index=True)
     model: Mapped[str | None] = mapped_column(String(200))
     data: Mapped[dict[str, Any]]
+
+
+class System(Base):
+    __tablename__ = "systems"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True)
+    spec: Mapped[dict[str, Any]]
+    created: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class SystemReport(Base):
+    __tablename__ = "system_reports"
+    __table_args__ = (UniqueConstraint("system_id", "kind"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    system_id: Mapped[int] = mapped_column(ForeignKey("systems.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(300))
+    data: Mapped[Any] = mapped_column(Json)
+    updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)

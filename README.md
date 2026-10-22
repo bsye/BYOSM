@@ -517,6 +517,7 @@ includes ESC-50 (CC BY-NC): check data licences before any other use.
 | v5 | v1 + llm-exp-1-hard-negatives-encoding | 642 | 22.71M | 3.99ms | 1.000 [1.000, 1.000] | 0.000 |
 | livekit-turn | outside baseline | - | - | 4.90ms | 1.000 [1.000, 1.000] | 0.000 |
 | llm | outside baseline | - | - | - | 1.000 [1.000, 1.000] | 1.000 |
+| v15 | no recorded parent | 6086 | 22.71M | 4.02ms | 1.000 [1.000, 1.000] | 0.000 |
 | v10 | v1 + llm-exp-1-hard-negatives-encoding | 639 | 22.71M | 3.81ms | 0.000 [0.000, 1.000] | 0.000 |
 | v11 | v1 + regularize | 639 | 22.71M | 14.60ms | 0.000 [0.000, 1.000] | 0.000 |
 | v12 | no recorded parent | 639 | 22.71M | 14.13ms | 0.000 [0.000, 1.000] | 0.000 |

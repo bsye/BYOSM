@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
-
 from ..config import find_workspace
-from ..system.board import BOARD_FILE, OURS
+from ..system.board import BOARD, OURS
+from ..system.spec import SystemProject, system_names
 from .cells import num, score
 
 SYSTEM = "system"
@@ -14,8 +13,8 @@ HEAD = (
 
 
 def reported_systems() -> list[str]:
-    root = find_workspace() / "systems"
-    return sorted(d.name for d in root.glob("*") if (d / BOARD_FILE).exists()) if root.exists() else []
+    ws = find_workspace()
+    return [n for n in system_names(ws) if SystemProject(n, ws).report(BOARD)]
 
 
 def _row(name: str, v: dict) -> str:
@@ -59,5 +58,5 @@ def stream_line(st: dict) -> str:
 
 
 def system_block(name: str) -> str:
-    board = json.loads((find_workspace() / "systems" / name / BOARD_FILE).read_text())
+    board = SystemProject(name).report(BOARD)
     return "\n\n".join("\n".join(_suite(name, s, b)) for s, b in board.items())

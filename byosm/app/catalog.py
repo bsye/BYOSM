@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import shutil
 from pathlib import Path
 from typing import Any
@@ -140,22 +139,21 @@ def rows(ws: Path, name: str, split: str, offset: int, limit: int) -> dict[str, 
 
 
 def systems(ws: Path) -> list[dict[str, Any]]:
-    from ..system import SystemProject
     from .teams import team_names
 
-    return [system(ws, n) for n in team_names(ws) if SystemProject(n, ws).spec_path.exists()]
+    return [system(ws, n) for n in team_names(ws)]
 
 
 def system(ws: Path, name: str) -> dict[str, Any]:
     from ..system import SystemProject
+    from ..system.board import BOARD
 
     sp = SystemProject(name, ws)
-    if not sp.spec_path.exists():
+    if not sp.exists():
         raise KeyError(f"no system {name!r}")
-    board = sp.root / "board.json"
     return {
         "name": name,
         "spec": sp.spec().model_dump(mode="json"),
-        "board": json.loads(board.read_text()) if board.exists() else None,
+        "board": sp.report(BOARD),
         "exported": (sp.export_dir / "system.json").exists(),
     }

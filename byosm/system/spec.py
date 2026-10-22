@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from ..config import find_workspace
+from ..db import get_or_add, session
+from ..db.models import System, SystemReport
 from ..spec import HFSource
 
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
 SYSTEM_FILE = "system.yaml"
-GATE_FILE = "gate.json"
 
 
 class Node(BaseModel):
@@ -69,16 +74,36 @@ class SystemProject:
         self.root = self.ws / "systems" / name
 
     @property
-    def spec_path(self) -> Path:
-        return self.root / SYSTEM_FILE
-
-    @property
-    def gate_path(self) -> Path:
-        return self.root / GATE_FILE
-
-    @property
     def export_dir(self) -> Path:
         return self.root / "export"
 
+    def _id(self, s: Session) -> int | None:
+        return s.scalar(select(System.id).where(System.name == self.name))
+
+    def exists(self) -> bool:
+        with session(self.ws) as s:
+            return self._id(s) is not None
+
     def spec(self) -> SystemSpec:
-        return SystemSpec.load(self.spec_path)
+        with session(self.ws) as s:
+            data = s.scalar(select(System.spec).where(System.name == self.name))
+        if data is None:
+            raise KeyError(f"no system {self.name!r}")
+        return SystemSpec(**data)
+
+    def save_spec(self, spec: SystemSpec) -> None:
+        with session(self.ws) as s:
+            get_or_add(s, System, name=self.name).spec = spec.model_dump(mode="json", exclude_defaults=True)
+
+    def report(self, kind: str) -> Any:
+        with session(self.ws) as s:
+            return s.scalar(select(SystemReport.data).filter_by(system_id=self._id(s), kind=kind))
+
+    def save_report(self, kind: str, data: Any) -> None:
+        with session(self.ws) as s:
+            get_or_add(s, SystemReport, system_id=self._id(s), kind=kind).data = data
+
+
+def system_names(ws: Path) -> list[str]:
+    with session(ws) as s:
+        return sorted(s.scalars(select(System.name)))

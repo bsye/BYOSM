@@ -10,6 +10,8 @@ from ..project import Project
 from ..rt import NODES_DIR, SYSTEM_MANIFEST
 from .spec import SystemProject
 
+GATE = "gate"
+
 RT_NAME = "byosm_rt.py"
 
 
@@ -24,11 +26,11 @@ def system_manifest(sp: SystemProject) -> dict:
 
 
 def _gate(sp: SystemProject) -> dict | None:
-    return json.loads(sp.gate_path.read_text()) if sp.gate_path.exists() else None
+    return sp.report(GATE)
 
 
 def set_gate(sp: SystemProject, gate: dict | None) -> None:
-    sp.gate_path.write_text(json.dumps(gate))
+    sp.save_report(GATE, gate)
     path = sp.export_dir / SYSTEM_MANIFEST
     if path.exists():
         path.write_text(json.dumps({**json.loads(path.read_text()), "gate": gate}, indent=2))

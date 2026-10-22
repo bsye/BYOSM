@@ -37,8 +37,11 @@ def test_a_system_board_becomes_a_report_block(ws):
     mine = {"calib": split, "test": split, "ci": {"lo": 0.4, "hi": 0.6}, "latency_ms": 3.0}
     paired = {"llm": {s: {"delta": 0.2, "p_better": 1.0} for s in ("calib", "test")}}
     board = {"m": {"rows": {"calib": 1, "test": 2}, "rivals": {"system": mine, "llm": mine}, "paired": paired}}
-    (ws / "systems" / "a").mkdir(parents=True)
-    (ws / "systems" / "a" / "board.json").write_text(json.dumps(board))
+    from byosm.system import SystemProject, SystemSpec
+
+    sp = SystemProject("a", ws)
+    sp.save_spec(SystemSpec(name="a", description="a", nodes={}))
+    sp.save_report("board", board)
     block = system_block("a")
     assert "| a | 0.500 [0.400, 0.600] |" in block and "a minus llm: test +0.200" in block
 

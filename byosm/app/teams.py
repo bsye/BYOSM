@@ -9,8 +9,9 @@ MIN_FOLDED_MEMBERS = 2
 
 
 def team_names(ws: Path) -> list[str]:
-    root = ws / "systems"
-    return sorted(d.name for d in root.glob("*") if (d / "system.yaml").exists()) if root.exists() else []
+    from ..system.spec import system_names
+
+    return system_names(ws)
 
 
 def members(ws: Path) -> dict[str, str]:

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Callable
-from pathlib import Path
 
 import numpy as np
 
@@ -25,9 +23,9 @@ def _trace(router: Specialist, text: str) -> list[list]:
 
 
 def traces(sp: SystemProject, suite: str, fp: str, data: dict, log: Callable[[str], None]) -> dict:
-    path: Path = sp.root / "evals" / suite / f"trace-{fp}.json"
-    if path.exists():
-        return json.loads(path.read_text())
+    kind = f"trace:{suite}:{fp}"
+    if cached := sp.report(kind):
+        return cached
     system = System(sp.export_dir)
     router = system.nodes[system._role("router")]
     n = sum(len(r["input"]) for s in SPLITS for r in data[s])
@@ -35,7 +33,7 @@ def traces(sp: SystemProject, suite: str, fp: str, data: dict, log: Callable[[st
     t0 = time.perf_counter()
     out = {s: [_trace(router, r["input"]) for r in data[s]] for s in SPLITS}
     res = {"traces": out, "ms_per_keystroke": (time.perf_counter() - t0) * 1000 / max(1, n)}
-    path.write_text(json.dumps(res))
+    sp.save_report(kind, res)
     return res
 
 
