@@ -42,7 +42,7 @@ function stats(items: Summary[], running: number): Stat[] {
 export function SectionCards({ items }: { items: Summary[] }) {
   const running = Object.values(useLive().jobs).filter((j) => j.status === "running" || j.status === "queued").length
   return (
-    <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+    <div className="grid grid-cols-2 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
       {stats(items, running).map((s, i) => (
         <Card key={s.label} className="@container/card h-full">
           <CardHeader>
@@ -60,7 +60,7 @@ export function SectionCards({ items }: { items: Summary[] }) {
               </CardAction>
             )}
           </CardHeader>
-          <CardFooter className="mt-auto flex-col items-start gap-1 text-sm">
+          <CardFooter className="mt-auto hidden flex-col items-start gap-1 text-sm @xl/main:flex">
             <div className="text-muted-foreground line-clamp-1">{s.line}</div>
           </CardFooter>
         </Card>

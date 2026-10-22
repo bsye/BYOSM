@@ -46,7 +46,7 @@ function Stat({ label, value, detail }: { label: string; value: string; detail?:
         <CardDescription>{label}</CardDescription>
         <CardTitle className="text-3xl font-semibold tabular-nums">{value}</CardTitle>
       </CardHeader>
-      {detail && <CardFooter className="text-muted-foreground mt-auto text-xs">{detail}</CardFooter>}
+      {detail && <CardFooter className="text-muted-foreground mt-auto hidden text-xs @xl/main:flex">{detail}</CardFooter>}
     </Card>
   )
 }
@@ -57,7 +57,7 @@ function Stats({ suite }: { suite: Suite }) {
   const lead = ours && llm ? ours.exact_frame - llm[1].test.exact_frame : null
   const st = suite.stream
   return (
-    <div className="grid auto-rows-fr gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+    <div className="grid auto-rows-fr grid-cols-2 gap-4 @5xl/main:grid-cols-4">
       <Stat
         label="Exact"
         value={score(ours?.exact_frame)}
