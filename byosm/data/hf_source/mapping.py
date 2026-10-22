@@ -18,7 +18,7 @@ PICK_SYSTEM = """You choose Hugging Face datasets to build a training set. Given
 
 def _pick_schema() -> dict:
     role = {"type": "string", "enum": ["labeled", "positive", "negative", "unlabeled"]}
-    pick = {"type": "object", "properties": {"dataset": {"type": "string"}, "role": role}}
+    pick = {"type": "object", "properties": {"dataset": {"type": "string"}, "role": role, "why": {"type": "string"}}}
     return {"type": "object", "properties": {"picks": {"type": "array", "items": pick}}}
 
 
@@ -37,8 +37,7 @@ def _map_schema() -> dict:
     }
 
 
-def _pick_sources(spec: TaskSpec, cfg: dict | None) -> list[HFSource]:
-    hits = search(spec.data.hf_queries)
+def pick_sources(spec: TaskSpec, hits: list[dict], cfg: dict | None) -> list[tuple[HFSource, str]]:
     if not hits:
         return []
     listing = "\n".join(f"- {h['id']} (downloads={h['downloads']}, {', '.join(h['tags'])})" for h in hits)
@@ -48,7 +47,12 @@ def _pick_sources(spec: TaskSpec, cfg: dict | None) -> list[HFSource]:
     )
     out = get_llm("spec", cfg).json(PICK_SYSTEM, prompt, _pick_schema())
     ids = {h["id"] for h in hits}
-    return [HFSource(dataset=p["dataset"], role=p["role"]) for p in out.get("picks", []) if p["dataset"] in ids]
+    picks = [p for p in out.get("picks", []) if p.get("dataset") in ids and p.get("role")]
+    return [(HFSource(dataset=p["dataset"], role=p["role"]), str(p.get("why") or "")) for p in picks]
+
+
+def _pick_sources(spec: TaskSpec, cfg: dict | None) -> list[HFSource]:
+    return [src for src, _ in pick_sources(spec, search(spec.data.hf_queries), cfg)]
 
 
 def _map_prompt(

@@ -10,6 +10,7 @@ const QUESTIONS: Record<string, string> = {
   define: "What is the task?",
   "discover:benchmark": "What data to learn from and test on?",
   "discover:data": "Write training data with the LLM?",
+  "discover:datasets": "What other data to learn from?",
   "discover:baseline": "Which rival to beat?",
   data: "Is there enough data?",
   build: "How does the first model score?",

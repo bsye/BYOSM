@@ -120,13 +120,18 @@ def add_benchmark(spec: TaskSpec, queries: list[str], cfg: dict | None, log: Cal
             "alternatives": found["alternatives"],
         }
     )
-    if train and spec.data.synthetic:
-        spec.data.synthetic = False
-        alt = {
-            "option": "also write training data with the LLM",
-            "why_not": "real labelled rows were found, so no LLM-written rows are needed",
-            "args": try_setting(spec.name, "data.synthetic", True, "llm-data"),
-        }
-        decisions.append(
-            {"step": "data", "choice": "real rows only", "why": alt["why_not"], "by": RULE, "alternatives": [alt]}
-        )
+    if train:
+        prefer_real_rows(spec, decisions)
+
+
+def prefer_real_rows(spec: TaskSpec, decisions: list[dict]) -> None:
+    if not spec.data.synthetic:
+        return
+    spec.data.synthetic = False
+    alt = {
+        "option": "also write training data with the LLM",
+        "why_not": "more rows, but the model also learns the LLM's style and mistakes",
+        "args": try_setting(spec.name, "data.synthetic", True, "llm-data"),
+    }
+    why = "real labelled rows were found, so no LLM-written rows are needed"
+    decisions.append({"step": "data", "choice": "real rows only", "why": why, "by": RULE, "alternatives": [alt]})

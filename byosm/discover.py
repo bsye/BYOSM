@@ -8,6 +8,7 @@ from typing import Any
 
 from .benchmark_search import add_benchmark
 from .data.hf_source.hub import search_terms
+from .dataset_search import add_datasets
 from .events import stage
 from .spec import TaskSpec
 from .text import match_label
@@ -101,6 +102,8 @@ def discover(
     decisions: list[dict] = []
     if spec.task_type == "classify" and queries.get("benchmark"):
         add_benchmark(spec, queries["benchmark"], cfg, log, decisions)
+    if spec.task_type == "classify":
+        add_datasets(spec, cfg, log, decisions)
     bl = list(spec.baselines)
     _default_baselines(spec, bl, decisions)
     _model_baselines(spec, queries.get("baseline") or [], bl, decisions)
