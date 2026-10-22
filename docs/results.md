@@ -20,7 +20,7 @@ Rivals and benchmarks: [methodology](methodology.md).
 | Token-tag every token in a lease-agreement text to identify spans of DATE, AMOUNT, and PARTY (landlord, tenant, guarantor, or other named signatory) using BIO tagging. | lease-entities-builtin (span_f1) | v1 (70.69M) | 0.514 [0.389, 0.651] | hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 (183.92M) | 0.301 [0.178, 0.432] | +0.213, P(better) = 1.00 | 0.632 vs 0.370 (ahead) |
 | Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
-| From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification of a partial-utterance. | turn-completion-builtin (recall_at_precision) | v15 (22.71M) | 0.895 [0.861, 0.924] | hf:videosdk-live/Namo-Turn-Detector-v1-English#LABEL_1=finished,LABEL_0=unfinished (135.33M) | 0.000 [0.000, 0.000] | +0.895, P(better) = 1.00 | 0.753 vs 0.323 (ahead) |
+| From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification of a partial-utterance. | turn-completion-builtin (recall_at_precision) | v15 (22.71M) | 0.895 [0.861, 0.924] | llm:rival-claude-haiku-5-5 (-) | 0.000 [0.000, 0.000] | +0.895, P(better) = 0.99 | 0.753 vs 0.965 (behind) |
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
 <!-- /report:summary -->
 
@@ -295,6 +295,7 @@ Suite `builtin` (lease-entities-builtin): 50 test and 10 calib items. Selection 
 | livekit-turn | outside baseline | - | - | 3.07ms | 0.000 [0.000, 0.636] | 0.000 |
 | llm | outside baseline | - | - | - | 0.000 [0.000, 0.000] | 0.000 |
 | hf:videosdk-live/Namo-Turn-Detector-v1-English#LABEL_1=finished,LABEL_0=unfinished | outside baseline | - | 135.33M | 3.96ms | 0.000 [0.000, 0.000] | 0.323 |
+| llm:rival-claude-haiku-5-5 | outside baseline | - | - | - | 0.000 [0.000, 0.000] | 0.965 |
 
 Suite `builtin` (turn-completion-builtin): 734 test and 391 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
 <!-- /report:turn-completion -->
