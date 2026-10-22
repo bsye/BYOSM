@@ -1,5 +1,5 @@
 import { InfoTip } from "@/components/info-tip"
-import { ExternalLink, Gauge, Hammer, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
+import { Gauge, Hammer, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { api, del, put, runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +22,7 @@ import { Proposals } from "./Proposals"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
 import { PageSkeleton } from "@/components/page-skeleton"
+import { PublishDialog } from "@/components/publish-dialog"
 import { Team, useTeam } from "./Team"
 import { UseIt } from "./UseIt"
 import { YourData } from "./YourData"
@@ -208,14 +209,7 @@ function Model({ name }: { name: string }) {
               {a.label}
             </Button>
           ))}
-          {repo && (
-            <Button variant="outline" asChild>
-              <a href={`https://huggingface.co/${repo}`} target="_blank" rel="noreferrer">
-                <ExternalLink />
-                Hugging Face
-              </a>
-            </Button>
-          )}
+          <PublishDialog name={name} exported={d.exported} published={repo} />
           <Button onClick={() => runJob(["auto", name]).then((j) => go("jobs", j.id))}>
             <Wand2 />
             Autopilot
