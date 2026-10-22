@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..config import Project
+from ..events import emit
 
 DATA_BUDGET_SHARE = 0.4
 
@@ -21,6 +22,7 @@ class Log:
     def __call__(self, step: str, choice: Any, why: str, **extra: Any) -> None:
         d = {"t": time.strftime("%Y-%m-%d %H:%M:%S"), "step": step, "choice": choice, "why": why, **extra}
         self.decisions.append(d)
+        emit("decision", **{k: v for k, v in d.items() if k != "t"})
         self.echo(f"[auto] {step}: {choice} - {why}")
         self.save()
 

@@ -6,10 +6,13 @@ from typing import Any
 
 from ..config import PUBLISH_LICENSE, Project, load_config
 from ..data.request import missing_labels
+from ..llm import role_model
 from .loop import improve_until_stop
 from .report import _report
 from .standing import standing
 from .state import Log, Session
+
+DECISION_EXTRAS = ("by", "alternatives")
 
 
 def _compile(name: str | None, prompt: str | None, modality: str | None, cfg: Any) -> Any:
@@ -27,10 +30,11 @@ def _define(p: Project, log: Log, spec: Any, cfg: Any, echo: Callable) -> None:
         "define",
         f"{spec.modality}/{spec.task_type}, {len(spec.labels)} labels, backbone {spec.backbone}",
         f"compiled from the prompt; objective {spec.objective.metric} >= {spec.objective.target}",
+        by=role_model("spec", cfg),
     )
     spec, decisions = discover(spec, spec.search, cfg, echo)
     for d in decisions:
-        log("discover:" + d["step"], d["choice"], d["why"])
+        log("discover:" + d["step"], d["choice"], d["why"], **{k: d[k] for k in DECISION_EXTRAS if k in d})
     p.ensure()
     spec.save(p.spec_path)
 
