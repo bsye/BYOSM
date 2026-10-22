@@ -41,13 +41,11 @@ def test_search_terms_drop_filler_words_and_keep_the_id():
     assert "go-emojis" in terms and "dataset" not in terms and "benchmark" not in terms
 
 
-def test_compiled_specs_keep_only_datasets_that_exist(monkeypatch):
-    from byosm.data.hf_source import hub
+def test_datasets_the_spec_writer_names_become_search_terms_not_sources():
     from byosm.spec import compiler
 
-    monkeypatch.setattr(hub, "exists", lambda d: d == "real/one")
-    kept = compiler._real([{"dataset": "real/one", "role": "labeled"}, {"dataset": "made/up", "role": "labeled"}])
-    assert [c["dataset"] for c in kept] == ["real/one"]
+    named = compiler._named([{"dataset": "facebook/multi_woz", "role": "labeled"}, {"dataset": "speech-ocean"}])
+    assert named == ["multi woz", "speech ocean"]
 
 
 def test_label_names_match_exactly_or_by_abbreviation():

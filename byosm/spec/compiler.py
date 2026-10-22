@@ -8,7 +8,7 @@ from ..llm import get_llm
 from ..text import slug
 from .backbones import BACKBONES, DEFAULT_BACKBONE
 from .prompt import _SPEC_SCHEMA, _SPEC_SYSTEM
-from .sections import Axis, DataPlan, HFSource, Label, Objective, TrainCfg
+from .sections import Axis, DataPlan, Label, Objective, TrainCfg
 from .task import TaskSpec
 
 FROM_SCRATCH_TRAIN = {"pretrain_steps": 1500, "lr_backbone": 2e-3, "epochs": 30}
@@ -53,15 +53,13 @@ def _data_plan(mod: str, out: dict) -> DataPlan:
     return DataPlan(
         synthetic=bool(out.get("synthetic")) and mod == "text",
         **sizes,
-        **_present(out, {"hf_queries": "hf_queries"}),
-        hf_sources=[HFSource(dataset=c["dataset"], role=c["role"]) for c in _real(out.get("hf_candidates", []))],
+        hf_queries=[*out.get("hf_queries", []), *_named(out.get("hf_candidates", []))],
     )
 
 
-def _real(candidates: list[dict]) -> list[dict]:
-    from ..data.hf_source.hub import exists
-
-    return [c for c in candidates if exists(HFSource(dataset=c["dataset"]).dataset)]
+def _named(candidates: list[dict]) -> list[str]:
+    names = (c["dataset"].split("/")[-1] for c in candidates if c.get("dataset"))
+    return [" ".join(n.replace("_", " ").replace("-", " ").split()) for n in names]
 
 
 def train_cfg(mod: str, backbone: str) -> TrainCfg:

@@ -8,6 +8,11 @@ PARQUET_BRANCH = "refs/convert/parquet"
 SCRIPT_ERROR = "Dataset scripts are no longer supported"
 
 
+CLOSEST_HITS = 10
+MIN_NAME_LETTERS = 5
+NAME_COVER = 0.6
+
+
 def hub_call(fn: Any, dataset: str, config: str | None, **kw: Any) -> Any:
     try:
         return fn(dataset, config, **kw)
@@ -117,3 +122,26 @@ def split_sizes(dataset: str, config: str | None = None) -> dict[str, int]:
         return {k: int(v.num_examples) for k, v in splits.items() if v.num_examples}
     except Exception:
         return {}
+
+
+def _letters(s: str) -> str:
+    return "".join(c for c in s.lower() if c.isalnum())
+
+
+def closest(dataset: str) -> str | None:
+    from huggingface_hub import HfApi
+
+    if exists(dataset):
+        return dataset
+    name = dataset.split("/")[-1]
+    key = _letters(name)
+    try:
+        hits = list(HfApi().list_datasets(search=name, sort="downloads", limit=CLOSEST_HITS))
+    except Exception:
+        return None
+
+    def same(hit: str) -> bool:
+        theirs = _letters(hit.split("/")[-1])
+        return len(key) >= MIN_NAME_LETTERS and key in theirs and len(key) >= NAME_COVER * len(theirs)
+
+    return next((h.id for h in hits if same(h.id)), None)

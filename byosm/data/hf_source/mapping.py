@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from ...llm import get_llm, role_model
 from ...spec import HFSource, TaskSpec
-from .hub import _features, search
+from .hub import _features, closest, search
 
 MAP_SYSTEM = """You map a Hugging Face dataset onto a classifier's label space. Pick the config/split, the input column \
 (the raw text/audio/image), and for role=labeled the label column plus an explicit mapping from source label values to \
@@ -81,6 +81,13 @@ def _apply_mapping(src: HFSource, out: dict, feats: dict, configs: list[str], sp
 
 
 def _map_source(src: HFSource, spec: TaskSpec, cfg: dict | None, log: Callable[[str], None]) -> HFSource | None:
+    real = closest(src.dataset)
+    if real is None:
+        log(f"  skip {src.dataset}: not on the Hub, and no dataset there has that name")
+        return None
+    if real != src.dataset:
+        log(f"  {src.dataset} is not on the Hub; using {real}, the closest name")
+        src = src.model_copy(update={"dataset": real})
     try:
         feats, configs, preview, splits = _features(src)
     except Exception as e:

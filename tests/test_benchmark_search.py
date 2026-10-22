@@ -46,3 +46,23 @@ def test_an_id_that_is_not_a_valid_hub_id_does_not_exist():
     from byosm.data.hf_source.hub import exists
 
     assert not exists("hf:Microsoft/DialogAct")
+
+
+def test_a_guessed_dataset_id_resolves_to_the_hub_dataset_with_that_name(monkeypatch):
+    import huggingface_hub
+
+    from byosm.data.hf_source import hub
+
+    class _Hit:
+        def __init__(self, i):
+            self.id = i
+
+    class _Api:
+        def list_datasets(self, search, sort, limit):
+            return [_Hit("someone/unrelated"), _Hit("pfb30/multi_woz_v22")]
+
+    monkeypatch.setattr(hub, "exists", lambda d: d == "facebook/voxpopuli")
+    monkeypatch.setattr(huggingface_hub, "HfApi", _Api)
+    assert hub.closest("facebook/voxpopuli") == "facebook/voxpopuli"
+    assert hub.closest("facebook/multiwoz") == "pfb30/multi_woz_v22"
+    assert hub.closest("Microsoft/DialogAct") is None
