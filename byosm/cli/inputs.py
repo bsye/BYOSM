@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 
-from .base import _spec, inputs_app, log
+from .base import _spec, app, inputs_app, log
 
 SetOpt = Annotated[str, typer.Option("--set", help="name of the input set")]
 
@@ -43,3 +43,14 @@ def run(
 
     p, spec = _spec(name)
     score(p, spec, set_, model or chosen_models(p, spec), log)
+
+
+@app.command("datasets")
+def datasets(name: str) -> None:
+    """Search the Hub for labelled datasets that fit a specialist and save the ones whose columns map onto its labels,
+    each with the command that trains on it next to the current data."""
+    from ..config import load_config
+    from ..dataset_search import suggest_datasets
+
+    p, spec = _spec(name)
+    suggest_datasets(p, spec, load_config(p.ws), log)

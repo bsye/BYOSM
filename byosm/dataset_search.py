@@ -1,63 +1,67 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
+from typing import Any
 
 from .benchmark_search import PICKER_ROLE, RULE, prefer_real_rows, try_sources
+from .config import Project
 from .data import hf_source
 from .data.hf_source.mapping import pick_sources
 from .llm import role_model
-from .spec import TaskSpec
+from .spec import HFSource, TaskSpec
 
 MAX_EXTRA_SOURCES = 3
 STEP = "datasets"
+SUGGESTIONS_FILE = "data-suggestions.json"
+UNMAPPED = "picked, but its columns or labels do not map onto ours"
 
 
-def _alternative(spec: TaskSpec, dataset: str, role: str, why_not: str) -> dict:
-    args = try_sources(spec.name, [{"dataset": dataset, "role": role}], dataset.split("/")[-1])
-    return {"option": dataset, "why_not": why_not, "args": args}
-
-
-def _add_datasets(spec: TaskSpec, cfg: dict | None, log: Callable[[str], None], decisions: list[dict]) -> None:
+def find_datasets(spec: TaskSpec, cfg: dict | None, log: Callable[[str], None]) -> dict[str, Any]:
     have = {s.dataset for s in spec.data.hf_sources} | {e.source.dataset for e in spec.evals if e.source}
-    queries = [*spec.data.hf_queries, *spec.search.get("benchmark", [])]
+    queries = [*spec.data.hf_queries, *spec.search.get("benchmark", []), *([spec.title] if spec.title else [])]
     hits = [h for h in hf_source.search(queries) if h["id"] not in have]
     if not hits:
-        decisions.append(
-            {
-                "step": STEP,
-                "choice": None,
-                "why": "no other dataset on the Hub matches the searches",
-                "by": RULE,
-                "alternatives": [],
-            }
-        )
-        return
-    by = role_model(PICKER_ROLE, cfg)
+        return {"mapped": [], "why": {}, "unmapped": [], "by": RULE, "searched": False}
     picks = pick_sources(spec, hits, cfg)[:MAX_EXTRA_SOURCES]
     tmp = spec.model_copy(deep=True)
     tmp.data.hf_sources = [src for src, _ in picks]
     mapped = hf_source.resolve(tmp, cfg, log)
     added = {m.dataset for m in mapped}
-    spec.data.hf_sources.extend(mapped)
-    unmapped = [
-        _alternative(spec, s.dataset, s.role, "picked, but its columns or labels do not map onto ours")
-        for s, _ in picks
-        if s.dataset not in added
+    return {
+        "mapped": mapped,
+        "why": {s.dataset: w for s, w in picks},
+        "unmapped": [s for s, _ in picks if s.dataset not in added],
+        "by": role_model(PICKER_ROLE, cfg),
+        "searched": True,
+    }
+
+
+def _add_datasets(spec: TaskSpec, cfg: dict | None, log: Callable[[str], None], decisions: list[dict]) -> None:
+    found = find_datasets(spec, cfg, log)
+    spec.data.hf_sources.extend(found["mapped"])
+    added = sorted(m.dataset for m in found["mapped"])
+    why = "; ".join(f"{d}: {found['why'].get(d, '')}" for d in added)
+    if not found["searched"]:
+        why = "no other dataset on the Hub matches the searches"
+    alts = [
+        {
+            "option": s.dataset,
+            "why_not": UNMAPPED,
+            "args": try_sources(spec.name, [{"dataset": s.dataset, "role": s.role}], s.dataset.split("/")[-1]),
+        }
+        for s in found["unmapped"]
     ]
-    why = (
-        "; ".join(f"{s.dataset}: {w}" for s, w in picks if s.dataset in added)
-        or "none of the search results fit the task"
-    )
     decisions.append(
         {
             "step": STEP,
-            "choice": ", ".join(sorted(added)) or None,
-            "why": why,
-            "by": by,
-            "alternatives": unmapped,
+            "choice": ", ".join(added) or None,
+            "why": why or "none of the search results fit the task",
+            "by": found["by"],
+            "alternatives": alts,
         }
     )
-    if any(m.role == "labeled" for m in mapped):
+    if any(m.role == "labeled" for m in found["mapped"]):
         prefer_real_rows(spec, decisions)
 
 
@@ -67,3 +71,29 @@ def add_datasets(spec: TaskSpec, cfg: dict | None, log: Callable[[str], None], d
     except Exception as e:
         why = f"dataset search failed: {type(e).__name__}: {e}"
         decisions.append({"step": STEP, "choice": None, "why": why, "by": RULE, "alternatives": []})
+
+
+def _with(spec: TaskSpec, src: HFSource) -> list[dict]:
+    return [s.model_dump(mode="json", exclude_defaults=True) for s in [*spec.data.hf_sources, src]]
+
+
+def suggest_datasets(p: Project, spec: TaskSpec, cfg: dict | None, log: Callable[[str], None]) -> list[dict]:
+    found = find_datasets(spec, cfg, log)
+    out = [
+        {
+            "dataset": m.dataset,
+            "role": m.role,
+            "why": found["why"].get(m.dataset, ""),
+            "by": found["by"],
+            "args": try_sources(spec.name, _with(spec, m), m.dataset.split("/")[-1]),
+        }
+        for m in found["mapped"]
+    ]
+    (p.root / SUGGESTIONS_FILE).write_text(json.dumps(out, indent=2))
+    log(f"{len(out)} datasets fit {spec.name}" + "".join(f"\n  - {s['dataset']}: {s['why']}" for s in out))
+    return out
+
+
+def saved_suggestions(p: Project) -> list[dict] | None:
+    f = p.root / SUGGESTIONS_FILE
+    return json.loads(f.read_text()) if f.exists() else None

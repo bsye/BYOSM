@@ -48,3 +48,25 @@ def test_a_specialist_with_no_model_is_built_first(ws):
         Project("qa").ensure().spec_path
     )
     assert [s["id"] for s in suggestions("qa")] == ["build"]
+
+
+def _with_rows(p, per_label):
+    from byosm.data.store import Dataset, record
+
+    spec = TaskSpec.load(p.spec_path)
+    rows = [record(f"{lab} example {i}", lab, "x") for lab in spec.label_names for i in range(per_label)]
+    Dataset(p.data_dir_for(spec)).save("train", rows)
+
+
+def test_too_few_rows_per_label_is_too_small_and_asks_for_more_data(ws):
+    from byosm.data.sufficiency import TOO_SMALL, data_check
+
+    p = _specialist(ws, n_test=500, n_calib=200)
+    _with_rows(p, 10)
+    check = data_check(p, TaskSpec.load(p.spec_path))
+    assert check["verdict"] == TOO_SMALL and check["labels"]["question"]["rows"] == 10
+    assert next(s for s in suggestions("qa") if s["id"] == "find-data")["args"] == ["datasets", "qa"]
+    found = [{"dataset": "org/more", "role": "labeled", "why": "fits", "args": ["exp", "create", "qa", "try-more"]}]
+    (p.root / "data-suggestions.json").write_text(json.dumps(found))
+    step = next(s for s in suggestions("qa") if s["id"] == "more-data")
+    assert step["title"] == "Train with org/more" and step["args"][:2] == ["exp", "create"]

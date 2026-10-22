@@ -5,11 +5,11 @@ from pathlib import Path
 from typing import Any
 
 from .config import Project
+from .data.sufficiency import MIN_CALIB_ITEMS, MIN_TEST_ITEMS, data_check
+from .dataset_search import saved_suggestions
 from .improve.proposals import PROPOSALS_FILE
 from .spec import TaskSpec
 
-MIN_TEST_ITEMS = 100
-MIN_CALIB_ITEMS = 50
 WHY_CHARS = 220
 
 
@@ -17,15 +17,24 @@ def _step(sid: str, title: str, why: str, args: list[str]) -> dict[str, Any]:
     return {"id": sid, "title": title, "why": why[:WHY_CHARS], "args": args}
 
 
-def _held_out(p: Project, prim: str) -> dict[str, Any] | None:
-    r = p.board().get(p.promoted or "", {}).get(prim)
-    if not r:
+def _held_out(p: Project, check: dict | None) -> dict[str, Any] | None:
+    if not check or (check["test"] >= MIN_TEST_ITEMS and check["calib"] >= MIN_CALIB_ITEMS) or not check["test"]:
         return None
-    n_test, n_calib = r.get("n_test") or 0, r.get("n_calib") or 0
-    if n_test >= MIN_TEST_ITEMS and n_calib >= MIN_CALIB_ITEMS:
-        return None
-    why = f"The test set has {n_test} rows and calib {n_calib}: scores on so few rows say almost nothing. Rebuilding the data splits by group of similar rows."
+    why = f"The test set has {check['test']} rows and calib {check['calib']}: scores on so few rows say almost nothing. Rebuilding the data splits by group of similar rows."
     return _step("rebuild-data", "Rebuild the data with a bigger held-out set", why, ["build", p.name, "--force-data"])
+
+
+def _more_data(p: Project, check: dict | None) -> dict[str, Any] | None:
+    if not check or not check["thin"]:
+        return None
+    labels = ", ".join(check["thin"][:4]) + (" and more" if len(check["thin"]) > 4 else "")
+    found = saved_suggestions(p)
+    if not found:
+        why = f"{labels} have fewer training rows than recommended. The LLM searches the Hub for labelled datasets that fit."
+        return _step("find-data", "Find more training data", why, ["datasets", p.name])
+    top = found[0]
+    why = f"{labels} have fewer training rows than recommended. {top['dataset']} fits: {top['why']}"
+    return _step("more-data", f"Train with {top['dataset']}", why, top["args"])
 
 
 def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
@@ -87,6 +96,13 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
     if not p.promoted:
         return [_step("build", "Build the first model", "Nothing has been trained yet.", ["build", name])]
     prim = spec.primary_suite()
-    held = _held_out(p, prim) if spec.task_type == "classify" else None
-    steps = [held, _rivals(p, spec, prim), _experiments(p), _overfit(p), _export(p)]
+    check = data_check(p, spec)
+    steps = [
+        _held_out(p, check),
+        _more_data(p, check),
+        _rivals(p, spec, prim),
+        _experiments(p),
+        _overfit(p),
+        _export(p),
+    ]
     return [s for s in steps if s]

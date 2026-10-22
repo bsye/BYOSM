@@ -26,5 +26,6 @@ ALLOWED_COMMANDS = (
     "testset",
     "next",
     "inputs",
+    "datasets",
     "system",
 )
