@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { metricName, score } from "@/format"
-import { go } from "@/route"
+import { openJob } from "@/job-sheet"
 
 const SEVERITY: Record<Severity, { label: string; answer: string; icon: LucideIcon; variant: "outline" | "secondary" | "destructive" }> = {
   ok: { label: "OK", answer: "No", icon: CircleCheck, variant: "outline" },
@@ -85,7 +85,7 @@ function Row({ f, suiteName }: { f: Finding; suiteName: (s: string) => string })
 
 export function Overfit({ d }: { d: Detail }) {
   const r = d.overfit
-  const check = () => runJob(["overfit", d.name]).then((j) => go("jobs", j.id))
+  const check = () => runJob(["overfit", d.name]).then((j) => openJob(j.id))
   const suiteName = (s: string) => (s === d.primary_suite ? d.benchmark : s)
   const stale = r && r.experiment !== d.promoted ? `, not ${d.promoted}` : ""
   return (

@@ -4,7 +4,7 @@ import { runJob } from "@/api"
 import { LlmPicker, useLlmChoice } from "@/components/llm-picker"
 import { Button } from "@/components/ui/button"
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group"
-import { go } from "@/route"
+import { openJob } from "@/job-sheet"
 
 const EXAMPLES = [
   "classify support emails into billing, shipping, technical or other",
@@ -19,7 +19,7 @@ export function Create() {
   const [error, setError] = useState("")
   const start = () =>
     runJob(["auto", prompt.trim()], llm.config())
-      .then((j) => go("jobs", j.id))
+      .then((j) => openJob(j.id))
       .catch((e) => setError(String(e)))
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 py-12">

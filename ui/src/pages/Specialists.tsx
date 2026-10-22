@@ -17,11 +17,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useLive } from "@/events"
 import { describe } from "@/jobs"
-import { go } from "@/route"
 import { Overview } from "./Overview"
 import { SectionCards } from "./SectionCards"
 import { SpecialistCard } from "./SpecialistCard"
 import { byDate, byKind, type Group } from "./specialist-groups"
+import { openJob } from "@/job-sheet"
 
 const SKELETONS = 6
 const EXAMPLE = "classify support emails into billing, shipping, technical or other"
@@ -31,7 +31,7 @@ function NewSpecialist({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState("")
   const start = () =>
     runJob(["auto", prompt])
-      .then((job) => go("jobs", job.id))
+      .then((job) => openJob(job.id))
       .catch((e) => setError(String(e)))
   return (
     <Dialog>

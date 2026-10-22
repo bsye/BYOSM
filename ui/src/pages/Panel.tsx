@@ -11,7 +11,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { score } from "@/format"
-import { go } from "@/route"
+import { openJob } from "@/job-sheet"
 
 const PANEL = "panel"
 const config = { accuracy: { label: "accuracy on labelled rows", color: "var(--chart-1)" } } satisfies ChartConfig
@@ -113,7 +113,7 @@ function Review({ name, view, onSaved }: { name: string; view: PanelView; onSave
     put(`/specialists/${name}/panel/review`, { input: row.input, label })
       .then(() => onSaved({ ...row, reviewed: label }))
       .catch((e) => setError(String(e)))
-  const rebuild = () => runJob(["data", name, "--force"]).then((j) => go("jobs", j.id))
+  const rebuild = () => runJob(["data", name, "--force"]).then((j) => openJob(j.id))
   return (
     <Card>
       <CardHeader>

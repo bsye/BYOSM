@@ -9,8 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Input } from "@/components/ui/input"
 import { metricName, rivalName } from "@/format"
-import { go } from "@/route"
 import { WrittenInputs } from "./WrittenInputs"
+import { openJob } from "@/job-sheet"
 
 const SUITE_BASE = "llm-written"
 const DEFAULT_TOTAL = 100
@@ -37,7 +37,7 @@ function GenerateCard({ d }: { d: Detail }) {
   const perLabel = Math.ceil(total / Math.max(1, d.labels))
   const start = () =>
     runJob(["testset", d.name, "--per-label", String(perLabel), "--suite", freeName(d)], llm.config())
-      .then((j) => go("jobs", j.id))
+      .then((j) => openJob(j.id))
       .catch((e) => setError(String(e)))
   return (
     <Card>

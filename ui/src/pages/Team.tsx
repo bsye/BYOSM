@@ -8,10 +8,11 @@ import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartToo
 import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { useLive } from "@/events"
 import { signed, rivalName, score } from "@/format"
-import { go, href } from "@/route"
+import { href } from "@/route"
 import { useExamples } from "./Playground"
 import { SystemDiagram } from "./SystemDiagram"
 import { TypeDemo } from "./TypeDemo"
+import { openJob } from "@/job-sheet"
 
 type Split = { exact_frame: number; action_accuracy: number; arg_f1: number | null }
 type Stream = {
@@ -107,7 +108,7 @@ function useExample(view: TeamView): string {
 export function Team({ view }: { view: TeamView }) {
   const [suiteName, suite] = Object.entries(view.board ?? {})[0] ?? []
   const names = Object.values(view.spec.nodes).map((n) => n.specialist)
-  const start = (args: string[]) => runJob(args).then((j) => go("jobs", j.id))
+  const start = (args: string[]) => runJob(args).then((j) => openJob(j.id))
   const example = useExample(view)
   return (
     <div className="flex flex-col gap-4 md:gap-6">

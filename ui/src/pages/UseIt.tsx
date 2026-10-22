@@ -3,7 +3,7 @@ import { useState } from "react"
 import { runJob, type Detail } from "@/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { go } from "@/route"
+import { openJob } from "@/job-sheet"
 
 const MODEL_PORT = 8800
 const COPIED_MS = 1500
@@ -38,7 +38,7 @@ export function UseIt({ d }: { d: Detail }) {
   const dir = `specialists/${d.name}/export`
   const image = `byosm-${d.name.toLowerCase()}`
   const example = d.modality === "text" ? "your text here" : "path/to/input"
-  const build = () => runJob(["containerize", d.name]).then((j) => go("jobs", j.id))
+  const build = () => runJob(["containerize", d.name]).then((j) => openJob(j.id))
   return (
     <div className="grid auto-rows-fr gap-4 @3xl/main:grid-cols-2">
       <Snippet

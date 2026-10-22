@@ -26,6 +26,7 @@ import { PublishDialog } from "@/components/publish-dialog"
 import { Team, useTeam } from "./Team"
 import { UseIt } from "./UseIt"
 import { YourData } from "./YourData"
+import { openJob } from "@/job-sheet"
 
 const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] }[] = [
   { label: "Build", icon: Hammer, args: (n) => ["build", n] },
@@ -204,13 +205,13 @@ function Model({ name }: { name: string }) {
         </div>
         <div className="flex flex-wrap gap-2">
           {ACTIONS.map((a) => (
-            <Button key={a.label} variant="outline" onClick={() => runJob(a.args(name)).then((j) => go("jobs", j.id))}>
+            <Button key={a.label} variant="outline" onClick={() => runJob(a.args(name)).then((j) => openJob(j.id))}>
               <a.icon />
               {a.label}
             </Button>
           ))}
           <PublishDialog name={name} exported={d.exported} published={repo} />
-          <Button onClick={() => runJob(["auto", name]).then((j) => go("jobs", j.id))}>
+          <Button onClick={() => runJob(["auto", name]).then((j) => openJob(j.id))}>
             <Wand2 />
             Autopilot
           </Button>

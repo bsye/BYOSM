@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
-import { go } from "@/route"
 import { CheckReport } from "./CheckReport"
+import { openJob } from "@/job-sheet"
 
 const TABLE_ACCEPT = ".csv,.xlsx"
 
-const open = (args: string[]) => runJob(args).then((j) => go("jobs", j.id))
+const open = (args: string[]) => runJob(args).then((j) => openJob(j.id))
 
 function Needs({ counts }: { counts: NonNullable<DataRequest["request"]>["counts"] }) {
   return (

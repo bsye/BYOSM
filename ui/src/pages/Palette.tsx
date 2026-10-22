@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/command"
 import { go } from "@/route"
 import { newestFirst, titleOf } from "./specialist-groups"
+import { openJob } from "@/job-sheet"
 
 const PAGES = ["create", "specialists", "jobs", "settings"]
 const JOBS: { verb: string; args: (n: string) => string[] }[] = [
@@ -71,7 +72,7 @@ export function Palette() {
           <CommandGroup heading="Jobs">
             {models.flatMap((n) =>
               JOBS.map((j) => (
-                <CommandItem key={`${j.verb}-${n}`} onSelect={pick(() => runJob(j.args(n)).then((job) => go("jobs", job.id)))}>
+                <CommandItem key={`${j.verb}-${n}`} onSelect={pick(() => runJob(j.args(n)).then((job) => openJob(job.id)))}>
                   {j.verb} {n}
                 </CommandItem>
               )),

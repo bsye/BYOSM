@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { go } from "@/route"
+import { openJob } from "@/job-sheet"
 
 const REPO_PREFIX = "byosm-"
 const PRIVATE = "private"
@@ -33,7 +33,7 @@ export function PublishDialog({ name, exported, published }: { name: string; exp
   const target = repo || suggested
   const publish = () =>
     runJob(["publish", name, "--repo", target, ...(visibility === PUBLIC ? ["--public"] : [])])
-      .then((j) => go("jobs", j.id))
+      .then((j) => openJob(j.id))
       .catch((e) => setError(String(e)))
   return (
     <Dialog open={open} onOpenChange={setOpen}>

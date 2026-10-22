@@ -3,7 +3,7 @@ import { runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { go } from "@/route"
+import { openJob } from "@/job-sheet"
 
 const VALUE_CHARS = 60
 
@@ -14,8 +14,8 @@ const shown = (v: unknown) => {
 
 export function Proposals({ d }: { d: Detail }) {
   const saved = d.proposals
-  const ask = () => runJob(["improve", d.name]).then((j) => go("jobs", j.id))
-  const run = (id: string) => runJob(["improve", d.name, "--apply", id, "--run"]).then((j) => go("jobs", j.id))
+  const ask = () => runJob(["improve", d.name]).then((j) => openJob(j.id))
+  const run = (id: string) => runJob(["improve", d.name, "--apply", id, "--run"]).then((j) => openJob(j.id))
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">

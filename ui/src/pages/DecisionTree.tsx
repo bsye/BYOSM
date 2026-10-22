@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { question, type Alternative, type Decision } from "@/job-story"
 import { modelName } from "@/jobs"
-import { go } from "@/route"
+import { openJob } from "@/job-sheet"
 
 const RULE = "rule"
 
@@ -27,7 +27,7 @@ function Branch({ alt }: { alt: Alternative }) {
   const run = () =>
     alt.args &&
     runJob(alt.args)
-      .then((j) => go("jobs", j.id))
+      .then((j) => openJob(j.id))
       .catch((e) => setError(String(e)))
   return (
     <li className="flex items-start gap-2">
