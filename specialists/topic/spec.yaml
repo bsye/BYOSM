@@ -1,4 +1,6 @@
 name: topic
+title: News topic
+created: 2026-10-21T02:42:16+02:00
 description: 'Classify a news article (headline and short summary) into its topic: world, sports, business or science/technology'
 modality: text
 task_type: classify

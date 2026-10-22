@@ -1,4 +1,6 @@
 name: bank-panel
+title: Banking intent from few labels
+created: 2026-10-21T22:53:46+02:00
 description: 77-way banking intent classification, learned from a few labelled rows and a panel of teachers
 modality: text
 task_type: classify

@@ -1,4 +1,6 @@
 name: assistant-intent
+title: Assistant actions
+created: 2026-10-21T15:14:47+02:00
 description: Which of the assistant's 60 actions a request asks for (MASSIVE intents)
 modality: text
 task_type: classify

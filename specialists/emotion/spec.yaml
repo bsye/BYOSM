@@ -1,4 +1,6 @@
 name: emotion
+title: Emotion
+created: 2026-10-20T22:15:14+02:00
 description: 'Classify the emotion expressed in a short English text, such as a tweet or a sentence: sadness, joy,
   love, anger, fear or surprise'
 modality: text

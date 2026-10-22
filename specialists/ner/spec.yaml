@@ -1,4 +1,6 @@
 name: ner
+title: Names in text
+created: 2026-10-21T13:54:01+02:00
 description: Find person, organisation, location and other names in English news text
 modality: text
 task_type: frame

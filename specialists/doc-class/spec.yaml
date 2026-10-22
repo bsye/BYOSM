@@ -1,0 +1,297 @@
+name: doc-class
+title: Legal document type
+created: 2026-10-21T15:35:25+02:00
+description: classify documents into service agreement, certificate, permit, lease agreement, tenant agreement,
+  coi, w9
+modality: document
+task_type: classify
+summary: 'Classify a single business/legal document (PDF or scanned page) into one of seven named categories: service
+  agreement, certificate, permit, lease agreement, tenant agreement, COI (certificate of insurance), or W-9. Catch-all
+  "other" for anything not matching.'
+input_description: 'The full text layer (OCR fallback) plus a rendered preview of the first up-to-4 pages of a business,
+  legal, insurance, or tax document. Documents range from 1-15 pages. Typical sources: property-management systems,
+  vendor onboarding, procurement, insurance portals, and tax filing. Many arrive as scans with watermarks, headers/footers,
+  and attached schedules.'
+labels:
+- name: service agreement
+  definition: 'A contract between a service provider and a client defining scope of services, fees, term, and termination
+    — e.g. professional services agreements, vendor SOWs, maintenance contracts, consulting contracts. Key signals:
+    ''terms and conditions of service'', ''scope of services'', ''billing'', ''provider/client'', service-specific
+    deliverables. Distinct from lease: no real-estate occupancy terms; the ''agreement'' is for services, not for
+    premises.'
+- name: certificate
+  definition: 'A short (1-3 page) document attesting the existence, validity, or state of some entity, qualification,
+    or standing — e.g. certificate of good standing, certificate of incorporation, professional license certificate,
+    degree certificate, trade/commerce certificate. Key signals: single-sentence attestation language, issuing authority
+    seal/signature, a specific certificate number, ''hereby certifies''. EXCLUDES: ''certificate of insurance''
+    (which is a COI → label ''coi''). EXCLUDES: permits (which grant an ongoing right/authorization → label ''permit'').
+    A ''certificate'' certifies a fact or status; a ''permit'' authorizes an action.'
+- name: permit
+  definition: 'A government or regulatory authorization to perform a specific action or operate in a specific manner
+    — e.g. building permit, health permit, liquor license, operating permit, permit to apply for licenses. Key signals:
+    ''by law/order, [agency] grants permission to…'', permit number, expiration date, conditions of granting, jurisdictional
+    agency header. Distinct from ''certificate'': a permit authorizes an ACTION (build, operate, serve alcohol);
+    a certificate attests a FACT or STATUS. Distinct from ''lease/tenant'': no occupancy/rent terms.'
+- name: lease agreement
+  definition: 'A contract between a LESSOR (landlord/property owner) and a Lessee (tenant/business occupant) for
+    the rental of commercial or residential real estate. Key signals: ''landlord/lessor'', ''tenant/lessee'', ''premises'',
+    ''monthly/annual rent'', base rent + CAM/TI allowances, square footage, common area maintenance, ''this Lease''
+    or ''Lease Agreement''. EXCLUDES: a tenant-only acknowledgment or rider (→ ''tenant agreement''). EXCLUDES:
+    a pure management/service contract over the property (→ ''service agreement''). A lease is the core document
+    establishing the tenancy and rent; a tenant agreement is a subordinate document the tenant signs acknowledging
+    obligations under an existing lease or building rules.'
+- name: tenant agreement
+  definition: 'A tenant-signed acknowledgment, rider, addendum, or code-of-conduct document that supplements an
+    existing lease but is NOT the core lease itself. Includes: Tenant Acknowledgment of Occupancy, Tenant''s Rules
+    & Regulations agreement, Tenant Addendum to Lease, Tenant''s Indemnification Acknowledgment, Tenant''s Certificate
+    of Insurance acknowledgment (signed form, not the COI itself), Move-in Condition Report, Tenant estoppel. Key
+    signals: ''tenant acknowledge(s)'', ''tenant agree(s)'', signed by tenant only (or tenant+property manager,
+    not a full landlord-lease structure), references an existing lease by date/number, shorter (1-4 pages), focused
+    on a single obligation (rules, acknowledgment, indemnity, insurance certificate). Distinct from ''lease agreement'':
+    no rent schedule, no base/TI/CAM breakdown, no full term-and-termination clause set.'
+- name: coi
+  definition: 'Certificate of Insurance (COI): a document issued by an insurance broker or carrier confirming that
+    a specific insurance policy (general liability, auto, workers'' comp, umbrella) is in force, listing insured,
+    policy limits, policy number, effective/expiry dates, and additional-insured language. Typically 1-3 pages,
+    often with a broker letterhead. Key signals: ''Certificate of Insurance'', ''policy number'', ''limits of liability'',
+    ''additional insured'', ''occurrence'' vs ''claims-made'', ''underlying'', broker/agent issuing. NOTE: the label
+    is exactly ''coi'' per user naming, even though it is a type of certificate. Distinct from generic ''certificate''
+    (which certifies a fact/status, not insurance coverage).'
+- name: w9
+  definition: 'IRS Form W-9, Request for Taxpayer Identification Number and Certification, or a substantially equivalent
+    in-house W-9-equivalent form (e.g. ''W-9 Certification'', ''W-9 equivalent''). 1-2 pages, specific IRS-form
+    layout: Line 1 (name), Line 2 (trade name), Line 3 (address), Line 4 (federal tax classification), Line 5 (TIN/SSN/EIN),
+    Line 6 (signature), plus certification checkboxes and a broker/de-broker statement. May also be a filled PDF
+    of the actual IRS form. Key signals: ''Form W-9'', ''Taxpayer Identification Number'', specific line-number
+    layout, EIN/SSN box, IRS reference. Distinct from ''certificate'' (no generic attestation) and from W-8 series
+    (W-8 is a foreign-person form → falls into ''other'' or ''w9'' if the user treats W-8 as in-scope; here W-9
+    is the named label only, so W-8/1099 go to ''other'').'
+- name: other
+  definition: 'Catch-all for anything not matching the seven named classes: W-8BEN/BEN-E, 1099s, invoices, purchase
+    orders, proposals (without a signed service agreement structure), estoppel letters, insurance claim forms, board
+    resolutions, NDAs, confidentiality agreements, employment agreements, resumes, cover letters, blank/unreadable
+    documents, mixed multi-document bundles where no single category dominates.'
+positive_label: null
+objective:
+  metric: macro_f1
+  target: 0.93
+  constraint: 0.88
+languages:
+- en
+diversity_axes:
+- name: document_format
+  values:
+  - digital-pdf-native
+  - scanned-image
+  - photo-of-paper
+  - OCR-extracted-text
+  - html-to-pdf
+  - multi-page-publisher-template
+  - fillable-pdf-form
+  - printed-letterhead
+- name: domain
+  values:
+  - commercial-real-estate
+  - vendor-management
+  - insurance-broker
+  - property-management
+  - tax-compliance
+  - construction
+  - franchising
+  - government-agency
+- name: issuer_register
+  values:
+  - law-firm-template
+  - brokerletterhead
+  - government-agency
+  - property-manager
+  - insurance-carrier
+  - in-house-forms-dept
+  - small-business-handwritten-edits
+  - multi-national-legal-department
+- name: length_and_structure
+  values:
+  - 1-pagers
+  - 2-4-pages
+  - 5-10-pages
+  - 10+pages
+  - dense-multi-column
+  - lots-of-graphics-watermarks
+  - form-fields-heavy
+  - narrative-paragraphs-heavy
+- name: language_dialect
+  values:
+  - US-English
+  - UK-English
+  - Canadian-English
+  - international-legal-English
+  - plain-English
+  - formal-archaic-law
+  - broker-jargon
+  - tenant-code-of-conduct-tone
+- name: edge_case_mix
+  values:
+  - w9-filled-vs-blank
+  - coi-with-broker-letter-attached
+  - lease-with-tenant-acknowledgment-bundled
+  - certificate-of-insurance-mislabeled
+  - permit-with-exemption-clauses
+  - tenant-rules-mimicking-lease
+  - service-agreement-named-lease
+hard_cases:
+- Certificate of Insurance issued by a broker with the title 'Certificate' on the letterhead → should be 'coi',
+  not 'certificate'.
+- 'A ''Certificate of Occupancy'' issued by a city → should be ''permit'' (it authorizes occupancy) or ''certificate''?
+  Borderline; here ''permit'' if it authorizes, ''certificate'' if it merely attests. Define: ''Certificate of Occupancy''
+  → ''permit'' (authorizes use).'
+- A 'Commercial Lease Agreement Addendum' signed by tenant only → 'tenant agreement', not 'lease agreement'.
+- A 'Lease' between a parent company and a subsidiary that is really a service contract (no real estate) → 'service
+  agreement' or 'other', not 'lease'.
+- A 10-page 'Vendor Services Agreement' that includes a 'certificate of insurance' appendix → main doc is 'service
+  agreement'; do not split by appendix.
+- A W-9 form partially filled with a handwritten SSN and a broker cover letter → still 'w9'.
+- An 'Insurance Certificate Request Form' (blank, not the COI itself) → 'other', not 'coi'.
+- A 'Tenant Estoppel Certificate' → 'other' or 'tenant agreement'? Estoppel certifies lease terms for a lender →
+  classify as 'other' (not a lease, not a certificate of fact in the attestation sense, not tenant rules).
+- A building permit that is titled 'Building Certificate' → 'permit' (it authorizes construction).
+- A 'Service Agreement' between a landlord and tenant that is really a maintenance contract over the building (not
+  occupancy) → 'service agreement', not 'lease'.
+- A 'Certificate of Incorporation' → 'certificate', not 'permit'.
+- A 'Certificate of Good Standing' → 'certificate'.
+- A 'Certificate of Insurance' issued as a rider appended to a W-9 bundle → if the main document of the bundle is
+  W-9 → 'w9'; label by dominant doc in the bundle, prefer the first page.
+- A 'Tenant Agreement' that actually contains rent, square feet, and a full term structure → should be reclassifed
+  as 'lease agreement'; the model must use structure (rent schedule, TI, CAM) not just the title word 'tenant'.
+- A scanned W-9 where the IRS form layout is distorted and 'Form W-9' is not visible but the line numbers are →
+  'w9'.
+- A 'Permit to Apply for a Liquor License' (pre-license) → 'permit'.
+- An 'Operating Permit' that is actually an annual 'license' (e.g. taxi license) → 'permit'.
+- 'A ''Certificate'' that is actually a business license issued by a city → ''permit'' (it authorizes operation),
+  not ''certificate''. This is the certificate/permit boundary and must be resolved by: does it authorize an action
+  (permit) or attest a fact (certificate)?'
+backbone: doc
+latency_budget_ms: 300.0
+frame_hop_ms: 10.0
+data:
+  synthetic: false
+  train_size: 5000
+  dev_size: 400
+  test_size: 800
+  per_call: 25
+  judge: true
+  hf_queries:
+  - banking77
+  - doctype
+  - document classification legal
+  - pdf document type
+  - lease agreement dataset
+  - insurance certificate of insurance
+  - IRS form W-9
+  - real estate documents
+  - business document types
+  - rvl-cdip
+  - doc-class
+  - property management documents
+  hf_sources:
+  - dataset: cardiffnlp/tweet_sentiment_multilingual
+    role: unlabeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: stream
+    per_label: 100
+    config: null
+    split: train
+    input_column: null
+    label_column: null
+    label_map: []
+    max_rows: 5000
+  - dataset: HuggingFaceFW/fineweb-edu
+    role: unlabeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: stream
+    per_label: 100
+    config: null
+    split: train
+    input_column: null
+    label_column: null
+    label_map: []
+    max_rows: 5000
+  local_dir: null
+  audio:
+    sample_rate: 16000
+    clip_seconds: 4.0
+    snr_db:
+    - -5.0
+    - 30.0
+    max_events: 3
+    label_by_energy: true
+    fill_ms: 60
+train:
+  pretrain_steps: 1500
+  pretrain_lambda: 0.05
+  epochs: 30
+  batch_size: 32
+  lr_backbone: 0.002
+  lr_head: 0.001
+  freeze_backbone: false
+  max_len: 128
+  refine_rounds: 2
+  refine_examples: 300
+  pool: mean
+  layer_decay_floor: 0.5
+  probe_epochs: 0
+  ema: true
+  seed: 0
+  holdout_test: auto
+  precision: auto
+  distill_from: null
+  distill_alpha: 0.3
+  distill_temperature: 2.0
+  distill_unlabeled: 20000
+decision:
+  kind: threshold
+  threshold: null
+  deactivation_offset: 0.15
+  min_on_ms: 50.0
+  min_off_ms: 550.0
+  smooth_alpha_per_32ms: 0.35
+document:
+  route: fused
+  text_backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+  image_backbone: hf:facebook/dinov2-small
+  image_pool: mean
+  max_pages: 8
+  max_len: 256
+  image_size: 224
+  dpi: 100
+  ocr: auto
+  dim: 256
+  modality_dropout: 0.2
+evals:
+- name: builtin
+  kind: builtin
+  source: null
+  path: null
+  max_items: 400
+  primary: true
+baselines:
+- llm
+search:
+  benchmark:
+  - rvl-cdip
+  - banking77
+  - document type classification
+  - document classification benchmark
+  - legal document classification
+  - pdf doctype benchmark
+  baseline:
+  - doc-class
+  - doctype classification
+  - legal document NLP
+  - PDF document type
+  - document intent classification
+  - lease agreement detection
+  - document type small model

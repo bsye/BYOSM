@@ -1,4 +1,6 @@
 name: vad
+title: Voice activity
+created: 2026-10-16T12:52:38+02:00
 description: Voice activity detection for a realtime voice agent. For every 10ms of microphone audio, say whether
   a human is speaking. Must ignore background noise, coughs, laughter, door slams, keyboard, crying babies and other
   non-speech human sounds. Runs on-device next to the agent, streaming, in well under 1ms per frame.

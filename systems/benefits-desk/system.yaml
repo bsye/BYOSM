@@ -1,4 +1,6 @@
 name: benefits-desk
+title: Benefits desk
+created: 2026-10-22T01:11:24+02:00
 description: Route a member's request about insurance or benefits to the right action while it is typed
 nodes:
   intent:

@@ -1,4 +1,6 @@
 name: benefits-intent
+title: Benefits support router
+created: 2026-10-22T01:03:46+02:00
 description: Route a member's request about insurance or benefits to one of 39 support intents
 modality: text
 task_type: classify
@@ -101,6 +103,7 @@ data:
   dev_size: 400
   test_size: 600
   per_call: 25
+  max_minutes: 120.0
   judge: true
   hf_queries: []
   hf_sources:
@@ -196,6 +199,8 @@ data:
       - upgrade_coverage
     max_rows: 39000
   local_dir: null
+  teachers: []
+  teacher_rows: 2000
   audio:
     sample_rate: 16000
     clip_seconds: 4.0
@@ -250,8 +255,13 @@ document:
 evals:
 - name: builtin
   kind: builtin
+  source: null
+  path: null
   max_items: 2000
   primary: true
+  written_by: null
+  judged_by: null
 baselines:
 - jev
+- llm
 search: {}

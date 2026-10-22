@@ -1,4 +1,6 @@
 name: assistant
+title: Voice assistant
+created: 2026-10-21T15:13:53+02:00
 description: Understand a request to a voice assistant, which of its actions it asks for, and the words that fill the action's arguments
 nodes:
   intent:

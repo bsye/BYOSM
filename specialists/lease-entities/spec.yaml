@@ -1,4 +1,6 @@
 name: lease-entities
+title: Lease dates, amounts and parties
+created: 2026-10-22T00:47:54+02:00
 description: find the dates, amounts and parties in a lease agreement
 modality: text
 task_type: frame

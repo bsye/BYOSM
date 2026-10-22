@@ -1,4 +1,6 @@
 name: assistant-args
+title: Assistant arguments
+created: 2026-10-21T15:19:06+02:00
 description: Which words of a request fill an action's arguments, and their type (MASSIVE slots)
 modality: text
 task_type: frame
