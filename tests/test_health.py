@@ -49,3 +49,19 @@ def test_a_big_drop_on_another_suite_fails_robustness(ws):
 def test_no_promoted_score_gives_no_health(ws):
     p, spec = _specialist(ws, {})
     assert health(p, spec) is None
+
+
+def test_the_lead_is_recomputed_when_a_new_rival_becomes_the_best(ws, monkeypatch):
+    import byosm.health as health_module
+
+    def fake_compare(spec, mine, theirs, split):
+        delta = mine["objective"] - theirs["objective"]
+        return {"delta": delta, "p_better": 0.5, "lo": delta, "hi": delta}
+
+    monkeypatch.setattr(health_module, "compare", fake_compare)
+    rows = {"v1": {"builtin": _result(0.9)}, "jev": {"builtin": _result(0.7, kind="baseline")}}
+    p, spec = _specialist(ws, rows)
+    assert {c["id"]: c for c in health(p, spec)["checks"]}["rival"]["value"].startswith("+0.200")
+    p.add_baselines(["strong"])
+    p.save_result("strong", "builtin", _result(0.88, kind="baseline"))
+    assert {c["id"]: c for c in health(p, spec)["checks"]}["rival"]["value"].startswith("+0.020")

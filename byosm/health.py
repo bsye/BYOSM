@@ -32,9 +32,9 @@ def _graded(v: float, ok: float, warn: float, higher_is_better: bool = True) -> 
     return OK if v >= ok else WARN if v >= warn else FAIL
 
 
-def _lead(p: Project, spec: TaskSpec, mine: dict, theirs: dict) -> dict | None:
+def _lead(p: Project, spec: TaskSpec, mine: dict, rival: str, theirs: dict) -> dict | None:
     saved = p.report(LEAD) or {}
-    key = f"{mine.get('fingerprint')}:{theirs.get('fingerprint')}"
+    key = f"{p.promoted}:{rival}:{mine.get('fingerprint')}"
     if key not in saved:
         saved = {key: compare(spec, mine, theirs, "test")}
         p.save_report(LEAD, saved)
@@ -48,7 +48,7 @@ def _rival(p: Project, spec: TaskSpec, board: dict, prim: str, mine: dict) -> di
             "rival", "Beats the best rival", 3, UNKNOWN, "no rival scored", "No baseline was scored on this benchmark."
         )
     theirs = board[best[0]][prim]
-    cmp = _lead(p, spec, mine, theirs)
+    cmp = _lead(p, spec, mine, best[0], theirs)
     delta = cmp["delta"] if cmp else mine["objective"] - theirs["objective"]
     sure = cmp["p_better"] if cmp else None
     status = OK if sure is not None and sure >= SURE_LEAD else WARN if delta >= 0 else FAIL
