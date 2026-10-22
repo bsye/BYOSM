@@ -1032,3 +1032,11 @@ evaluating (rival answers, test sets). Training power is measured training time 
 divided by the items those runs scored; ours is the measured CPU time per input at the same power price. Break-even is
 the build cost over the saving per item. Calls made through Claude Code include its own prompt, which inflates build
 and per-item cost alike, so the break-even is steadier than either dollar figure.
+
+## One training on the GPU at a time
+
+Seven jobs training on the Apple GPU at once froze a 64 GB M5 Max until the kernel watchdog rebooted it ("no checkins
+from watchdogd in 91 seconds"). Jobs still run in parallel, but `train.gpu.gpu_slot` lets only `gpu_jobs` of them (one
+by default, set in `byosm.yaml`) pretrain and train on `mps` or `cuda` at a time. The slots are `flock`ed files under
+`.byosm/gpu`, so the operating system releases a slot when its job dies, and a waiting job logs that it waits. LLM
+work (writing and checking data, analysis) needs no slot and keeps running alongside.

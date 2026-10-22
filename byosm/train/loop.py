@@ -19,6 +19,7 @@ from ..model import SpecialistModel, count_params
 from ..spec import TaskSpec
 from .common import build_model, cpu_state, targets_of
 from .evaluate import evaluate_rows
+from .gpu import gpu_slot
 from .outputs import build_meta, save_run
 from .teacher import _teacher_targets, row_soft_targets
 from .trainer import Trainer, class_weight
@@ -141,10 +142,23 @@ def fit(
     seed: int | None = None,
     splits: tuple[str, ...] | list[str] = BASE_TRAIN,
 ) -> tuple[dict[str, Any], list[Any]]:
+    dev = pick_device()
+    with gpu_slot(dev, log):
+        return _fit(spec, data_dir, run_dir, log, seed, splits, dev)
+
+
+def _fit(
+    spec: TaskSpec,
+    data_dir: Path,
+    run_dir: Path,
+    log: Callable[[str], None],
+    seed: int | None,
+    splits: tuple[str, ...] | list[str],
+    dev: str,
+) -> tuple[dict[str, Any], list[Any]]:
     seed = spec.train.seed if seed is None else seed
     torch.manual_seed(seed)
     rng = random.Random(seed)
-    dev = pick_device()
     ds = Dataset(data_dir)
     mod = get_modality(spec, str(data_dir))
     train_rows, dev_rows, n_folded = split_rows(spec, ds, rng, log, splits)
