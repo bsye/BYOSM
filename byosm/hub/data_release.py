@@ -5,6 +5,8 @@ from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 
+import yaml
+
 from ..data.store import BASE_TRAIN, Dataset
 from ..evals.test_sets import held_out_set, test_sets
 from ..evals.workbench import OURS
@@ -13,27 +15,12 @@ from .facts import CardFacts
 
 SUFFIX = "-data"
 UNKNOWN_LICENCE = "licence not stated on its card"
+MAIN_SPLITS = ("train", "validation", "test")
 FIELDS = ("id", "input", "label", "source")
 LLM_SOURCE = "llm:"
 HUB_SOURCE = "hf:"
 CARD = """---
-license: {license}
-language: {languages}
-task_categories:
-- text-classification
-pretty_name: {title} data
-size_categories:
-- {size}
-configs:
-- config_name: default
-  data_files:
-  - split: train
-    path: data/train.jsonl
-  - split: validation
-    path: data/validation.jsonl
-  - split: test
-    path: data/test.jsonl
-{extra}---
+{front}---
 
 # {title}: training and test data
 
@@ -118,23 +105,33 @@ def _summary(rows: list[dict]) -> str:
     return ", ".join(f"{s.removeprefix(LLM_SOURCE)} {n:,}" for s, n in c.most_common())
 
 
+def _config(name: str, files: dict[str, str]) -> dict:
+    return {"config_name": name, "data_files": [{"split": s, "path": p} for s, p in files.items()]}
+
+
+def front(f: CardFacts, found: dict[str, list[dict]], total: int) -> str:
+    extra = [_config(n, {"test": f"test-sets/{n}.jsonl"}) for n in found if n not in MAIN_SPLITS]
+    meta = {
+        "license": f.license,
+        "language": list(f.base.languages),
+        "task_categories": ["text-classification"],
+        "pretty_name": f"{f.base.title or f.base.name} data",
+        "size_categories": ["10K<n<100K" if total >= 10_000 else "1K<n<10K"],
+        "configs": [_config("default", {s: f"data/{s}.jsonl" for s in MAIN_SPLITS}), *extra],
+    }
+    return yaml.safe_dump(meta, sort_keys=False, allow_unicode=True)
+
+
 def stage(f: CardFacts, out: Path) -> Path:
     found = splits(f)
     for name, rows in found.items():
-        _write(out / ("data" if name in ("train", "validation", "test") else "test-sets") / f"{name}.jsonl", rows)
-    extra = "".join(
-        f"- config_name: {n}\n  data_files:\n  - split: test\n    path: test-sets/{n}.jsonl\n"
-        for n in found
-        if n not in ("train", "validation", "test")
-    )
+        _write(out / ("data" if name in MAIN_SPLITS else "test-sets") / f"{name}.jsonl", rows)
     total = sum(len(r) for r in found.values())
     (out / "README.md").write_text(
         CARD.format(
+            front=front(f, found, total),
             license=f.license,
-            languages="\n".join(f"- {lang}" for lang in f.base.languages),
             title=f.base.title or f.base.name,
-            size="10K<n<100K" if total >= 10_000 else "1K<n<10K",
-            extra=extra,
             model=f.repo_id,
             rows="\n".join(f"| {n} | {len(r):,} | {_summary(r)} |" for n, r in found.items()),
             sources=_source_lines(found),
