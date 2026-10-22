@@ -24,6 +24,20 @@ Rivals and benchmarks: [methodology](methodology.md).
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
 <!-- /report:summary -->
 
+## Limitations
+
+Where it does not win:
+
+| Case | What happened |
+|---|---|
+| Banking77, first model | 0.797 against Jev's 0.807; it took several rounds of experiments to reach 0.937 |
+| Banking77 against the best public fine-tune | 0.937 against 0.937 for `DarioFrK/sift-banking77-modernbert` (about 6× larger): a tie (P(better) 0.54) |
+| Named entities (CoNLL-2003) | 0.913 against 0.910 for `bert-base-NER`: a tie (P(better) 0.86) |
+| Card spend, insurance intents | Scored on held-out splits of their own data, not public benchmarks |
+| Insurance intents on LLM-written inputs | 0.410 against Jev's 0.885: it does not yet hold on new inputs |
+| Turn detection | The LLM has the higher accuracy (0.952 against 0.944); BYOSM wins only at 98% precision |
+| Languages | Every specialist so far is English only |
+
 ## Voice activity ([bsye/byosm-vad](https://huggingface.co/bsye/byosm-vad))
 
 <!-- report:vad -->

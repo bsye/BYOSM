@@ -31,4 +31,19 @@ Still open:
 - **The autopilot on its own.** Two full runs from one sentence: emotion won inside its budget; topic needed two more
   data steps by hand. VAD, documents and intent were built step by step.
 
+## What's new, and what isn't
+
+The recipe is not new: fine-tune a small pretrained encoder on labelled examples. BYOSM automates everything around it
+from one sentence. It finds a public benchmark and training data on Hugging Face, or has an LLM write the data and a
+second LLM check the labels. It trains, proposes and runs experiments, and scores the result against the models you
+would otherwise use, with the same code and a paired bootstrap:
+
+- **LLMs** called zero-shot (Claude, GPT, Qwen through Ollama, ...).
+- **[Jev](https://typesafe.ai)**, TypeSafe's judgment model: a fast hosted classifier that takes label definitions instead of training.
+- **Models already fine-tuned on the same benchmark**, found on Hugging Face by a web-searching LLM. These are the fairest bar.
+
+Close relatives: [SetFit](https://github.com/huggingface/setfit) (few-shot fine-tuning of sentence encoders) and
+[AutoTrain](https://huggingface.co/autotrain) (no-code fine-tuning on your data). BYOSM starts from a sentence instead
+of a dataset, and its output is a comparison you can trust as much as the model.
+
 <p align="center"><a href="../README.md">Tour</a> · <b>Goal and bet</b> · <a href="methodology.md">Methodology</a> · <a href="results.md">Results</a> · <a href="details.md">Details</a></p>

@@ -27,6 +27,25 @@ How we keep it honest:
 - **Compare paired.** Every "ours vs theirs" is a paired bootstrap over the same items (P(better)), not two point
   estimates side by side.
 
+
+## Why the numbers hold up
+
+A small model "beating GPT" is easy to fake. Each of these guards runs in code on every specialist; none is a promise in prose.
+
+| Risk | Guard |
+|---|---|
+| Grading on your own homework | Rivals (LLMs, Hugging Face models, LiveKit, Silero) go through the same scorer, on the same frozen splits, with thresholds calibrated on the same calib split. |
+| Picking the lucky run | Promotion and the autopilot decide on calib only. Test is reported once, with a 95% bootstrap interval. |
+| A lead that is noise | Every "ours vs theirs" is a paired bootstrap over the same rows; the health check counts a lead only when 95% of resamples keep it. |
+| Memorising the training data | The overfitting check compares train, dev, calib and test, flags a dev curve that peaks and falls, and flags calib over-use. |
+| Test rows leaking into training | Near-duplicate rows are grouped before splitting, so paraphrases never straddle train and test; the overfitting check also measures train/test overlap and the score without it. |
+| Tiny test sets | Health fails "Precise score" below 100 test rows; a build adopts a bigger held-out set when an experiment brings one. |
+| Only good on its own kind of data | "Holds on new inputs" scores it on test sets written separately; a model is not production ready until that is measured. |
+| A metric that hides the trade-off | Constrained metrics carry their bound ("recall at 98% precision"), and a rival that never reaches the bound shows what it does reach. |
+| Numbers typed by hand | The result tables are regenerated from the results database by `byosm report`; model cards separate what code measured from what an LLM wrote. |
+
+Every number: [Results](results.md).
+
 ## Benchmarks
 
 Public and industry-standard where one exists. Every rival is scored by the same code on the same frozen splits.
