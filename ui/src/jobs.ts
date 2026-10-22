@@ -87,6 +87,14 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   return openStage(metrics) ?? (lines.findLast((l) => l.trim() && !l.startsWith(EVENT_PREFIX))?.trim() || "Starting")
 }
 
+const ERROR_ENDINGS = ["Error:", "Exception:", "Interrupt:", "Exit:"]
+
+export function failure(lines: string[]): string | null {
+  const shown = lines.filter((l) => l.trim() && !l.startsWith(EVENT_PREFIX))
+  const error = shown.findLast((l) => ERROR_ENDINGS.some((e) => l.trim().split(" ")[0].endsWith(e)))
+  return (error ?? shown.at(-1))?.trim() ?? null
+}
+
 const PROVIDER_PREFIXES = ["openai:", "anthropic:", "claude-code:", "codex:"]
 
 export function modelName(id: string): string {

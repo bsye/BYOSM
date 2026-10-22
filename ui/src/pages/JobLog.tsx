@@ -1,12 +1,13 @@
-import { Loader2, Square } from "lucide-react"
+import { CircleX, Loader2, Square } from "lucide-react"
 import { useEffect, useRef } from "react"
 import { post } from "@/api"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useJob, useLive } from "@/events"
 import { seconds, took } from "@/format"
 import { decisions, stages } from "@/job-story"
-import { currentStep, EVENT_PREFIX, llmUsed, steps, timeLeft } from "@/jobs"
+import { currentStep, EVENT_PREFIX, failure, llmUsed, steps, timeLeft } from "@/jobs"
 import { useNow } from "@/now"
 import { DecisionTree } from "./DecisionTree"
 import { JobMetrics } from "./JobMetrics"
@@ -86,6 +87,13 @@ export function JobDetail({ id }: { id: string }) {
           </Button>
         )}
       </div>
+      {job.status === "failed" && (
+        <Alert variant="destructive">
+          <CircleX />
+          <AlertTitle>Failed</AlertTitle>
+          <AlertDescription className="font-mono text-xs break-all">{failure(lines) ?? "The job ended without output."}</AlertDescription>
+        </Alert>
+      )}
       {active && <Now text={currentStep(metrics, lines)} since={last == null ? job.started : Number(last)} left={timeLeft(metrics)} now={now} />}
       <div className={`grid gap-4 md:gap-6 ${choices.length ? "@5xl/main:grid-cols-2" : ""}`}>
         <JobStages items={story} started={job.started} active={active} now={now} />
