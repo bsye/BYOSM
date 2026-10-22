@@ -7,6 +7,7 @@ from .data.sufficiency import ENOUGH, MIN_TEST_ITEMS, THIN, data_check
 from .evals.overfit import OVERFIT
 from .evals.selection import compare
 from .export.bundle import exported_current
+from .model_refs import model_ref
 from .project import Project
 from .spec import TaskSpec
 
@@ -52,7 +53,9 @@ def _rival(p: Project, spec: TaskSpec, board: dict, prim: str, mine: dict) -> di
     delta = cmp["delta"] if cmp else mine["objective"] - theirs["objective"]
     sure = cmp["p_better"] if cmp else None
     status = OK if sure is not None and sure >= SURE_LEAD else WARN if delta >= 0 else FAIL
-    value = f"{delta:+.3f} vs {best[0]}" + (f", {sure:.0%} sure" if sure is not None else "")
+    value = f"{delta:+.3f} vs {model_ref(p, best[0], theirs)['name']}" + (
+        f", {sure:.0%} sure" if sure is not None else ""
+    )
     why = "Paired bootstrap on the test split: the lead counts when at least 95% of resamples keep it."
     return _check("rival", "Beats the best rival", 3, status, value, why)
 
