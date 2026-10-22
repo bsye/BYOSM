@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { rivalName } from "@/format"
-import { GeneratedSuites } from "./GeneratedSuites"
+import { TestSets } from "./TestSets"
 import { HfRivals } from "./HfRivals"
 import { LiveVad } from "./LiveVad"
 
@@ -196,7 +196,7 @@ export function Playground({ d }: { d: Detail }) {
     <div className="flex flex-col gap-4 md:gap-6">
       {d.modality === "audio" && d.exported ? <LiveVad name={d.name} /> : <TryIt d={d} />}
       <HfRivals name={d.name} ours={(d.spec.labels as { name: string }[]).map((l) => l.name)} />
-      <GeneratedSuites d={d} />
+      {d.task_type === "classify" && <TestSets name={d.name} labels={d.labels} models={d.models} promoted={d.promoted} />}
     </div>
   )
 }
