@@ -187,3 +187,13 @@ def ready(
 
     out = until_ready(name, lambda args: app(args, standalone_mode=False), log, rounds, budget)
     log(f"{name}: {'ready for production' if out['ready'] else 'not ready, ' + out['stop']}")
+
+
+@app.command("ideas")
+def ideas() -> None:
+    """Search the web for small specialists worth building next, each with a public benchmark and a rival to beat."""
+    from ..config import find_workspace
+    from ..ideas import find_ideas
+
+    for i in find_ideas(find_workspace(), log):
+        log(f"- {i['title']}: {i['prompt']}  (benchmark {i['dataset']}, rival {i.get('rival') or '-'})")

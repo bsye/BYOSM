@@ -29,6 +29,7 @@ ALLOWED_COMMANDS = (
     "ablate",
     "next",
     "ready",
+    "ideas",
     "inputs",
     "datasets",
     "system",

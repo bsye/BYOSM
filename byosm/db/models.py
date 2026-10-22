@@ -125,3 +125,11 @@ class SystemReport(Base):
     kind: Mapped[str] = mapped_column(String(300))
     data: Mapped[Any] = mapped_column(Json)
     updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class WorkspaceReport(Base):
+    __tablename__ = "workspace_reports"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(100), unique=True)
+    data: Mapped[Any] = mapped_column(Json)
+    updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)

@@ -25,6 +25,12 @@ def resources_router(ws: Path) -> APIRouter:
 
         return trending()
 
+    @router.get("/api/ideas")
+    def ideas() -> dict[str, Any]:
+        from ..ideas import saved
+
+        return saved(ws)
+
     @router.get("/api/costs")
     def costs() -> dict[str, Any]:
         return _costs(ws, int(time.time() // COSTS_TTL_S))

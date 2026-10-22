@@ -4,12 +4,15 @@ import { api } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { useShowMore } from "@/components/show-more"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Ideas, ResearchButton } from "./Ideas"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { compact, params } from "@/format"
 
 const SKELETON_ROWS = 6
+type Tab = "trending" | "ideas"
 
 type Trending = { id: string; task: string; downloads: number; likes: number; params: number | null }
 
@@ -30,16 +33,32 @@ export function Opportunities({ onPick }: { onPick: (prompt: string) => void }) 
     api<Trending[]>("/opportunities").then(setRows, () => setRows([]))
   }, [])
   const { shown, footer } = useShowMore(rows ?? [])
+  const [tab, setTab] = useState<Tab>("trending")
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          Trending on Hugging Face
-          <InfoTip>Trending models in the tasks BYOSM builds. Replicate one with a small specialist and score it as a rival.</InfoTip>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+            <TabsList>
+              <TabsTrigger value="trending">Trending</TabsTrigger>
+              <TabsTrigger value="ideas">Ideas</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <InfoTip>
+            Trending: models trending on Hugging Face in the tasks BYOSM builds. Ideas: specialists an LLM found worth building, each with a public
+            benchmark and a rival. Replicate or Use puts the task in the prompt above.
+          </InfoTip>
         </CardTitle>
+        {tab === "ideas" && (
+          <CardAction>
+            <ResearchButton />
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
-        {rows == null ? (
+        {tab === "ideas" ? (
+          <Ideas onPick={onPick} />
+        ) : rows == null ? (
           <div className="space-y-3">
             {Array.from({ length: SKELETON_ROWS }, (_, i) => (
               <Skeleton key={i} className="h-8" />
@@ -83,7 +102,7 @@ export function Opportunities({ onPick }: { onPick: (prompt: string) => void }) 
           </Table>
         )}
       </CardContent>
-      {footer}
+      {tab === "trending" && footer}
     </Card>
   )
 }
