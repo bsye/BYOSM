@@ -139,6 +139,7 @@ Where it does not win, from the [results](docs/results.md):
 | Case | What happened |
 |---|---|
 | Banking77, first model | 0.797 against Jev's 0.807; it took several rounds of experiments to reach 0.937 |
+| Banking77 against the best public fine-tune | 0.937 against 0.937 for `DarioFrK/sift-banking77-modernbert` (about 6× larger): a tie (P(better) 0.54) |
 | Named entities (CoNLL-2003) | 0.913 against 0.910 for `bert-base-NER`: a tie (P(better) 0.86) |
 | Card spend, insurance intents | Scored on held-out splits of their own data, not public benchmarks |
 | Insurance intents on LLM-written inputs | 0.410 against Jev's 0.885: it does not yet hold on new inputs |
