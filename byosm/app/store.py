@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 
 from ..db import session
 from ..db.models import Job, JobEvent, JobLine
+from ..events import TARGET
 
 JOB_FIELDS = ("id", "args", "status", "created", "started", "ended", "code", "pid")
 USAGE_COLUMNS = (
@@ -60,6 +61,11 @@ class JobStore:
     def jobs(self) -> list[dict[str, Any]]:
         with session(self.ws) as s:
             return [{k: getattr(j, k) for k in JOB_FIELDS} for j in s.scalars(select(Job).order_by(Job.created))]
+
+    def targets(self) -> dict[str, str]:
+        with session(self.ws) as s:
+            rows = s.execute(select(JobEvent.job, JobEvent.data).where(JobEvent.kind == TARGET)).all()
+        return {job: d.get("name") for job, d in rows}
 
     def lines(self, job_id: str) -> list[str]:
         with session(self.ws) as s:

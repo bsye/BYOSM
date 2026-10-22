@@ -6,6 +6,7 @@ from typing import Any
 
 from ..config import PUBLISH_LICENSE, load_config
 from ..data.request import missing_labels
+from ..events import TARGET, emit
 from ..llm import role_model
 from ..project import Project
 from .loop import improve_until_stop
@@ -163,6 +164,7 @@ def run(
     cfg = load_config()
     fresh = None if name and Project(name).exists() else _compile(name, prompt, modality, cfg)
     name = fresh.name if fresh else name
+    emit(TARGET, name=name)
     p = Project(name)
     log = Log(p, echo)
     t0 = time.time()

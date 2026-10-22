@@ -41,8 +41,13 @@ export const EVENT_PREFIX = "@event "
 
 export type Described = { title: string; target: string | null; subject: string | null }
 
-export function describe(job: Pick<Job, "args">): Described {
-  const [cmd, ...rest] = job.args
+export function describe(job: Pick<Job, "args" | "target">): Described {
+  const parsed = fromArgs(job.args)
+  return job.target ? { ...parsed, target: job.target } : parsed
+}
+
+function fromArgs(args: string[]): Described {
+  const [cmd, ...rest] = args
   const sub = SUB_VERBS[cmd]?.[rest[0]]
   if (sub) return { title: sub, target: rest[1] ?? null, subject: rest[2] ?? null }
   if (cmd === "inputs") return { title: INPUT_VERBS[rest[0]] ?? "Test inputs", target: rest[1] ?? null, subject: rest[rest.indexOf("--set") + 1] ?? null }

@@ -7,6 +7,7 @@ import time
 from collections.abc import Iterator
 from typing import Any
 
+TARGET = "target"
 EVENTS_ENV = "BYOSM_EVENTS"
 EVENT_PREFIX = "@event "
 

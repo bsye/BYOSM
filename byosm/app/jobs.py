@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..events import EVENTS_ENV, parse
+from ..events import EVENTS_ENV, TARGET, parse
 from ..resources import can_start_job, max_jobs
 from .allowed import ALLOWED_COMMANDS
 from .detached import LOG_SUFFIX, Tail, alive, exit_code, forget, job_file, kill_group, spawn
@@ -37,15 +37,17 @@ class Job:
     pid: int | None = None
     cancel: bool = False
     llm: dict[str, Any] | None = None
+    target: str | None = None
 
     def public(self) -> dict[str, Any]:
-        return {k: getattr(self, k) for k in JOB_FIELDS}
+        return {k: getattr(self, k) for k in (*JOB_FIELDS, TARGET)}
 
 
 class Runner:
     def __init__(self, ws: Path, hub: Hub, parallel: int | None = None) -> None:
         self.ws, self.hub, self.store = ws, hub, JobStore(ws)
-        self.jobs = {row["id"]: Job(**row) for row in self.store.jobs()}
+        targets = self.store.targets()
+        self.jobs = {row["id"]: Job(**row, target=targets.get(row["id"])) for row in self.store.jobs()}
         self.todo: queue.Queue[Job] = queue.Queue()
         self.procs: dict[str, subprocess.Popen] = {}
         self.lock = threading.Lock()
@@ -99,6 +101,9 @@ class Runner:
 
     def _metric(self, job: Job, data: dict[str, Any]) -> None:
         self.store.event(job.id, data)
+        if data.get("kind") == TARGET:
+            job.target = data.get("name")
+            self.hub.publish({"type": "job", "job": job.public()})
         self.hub.publish({"type": "metric", "job": job.id, "data": data})
 
     def _output(self, job: Job, line: str) -> None:

@@ -1,4 +1,5 @@
 import { InfoTip } from "@/components/info-tip"
+import { RunningHere } from "./RunningHere"
 import { Gauge, Hammer, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { api, del, put, runJob, type Detail } from "@/api"
@@ -245,6 +246,7 @@ function Model({ name }: { name: string }) {
           </Button>
         </div>
       </div>
+      <RunningHere name={name} />
       <div className="grid gap-4 *:data-[slot=card]:h-full @3xl/main:grid-cols-2">
         <Health d={d} />
         <NextSteps d={d} />

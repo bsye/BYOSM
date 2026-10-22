@@ -54,6 +54,7 @@ export type Job = {
   started: number | null
   ended: number | null
   code: number | null
+  target?: string | null
 }
 
 export type Result = {
