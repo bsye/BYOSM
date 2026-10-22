@@ -1,9 +1,7 @@
-import { Hammer, Loader2, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react"
+import { CalendarDays, Hammer, Plus, Shapes } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, runJob, type Summary } from "@/api"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -16,12 +14,14 @@ import {
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useLive } from "@/events"
-import { metricName, signed, rivalName, score } from "@/format"
 import { describe } from "@/jobs"
-import { go, href } from "@/route"
+import { go } from "@/route"
 import { Overview } from "./Overview"
 import { SectionCards } from "./SectionCards"
+import { SpecialistCard } from "./SpecialistCard"
+import { byDate, byKind, type Group } from "./specialist-groups"
 
 const SKELETONS = 6
 const EXAMPLE = "classify support emails into billing, shipping, technical or other"
@@ -57,64 +57,55 @@ function NewSpecialist({ children }: { children: React.ReactNode }) {
   )
 }
 
-function Delta({ s }: { s: Summary }) {
-  if (s.score == null || s.rival?.score == null) return <span className="text-muted-foreground">No rival scored yet</span>
-  const d = s.score - s.rival.score
-  const Icon = d > 0 ? TrendingUp : d < 0 ? TrendingDown : Minus
-  return (
-    <span className="text-muted-foreground flex w-full min-w-0 items-center gap-1">
-      <Icon className="size-3.5 shrink-0" />
-      <span className="text-foreground font-medium tabular-nums">
-        {signed(d)}
-      </span>
-      <span className="min-w-0 truncate">vs {rivalName(s.rival.name)}</span>
-    </span>
-  )
+const GROUPING_KEY = "byosm-specialists-grouping"
+const GROUPINGS = { type: byKind, date: byDate }
+type Grouping = keyof typeof GROUPINGS
+
+function useGrouping(): [Grouping, (g: Grouping) => void] {
+  const [value, setValue] = useState<Grouping>(() => {
+    try {
+      return localStorage.getItem(GROUPING_KEY) === "date" ? "date" : "type"
+    } catch {
+      return "type"
+    }
+  })
+  const set = (g: Grouping) => {
+    setValue(g)
+    try {
+      localStorage.setItem(GROUPING_KEY, g)
+    } catch {
+      return
+    }
+  }
+  return [value, set]
 }
 
-function SpecialistCard({ s, building }: { s: Summary; building: boolean }) {
+function Section({ group, busy, showKind }: { group: Group; busy: Map<string, string>; showKind: boolean }) {
   return (
-    <a href={href("specialists", s.name)} className="h-full">
-      <Card className="h-full">
-        <CardHeader>
-          <CardTitle>{s.name}</CardTitle>
-          <CardDescription className="line-clamp-1">{s.description}</CardDescription>
-          <CardAction>
-            {s.kind === "team" ? (
-              <Badge variant="outline">Team of {s.members?.length}</Badge>
-            ) : (
-              s.exported && <Badge variant="outline">Exported</Badge>
-            )}
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="mt-auto flex-col items-start gap-1">
-          {s.score == null ? (
-            <span className="text-muted-foreground flex items-center gap-2 text-sm">
-              {building ? <Loader2 className="size-4 animate-spin" /> : null}
-              {building ? "Building" : "Not built yet"}
-            </span>
-          ) : (
-            <span className="text-3xl font-semibold tabular-nums" title={`Test ${metricName(s.metric)}, ${s.benchmark}`}>
-              {score(s.score)}
-            </span>
-          )}
-          {s.score != null && (
-            <span className="w-full text-xs">
-              <Delta s={s} />
-            </span>
-          )}
-        </CardFooter>
-      </Card>
-    </a>
+    <section className="space-y-3">
+      <h2 className="flex items-baseline gap-2 text-sm font-medium">
+        {group.label}
+        <span className="text-muted-foreground tabular-nums">{group.items.length}</span>
+      </h2>
+      <div className="grid auto-rows-fr gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+        {group.items.map((s) => (
+          <SpecialistCard key={s.name} s={s} running={busy.get(s.name)} showKind={showKind} />
+        ))}
+      </div>
+    </section>
   )
 }
 
 export function Specialists() {
   const [items, setItems] = useState<Summary[] | null>(null)
   const [error, setError] = useState("")
+  const [grouping, setGrouping] = useGrouping()
+  const shown = (items ?? []).filter((s) => !s.part_of)
   const jobs = Object.values(useLive().jobs)
   const finished = jobs.filter((j) => j.status === "done").length
-  const busy = new Set(jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => describe(j).target ?? ""))
+  const busy = new Map(
+    jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => [describe(j).target ?? "", describe(j).title] as const),
+  )
   useEffect(() => {
     api<Summary[]>("/specialists")
       .then(setItems)
@@ -134,8 +125,8 @@ export function Specialists() {
         </NewSpecialist>
       </div>
       {error && <p className="text-destructive text-sm">Could not load the specialists: {error}</p>}
-      {items && items.length > 0 && <SectionCards items={items.filter((s) => !s.part_of)} />}
-      {items && items.length > 0 && <Overview items={items.filter((s) => !s.part_of)} />}
+      {items && items.length > 0 && <SectionCards items={shown} />}
+      {items && items.length > 0 && <Overview items={shown} />}
       {items && items.length === 0 && (
         <Empty>
           <EmptyHeader>
@@ -152,15 +143,31 @@ export function Specialists() {
           </EmptyContent>
         </Empty>
       )}
-      <div className="grid auto-rows-fr gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
-        {items == null && !error && Array.from({ length: SKELETONS }, (_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
-        {(items ?? [])
-          .filter((s) => !s.part_of)
-          .sort((a, b) => Number(a.score == null) - Number(b.score == null))
-          .map((s) => (
-          <SpecialistCard key={s.name} s={s} building={busy.has(s.name)} />
-        ))}
-      </div>
+      {items == null && !error && (
+        <div className="grid auto-rows-fr gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+          {Array.from({ length: SKELETONS }, (_, i) => (
+            <Skeleton key={i} className="h-44 rounded-xl" />
+          ))}
+        </div>
+      )}
+      {items && items.length > 0 && (
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold">All specialists</h2>
+          <ToggleGroup type="single" variant="outline" size="sm" value={grouping} onValueChange={(v) => v && setGrouping(v as Grouping)}>
+            <ToggleGroupItem value="type">
+              <Shapes />
+              Type
+            </ToggleGroupItem>
+            <ToggleGroupItem value="date">
+              <CalendarDays />
+              Date
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      )}
+      {GROUPINGS[grouping](shown).map((g) => (
+        <Section key={g.key} group={g} busy={busy} showKind={grouping === "date"} />
+      ))}
     </div>
   )
 }

@@ -66,6 +66,8 @@ export type Result = {
 
 export type Summary = {
   name: string
+  title?: string
+  created?: string | null
   description: string
   modality: string
   task_type: string
