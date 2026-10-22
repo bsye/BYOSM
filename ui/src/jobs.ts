@@ -26,6 +26,11 @@ const VERBS: Record<string, string> = {
 }
 
 const INPUT_VERBS: Record<string, string> = { write: "Write inputs", sample: "Sample inputs", run: "Score inputs" }
+const SUB_VERBS: Record<string, Record<string, string>> = {
+  baseline: { add: "Add rival" },
+  suite: { add: "Add suite" },
+  exp: { create: "Create experiment" },
+}
 const NAMED_FLAGS = new Set(["--apply", "--suite"])
 export const EVENT_PREFIX = "@event "
 
@@ -33,6 +38,8 @@ export type Described = { title: string; target: string | null; subject: string 
 
 export function describe(job: Pick<Job, "args">): Described {
   const [cmd, ...rest] = job.args
+  const sub = SUB_VERBS[cmd]?.[rest[0]]
+  if (sub) return { title: sub, target: rest[1] ?? null, subject: rest[2] ?? null }
   if (cmd === "inputs") return { title: INPUT_VERBS[rest[0]] ?? "Test inputs", target: rest[1] ?? null, subject: rest[rest.indexOf("--set") + 1] ?? null }
   if (cmd === "system") return { title: `${rest[0] === "eval" ? "Score" : "Build"} team`, target: rest[1] ?? null, subject: null }
   const verb = cmd === "improve" && rest.includes("--apply") ? "Run proposal" : (VERBS[cmd] ?? cmd)
@@ -52,6 +59,16 @@ const ROLE_TASKS: Record<string, string> = {
 
 export const roleTask = (role: unknown) => ROLE_TASKS[String(role)] ?? String(role)
 
+function openStage(metrics: Metric[]): string | null {
+  const open: string[] = []
+  for (const m of metrics) {
+    if (m.kind !== "stage") continue
+    if (m.state === "running") open.push(String(m.name))
+    else open.splice(open.lastIndexOf(String(m.name)), 1)
+  }
+  return open.at(-1) ?? null
+}
+
 export function currentStep(metrics: Metric[], lines: string[]): string {
   const last = metrics.at(-1)
   if (last?.kind === "llm") return `${modelName(String(last.model))}: ${roleTask(last.role)}`
@@ -59,7 +76,7 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   if (last?.kind === "teacher") return `${last.teacher} labelling ${last.done}/${last.total}`
   if (last?.kind === "writing") return `Writing ${last.split} data ${last.done}/${last.total}`
   if (last?.kind === "scored") return `Scored ${last.predictor} on ${last.suite}`
-  return lines.findLast((l) => l.trim() && !l.startsWith(EVENT_PREFIX))?.trim() || "Starting"
+  return openStage(metrics) ?? (lines.findLast((l) => l.trim() && !l.startsWith(EVENT_PREFIX))?.trim() || "Starting")
 }
 
 const PROVIDER_PREFIXES = ["openai:", "anthropic:", "claude-code:", "codex:"]

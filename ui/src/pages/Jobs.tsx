@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useLive } from "@/events"
 import { took, when } from "@/format"
 import { currentStep, describe, llmUsed, timeLeft } from "@/jobs"
+import { openJob } from "@/job-sheet"
 import { go, href } from "@/route"
 import { JobDetail } from "./JobLog"
 import { Timeline } from "./Timeline"
@@ -56,23 +57,33 @@ function useRows() {
 export function Running() {
   const rows = useRows().filter((r) => r.now != null)
   if (!rows.length) return null
+  const queued = rows.filter((r) => r.job.status === "queued").length
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm">
           <Loader2 className="animate-spin" />
-          {rows.length} running
+          {rows.length - queued} running
+          {queued > 0 && <span className="text-muted-foreground">+{queued} queued</span>}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-96">
-        {rows.map(({ job, now }) => (
-          <DropdownMenuItem key={job.id} onSelect={() => go("jobs", job.id)} className="flex-col items-start gap-0.5">
-            <JobTitle job={job} />
-            <span className="text-muted-foreground w-full truncate text-xs">
-              {now}, {took(job.started, job.ended)}
-            </span>
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="end" className="w-[26rem]">
+        {rows.map(({ job, now }) => {
+          const d = describe(job)
+          const waiting = job.status === "queued"
+          return (
+            <DropdownMenuItem key={job.id} onSelect={() => openJob(job.id)} className="items-start gap-3 py-2" title={d.subject ?? undefined}>
+              {waiting ? <Clock className="text-muted-foreground mt-0.5" /> : <Loader2 className="mt-0.5 animate-spin" />}
+              <div className="min-w-0 flex-1">
+                <p className="truncate">
+                  <span className="font-medium">{d.title}</span> <span className="text-foreground/70">{d.target ?? d.subject}</span>
+                </p>
+                <p className="text-muted-foreground truncate text-xs">{waiting ? "Queued: starts when memory frees up" : now}</p>
+              </div>
+              <span className="text-muted-foreground shrink-0 pt-0.5 text-xs tabular-nums">{waiting ? "" : took(job.started, null)}</span>
+            </DropdownMenuItem>
+          )
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   )
