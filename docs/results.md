@@ -17,6 +17,7 @@ Rivals and benchmarks: [methodology](methodology.md).
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
 | Classify the primary emotion expressed in a short English text (single sentence, tweet-style or short social media string) into one of six named emotions (sadness, joy, love, anger, fear, surprise). Any text that does not clearly express one of these dominates falls into a catch-all neutral-other class (including neutral statements, irony/sarcasm without a dominant named emotion, ambiguity, or non-English). | dair-ai/emotion (accuracy) | v1 (22.72M) | 0.898 [0.883, 0.913] | hf:j-hartmann/emotion-english-distilroberta-base (82.12M) | 0.838 [0.819, 0.856] | +0.060, P(better) = 1.00 | 0.904 vs 0.813 (ahead) |
 | 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | hf:DarioFrK/sift-banking77-modernbert (149.66M) | 0.937 [0.927, 0.947] | +0.000, P(better) = 0.54 | 0.948 vs 0.929 (ahead) |
+| ASSUMPTION, NOT VERIFIED: I could not look up convaiinnovations/laya, so its exact label set is unconfirmed. This spec guesses it is a 3-way sentiment classifier (negative / neutral / positive) for short user text in English, Hindi and romanized Hindi-English (Hinglish), which fits the publisher's Indic focus. Check the model card's id2label and replace the labels if they differ. The goal is a much smaller student model that matches or beats laya's macro-F1 on a held-out multilingual sentiment test set, with laya itself as the main baseline. | laya-sentiment-builtin (macro_f1) | v1 (117.66M) | 0.788 [0.760, 0.818] | llm (-) | 0.667 [0.633, 0.701] | +0.121, P(better) = 1.00 | 0.789 vs 0.642 (ahead) |
 | Token-tag every token in a lease-agreement text to identify spans of DATE, AMOUNT, and PARTY (landlord, tenant, guarantor, or other named signatory) using BIO tagging. | lease-entities-builtin (span_f1) | v1 (70.69M) | 0.514 [0.389, 0.651] | hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 (183.92M) | 0.301 [0.178, 0.432] | +0.213, P(better) = 1.00 | 0.632 vs 0.370 (ahead) |
 | Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
@@ -71,7 +72,6 @@ Suite `ava` (nccratliri/vad-human-ava-speech): 20 test and 8 calib recordings. S
 | fused-dit | fused + more-data, domain-encoder, train-longer | 9600 | 109.55M | 46.90ms | 0.884 [0.873, 0.895] | 0.904 |
 | distill-r2 | r2 + distill | 11520 (+1920 builtin test) | 17.58M | 10.68ms | 0.882 [0.870, 0.893] | 0.894 |
 | fused | spec.yaml + `document.route=fused` | 2400 | 45.70M | 24.39ms | 0.801 [0.787, 0.815] | 0.804 |
-| llm | outside baseline | - | - | - | 0.744 [0.729, 0.759] | 0.744 |
 | text | spec.yaml + `document.route=text` | 2400 | 23.41M | 6.74ms | 0.741 [0.725, 0.756] | 0.728 |
 | visual | spec.yaml + `document.route=visual` | 2400 | 22.75M | 18.83ms | 0.645 [0.628, 0.662] | 0.654 |
 
@@ -89,17 +89,14 @@ Suite `rvl` (chainyo/rvl-cdip): 3200 test and 800 calib items. Selection uses ca
 <!-- report:intent -->
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
-| abl-pretrain-steps-200-off-s1 | final-s1 + ablation | 8964 (+1470 builtin test) | 22.74M | 47.34ms | 0.938 [0.929, 0.948] | 0.948 |
-| abl-backbone-hf-baai-bge-small-en-v1-5-off-s1 | final-s1 + ablation | 8964 (+1470 builtin test) | 22.74M | 7.40ms | 0.938 [0.929, 0.948] | 0.948 |
 | **final-s1** (promoted) | ampemallrd-s1 + `train.holdout_test=auto` | 8964 (+1470 builtin test) | 22.74M | 2.36ms | 0.937 [0.928, 0.948] | 0.948 |
-| abl-backbone-hf-sentence-transformers-all-minilm-l12-v2-off-s1 | final-s1 + ablation | 8964 (+1470 builtin test) | 22.74M | 12.41ms | 0.937 [0.928, 0.948] | 0.948 |
 | hf:DarioFrK/sift-banking77-modernbert | outside baseline | - | 149.66M | 258.33ms | 0.937 [0.927, 0.947] | 0.929 |
 | ampemallrd-s1 | spec.yaml + `train.layer_decay_floor=0.5 train.probe_epochs=0 train.ema=true train.seed=1` | 7494 | 22.74M | 2.45ms | 0.934 [0.924, 0.943] | 0.943 |
 | hf:mkianih/ai-banking-intent-classifier#LABEL_0=Refund_not_showing_up,LABEL_1=activate_my_card,LABEL_2=age_limit,LABEL_3=apple_pay_or_google_pay,LABEL_4=atm_support,LABEL_5=automatic_top_up,LABEL_6=balance_not_updated_after_bank_transfer,LABEL_49=pending_transfer,LABEL_7=balance_not_updated_after_cheque_or_cash_deposit,LABEL_8=beneficiary_not_allowed,LABEL_36=failed_transfer,LABEL_9=cancel_transfer,LABEL_10=card_about_to_expire,LABEL_11=card_acceptance,LABEL_73=visa_or_mastercard,LABEL_12=card_arrival,LABEL_13=card_delivery_estimate,LABEL_67=transfer_timing,LABEL_14=card_linking,LABEL_15=card_not_working,LABEL_45=passcode_forgotten,LABEL_16=card_payment_fee_charged,LABEL_17=card_payment_not_recognised,LABEL_29=direct_debit_payment_not_recognised,LABEL_18=card_payment_wrong_exchange_rate,LABEL_19=card_swallowed,LABEL_20=cash_withdrawal_charge,LABEL_75=wrong_amount_of_cash_received,LABEL_21=cash_withdrawal_not_recognised,LABEL_22=change_pin,LABEL_23=compromised_card,LABEL_24=contactless_not_working,LABEL_25=country_support,LABEL_44=order_physical_card,LABEL_26=declined_card_payment,LABEL_27=declined_cash_withdrawal,LABEL_28=declined_transfer,LABEL_30=disposable_card_limits,LABEL_31=edit_personal_details,LABEL_32=exchange_charge,LABEL_33=exchange_rate,LABEL_34=exchange_via_app,LABEL_35=extra_charge_on_statement,LABEL_37=fiat_currency_support,LABEL_38=get_disposable_virtual_card,LABEL_39=get_physical_card,LABEL_40=getting_spare_card,LABEL_41=getting_virtual_card,LABEL_42=lost_or_stolen_card,LABEL_43=lost_or_stolen_phone,LABEL_46=pending_card_payment,LABEL_47=pending_cash_withdrawal,LABEL_66=transfer_not_received_by_recipient,LABEL_48=pending_top_up,LABEL_62=topping_up_by_card,LABEL_50=pin_blocked,LABEL_51=receiving_money,LABEL_52=request_refund,LABEL_53=reverted_card_payment?,LABEL_54=supported_cards_and_currencies,LABEL_55=terminate_account,LABEL_56=top_up_by_bank_transfer_charge,LABEL_57=top_up_by_card_charge,LABEL_58=top_up_by_cash_or_cheque,LABEL_59=top_up_failed,LABEL_60=top_up_limits,LABEL_61=top_up_reverted,LABEL_65=transfer_into_account,LABEL_63=transaction_charged_twice,LABEL_64=transfer_fee_charged,LABEL_68=unable_to_verify_identity,LABEL_69=verify_my_identity,LABEL_70=verify_source_of_funds,LABEL_71=verify_top_up,LABEL_72=virtual_card_not_working,LABEL_74=why_verify_identity,LABEL_76=wrong_exchange_rate_for_cash_withdrawal | outside baseline | - | 124.70M | 31.53ms | 0.925 [0.915, 0.935] | 0.904 |
 | jev | outside baseline | - | - | 394.55ms | 0.808 [0.792, 0.822] | 0.784 |
 | llm | outside baseline | - | - | - | 0.803 [0.787, 0.819] | 0.774 |
 
-Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 27 seed replicates off the promoted lineage, which are summarised in the recipe table (`intent:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 49 seed replicates off the promoted lineage, which are summarised in the recipe table (`intent:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:intent -->
 
 - `llm` is Qwen 3.8 27B, zero-shot, given all 77 label definitions. No fine-tuned Banking77 model has been scored
@@ -175,13 +172,12 @@ While typing (gate tuned on calib: confidence 0.9, 2 agreeing keystrokes): the a
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
 | **v1** (promoted) | no recorded parent | 5241 (+781 builtin test) | 22.72M | 3.61ms | 0.898 [0.883, 0.913] | 0.904 |
-| abl-pretrain-steps-0-on-s0 | v1 + ablation | 5241 (+781 builtin test) | 22.72M | 20.22ms | 0.897 [0.883, 0.912] | 0.890 |
 | hf:j-hartmann/emotion-english-distilroberta-base | outside baseline | - | 82.12M | 7.30ms | 0.838 [0.819, 0.856] | 0.813 |
 | llm | outside baseline | - | - | - | 0.601 [0.574, 0.626] | 0.604 |
 | jev | outside baseline | - | - | 397.88ms | 0.590 [0.564, 0.613] | 0.583 |
 | hf:SamLowe/roberta-base-go_emotions | outside baseline | - | 124.67M | 14.36ms | 0.548 [0.523, 0.570] | 0.519 |
 
-Suite `bench` (dair-ai/emotion): 1492 test and 374 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 2 seed replicates off the promoted lineage, which are summarised in the recipe table (`emotion:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+Suite `bench` (dair-ai/emotion): 1492 test and 374 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 4 seed replicates off the promoted lineage, which are summarised in the recipe table (`emotion:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:emotion -->
 
 - Built entirely by `byosm auto`: it picked the benchmark and the rivals, trained on dair-ai/emotion's train split
@@ -201,7 +197,7 @@ Suite `bench` (dair-ai/emotion): 1492 test and 374 calib items. Selection uses c
 | hf:Maddyhf1/ag-news-topic-classification-distilbert | outside baseline | - | 66.96M | 8.35ms | 0.914 [0.902, 0.923] | 0.917 |
 | v1 | no recorded parent | 5999 (+917 builtin test) | 22.72M | 3.19ms | 0.903 [0.891, 0.913] | 0.914 |
 | jev | outside baseline | - | - | 356.66ms | 0.855 [0.841, 0.869] | 0.838 |
-| llm | outside baseline | - | - | - | 0.814 [0.799, 0.830] | 0.800 |
+| llm | outside baseline | - | - | - | 0.778 [0.763, 0.793] | 0.800 |
 
 Suite `bench` (fancyzhx/ag_news): 2560 test and 640 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:topic -->
@@ -301,6 +297,7 @@ Suite `builtin` (lease-entities-builtin): 50 test and 10 calib items. Selection 
 | **v15** (promoted) | no recorded parent | 6086 | 22.71M | 6.17ms | 0.895 [0.861, 0.924] | 0.753 |
 | v18 | v15 + llm-early-stop-regularize | 7921 | 22.71M | 5.11ms | 0.881 [0.000, 0.912] | 0.808 |
 | v16 | v15 + hard-pairs | 5679 | 22.71M | 3.32ms | 0.816 [0.000, 0.851] | 0.000 |
+| v23 | v15 + llm-v23-downweight-hf-source | 5878 | 22.71M | 15.75ms | 0.816 [0.000, 0.855] | 0.000 |
 | v21 | v15 + llm-more-real-turn-data | 5709 | 22.71M | 18.33ms | 0.324 [0.280, 0.372] | 0.000 |
 | v1 | no recorded parent | 642 | 22.71M | 3.83ms | 0.000 [0.000, 0.000] | 0.000 |
 | v10 | v1 + llm-exp-1-hard-negatives-encoding | 639 | 22.71M | 5.24ms | 0.000 [0.000, 0.000] | 0.000 |
@@ -322,6 +319,11 @@ Suite `builtin` (lease-entities-builtin): 50 test and 10 calib items. Selection 
 | v17 | v15 + refine-more | 7377 | 22.71M | 2.84ms | 0.000 [0.000, 0.922] | 0.924 |
 | v19 | v15 + llm-finished-recall-hard-cases | 9400 | 22.71M | 15.69ms | 0.000 [0.000, 0.924] | 0.495 |
 | v20 | v15 + llm-electra-small-backbone | 7921 | 13.48M | 67.70ms | 0.000 [0.000, 0.970] | 0.000 |
+| livekit-turn-default | outside baseline | - | - | 1.45ms | 0.000 [0.000, 0.000] | 0.000 |
+| livekit-turn-multilingual | outside baseline | - | - | 18.15ms | 0.000 [0.000, 0.000] | 0.722 |
+| livekit-turn-multilingual-default | outside baseline | - | - | 14.48ms | 0.000 [0.000, 0.000] | 0.000 |
+| v22 | v15 + llm-v22-early-stop-epochs4 | 6112 | 22.71M | 4.49ms | 0.000 [0.000, 0.920] | 0.753 |
+| v24 | v15 + llm-v24-fix-label-conventions-finished-positives | 5812 | 22.71M | 4.72ms | 0.000 [0.000, 0.347] | 0.000 |
 
 Suite `builtin` (turn-completion-builtin): 734 test and 391 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
 <!-- /report:turn-completion -->
@@ -332,21 +334,31 @@ Banking77 with MiniLM-L6, only the `train` settings change. Recipes with `holdou
 builtin suite's held-out split, so they see more data.
 
 <!-- report:intent:seeds -->
-| recipe | seeds | train rows | ema | holdout_test | layer_decay_floor | precision | probe_epochs | test accuracy % | calib accuracy % |
-|---|---|---|---|---|---|---|---|---|---|
-| full | 3 | 7494 | true | keep | 0.5 | auto | 1 | 92.97 ± 0.29 | 94.70 ± 0.19 |
-| **final** | 3 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 93.44 ± 0.27 | 94.37 ± 0.37 |
-| no-ema | 2 | 7494 | false | auto | 0.1 | auto | 1 | 93.13 ± 0.75 | 94.24 ± 0.57 |
-| no-probe | 2 | 7494 | true | auto | 0.1 | auto | 0 | 93.25 ± 0.34 | 94.24 ± 0.34 |
-| ampemallrd | 3 | 7494 | true | keep | 0.5 | auto | 0 | 93.14 ± 0.21 | 94.10 ± 0.37 |
-| ampllrd | 3 | 7494 | false | keep | 0.5 | auto | 0 | 92.59 ± 0.42 | 93.94 ± 0.52 |
-| no-llrd | 2 | 7494 | true | auto | 1.0 | auto | 1 | 92.99 ± 0.14 | 93.91 ± 0.11 |
-| new | 2 | 7494 | true | auto | 0.1 | auto | 1 | 92.72 ± 0.23 | 93.83 ± 0.69 |
-| ampema | 3 | 7494 | true | keep | 1.0 | auto | 0 | 93.01 ± 0.21 | 93.72 ± 1.06 |
-| amp | 3 | 7494 | false | keep | 1.0 | auto | 0 | 92.53 ± 0.31 | 93.67 ± 0.56 |
-| old | 3 | 7494 | false | auto | 1.0 | fp32 | 0 | 92.52 ± 0.25 | 93.67 ± 0.56 |
+| recipe | seeds | train rows | ema | holdout_test | layer_decay_floor | precision | pretrain_steps | probe_epochs | refine_rounds | test accuracy % | calib accuracy % |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| abl-backbone-hf-baai-bge-small-en-v1-5-off | 3 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 0 | 93.48 ± 0.29 | 94.75 ± 0.57 |
+| abl-backbone-hf-baai-bge-small-en-v1-5-on | 3 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 0 | 93.75 ± 0.15 | 94.75 ± 0.61 |
+| full | 3 | 7494 | true | keep | 0.5 | auto | 0 | 1 | 0 | 92.97 ± 0.29 | 94.70 ± 0.19 |
+| abl-backbone-hf-sentence-transformers-all-minilm-l12-v2-on | 2 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 0 | 93.78 ± 0.06 | 94.56 ± 0.11 |
+| abl-refine-rounds-2-target-1-0-on | 2 | 9442 (+1470 builtin test) / 9537 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 2 | 93.46 ± 0.17 | 94.56 ± 0.11 |
+| abl-backbone-hf-sentence-transformers-all-minilm-l12-v2-off | 2 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 0 | 93.48 ± 0.37 | 94.48 ± 0.46 |
+| abl-pretrain-steps-200-off | 2 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 0 | 93.50 ± 0.40 | 94.48 ± 0.46 |
+| abl-refine-rounds-2-off | 2 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 0 | 93.48 ± 0.37 | 94.48 ± 0.46 |
+| abl-refine-rounds-2-on | 2 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 2 | 93.48 ± 0.37 | 94.48 ± 0.46 |
+| abl-refine-rounds-2-target-1-0-off | 2 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 0 | 93.50 ± 0.40 | 94.48 ± 0.46 |
+| **final** | 3 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 0 | 0 | 93.44 ± 0.27 | 94.37 ± 0.37 |
+| no-ema | 2 | 7494 | false | auto | 0.1 | auto | 0 | 1 | 0 | 93.13 ± 0.75 | 94.24 ± 0.57 |
+| no-probe | 2 | 7494 | true | auto | 0.1 | auto | 0 | 0 | 0 | 93.25 ± 0.34 | 94.24 ± 0.34 |
+| ampemallrd | 3 | 7494 | true | keep | 0.5 | auto | 0 | 0 | 0 | 93.14 ± 0.21 | 94.10 ± 0.37 |
+| ampllrd | 3 | 7494 | false | keep | 0.5 | auto | 0 | 0 | 0 | 92.59 ± 0.42 | 93.94 ± 0.52 |
+| no-llrd | 2 | 7494 | true | auto | 1.0 | auto | 0 | 1 | 0 | 92.99 ± 0.14 | 93.91 ± 0.11 |
+| new | 2 | 7494 | true | auto | 0.1 | auto | 0 | 1 | 0 | 92.72 ± 0.23 | 93.83 ± 0.69 |
+| ampema | 3 | 7494 | true | keep | 1.0 | auto | 0 | 0 | 0 | 93.01 ± 0.21 | 93.72 ± 1.06 |
+| amp | 3 | 7494 | false | keep | 1.0 | auto | 0 | 0 | 0 | 92.53 ± 0.31 | 93.67 ± 0.56 |
+| old | 3 | 7494 | false | auto | 1.0 | fp32 | 0 | 0 | 0 | 92.52 ± 0.25 | 93.67 ± 0.56 |
+| abl-pretrain-steps-200-on | 2 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 200 | 0 | 0 | 93.66 ± 0.29 | 93.59 ± 0.80 |
 
-Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `full`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `abl-backbone-hf-baai-bge-small-en-v1-5-off`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:intent:seeds -->
 
 - The current default (EMA, layer decay floor 0.5, no probe epoch, mixed precision, `holdout_test: auto`) was picked
@@ -356,9 +368,20 @@ Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seed
 <p align="center"><a href="../README.md">Tour</a> · <a href="assumptions.md">Goal and bet</a> · <a href="methodology.md">Methodology</a> · <b>Results</b> · <a href="details.md">Details</a></p>
 
 <!-- report:emotion:seeds -->
-| recipe | seeds | train rows | test accuracy % | calib accuracy % |
-|---|---|---|---|---|
-| abl-pretrain-steps-0-off | 2 | 5241 (+781 builtin test) | 89.31 ± 0.71 | 90.11 ± 0.38 |
+| recipe | seeds | train rows | pretrain_steps | test accuracy % | calib accuracy % |
+|---|---|---|---|---|---|
+| abl-pretrain-steps-0-off | 2 | 5241 (+781 builtin test) | 200 | 89.31 ± 0.71 | 90.11 ± 0.38 |
+| abl-pretrain-steps-0-on | 2 | 5241 (+781 builtin test) | 0 | 89.81 ± 0.09 | 89.30 ± 0.38 |
 
 Experiments named `<recipe>-s<seed>` on suite `bench`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `abl-pretrain-steps-0-off`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:emotion:seeds -->
+
+<!-- report:laya-sentiment -->
+| model | built from | train rows | params | CPU | test macro_f1 [95% CI] | calib macro_f1 |
+|---|---|---|---|---|---|---|
+| **v1** (promoted) | no recorded parent | 3868 | 117.66M | 80.06ms | 0.788 [0.760, 0.818] | 0.789 |
+| llm | outside baseline | - | - | - | 0.667 [0.633, 0.701] | 0.642 |
+| hf:distilbert/distilbert-base-uncased-finetuned-sst-2-english | outside baseline | - | 66.96M | 45.91ms | 0.433 [0.411, 0.455] | 0.418 |
+
+Suite `builtin` (laya-sentiment-builtin): 773 test and 515 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+<!-- /report:laya-sentiment -->
