@@ -998,3 +998,11 @@ through, since loading from the local cache may still work.
 The job wrapper writes the exit code in a `finally` block. Python prints an uncaught traceback only after that block, so
 the runner saw the exit code, read the log one last time and deleted it before the error landed. The wrapper now prints
 the traceback itself before writing the exit code.
+
+## Labels derived from content
+
+Many useful datasets have no label column: a function-calling corpus says whether the assistant called a tool only in
+the assistant's reply. When the mapper finds no label column, the LLM may give `label_rules` instead: `[column, text it
+contains, our label]` checked in order, with an optional `label_default`. Columns are paths into nested values
+(`conversations.1.value`), so the input can be the user turn while the rules read the reply. The prompt forbids an input
+that contains the text the rules look for, since the model would learn the answer from the input.

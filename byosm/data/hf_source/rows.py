@@ -31,6 +31,17 @@ def _row_label(raw: Any, names: list[str] | None, lmap: dict[str, str]) -> str |
     return next((lmap[k] for k in keys if k in lmap), None)
 
 
+def field(row: Any, path: str) -> Any:
+    for part in path.split("."):
+        row = row[int(part)] if isinstance(row, list) and part.isdecimal() else row[part]
+    return row
+
+
+def rule_label(row: Any, src: HFSource) -> str | None:
+    hit = next((label for col, text, label in src.label_rules if text in str(field(row, col))), None)
+    return hit or src.label_default
+
+
 def _stream_rows(src: HFSource, spec: TaskSpec) -> Iterator[tuple[Any, str | None]]:
     ds = open_split(src.dataset, src.config, src.split)
     names = class_names(src, ds)
@@ -38,8 +49,16 @@ def _stream_rows(src: HFSource, spec: TaskSpec) -> Iterator[tuple[Any, str | Non
     lmap = {str(a): b for a, b in src.label_map}
     n = 0
     for row in ds:
-        lab, raw = None, row[src.input_column]
-        if src.format == "markup":
+        try:
+            lab, raw = None, field(row, src.input_column)
+            ruled = rule_label(row, src) if src.label_rules else None
+        except (KeyError, IndexError, TypeError):
+            continue
+        if src.label_rules:
+            lab = ruled
+            if lab is None:
+                continue
+        elif src.format == "markup":
             raw, tags = markup_tags(row[src.label_column])
             lab = _tag_sequence(tags, None, lmap, spec)
         elif src.label_column and isinstance(row[src.label_column], list):

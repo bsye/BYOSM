@@ -43,6 +43,8 @@ class HFSource(BaseModel):
     input_column: str | None = None
     label_column: str | None = None
     label_map: list[list[str]] = Field(default_factory=list)
+    label_rules: list[list[str]] = Field(default_factory=list)
+    label_default: str | None = None
     max_rows: int = 5000
 
     @field_validator("dataset")
