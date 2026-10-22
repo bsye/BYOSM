@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ..data.budget import fit_line, load_fit
 from .facts import CardFacts
 
 SYNTH_LINE = "- LLM-written examples, double-labelled (generator + blind judge); held-out sets from an independent evaluator prompt\n"
@@ -43,8 +44,16 @@ def sources(f: CardFacts) -> str:
     return "\n".join(_source_line(s) for s in f.spec.data.hf_sources) or "- (none)"
 
 
+def _shrunk(f: CardFacts) -> str:
+    fit = load_fit(f.p.data_dir_for(f.spec))
+    if not fit or not fit["shrunk"]:
+        return ""
+    line = fit_line(fit["seconds_per_call"], fit["written"], fit["planned"], fit["budget_hours"] * 3600)
+    return f"- Shrunk to the time budget: {line}\n"
+
+
 def synth(f: CardFacts) -> str:
-    return SYNTH_LINE if f.spec.data.synthetic else ""
+    return SYNTH_LINE + _shrunk(f) if f.spec.data.synthetic else ""
 
 
 def lineage_list(f: CardFacts) -> str:

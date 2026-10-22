@@ -1,4 +1,5 @@
 import time
+from types import SimpleNamespace
 
 import pytest
 from conftest import FakeLLM
@@ -8,6 +9,7 @@ from byosm import llm, pipeline
 from byosm.auto import autopilot
 from byosm.auto.state import DATA_BUDGET_SHARE, Session
 from byosm.data import budget
+from byosm.hub import sections
 from byosm.spec import Label, TaskSpec
 from byosm.spec.sections import Axis, DataPlan
 
@@ -96,6 +98,13 @@ def test_the_train_floor_is_per_label():
     have = {"train": 0, "dev": 0, "test": 0}
     floor = {"train": 2 * budget.MIN_TRAIN_PER_LABEL, "dev": 0, "test": 0}
     assert budget.shrink(need, have, 0.0, floor)["train"] == 2 * budget.MIN_TRAIN_PER_LABEL
+
+
+def test_the_model_card_says_when_the_data_was_shrunk(run, ws):
+    run(SLOW, HOUR)
+    spec = SimpleNamespace(data=SimpleNamespace(synthetic=True))
+    card = sections.synth(SimpleNamespace(p=SimpleNamespace(data_dir_for=lambda _: ws / "data"), spec=spec))
+    assert "Shrunk to the time budget: the LLM takes 240 s per call: writing 278 train" in card
 
 
 def test_the_autopilot_gives_the_data_stage_its_share_of_the_time_left(monkeypatch):
