@@ -6,18 +6,12 @@ from collections.abc import Callable
 from typing import Any
 
 from ..events import emit
-from ..llm import get_llm, pmap
+from ..llm import get_llm, parallel_calls, pmap
 from ..spec import TaskSpec
 from .prompts import ANALYZE_SYSTEM, EVAL_SYSTEM, GEN_SYSTEM, JUDGE_SYSTEM, REFINE_SCHEMA
 from .store import dedupe, record
 
 USER_INSTRUCTIONS = "\n\nFollow these extra instructions from the user: "
-
-
-def concurrency(cfg: dict | None) -> int:
-    from ..resources import REMOTE_PARALLEL
-
-    return (cfg or {}).get("concurrency", REMOTE_PARALLEL)
 
 
 def role(split: str) -> str:
@@ -100,7 +94,11 @@ def _gen_prompt(spec: TaskSpec, job: dict, adversarial: bool, avoid: list[str]) 
 
 
 def judge(
-    spec: TaskSpec, rows: list[dict], cfg: dict | None = None, concurrency: int = 8, log: Callable[[str], None] = print
+    spec: TaskSpec,
+    rows: list[dict],
+    cfg: dict | None = None,
+    workers: int | None = None,
+    log: Callable[[str], None] = print,
 ) -> list[dict]:
     if spec.task_type == "frame" or not rows:
         return rows
@@ -120,7 +118,11 @@ def judge(
         return [r for i, r in enumerate(chunk, 1) if labs.get(i) == r["label"]]
 
     kept = [
-        r for part in pmap(run, chunks, concurrency, on_error=lambda e: log(f"  judge batch failed: {e}")) for r in part
+        r
+        for part in pmap(
+            run, chunks, workers or parallel_calls(cfg), on_error=lambda e: log(f"  judge batch failed: {e}")
+        )
+        for r in part
     ]
     log(f"  judge kept {len(kept)}/{len(rows)} ({len(kept) / max(1, len(rows)):.0%} agreement)")
     return kept
@@ -138,7 +140,7 @@ def generate(
     on_rows: Callable[[list[dict]], None] | None = None,
     instructions: str = "",
 ) -> list[dict]:
-    workers = concurrency(cfg)
+    workers = parallel_calls(cfg)
     adversarial = role(split) == "eval"
     llm = get_llm(role(split), cfg)
     rng = random.Random(f"{spec.name}-{split}-{len(against or [])}")

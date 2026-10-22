@@ -39,10 +39,9 @@ def image_ref(first: int, last: int, count: int) -> str:
 
 
 def _workers() -> int:
-    from ..config import load_config
-    from ..data.synth_text import concurrency
+    from ..llm import parallel_calls
 
-    return concurrency(load_config())
+    return parallel_calls()
 
 
 @register_baseline(

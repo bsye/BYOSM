@@ -916,3 +916,11 @@ builtin suite, the held-out split of the base spec's data. When that split is be
 experiment and baseline on the new held-out split, and promotes the best on calib. A build does this on its own when the
 experiment it just trained is the one with a big enough held-out set, and Next steps offers it otherwise. Older experiments may have trained on rows that land in the new test split;
 the overfitting check's overlap finding shows it.
+
+## One limit on parallel LLM calls
+
+Every loop that makes more than one LLM call (writing data, the label judge, scoring with an LLM rival, a team's LLM
+rival, the data check's judge, mapping several Hub datasets) runs its calls through `pmap` with
+`parallel_calls(cfg)`. That is unlimited up to `REMOTE_PARALLEL` unless a run sets `--parallel`; the real limit is the
+per-endpoint gate, which the Models page sets ("Parallel calls") and which follows free memory for local models. There
+is no second, global `concurrency` cap any more, because it silently throttled remote models to a handful of calls.

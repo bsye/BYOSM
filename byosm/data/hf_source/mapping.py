@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from ...llm import get_llm, role_model
+from ...llm import get_llm, parallel_calls, pmap, role_model
 from ...spec import HFSource, TaskSpec
 from .cards import describe, listing
 from .hub import _features, closest, search
@@ -111,12 +111,5 @@ def resolve(spec: TaskSpec, cfg: dict | None = None, log: Callable[[str], None] 
     sources = list(spec.data.hf_sources)
     if not sources and spec.data.hf_queries:
         sources = _pick_sources(spec, cfg)
-    mapped = []
-    for src in sources:
-        if src.input_column:
-            mapped.append(src)
-            continue
-        resolved = _map_source(src, spec, cfg, log)
-        if resolved is not None:
-            mapped.append(resolved)
-    return mapped
+    found = pmap(lambda s: s if s.input_column else _map_source(s, spec, cfg, log), sources, parallel_calls(cfg))
+    return [s for s in found if s is not None]

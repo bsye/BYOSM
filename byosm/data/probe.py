@@ -75,7 +75,7 @@ def probe(texts: list[str], labels: list[str]) -> dict[str, Any] | None:
 
 
 def judge(spec: TaskSpec, texts: list[str], suspects: list[dict], cfg: dict | None) -> list[dict]:
-    from ..llm import get_llm
+    from ..llm import get_llm, parallel_calls, pmap
 
     llm = get_llm("judge", cfg)
     defs = "\n".join(f"- {lab.name}: {lab.definition}" for lab in spec.labels)
@@ -83,8 +83,9 @@ def judge(spec: TaskSpec, texts: list[str], suspects: list[dict], cfg: dict | No
         "type": "object",
         "properties": {"label": {"type": "string", "enum": spec.label_names}, "why": {"type": "string"}},
     }
-    out = []
-    for s in suspects[:MAX_JUDGED]:
+
+    def ask(s: dict) -> dict:
         ans = llm.json(JUDGE_SYSTEM, f"Labels:\n{defs}\n\nInput:\n{texts[s['index']][:TEXT_CHARS]}", schema)
-        out.append({**s, "llm": ans.get("label"), "why": ans.get("why", "")})
-    return out
+        return {**s, "llm": ans.get("label"), "why": ans.get("why", "")}
+
+    return pmap(ask, suspects[:MAX_JUDGED], parallel_calls(cfg))

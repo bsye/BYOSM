@@ -143,6 +143,13 @@ class Observed:
         return out
 
 
+def parallel_calls(cfg: dict | None = None) -> int:
+    from ..config import load_config
+    from ..resources import REMOTE_PARALLEL
+
+    return (cfg if cfg is not None else load_config()).get("concurrency", REMOTE_PARALLEL)
+
+
 def pmap(
     fn: Callable[[Any], T],
     items: Iterable[Any],

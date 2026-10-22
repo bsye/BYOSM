@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from ..llm import get_llm
+from ..llm import get_llm, parallel_calls
 from ..spec import TaskSpec
 from . import synth_text
 from .store import SPLITS
@@ -54,7 +54,7 @@ def _write(spec: TaskSpec, splits: dict[str, list[dict]], split: str, n: int, cf
 
 def _seconds_per_call(spec: TaskSpec, split: str, cfg: dict | None, elapsed: float, n: int) -> float:
     made = synth_text.calls(n, spec.data.per_call)
-    lanes = get_llm(synth_text.role(split), cfg).parallel(synth_text.concurrency(cfg))
+    lanes = get_llm(synth_text.role(split), cfg).parallel(parallel_calls(cfg))
     return elapsed / made * min(made, lanes) / lanes
 
 

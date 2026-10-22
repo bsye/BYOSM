@@ -30,17 +30,17 @@ def _frame(item: dict) -> dict:
 def llm_frames(
     texts: list[str], actions: list[str], types: list[str], log: Callable[[str], None], role: str = "baseline"
 ) -> list[dict]:
-    from ..llm import get_llm
+    from ..llm import get_llm, parallel_calls, pmap
 
     llm = get_llm(role)
     system = SYSTEM_PROMPT.format(actions=", ".join(actions), types=", ".join(types))
     schema = _schema(actions, types)
-    out: list[dict] = []
-    for i in range(0, len(texts), FRAME_BATCH):
-        chunk = texts[i : i + FRAME_BATCH]
+    chunks = [texts[i : i + FRAME_BATCH] for i in range(0, len(texts), FRAME_BATCH)]
+
+    def frames(chunk: list[str]) -> list[dict]:
         prompt = "\n".join(f"{j + 1}. {t}" for j, t in enumerate(chunk))
         items = llm.json(system, prompt, schema).get("items", [])
-        out += [_frame(it) for it in items[: len(chunk)]] + [EMPTY_FRAME] * (len(chunk) - len(items))
-        if (i // FRAME_BATCH) % LOG_EVERY_BATCHES == 0:
-            log(f"  llm frames {len(out)}/{len(texts)}")
-    return out
+        return [_frame(it) for it in items[: len(chunk)]] + [EMPTY_FRAME] * (len(chunk) - len(items))
+
+    log(f"  llm frames for {len(texts)} requests in {len(chunks)} calls")
+    return [f for part in pmap(frames, chunks, parallel_calls()) for f in part]
