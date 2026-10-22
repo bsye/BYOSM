@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .backbones import DINOV2_SMALL, MINILM
 
 Modality = Literal["text", "audio", "image", "document"]
 TaskType = Literal["classify", "frame"]
 Metric = Literal["f1", "macro_f1", "accuracy", "recall_at_precision", "precision_at_recall", "span_f1"]
+
+
+HUB_PREFIX = "hf:"
 
 
 class Label(BaseModel):
@@ -41,6 +44,11 @@ class HFSource(BaseModel):
     label_column: str | None = None
     label_map: list[list[str]] = Field(default_factory=list)
     max_rows: int = 5000
+
+    @field_validator("dataset")
+    @classmethod
+    def _bare_id(cls, v: str) -> str:
+        return v.removeprefix(HUB_PREFIX)
 
 
 class AudioCfg(BaseModel):

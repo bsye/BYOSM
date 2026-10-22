@@ -36,3 +36,7 @@ def test_a_dataset_without_a_test_split_becomes_training_data_held_out_by_us(mon
         other["option"] == "org/other" and other["args"][:3] == ["exp", "create", "turn"] and "--run" in other["args"]
     )
     assert "data.synthetic=true" in data["alternatives"][0]["args"]
+
+
+def test_a_dataset_written_with_the_hub_prefix_is_read_as_its_bare_id():
+    assert HFSource(dataset="hf:facebook/multiwoz").dataset == "facebook/multiwoz"
