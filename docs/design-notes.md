@@ -932,3 +932,11 @@ Hugging Face model repo that mirrors them under the same `specialists/<name>/...
 `byosm store push NAME` uploads a specialist's weights and export, `byosm store pull NAME` downloads them, and loading an
 experiment whose `model.pt` is missing pulls just that experiment. Push refuses a public repo. Nothing is uploaded
 unless `artifact_repo` is set.
+
+## One rule for "it really is better"
+
+Promotion after a build, the autopilot's keep/revert and the health check's "beats the best rival" all use
+`sure_lead` in `byosm/evals/selection.py`: a lead counts only when a paired bootstrap keeps it in `SURE_LEAD` (95%) of
+resamples. Promotion used to compare calib point estimates, which let turn-completion's v17 replace v15 on a calib lead
+that held in 88% of resamples (interval -0.77 to +0.94), while v15 stayed ahead on test even at v17's best threshold.
+With a bound like recall at 98% precision on a 391-row calib split, a handful of rows decides the score.

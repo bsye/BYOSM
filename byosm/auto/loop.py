@@ -5,6 +5,7 @@ import math
 import time
 from typing import Any
 
+from ..evals.selection import sure_lead
 from .standing import standing
 from .state import Session
 
@@ -20,7 +21,6 @@ PRIORS = {
     "train-longer": 1.0,
     "refine-more": 1.0,
 }
-SIGNIFICANT_P_BETTER = 0.9
 MIN_GAIN_WITHOUT_BOOTSTRAP = 0.002
 PLATEAU_ROUNDS = 2
 
@@ -65,7 +65,7 @@ def _is_real_gain(kept: bool, cmp: dict | None, mine: float | None, before: floa
     if not kept:
         return False
     if cmp:
-        return cmp["p_better"] >= SIGNIFICANT_P_BETTER
+        return sure_lead(cmp)
     return mine is not None and before is not None and mine - before > MIN_GAIN_WITHOUT_BOOTSTRAP
 
 

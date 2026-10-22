@@ -5,7 +5,7 @@ from typing import Any
 from .auto.standing import best_baseline
 from .data.sufficiency import ENOUGH, MIN_TEST_ITEMS, THIN, data_check
 from .evals.overfit import OVERFIT
-from .evals.selection import compare
+from .evals.selection import SURE_LEAD, compare
 from .export.bundle import exported_current
 from .model_refs import model_ref
 from .project import Project
@@ -14,7 +14,6 @@ from .spec import TaskSpec
 OK, WARN, FAIL, UNKNOWN = "ok", "warn", "fail", "unknown"
 CREDIT = {OK: 1.0, WARN: 0.5, FAIL: 0.0, UNKNOWN: 0.0}
 READY_SCORE = 80
-SURE_LEAD = 0.95
 TARGET_NEAR = 0.05
 CI_WIDTH_OK, CI_WIDTH_WARN = 0.04, 0.10
 LABEL_OK, LABEL_WARN = 0.8, 0.5

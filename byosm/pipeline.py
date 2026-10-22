@@ -112,9 +112,11 @@ def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> d
     cmp = evals.compare(base, a, b) if b else None
     sig = f", P(better)={cmp['p_better']:.2f}" if cmp else ""
     test = f"; test {a['objective']:.4f}" if a else ""
-    if mine > cur:
+    if mine > cur and evals.sure_lead(cmp):
         p.promote(exp)
         log(f"  promoted {exp}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{sig}){test}")
+    elif mine > cur:
+        log(f"  kept {p.promoted}: {exp}'s calib lead {mine:.4f} over {cur:.4f} is not sure{sig}{test}")
     else:
         log(f"  kept {p.promoted}: {prim} calib {cur:.4f} >= {exp} {mine:.4f}{sig}{test}")
     return board.get(exp, {})

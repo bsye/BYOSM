@@ -75,7 +75,14 @@ function Board({ d }: { d: Detail }) {
           <TableHeader>
             <TableRow>
               <TableHead>Model</TableHead>
-              <TableHead>Test [95% CI]</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center gap-1">
+                  Test [95% CI]
+                  <InfoTip>
+                    The range the test score falls in when the test rows are resampled 1,000 times. With a bound like {d.metric}, a resample that misses the bound scores 0, so a lower end of 0 means the model sits at the edge of the bound.
+                  </InfoTip>
+                </span>
+              </TableHead>
               <TableHead>Calib</TableHead>
               <TableHead>Params</TableHead>
               <TableHead>CPU per input</TableHead>
