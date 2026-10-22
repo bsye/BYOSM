@@ -9,6 +9,7 @@ from ..spec import TaskSpec
 from .base import Predictor, register_baseline
 
 FINISHED_NAMES = ("finished", "complete", "completed", "end_of_turn", "done", "eou", "yes")
+RUNNER_MODULE = "livekit.plugins.turn_detector.english"
 SPEAKERS = {"user": "user", "agent": "assistant", "assistant": "assistant", "bot": "assistant"}
 
 
@@ -33,6 +34,13 @@ def chat_turns(text: str) -> list[dict[str, str]]:
         else:
             turns.append({"role": "user", "content": line.strip()})
     return turns or [{"role": "user", "content": str(text)}]
+
+
+def register_on_main_thread() -> None:
+    import importlib.util
+
+    if importlib.util.find_spec("livekit.plugins.turn_detector"):
+        importlib.import_module(RUNNER_MODULE)
 
 
 @register_baseline(
