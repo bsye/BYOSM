@@ -1,4 +1,4 @@
-import { Activity, Boxes, Cpu, Github, Settings, Smile, SquarePen } from "lucide-react"
+import { Activity, Boxes, Cpu, Github, House, Settings, Smile } from "lucide-react"
 import type { ComponentProps } from "react"
 import {
   Sidebar,
@@ -15,7 +15,7 @@ import {
 import { href } from "@/route"
 
 const MAIN = [
-  { key: "create", label: "Create", icon: SquarePen },
+  { key: "home", label: "Home", icon: House },
   { key: "specialists", label: "Specialists", icon: Boxes },
   { key: "jobs", label: "Jobs", icon: Activity },
   { key: "models", label: "Models", icon: Cpu },
@@ -49,7 +49,7 @@ export function AppSidebar({ section, running, ...props }: Props) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:p-1.5!">
-              <a href={href("create")}>
+              <a href={href("home")}>
                 <span className="text-base font-semibold">byosm</span>
               </a>
             </SidebarMenuButton>

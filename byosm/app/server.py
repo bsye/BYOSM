@@ -20,6 +20,7 @@ from .jobs import Runner
 from .live_routes import live_router
 from .lock import claim, release
 from .models_routes import models_router
+from .resources_routes import resources_router
 from .systems_routes import systems_router
 from .try_routes import try_router
 from .workbench_routes import workbench_router
@@ -54,6 +55,10 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
     @app.get("/api/next-steps", dependencies=[auth])
     def next_steps() -> dict:
         return catalog.next_steps(ws)
+
+    @app.get("/api/next-steps/{name}", dependencies=[auth])
+    def next_steps_of(name: str) -> list:
+        return missing(catalog.steps_of, ws, name)
 
     @app.get("/api/specialists/{name}", dependencies=[auth])
     def specialist(name: str) -> dict:
@@ -170,6 +175,7 @@ def create_app(
     app.include_router(workbench_router(ws), dependencies=[Depends(check)])
     app.include_router(live_router(ws, runner), dependencies=[Depends(check)])
     app.include_router(models_router(ws, runner), dependencies=[Depends(check)])
+    app.include_router(resources_router(ws), dependencies=[Depends(check)])
     app.include_router(data_router(ws), dependencies=[Depends(check)])
     app.include_router(panel_routes.router(ws), dependencies=[Depends(check)])
     if STATIC_DIR.exists():

@@ -17,8 +17,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useLive } from "@/events"
 import { describe } from "@/jobs"
-import { Overview } from "./Overview"
-import { SectionCards } from "./SectionCards"
 import type { NextStep } from "./NextSteps"
 import { SpecialistCard } from "./SpecialistCard"
 import { byDate, byKind, type Group } from "./specialist-groups"
@@ -132,8 +130,6 @@ export function Specialists() {
         </NewSpecialist>
       </div>
       {error && <p className="text-destructive text-sm">Could not load the specialists: {error}</p>}
-      {items && items.length > 0 && <SectionCards items={shown} />}
-      {items && items.length > 0 && <Overview items={shown} />}
       {items && items.length === 0 && (
         <Empty>
           <EmptyHeader>

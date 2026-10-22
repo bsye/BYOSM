@@ -128,6 +128,10 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
     }
 
 
+def steps_of(ws: Path, name: str) -> list[dict[str, Any]]:
+    return suggestions(project(ws, name).name, ws)
+
+
 def next_steps(ws: Path) -> dict[str, list[dict[str, Any]]]:
     out = {}
     for name in list_projects(ws):
