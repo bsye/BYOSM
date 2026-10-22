@@ -54,6 +54,11 @@ def is_exported(out: Path) -> bool:
     return (out / "manifest.json").exists() and not (out / BUNDLE_MARKER).exists()
 
 
+def exported_current(root: Path, promoted: str | None) -> bool:
+    out = root / "export"
+    return is_exported(out) and json.loads((out / "manifest.json").read_text()).get("experiment") == promoted
+
+
 def exported_bundle(root: Path, name: str) -> Path:
     out = root / "export"
     if not is_exported(out):

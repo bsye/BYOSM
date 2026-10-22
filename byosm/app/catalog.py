@@ -10,6 +10,7 @@ from ..config import Project, list_projects
 from ..data.store import SPLITS, Dataset
 from ..data.sufficiency import data_check
 from ..dataset_search import saved_suggestions
+from ..health import health
 from ..hub.facts import suite_dataset
 from ..improve.proposals import PROPOSALS_FILE
 from ..next_steps import suggestions
@@ -112,6 +113,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "overfit": json.loads(p.overfit_path.read_text()) if p.overfit_path.exists() else None,
         "next": suggestions(name, ws),
         "data_check": data_check(p, spec),
+        "health": health(p, spec),
         "data_suggestions": saved_suggestions(p),
     }
 

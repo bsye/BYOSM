@@ -7,10 +7,16 @@ from typing import Any
 from .config import Project
 from .data.sufficiency import MIN_CALIB_ITEMS, MIN_TEST_ITEMS, data_check
 from .dataset_search import saved_suggestions
+from .health import OK, checks
 from .improve.proposals import PROPOSALS_FILE
 from .spec import TaskSpec
 
 WHY_CHARS = 220
+FIX_TITLES = {
+    "overfit": "Check for overfitting",
+    "robust": "Score on inputs it never saw",
+    "export": "Export the current model",
+}
 
 
 def _step(sid: str, title: str, why: str, args: list[str]) -> dict[str, Any]:
@@ -71,21 +77,12 @@ def _experiments(p: Project) -> dict[str, Any]:
     return {**step, "experiments": fresh}
 
 
-def _overfit(p: Project) -> dict[str, Any] | None:
-    report = json.loads(p.overfit_path.read_text()) if p.overfit_path.exists() else None
-    if report and report.get("experiment") == p.promoted:
-        return None
-    return _step("overfit", "Check for overfitting", "No overfitting check for the current model.", ["overfit", p.name])
-
-
-def _export(p: Project) -> dict[str, Any] | None:
-    from .export.bundle import is_exported
-
-    manifest = p.root / "export" / "manifest.json"
-    if is_exported(p.root / "export") and json.loads(manifest.read_text()).get("experiment") == p.promoted:
-        return None
-    why = "The ONNX bundle is missing or older than the promoted model."
-    return _step("export", "Export the current model", why, ["export", p.name])
+def _from_checks(p: Project, spec: TaskSpec) -> list[dict[str, Any]]:
+    return [
+        _step(c["id"], FIX_TITLES[c["id"]], c["why"], c["args"])
+        for c in checks(p, spec)
+        if c["args"] and c["status"] != OK
+    ]
 
 
 def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
@@ -102,7 +99,5 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         _more_data(p, check),
         _rivals(p, spec, prim),
         _experiments(p),
-        _overfit(p),
-        _export(p),
     ]
-    return [s for s in steps if s]
+    return [s for s in steps if s] + _from_checks(p, spec)

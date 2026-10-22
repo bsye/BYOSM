@@ -18,7 +18,9 @@ def _specialist(ws, n_test, n_calib, rivals=("jev",)):
     p.exp_dir("v1").mkdir(parents=True)
     (p.exp_dir("v1") / "meta.json").write_text("{}")
     p.promote("v1")
-    p.board_path.write_text(json.dumps({"v1": {"builtin": {"objective": 0.9, "n_test": n_test, "n_calib": n_calib}}}))
+    p.board_path.write_text(
+        json.dumps({"v1": {"builtin": {"kind": "experiment", "objective": 0.9, "n_test": n_test, "n_calib": n_calib}}})
+    )
     return p
 
 
@@ -37,10 +39,10 @@ def test_the_untried_proposals_form_one_experiments_step(ws):
     assert step["experiments"] == ["more-data"] and "--each" in step["args"]
 
 
-def test_unscored_rivals_a_missing_overfit_check_and_a_stale_export_are_suggested_in_order(ws):
+def test_unscored_rivals_a_missing_overfit_check_one_suite_and_a_stale_export_are_suggested_in_order(ws):
     _specialist(ws, n_test=500, n_calib=200)
     ids = [s["id"] for s in suggestions("qa")]
-    assert ids == ["score-rivals", "propose", "overfit", "export"]
+    assert ids == ["score-rivals", "propose", "overfit", "robust", "export"]
 
 
 def test_a_specialist_with_no_model_is_built_first(ws):

@@ -22,6 +22,8 @@ import { Playground, useExamples } from "./Playground"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
 import { PageSkeleton } from "@/components/page-skeleton"
+import { Health } from "./Health"
+import { titleOf } from "./specialist-groups"
 import { NextSteps } from "./NextSteps"
 import { PublishDialog } from "@/components/publish-dialog"
 import { Team, useTeam } from "./Team"
@@ -199,10 +201,10 @@ function Model({ name }: { name: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">{d.name}</h1>
+          <h1 className="text-2xl font-semibold">{titleOf(d)}</h1>
           <p className="text-muted-foreground max-w-3xl text-sm">{d.description}</p>
           <p className="text-muted-foreground/70 text-xs">
-            {d.modality} {d.task_type}, {d.labels} labels, {d.experiments.length} experiments
+            <span className="font-mono">{d.name}</span>, {d.modality} {d.task_type}, {d.labels} labels, {d.experiments.length} experiments
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -222,7 +224,10 @@ function Model({ name }: { name: string }) {
           </Button>
         </div>
       </div>
-      <NextSteps d={d} />
+      <div className="grid gap-4 *:data-[slot=card]:h-full @3xl/main:grid-cols-2">
+        <Health d={d} />
+        <NextSteps d={d} />
+      </div>
       <ModelStats d={d} />
       <Tabs defaultValue="board">
         <TabsList>

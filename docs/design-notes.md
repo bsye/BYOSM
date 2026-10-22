@@ -893,3 +893,12 @@ is CPU time per 32 ms chunk inside the listener.
 `livekit-server --dev` (`ws://localhost:7880`, `devkey` / `secret`). `LIVEKIT_PUBLIC_URL` is the address the browser
 uses when it differs from the one the listener uses (a container, a reverse proxy). The endpoint answers 503 with
 the command to run when no server listens there.
+
+## Health score
+
+Nine checks, each graded pass, warning, fail or not measured, and weighted: lead over the best rival (paired
+bootstrap on test, 3), target met (2), no overfitting (2), holds on suites other than the primary (2), and 1 each for
+enough data, a precise score, no weak label, latency within budget and a current export. The score is the weighted
+share of credit (pass 1, warning 0.5). Production ready means 80 or more and no check failing or unmeasured: an
+unmeasured check is not evidence of quality. Calibration is not graded because results store labels, not confidences.
+The rival bootstrap takes seconds on large test sets, so it is cached by the two results' fingerprints.
