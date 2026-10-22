@@ -12,9 +12,6 @@ from pydantic import BaseModel
 from .errors import missing
 
 EXAMPLES_PER_LABEL = 3
-HUB_DIR = "hub"
-HUB_SEPARATOR = "__"
-PRODUCT = "byosm"
 COMPARE_WORKERS = 4
 
 
@@ -38,15 +35,9 @@ def _examples(ws: Path, name: str) -> dict[str, Any]:
         group = by.setdefault(str(r["label"]), [])
         if len(group) < EXAMPLES_PER_LABEL:
             group.append(str(r["input"]))
-    hub = p.root / HUB_DIR
-    repos = (
-        sorted(
-            (d.name.replace(HUB_SEPARATOR, "/", 1) for d in hub.iterdir() if d.is_dir()), key=lambda r: PRODUCT not in r
-        )
-        if hub.exists()
-        else []
-    )
-    return {"examples": by, "rivals": spec.baselines, "repos": repos}
+    from ..model_refs import published_repos
+
+    return {"examples": by, "rivals": spec.baselines, "repos": published_repos(p)}
 
 
 def _rival_search(ws: Path, name: str, q: str) -> list[dict[str, Any]]:

@@ -13,6 +13,7 @@ from ..health import health
 from ..hub.facts import suite_dataset
 from ..improve.proposals import PROPOSALS
 from ..metrics import metric_label, unreached
+from ..model_refs import model_refs
 from ..next_steps import suggestions
 from ..project import Project, list_projects
 from ..spec import Objective, TaskSpec
@@ -106,6 +107,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         **summary(ws, name),
         "spec": spec.model_dump(mode="json"),
         "board": board,
+        "models": model_refs(p, p.board()),
         "suites": [{k: getattr(e, k) for k in SUITE_FIELDS} for e in spec.evals],
         "baselines": spec.baselines,
         "runs": [_run(p, e) for e in p.experiments()],

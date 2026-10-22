@@ -1,3 +1,4 @@
+import type { ModelRef } from "@/components/model-name"
 const TOKEN_KEY = "byosm-token"
 
 export function readToken(): string {
@@ -113,6 +114,7 @@ export type Detail = Summary & {
   next: { id: string; title: string; why: string; args: string[]; experiments?: string[] }[]
   spec: Record<string, unknown>
   board: Record<string, Record<string, Result>>
+  models: Record<string, ModelRef>
   suites: Suite[]
   baselines: string[]
   runs: Run[]

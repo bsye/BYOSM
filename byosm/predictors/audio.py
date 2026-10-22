@@ -31,6 +31,7 @@ def silero_model() -> Any:
 
 @register_baseline("silero", "Silero VAD, the exact ONNX bundled with livekit-plugins-silero (LiveKit's VAD).")
 class SileroVAD(Predictor):
+    home = "https://github.com/snakers4/silero-vad"
     modalities, task_types = ("audio",), ("frame",)
     window = 512
     chunk_ms = 32.0

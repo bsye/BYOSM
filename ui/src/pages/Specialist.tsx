@@ -22,6 +22,7 @@ import { Playground, useExamples } from "./Playground"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
 import { PageSkeleton } from "@/components/page-skeleton"
+import { ModelName } from "@/components/model-name"
 import { Health } from "./Health"
 import { titleOf } from "./specialist-groups"
 import { NextSteps } from "./NextSteps"
@@ -87,9 +88,7 @@ function Board({ d }: { d: Detail }) {
                 <TableRow key={r.model}>
                   <TableCell>
                     <span className="flex items-center gap-2">
-                      <span className="font-medium" title={r.model}>
-                        {display(d, r.model)}
-                      </span>
+                      <ModelName model={d.models[r.model]} shown={display(d, r.model)} />
                       {r.model === d.promoted && <Badge>Promoted</Badge>}
                       {d.baselines.includes(r.model) && <Badge variant="outline">Rival</Badge>}
                     </span>

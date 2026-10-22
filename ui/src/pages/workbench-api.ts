@@ -4,7 +4,7 @@ import { useLive } from "@/events"
 
 export type Row = { id: string; input: string; label: string; source?: string }
 export type Answer = { label: string; confidence: number }
-export type TestSet = { suite: string; frozen: boolean; rows: Row[]; results: Record<string, Record<string, Answer>> }
+export type TestSet = { suite: string; frozen: boolean; board: boolean; rows: Row[]; results: Record<string, Record<string, Answer>> }
 export type ModelChoice = { chosen: string[]; available: string[] }
 
 const UNFINISHED = new Set(["running", "queued"])

@@ -8,6 +8,7 @@ from pathlib import Path
 from ..config import PUBLISH_LICENSE
 from ..evals.dumps import _dumps
 from ..export.bundle import is_exported
+from ..model_refs import HUB_DIR, HUB_SEPARATOR
 from ..project import Project
 from .card import model_card
 from .facts import lineage
@@ -15,7 +16,7 @@ from .facts import lineage
 
 def _stage(p: Project, repo_id: str, license: str, experiment: str) -> Path:
     export_dir = p.root / "export"
-    stage = p.root / "hub" / repo_id.replace("/", "__")
+    stage = p.root / HUB_DIR / repo_id.replace("/", HUB_SEPARATOR)
     if stage.exists():
         shutil.rmtree(stage)
     shutil.copytree(export_dir, stage, ignore=shutil.ignore_patterns("__pycache__", "README.md"))

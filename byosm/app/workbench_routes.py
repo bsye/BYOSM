@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
 from .errors import missing
@@ -23,22 +23,9 @@ def _project(ws: Path, name: str) -> tuple[Any, Any]:
 
 
 def _sets(ws: Path, name: str) -> list[dict[str, Any]]:
-    from ..evals.testset import written_logs
-    from ..evals.workbench import results
+    from ..evals.test_sets import test_sets
 
-    p, spec = _project(ws, name)
-    frozen = {e.name for e in spec.evals}
-    return [
-        {
-            "suite": s,
-            "frozen": s in frozen,
-            "rows": [
-                {"id": r["id"], "input": r["input"], "label": r["label"], "source": r.get("source")} for r in rows
-            ],
-            "results": results(p, s),
-        }
-        for s, rows in written_logs(p).items()
-    ]
+    return test_sets(*_project(ws, name))
 
 
 def _models(ws: Path, name: str) -> dict[str, Any]:
@@ -62,6 +49,17 @@ def workbench_router(ws: Path) -> APIRouter:
     @router.get("/api/specialists/{name}/written")
     def written(name: str) -> list:
         return missing(_sets, ws, name)
+
+    @router.get("/api/specialists/{name}/written/{suite}.xlsx")
+    def export(name: str, suite: str) -> Response:
+        from ..evals.workbench_export import XLSX_TYPE, results_workbook
+
+        p, spec = missing(_project, ws, name)
+        body = missing(results_workbook, p, spec, suite)
+        filename = f"{name}-{suite}-results.xlsx"
+        return Response(
+            body, media_type=XLSX_TYPE, headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
 
     @router.get("/api/specialists/{name}/test-models")
     def models(name: str) -> dict:

@@ -61,7 +61,7 @@ function SuiteCard({ d, suite }: { d: Detail; suite: Suite }) {
 export function GeneratedSuites({ d }: { d: Detail }) {
   return (
     <div className="flex flex-col gap-4">
-      {d.task_type === "classify" && <TestSets name={d.name} labels={d.labels} />}
+      {d.task_type === "classify" && <TestSets name={d.name} labels={d.labels} models={d.models} promoted={d.promoted} />}
       <div className="grid auto-rows-fr gap-4 @3xl/main:grid-cols-2">
         {d.suites
           .filter((s) => s.kind === GENERATED)

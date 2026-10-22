@@ -24,6 +24,7 @@ class Predictor:
     chunk_ms: float | None = None
     label_space: list[str] | None = None
     hub_repo: str | None = None
+    home: str | None = None
 
     def __init__(self, spec: TaskSpec):
         self.spec = spec

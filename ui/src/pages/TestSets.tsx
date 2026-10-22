@@ -1,7 +1,8 @@
-import { Check, Database, Loader2, Play, Sparkles, X } from "lucide-react"
+import { Check, Database, FileSpreadsheet, Loader2, Play, Sparkles, X } from "lucide-react"
 import { useState } from "react"
-import { runJob } from "@/api"
+import { download, runJob } from "@/api"
 import { LlmPicker, useLlmChoice } from "@/components/llm-picker"
+import { ModelName, type ModelRef } from "@/components/model-name"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -22,7 +23,7 @@ const DEFAULT_SAMPLE = 20
 const modelLabel = (m: string) => (m === OURS ? "this model" : rivalName(m))
 const start = (args: string[], llm?: Record<string, unknown> | null) => runJob(args, llm ?? undefined).then((j) => openJob(j.id))
 
-function Grid({ set, models }: { set: TestSet; models: string[] }) {
+function Grid({ set, models, refs }: { set: TestSet; models: string[]; refs: Refs }) {
   return (
     <ScrollArea className="h-96">
       <Table>
@@ -34,7 +35,7 @@ function Grid({ set, models }: { set: TestSet; models: string[] }) {
               const a = accuracy(set, m)
               return (
                 <TableHead key={m} className="text-right">
-                  {modelLabel(m)}
+                  <ModelName model={refs.models[m === OURS ? (refs.promoted ?? "") : m]} shown={modelLabel(m)} />
                   <span className="text-muted-foreground ml-1 font-normal tabular-nums">{a.scored ? `${a.right}/${a.scored}` : "-"}</span>
                 </TableHead>
               )
@@ -70,7 +71,9 @@ function Grid({ set, models }: { set: TestSet; models: string[] }) {
   )
 }
 
-export function TestSets({ name, labels }: { name: string; labels: number }) {
+type Refs = { models: Record<string, ModelRef>; promoted: string | null }
+
+export function TestSets({ name, labels, models, promoted }: { name: string; labels: number } & Refs) {
   const wb = useWorkbench(name)
   const llm = useLlmChoice()
   const [picked, setPicked] = useState<string | null>(null)
@@ -79,7 +82,8 @@ export function TestSets({ name, labels }: { name: string; labels: number }) {
   const setName = picked ?? wb.sets[0]?.suite ?? DEFAULT_SET
   const set = wb.sets.find((s) => s.suite === setName)
   const chosen = wb.models?.chosen ?? []
-  const unscored = set ? Math.max(0, ...chosen.map((m) => set.rows.length - accuracy(set, m).scored)) : 0
+  const unscored = set && !set.board ? Math.max(0, ...chosen.map((m) => set.rows.length - accuracy(set, m).scored)) : 0
+  const fixed = Boolean(set?.board)
   return (
     <Card>
       <CardHeader>
@@ -92,7 +96,11 @@ export function TestSets({ name, labels }: { name: string; labels: number }) {
             </span>
           )}
         </CardTitle>
-        <CardAction>
+        <CardAction className="flex gap-2">
+          <Button size="sm" variant="outline" disabled={!set?.rows.length} onClick={() => download(`/specialists/${name}/written/${encodeURIComponent(setName)}.xlsx`, `${name}-${setName}-results.xlsx`)}>
+            <FileSpreadsheet />
+            Export
+          </Button>
           <Select value={setName} onValueChange={setPicked}>
             <SelectTrigger size="sm" aria-label="Test set">
               <SelectValue />
@@ -111,12 +119,12 @@ export function TestSets({ name, labels }: { name: string; labels: number }) {
         <div className="flex flex-wrap items-center gap-2">
           <Input type="number" min={1} className="h-8 w-20 tabular-nums" aria-label="Inputs per label" value={perLabel} onChange={(e) => setPerLabel(Math.max(1, Number(e.target.value) || 1))} />
           <LlmPicker llm={llm} label="LLM that writes the inputs" />
-          <Button size="sm" variant="outline" disabled={!llm.choice} onClick={() => start(["inputs", "write", name, "--per-label", String(perLabel), "--set", setName], llm.config())}>
+          <Button size="sm" variant="outline" disabled={!llm.choice || fixed} onClick={() => start(["inputs", "write", name, "--per-label", String(perLabel), "--set", setName], llm.config())}>
             <Sparkles />
             Write {perLabel * labels}
           </Button>
           <Input type="number" min={1} className="ml-2 h-8 w-20 tabular-nums" aria-label="Rows from the benchmark" value={sample} onChange={(e) => setSample(Math.max(1, Number(e.target.value) || 1))} />
-          <Button size="sm" variant="outline" onClick={() => start(["inputs", "sample", name, "--n", String(sample), "--set", setName])}>
+          <Button size="sm" variant="outline" disabled={fixed} onClick={() => start(["inputs", "sample", name, "--n", String(sample), "--set", setName])}>
             <Database />
             Add from benchmark
           </Button>
@@ -131,11 +139,11 @@ export function TestSets({ name, labels }: { name: string; labels: number }) {
           </ToggleGroup>
           <Button size="sm" className="ml-auto" disabled={!set?.rows.length || !unscored} onClick={() => start(["inputs", "run", name, "--set", setName])}>
             <Play />
-            {unscored ? `Score ${unscored} rows` : "All scored"}
+            {fixed ? "Scored on the board" : unscored ? `Score ${unscored} rows` : "All scored"}
           </Button>
         </div>
         {set?.rows.length ? (
-          <Grid set={set} models={chosen} />
+          <Grid set={set} models={chosen} refs={{ models, promoted }} />
         ) : (
           <p className="text-muted-foreground text-sm">No inputs in {setName} yet: write some or add rows from the benchmark.</p>
         )}
