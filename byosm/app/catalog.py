@@ -124,6 +124,16 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
     }
 
 
+def next_steps(ws: Path) -> dict[str, list[dict[str, Any]]]:
+    out = {}
+    for name in list_projects(ws):
+        try:
+            out[name] = suggestions(name, ws)
+        except Exception:
+            out[name] = []
+    return out
+
+
 def save_spec(ws: Path, name: str, body: dict) -> dict[str, Any]:
     p = project(ws, name)
     spec = TaskSpec(**{**body, "name": name})

@@ -1,4 +1,5 @@
 import { Maximize2 } from "lucide-react"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { closeJob, useOpenJob } from "@/job-sheet"
@@ -22,7 +23,13 @@ export function JobSheet() {
             </Button>
           )}
         </SheetHeader>
-        <div className="@container/main px-4 pb-6">{id && <JobDetail id={id} />}</div>
+        <div className="@container/main px-4 pb-6">
+          {id && (
+            <ErrorBoundary resetKey={id}>
+              <JobDetail id={id} />
+            </ErrorBoundary>
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   )

@@ -19,6 +19,7 @@ import { useLive } from "@/events"
 import { describe } from "@/jobs"
 import { Overview } from "./Overview"
 import { SectionCards } from "./SectionCards"
+import type { NextStep } from "./NextSteps"
 import { SpecialistCard } from "./SpecialistCard"
 import { byDate, byKind, type Group } from "./specialist-groups"
 import { openJob } from "@/job-sheet"
@@ -80,7 +81,7 @@ function useGrouping(): [Grouping, (g: Grouping) => void] {
   return [value, set]
 }
 
-function Section({ group, busy, showKind }: { group: Group; busy: Map<string, string>; showKind: boolean }) {
+function Section({ group, busy, showKind, steps }: { group: Group; busy: Map<string, string>; showKind: boolean; steps: Record<string, NextStep[]> }) {
   return (
     <section className="space-y-3">
       <h2 className="flex items-baseline gap-2 text-sm font-medium">
@@ -89,7 +90,7 @@ function Section({ group, busy, showKind }: { group: Group; busy: Map<string, st
       </h2>
       <div className="grid auto-rows-fr gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
         {group.items.map((s) => (
-          <SpecialistCard key={s.name} s={s} running={busy.get(s.name)} showKind={showKind} />
+          <SpecialistCard key={s.name} s={s} running={busy.get(s.name)} showKind={showKind} steps={steps[s.name]} />
         ))}
       </div>
     </section>
@@ -106,6 +107,12 @@ export function Specialists() {
   const busy = new Map(
     jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => [describe(j).target ?? "", describe(j).title] as const),
   )
+  const [steps, setSteps] = useState<Record<string, NextStep[]>>({})
+  useEffect(() => {
+    api<Record<string, NextStep[]>>("/next-steps")
+      .then(setSteps)
+      .catch(() => setSteps({}))
+  }, [finished])
   useEffect(() => {
     api<Summary[]>("/specialists")
       .then(setItems)
@@ -166,7 +173,7 @@ export function Specialists() {
         </div>
       )}
       {GROUPINGS[grouping](shown).map((g) => (
-        <Section key={g.key} group={g} busy={busy} showKind={grouping === "date"} />
+        <Section key={g.key} group={g} busy={busy} showKind={grouping === "date"} steps={steps} />
       ))}
     </div>
   )

@@ -51,6 +51,10 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
     def specialists() -> list[dict]:
         return catalog.specialists(ws)
 
+    @app.get("/api/next-steps", dependencies=[auth])
+    def next_steps() -> dict:
+        return catalog.next_steps(ws)
+
     @app.get("/api/specialists/{name}", dependencies=[auth])
     def specialist(name: str) -> dict:
         return missing(catalog.detail, ws, name)
