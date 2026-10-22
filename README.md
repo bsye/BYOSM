@@ -15,12 +15,13 @@
 
 ## Features
 
-<table>
-<tr><td>✅ <a href="#7-choose-the-llms">Claude Code or Codex subscription</a></td><td>✅ <a href="#7-choose-the-llms">Ollama, LM Studio or API keys</a></td><td>✅ <a href="#1-describe-the-task">Hugging Face datasets and benchmarks</a></td><td>✅ <a href="#2-watch-it-build">LLM-written data, checked by a judge</a></td></tr>
-<tr><td>✅ <a href="docs/methodology.md">No leaks between splits</a></td><td>✅ <a href="#4-compare-with-rivals">Same scorer for every rival</a></td><td>✅ <a href="#3-check-its-health">Health score, production ready</a></td><td>✅ <a href="#3-check-its-health">Experiments and autopilot</a></td></tr>
-<tr><td>✅ <a href="#2-watch-it-build">Every job live</a></td><td>✅ <a href="#5-test-it-on-new-inputs">Test sets, Excel export</a></td><td>✅ <a href="#5-test-it-on-new-inputs">Hub models as rivals</a></td><td>✅ <a href="#6-act-while-the-user-types">Teams that act as you type</a></td></tr>
-<tr><td>✅ <a href="#8-ship-it">int8 ONNX on any CPU</a></td><td>✅ <a href="#8-ship-it">HTTP server and Docker</a></td><td>✅ <a href="#8-ship-it">Publish to the Hub</a></td><td>✅ <a href="docs/details.md">SQLite or Postgres</a></td></tr>
-</table>
+| Build | Evaluate | Observe | Ship |
+|---|---|---|---|
+| ✅ Claude Code or Codex | ✅ Same scorer for all rivals | ✅ Every job live | ✅ int8 ONNX on any CPU |
+| ✅ Ollama, LM Studio, API keys | ✅ No leaks between splits | ✅ LLM decisions as a tree | ✅ HTTP server and Docker |
+| ✅ Hub datasets and benchmarks | ✅ Overfitting check | ✅ Tokens per task and model | ✅ Publish to the Hub |
+| ✅ LLM data, judge-checked | ✅ Health score | ✅ Test sets, Excel export | ✅ Teams that act as you type |
+| ✅ Experiments and autopilot | ✅ Hub models as rivals | ✅ Paged tables, live counts | ✅ SQLite or Postgres |
 
 ## Run it
 
