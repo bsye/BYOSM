@@ -31,3 +31,8 @@ export function roleConfig(providers: Provider[], key: string): Record<string, u
   if (!p?.config) return null
   return model === DEFAULT_MODEL ? p.config : { ...p.config, model }
 }
+
+export function matchChoice(providers: Provider[], conf: Record<string, unknown>): string {
+  const p = providers.find((x) => x.config && x.config.provider === conf.provider && (x.config.base_url ?? null) === (conf.base_url ?? null))
+  return p ? choiceKey(p, (conf.model as string | null) ?? null) : ""
+}

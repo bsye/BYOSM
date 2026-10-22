@@ -15,6 +15,7 @@ import { LiveProvider, useLive, useJobToasts } from "@/events"
 import { Create } from "@/pages/Create"
 import { Jobs } from "@/pages/Jobs"
 import { Palette } from "@/pages/Palette"
+import { Models } from "@/pages/Models"
 import { Settings } from "@/pages/Settings"
 import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
@@ -25,6 +26,7 @@ function Page({ route }: { route: string[] }) {
   if (section === "create") return <Create />
   if (section === "specialists") return id ? <Specialist name={id} /> : <Specialists />
   if (section === "jobs") return <Jobs id={id} />
+  if (section === "models") return <Models />
   if (section === "keys") return <Settings />
   if (section === "settings") return <Settings />
   return <Specialists />

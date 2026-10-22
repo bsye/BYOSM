@@ -12,7 +12,14 @@ from ..llm import BUDGET_KEY
 
 ROLES = ("default", "spec", "generate", "eval", "judge", "analyze", "baseline")
 EFFORT_KEYS = {"openai": "reasoning_effort", "anthropic": "effort", "claude-code": "effort", "codex": "effort"}
-SETTINGS = ("provider", "model", "base_url", "effort", "max_parallel")
+EFFORT_LEVELS = {
+    "openai": ["none", "low", "medium", "high"],
+    "anthropic": ["low", "medium", "high", "max"],
+    "claude-code": ["low", "medium", "high", "max"],
+    "codex": ["minimal", "low", "medium", "high"],
+}
+EFFORT_DEFAULTS = {"anthropic": "medium"}
+SETTINGS = ("provider", "model", "base_url", "api_key", "api_key_env", "effort", "max_parallel")
 
 
 class RoleSettings(BaseModel):
@@ -37,8 +44,10 @@ def _effort_key(conf: dict) -> str:
 
 
 def _view(conf: dict) -> dict[str, Any]:
-    shown = {k: v for k, v in conf.items() if k not in SECRET_KEYS}
-    return {**{k: shown.get(k) for k in SETTINGS}, "effort": conf.get(_effort_key(conf))}
+    provider = str(conf.get("provider", "anthropic"))
+    shown = {k: conf.get(k) for k in SETTINGS if k not in SECRET_KEYS}
+    effort = conf.get(_effort_key(conf)) or EFFORT_DEFAULTS.get(provider)
+    return {**shown, "effort": effort, "effort_levels": EFFORT_LEVELS.get(provider, [])}
 
 
 def roles(ws: Path) -> dict[str, Any]:

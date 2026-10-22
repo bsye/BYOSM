@@ -40,14 +40,14 @@ export function useLlmChoice(): LlmChoice {
   return { providers, choice, pick, config: () => roleConfig(available, choice) }
 }
 
-export function LlmPicker({ llm, label }: { llm: LlmChoice; label: string }) {
+export function LlmSelect({ providers, value, onChange, label }: { providers: Provider[] | null; value: string; onChange: (v: string) => void; label: string }) {
   return (
-    <Select value={llm.choice} onValueChange={llm.pick}>
+    <Select value={value} onValueChange={onChange}>
       <SelectTrigger size="sm" className="max-w-72" aria-label={label}>
-        <SelectValue placeholder={llm.providers == null ? "Looking for LLMs..." : "No LLM found"} />
+        <SelectValue placeholder={providers == null ? "Looking for LLMs..." : "No LLM found"} />
       </SelectTrigger>
       <SelectContent>
-        {(llm.providers ?? []).map((p) => (
+        {(providers ?? []).map((p) => (
           <SelectGroup key={p.id}>
             <SelectLabel>
               {p.label} <span className="text-muted-foreground/70">{p.available ? p.kind : p.hint ?? "not found"}</span>
@@ -62,4 +62,8 @@ export function LlmPicker({ llm, label }: { llm: LlmChoice; label: string }) {
       </SelectContent>
     </Select>
   )
+}
+
+export function LlmPicker({ llm, label }: { llm: LlmChoice; label: string }) {
+  return <LlmSelect providers={llm.providers} value={llm.choice} onChange={llm.pick} label={label} />
 }
