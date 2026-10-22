@@ -13,6 +13,7 @@ DEV_SHARE = 0.1
 TEST_SHARE = 0.15
 
 SPLITS = ("train", "dev", "test")
+TRAIN_INPUTS = "train-inputs"
 NEAR_DUPLICATE = 0.7
 NEAR_CANDIDATES = 3
 

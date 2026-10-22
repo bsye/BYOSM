@@ -7,7 +7,7 @@ from typing import Any
 
 from ..spec import HFSource, TaskSpec
 from . import audio_mix, budget, hf_source, panel, segments
-from .store import DEV_SHARE, TEST_SHARE, Dataset, dedupe, near_groups, record, write
+from .store import DEV_SHARE, TEST_SHARE, TRAIN_INPUTS, Dataset, dedupe, near_groups, record, write
 from .table import is_table, table_rows
 
 MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
@@ -188,7 +188,7 @@ def build(
         splits["train"] += panel.label_pool(spec, splits, unlabeled, data_dir, log, reviewed)
     for s, rows in splits.items():
         ds.save(s, rows)
-    unlabeled += [record(r["input"], None, "train-inputs") for r in splits["train"]]
+    unlabeled += [record(r["input"], None, TRAIN_INPUTS) for r in splits["train"]]
     write(data_dir / "unlabeled.jsonl", unlabeled)
     if fit:
         budget.record_fit(data_dir, fit, splits)

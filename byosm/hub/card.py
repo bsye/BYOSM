@@ -3,6 +3,7 @@ from __future__ import annotations
 import yaml
 
 from ..format import fmt
+from ..metrics import metric_label
 from . import provenance, sections
 from .facts import CardFacts, load_facts
 from .tables import comparison_table, detail_table, front_matter
@@ -121,7 +122,7 @@ def summary_table(f: CardFacts) -> str:
         f"| labels | {', '.join(f'`{lab}`' for lab in spec.label_names)} |",
         f"| parameters | {_params_cell(m)} |",
         f"| backbone | {_backbone(f)} · embedding dim {m['embedding_dim']} |",
-        f"| objective | `{f.base.objective.metric}`, primary suite `{f.prim}` |",
+        f"| objective | {metric_label(f.base.objective)}, primary suite `{f.prim}` |",
         f"| decision policy | `{dec['kind']}`, threshold {fmt(dec.get('threshold'), 3)} (calibrated on `{f.prim}`'s calib split) |",
         _latency_row(f),
     ]

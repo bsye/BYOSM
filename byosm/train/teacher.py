@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import torch
 
-from ..data.store import Dataset
+from ..data.store import TRAIN_INPUTS, Dataset
 from ..modalities import IGNORE, Modality, get_modality
 from ..model import align_targets
 from ..spec import TaskSpec
@@ -32,7 +32,7 @@ def _teacher_targets(
     teacher = ExperimentPredictor(tspec, p.meta(name), teacher_dir, name, device=teacher_dev)
     tmod = get_modality(tspec, str(data_dir))
     seen = {str(r["input"]) for r in train_rows}
-    unlabeled = [r for r in ds.unlabeled() if r.get("source") != "train-inputs" and str(r["input"]) not in seen]
+    unlabeled = [r for r in ds.unlabeled() if r.get("source") != TRAIN_INPUTS and str(r["input"]) not in seen]
     extra = unlabeled[: spec.train.distill_unlabeled]
     rows = train_rows + extra
     log(

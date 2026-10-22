@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from ..data.budget import fit_line, load_fit
-from .facts import CardFacts
+from ..data.store import TRAIN_INPUTS
+from .facts import HUB_SOURCE, CardFacts
 
 CARD_NOTES = "card-notes"
 
+LLM_SOURCE = "llm:"
 SYNTH_LINE = "- LLM-written examples, double-labelled (generator + blind judge); held-out sets from an independent evaluator prompt\n"
 STREAM_SECTION = """
 ### Streaming
@@ -33,14 +35,24 @@ TRAIN_STEPS = (
 )
 
 
-def _source_line(s) -> str:
-    part = f", partition `{s.partition}`" if s.partition != "all" else ""
-    return f"- [`{s.dataset}`](https://huggingface.co/datasets/{s.dataset}): role `{s.role}`" + part
+def _source_line(source: str, n: int, what: str) -> str:
+    if source.startswith(HUB_SOURCE):
+        name = source.removeprefix(HUB_SOURCE)
+        return f"- [`{name}`](https://huggingface.co/datasets/{name}): {n:,} {what} rows"
+    if source.startswith(LLM_SOURCE):
+        return f"- {n:,} {what} rows written by `{source.removeprefix(LLM_SOURCE)}`"
+    if source == TRAIN_INPUTS:
+        return f"- {n:,} {what} rows: the training inputs again, for pretraining"
+    return f"- {n:,} {what} rows from `{source}`"
 
 
 def sources(f: CardFacts) -> str:
-    listed = "\n".join(_source_line(s) for s in f.spec.data.hf_sources)
-    return listed or ("" if f.spec.data.synthetic else "- (none)")
+    lines = [
+        _source_line(src, n, what)
+        for split, what in (("train", "training"), ("unlabeled", "unlabeled"))
+        for src, n in sorted(f.used.get(split, {}).items(), key=lambda kv: -kv[1])
+    ]
+    return "\n".join(lines) or "- (none)"
 
 
 def _shrunk(f: CardFacts) -> str:

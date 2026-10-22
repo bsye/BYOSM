@@ -40,6 +40,8 @@ def publish(
     if not is_exported(p.root / "export"):
         raise RuntimeError(f"export first: byosm export {name}")
     experiment = json.loads(manifest.read_text())["experiment"]
+    if experiment != p.promoted:
+        raise RuntimeError(f"the export holds {experiment} but {p.promoted} is promoted: byosm export {name} first")
     stage = _stage(p, repo_id, license, experiment)
     log(f"  staged {len(list(stage.iterdir()))} files in {stage}")
     if dry_run:

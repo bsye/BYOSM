@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..format import fmt
+from ..metrics import CONSTRAINED, metric_label, unreached
 from .facts import CardFacts
 
 DEFINE_STEP = "define"
@@ -26,13 +27,17 @@ def headline(f: CardFacts) -> str:
 
     mine = f.results.get(f.prim, {})
     ci = (mine.get("metrics") or {}).get("ci95") or {}
-    score = f"**{fmt(mine.get('objective'), 3)}** test {f.base.objective.metric}"
+    score = f"**{fmt(mine.get('objective'), 3)}** test {metric_label(f.base.objective)}"
     interval = f" [{fmt(ci['lo'], 3)}, {fmt(ci['hi'], 3)}]" if ci else ""
     rival = best_baseline(f.board, f.prim)
     theirs = f.board.get(rival[0], {}).get(f.prim, {}).get("objective") if rival else None
     ours = mine.get("objective")
     if theirs is None or ours is None:
         return f"{score}{interval} on `{f.prim}`. {NO_RIVAL}"
+    short = unreached(f.base.objective, f.board[rival[0]][f.prim].get("metrics") or {})
+    if short is not None:
+        bound = CONSTRAINED[f.base.objective.metric][1]
+        return f"{score}{interval} on `{f.prim}`; the best rival, `{rival[0]}`, reaches only {short:.1%} {bound}"
     return f"{score}{interval} on `{f.prim}`, {ours - theirs:+.3f} over `{rival[0]}` ({fmt(theirs, 3)})"
 
 

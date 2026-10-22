@@ -155,6 +155,28 @@ def test_a_verified_bundle_is_exported(ws, monkeypatch):
     assert not (out / BUNDLE_MARKER).exists()
 
 
+def _promoted_export(ws, promoted) -> None:
+    from byosm.spec import Label, TaskSpec
+
+    p = Project("x", ws)
+    p.save_spec(TaskSpec(name="x", description="x", modality="text", labels=[Label(name="a", definition="")]))
+    p.save_experiment(promoted, meta={})
+    p.promote(promoted)
+    out = ws / "specialists" / "x" / "export"
+    out.mkdir(parents=True)
+    (out / "manifest.json").write_text('{"experiment": "v1"}')
+
+
+def test_publish_refuses_an_export_of_a_model_that_is_no_longer_promoted(ws, monkeypatch):
+    from byosm.hub import upload
+
+    _promoted_export(ws, "v2")
+    monkeypatch.setattr(upload, "is_exported", lambda path: True)
+    with pytest.raises(RuntimeError) as err:
+        upload.publish("x", "me/x", log=lambda m: None)
+    assert "holds v1 but v2 is promoted" in str(err.value)
+
+
 def test_private_publish_refuses_an_existing_public_repo(ws, monkeypatch, tmp_path):
     import types
 
@@ -175,9 +197,7 @@ def test_private_publish_refuses_an_existing_public_repo(ws, monkeypatch, tmp_pa
         def upload_folder(self, **kw):
             calls.append("upload")
 
-    out = ws / "specialists" / "x" / "export"
-    out.mkdir(parents=True)
-    (out / "manifest.json").write_text('{"experiment": "v1"}')
+    _promoted_export(ws, "v1")
     monkeypatch.setattr(huggingface_hub, "HfApi", Api)
     monkeypatch.setattr(upload, "is_exported", lambda path: True)
     monkeypatch.setattr(upload, "_stage", lambda *a: tmp_path)

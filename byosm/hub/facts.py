@@ -59,6 +59,7 @@ class CardFacts:
     datasets: list[str]
     nc: list[str]
     lineage: list[dict]
+    used: dict[str, dict[str, int]]
 
     @property
     def results(self) -> dict:
@@ -82,13 +83,28 @@ class CardFacts:
         return self.repo_id.split("/")[-1]
 
 
+HUB_SOURCE = "hf:"
+USED_SPLITS = ("train", "unlabeled")
+
+
+def used_sources(p: Project, spec: TaskSpec) -> dict[str, dict[str, int]]:
+    from collections import Counter
+
+    from ..data.store import Dataset
+
+    ds = Dataset(p.data_dir_for(spec))
+    return {split: dict(Counter(str(r.get("source", "?")) for r in ds.load(split))) for split in USED_SPLITS}
+
+
 def load_facts(name: str, repo_id: str, license: str) -> CardFacts:
     p = Project(name)
     base = p.spec()
     m = json.loads((p.root / "export" / "manifest.json").read_text())
     exp = m["experiment"]
     spec = p.exp_spec(exp)
-    datasets = sorted({s.dataset for s in spec.data.hf_sources} | {e.source.dataset for e in base.evals if e.source})
+    used = used_sources(p, spec)
+    hub = {k.removeprefix(HUB_SOURCE) for split in used.values() for k in split if k.startswith(HUB_SOURCE)}
+    datasets = sorted(hub | {e.source.dataset for e in base.evals if e.source})
     return CardFacts(
         p=p,
         repo_id=repo_id,
@@ -104,4 +120,5 @@ def load_facts(name: str, repo_id: str, license: str) -> CardFacts:
         datasets=datasets,
         nc=[NC_DATASETS[d] for d in datasets if d in NC_DATASETS],
         lineage=lineage(p, exp),
+        used=used,
     )
