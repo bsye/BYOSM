@@ -40,3 +40,9 @@ def test_a_dataset_without_a_test_split_becomes_training_data_held_out_by_us(mon
 
 def test_a_dataset_written_with_the_hub_prefix_is_read_as_its_bare_id():
     assert HFSource(dataset="hf:facebook/multiwoz").dataset == "facebook/multiwoz"
+
+
+def test_an_id_that_is_not_a_valid_hub_id_does_not_exist():
+    from byosm.data.hf_source.hub import exists
+
+    assert not exists("hf:Microsoft/DialogAct")

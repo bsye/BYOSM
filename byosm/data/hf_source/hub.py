@@ -98,11 +98,11 @@ def search(queries: list[str], limit: int = 8) -> list[dict]:
 
 def exists(dataset: str) -> bool:
     from huggingface_hub import HfApi
-    from huggingface_hub.errors import RepositoryNotFoundError
+    from huggingface_hub.errors import HFValidationError, RepositoryNotFoundError
 
     try:
         HfApi().dataset_info(dataset)
-    except RepositoryNotFoundError:
+    except (RepositoryNotFoundError, HFValidationError):
         return False
     except Exception:
         return True

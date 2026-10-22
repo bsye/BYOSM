@@ -61,7 +61,7 @@ def _data_plan(mod: str, out: dict) -> DataPlan:
 def _real(candidates: list[dict]) -> list[dict]:
     from ..data.hf_source.hub import exists
 
-    return [c for c in candidates if exists(c["dataset"])]
+    return [c for c in candidates if exists(HFSource(dataset=c["dataset"]).dataset)]
 
 
 def train_cfg(mod: str, backbone: str) -> TrainCfg:
