@@ -11,6 +11,7 @@ from .data import synth_text
 from .data.review import reviewed_labels
 from .data.store import Dataset
 from .events import stage
+from .held_out import adopt_data, bigger_held_out
 from .project import Project
 from .spec import TaskSpec
 from .train import fit
@@ -92,6 +93,11 @@ def build(
 
     log("[eval] scoring on every suite (+ baselines, cached)")
     evals.run(name, log=log)
+    bigger = bigger_held_out(p)
+    if bigger and bigger[0] == exp:
+        log(f"[benchmark] {exp} built a held-out set big enough to tell models apart; adopting it")
+        adopt_data(name, exp, log)
+        return p.board().get(exp, {})
     return maybe_promote(p, exp, log)
 
 

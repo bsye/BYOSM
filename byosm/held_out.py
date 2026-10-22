@@ -15,10 +15,16 @@ def held_out_size(p: Project, exp: str | None) -> tuple[int, int]:
     return len(ds.load("test")), len(ds.load(CALIB_SPLIT))
 
 
+def enough(n_test: int, n_calib: int) -> bool:
+    return n_test >= MIN_TEST_ITEMS and n_calib >= MIN_CALIB_ITEMS
+
+
 def bigger_held_out(p: Project) -> tuple[str, int, int] | None:
+    if enough(*held_out_size(p, None)):
+        return None
     own = p.spec().data_key()
     sizes = {e: held_out_size(p, e) for e in p.experiments() if p.exp_spec(e).data_key() != own}
-    fit = {e: s for e, s in sizes.items() if s[0] >= MIN_TEST_ITEMS and s[1] >= MIN_CALIB_ITEMS}
+    fit = {e: s for e, s in sizes.items() if enough(*s)}
     if not fit:
         return None
     exp = max(fit, key=lambda e: fit[e])

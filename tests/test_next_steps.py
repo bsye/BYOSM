@@ -82,3 +82,14 @@ def test_a_bigger_held_out_set_from_an_experiment_is_offered_as_the_benchmark(ws
         Dataset(p.data_dir_for(big)).save(split, rows)
     first = suggestions("qa")[0]
     assert first["args"] == ["adopt-data", "qa", "v2"] and "120 test and 120 calib" in first["why"]
+
+
+def test_no_experiment_data_is_offered_when_the_own_held_out_set_is_big_enough(ws):
+    from byosm.data.store import Dataset, record
+    from byosm.held_out import bigger_held_out
+
+    p = _specialist(ws, n_test=500, n_calib=200)
+    rows = [record(f"x{i}", "question", "t") for i in range(120)]
+    for split in ("test", "dev"):
+        Dataset(p.data_dir_for(p.spec())).save(split, rows)
+    assert bigger_held_out(p) is None

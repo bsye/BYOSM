@@ -913,6 +913,6 @@ An experiment that changes the data plan builds its own splits, but the board sc
 builtin suite, the held-out split of the base spec's data. When that split is below `MIN_TEST_ITEMS` or
 `MIN_CALIB_ITEMS`, every model can tie (turn-completion: 9 test rows, calib 0.000 for all), so selection never moves.
 `byosm adopt-data NAME EXP` (`byosm/held_out.py`) copies the experiment's data plan into the spec, rescores every
-experiment and baseline on the new held-out split, and promotes the best on calib. Next steps offers it when an
-experiment has a big enough held-out set. Older experiments may have trained on rows that land in the new test split;
+experiment and baseline on the new held-out split, and promotes the best on calib. A build does this on its own when the
+experiment it just trained is the one with a big enough held-out set, and Next steps offers it otherwise. Older experiments may have trained on rows that land in the new test split;
 the overfitting check's overlap finding shows it.
