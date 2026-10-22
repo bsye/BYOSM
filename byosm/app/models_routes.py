@@ -10,7 +10,7 @@ from ..config import load_config, save_config, stored_config
 from ..evals.identity import SECRET_KEYS
 from ..llm import BUDGET_KEY
 
-ROLES = ("default", "spec", "generate", "eval", "judge", "analyze", "baseline")
+ROLES = ("default", "spec", "pick", "map", "generate", "eval", "judge", "analyze", "baseline")
 EFFORT_KEYS = {"openai": "reasoning_effort", "anthropic": "effort", "claude-code": "effort", "codex": "effort"}
 EFFORT_LEVELS = {
     "openai": ["none", "low", "medium", "high"],

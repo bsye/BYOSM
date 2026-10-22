@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from ...llm import get_llm
+from ...llm import get_llm, role_model
 from ...spec import HFSource, TaskSpec
 from .hub import _features, search
 
@@ -12,6 +12,7 @@ our labels (omit source values that do not fit any of our labels cleanly - preci
 positive/negative/unlabeled only the input column matters (label_map may filter rows: map wanted source values to "keep"). \
 Set usable=false if the dataset does not fit the role."""
 
+PICK_ROLE, MAP_ROLE = "pick", "map"
 PICK_SYSTEM = """You choose Hugging Face datasets to build a training set. Given search results, select the datasets \
 (by exact id) that best provide data in each role. Prefer widely-used, permissively licensed, parquet-backed datasets."""
 
@@ -45,7 +46,7 @@ def pick_sources(spec: TaskSpec, hits: list[dict], cfg: dict | None) -> list[tup
         f"Task: {spec.summary or spec.description}\nModality: {spec.modality}\nLabels: {spec.label_names}\n\n"
         f"Search results:\n{listing}"
     )
-    out = get_llm("spec", cfg).json(PICK_SYSTEM, prompt, _pick_schema())
+    out = get_llm(PICK_ROLE, cfg).json(PICK_SYSTEM, prompt, _pick_schema())
     ids = {h["id"] for h in hits}
     picks = [p for p in out.get("picks", []) if p.get("dataset") in ids and p.get("role")]
     return [(HFSource(dataset=p["dataset"], role=p["role"]), str(p.get("why") or "")) for p in picks]
@@ -86,7 +87,8 @@ def _map_source(src: HFSource, spec: TaskSpec, cfg: dict | None, log: Callable[[
         log(f"  skip {src.dataset}: {type(e).__name__}: {str(e)[:120]}")
         return None
     prompt = _map_prompt(spec, src, feats, configs, preview, splits)
-    out = get_llm("spec", cfg).json(MAP_SYSTEM, prompt, _map_schema())
+    log(f"  reading the columns of {src.dataset} with {role_model(MAP_ROLE, cfg)}")
+    out = get_llm(MAP_ROLE, cfg).json(MAP_SYSTEM, prompt, _map_schema())
     if not out.get("usable", True) or out.get("input_column") not in feats:
         log(f"  skip {src.dataset}: not usable for role {src.role}")
         return None

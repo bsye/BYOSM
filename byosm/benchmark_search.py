@@ -5,12 +5,12 @@ from collections.abc import Callable
 from typing import Any
 
 from .data import hf_source
+from .data.hf_source.mapping import PICK_ROLE as PICKER_ROLE
 from .llm import get_llm, role_model
 from .spec import EvalSuite, HFSource, TaskSpec
 from .text import slug
 
 HELD_OUT_SPLITS = ("test", "validation", "val", "valid")
-PICKER_ROLE = "spec"
 RULE = "rule"
 OTHER_HITS = 3
 BENCH_SUITE = "bench"

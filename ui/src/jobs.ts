@@ -23,6 +23,8 @@ const VERBS: Record<string, string> = {
   baseline: "Rival",
   overfit: "Overfitting check",
   testset: "Write test set",
+  next: "Do next steps",
+  datasets: "Find datasets",
 }
 
 const INPUT_VERBS: Record<string, string> = { write: "Write inputs", sample: "Sample inputs", run: "Score inputs" }
@@ -50,6 +52,8 @@ export function describe(job: Pick<Job, "args">): Described {
 
 const ROLE_TASKS: Record<string, string> = {
   spec: "draft the spec",
+  pick: "pick datasets",
+  map: "map dataset columns",
   generate: "write training data",
   eval: "write test data",
   judge: "check labels",
