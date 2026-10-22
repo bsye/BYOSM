@@ -130,7 +130,11 @@ def suite_ls(name: str) -> None:
 
 
 @baseline_app.command("add")
-def baseline_add(name: str, baseline: str) -> None:
+def baseline_add(
+    name: str,
+    baseline: str,
+    score: Annotated[bool, typer.Option("--score", help="score it on every suite right away")] = False,
+) -> None:
     """Add a baseline: a registered name (see `byosm baseline available`), hf:<repo> or llm:<role>."""
     from ..predictors import get_baseline
 
@@ -143,6 +147,10 @@ def baseline_add(name: str, baseline: str) -> None:
         spec.baselines.append(baseline)
         spec.save(p.spec_path)
     log(f"{name} baselines: {spec.baselines}")
+    if score:
+        from .. import evals
+
+        evals.run(name, None, [baseline], None, False, log)
 
 
 @baseline_app.command("available")

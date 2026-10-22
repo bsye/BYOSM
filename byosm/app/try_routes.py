@@ -64,6 +64,24 @@ def _written(ws: Path, name: str) -> list[dict[str, Any]]:
     ]
 
 
+def _rival_search(ws: Path, name: str, q: str) -> list[dict[str, Any]]:
+    from ..config import Project
+    from ..discover import model_candidates
+    from ..predictors.base import hub_adapters
+    from ..spec import TaskSpec
+
+    p = Project(name, ws)
+    if not p.exists():
+        raise KeyError(f"no specialist {name!r}")
+    spec = TaskSpec.load(p.spec_path)
+    queries = [q] if q.strip() else (spec.search.get("baseline") or [spec.summary or spec.description])
+    adapters = hub_adapters()
+    found = model_candidates(spec, queries)
+    found += [{"repo": r, "downloads": 0, "coverage": 0.0, "tag": ""} for r in adapters if q and q.lower() in r.lower()]
+    rows = {c["repo"]: {**c, "baseline": adapters.get(c["repo"], f"hf:{c['repo']}")} for c in found}
+    return [{**c, "added": c["baseline"] in spec.baselines} for c in rows.values()]
+
+
 def _timed(fn: Callable[[], Any]) -> dict[str, Any]:
     t0 = time.perf_counter()
     try:
@@ -95,6 +113,10 @@ def try_router(ws: Path) -> APIRouter:
     @router.get("/api/specialists/{name}/examples")
     def examples(name: str) -> dict:
         return missing(_examples, ws, name)
+
+    @router.get("/api/specialists/{name}/rivals/search")
+    def rival_search(name: str, q: str = "") -> list:
+        return missing(_rival_search, ws, name, q)
 
     @router.get("/api/specialists/{name}/written")
     def written(name: str) -> list:

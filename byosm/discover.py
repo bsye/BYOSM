@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,8 @@ TASK_TAG = {
     ("audio", "frame"): "voice-activity-detection",
     ("text", "frame"): "token-classification",
 }
+LABEL_FETCH_WORKERS = 8
+MAX_CANDIDATES = 30
 SCORABLE_TAGS = {"text-classification", "image-classification", "token-classification"}
 
 
@@ -41,25 +44,30 @@ def _search_models(q: str, tag: str) -> list[Any]:
         return []
 
 
-def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap: float = 0.6) -> list[tuple[str, str]]:
+def model_candidates(spec: TaskSpec, queries: list[str]) -> list[dict[str, Any]]:
     tag = TASK_TAG.get((spec.modality, spec.task_type))
     if tag not in SCORABLE_TAGS:
         return []
-    seen, found = set(), []
-    for q in search_terms(queries):
-        for m in _search_models(q, tag):
-            if m.id in seen:
-                continue
-            seen.add(m.id)
-            theirs = _model_labels(m.id)
-            if theirs is None:
-                continue
-            cover = len({match_label(t, spec.label_names) for t in theirs} - {None}) / max(1, len(spec.label_names))
-            if cover >= min_overlap:
-                dl = getattr(m, "downloads", 0) or 0
-                found.append((dl, m.id, f"{tag} model, {dl} downloads, covers {cover:.0%} of our labels"))
-    found.sort(key=lambda t: -t[0])
-    return [(repo, why) for _, repo, why in found[:k]]
+    models = {m.id: m for q in search_terms(queries) for m in _search_models(q, tag)}
+    top = sorted(models.values(), key=lambda m: -(getattr(m, "downloads", 0) or 0))[:MAX_CANDIDATES]
+    with ThreadPoolExecutor(LABEL_FETCH_WORKERS) as pool:
+        labels = list(pool.map(_model_labels, [m.id for m in top]))
+    n = max(1, len(spec.label_names))
+    return [
+        {
+            "repo": m.id,
+            "downloads": getattr(m, "downloads", 0) or 0,
+            "coverage": len({match_label(x, spec.label_names) for x in theirs or []} - {None}) / n,
+            "tag": tag,
+        }
+        for m, theirs in zip(top, labels, strict=True)
+    ]
+
+
+def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap: float = 0.6) -> list[tuple[str, str]]:
+    fits = [c for c in model_candidates(spec, queries) if c["coverage"] >= min_overlap]
+    why = "{tag} model, {downloads} downloads, covers {coverage:.0%} of our labels"
+    return [(c["repo"], why.format(**c)) for c in fits[:k]]
 
 
 def _default_baselines(spec: TaskSpec, bl: list[str], decisions: list[dict]) -> None:
