@@ -5,15 +5,26 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 JOBS_DIR = Path(".byosm") / "jobs"
 LOG_SUFFIX = ".log"
 EXIT_SUFFIX = ".exit"
+KILL_GRACE_S = 10
 WRAPPER = """
 import os, signal, sys
-signal.signal(signal.SIGTERM, lambda *_: sys.exit(-signal.SIGTERM))
 path, entry, code = sys.argv.pop(1), sys.argv.pop(1), 1
+
+
+def stop(*_):
+    with open(path + ".tmp", "w") as out:
+        out.write(str(-signal.SIGTERM))
+    os.replace(path + ".tmp", path)
+    os._exit(1)
+
+
+signal.signal(signal.SIGTERM, stop)
 try:
     exec(entry, {"__name__": "__main__"})
     code = 0
@@ -61,6 +72,12 @@ def alive(pid: int) -> bool:
 def kill_group(pid: int) -> None:
     with contextlib.suppress(ProcessLookupError):
         os.killpg(pid, signal.SIGTERM)
+    threading.Timer(KILL_GRACE_S, _force, args=(pid,)).start()
+
+
+def _force(pid: int) -> None:
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.killpg(pid, signal.SIGKILL)
 
 
 def exit_code(ws: Path, job_id: str) -> int | None:

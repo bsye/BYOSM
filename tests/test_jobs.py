@@ -19,6 +19,11 @@ GROUP = (
     "import subprocess, sys, time; child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); "
     "print(child.pid, flush=True); time.sleep(60)"
 )
+THREADS = (
+    "from concurrent.futures import ThreadPoolExecutor; import time; print('started', flush=True); "
+    "pool = ThreadPoolExecutor(4); [pool.submit(time.sleep, 60) for _ in range(8)]; pool.shutdown(wait=True)"
+)
+CANCEL_WITHIN_SECONDS = 5
 POLL_SECONDS = 0.02
 TIMEOUT_SECONDS = 20
 
@@ -130,3 +135,15 @@ def test_emit_is_silent_outside_a_job(monkeypatch, capsys):
     monkeypatch.delenv(EVENTS_ENV, raising=False)
     emit("epoch", epoch=1)
     assert capsys.readouterr().out == ""
+
+
+def test_cancel_stops_a_job_whose_threads_are_still_busy(ws, monkeypatch):
+    monkeypatch.setattr(jobs, "ENTRY", THREADS)
+    runner = Runner(ws, Hub())
+    job = runner.submit(["report"])
+    wait_for(lambda: job.status == "running" and job.pid is not None)
+    time.sleep(0.5)
+    started = time.time()
+    runner.cancel(job.id)
+    wait_for(lambda: job.status == "cancelled")
+    assert time.time() - started < CANCEL_WITHIN_SECONDS and not alive(job.pid)
