@@ -125,7 +125,7 @@ export function JobDetail({ id }: { id: string }) {
           <AlertTitle>Failed</AlertTitle>
           <AlertDescription className="space-y-3">
             <p className="font-mono text-xs break-all">{failure(lines) ?? "The job ended without output."}</p>
-            <RetryButtons args={job.args} />
+            <RetryButtons args={job.args[0] === "auto" && job.target ? ["auto", job.target] : job.args} />
           </AlertDescription>
         </Alert>
       )}
