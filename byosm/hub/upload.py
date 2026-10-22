@@ -10,8 +10,9 @@ from ..evals.dumps import _dumps
 from ..export.bundle import is_exported
 from ..model_refs import HUB_DIR, HUB_SEPARATOR
 from ..project import Project
+from . import test_sets
 from .card import model_card
-from .facts import lineage
+from .facts import lineage, load_facts
 
 
 def _stage(p: Project, repo_id: str, license: str, experiment: str) -> Path:
@@ -24,6 +25,7 @@ def _stage(p: Project, repo_id: str, license: str, experiment: str) -> Path:
     (stage / "board.json").write_text(_dumps(p.board()))
     (stage / "lineage.json").write_text(json.dumps(lineage(p, experiment), indent=2))
     (stage / "README.md").write_text(model_card(p.name, repo_id, license))
+    test_sets.write(load_facts(p.name, repo_id, license), stage)
     return stage
 
 

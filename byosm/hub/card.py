@@ -4,7 +4,7 @@ import yaml
 
 from ..format import fmt
 from ..metrics import metric_label
-from . import provenance, sections
+from . import provenance, sections, test_sets
 from .facts import CardFacts, load_facts
 from .tables import comparison_table, detail_table, front_matter
 
@@ -17,8 +17,8 @@ INTRO = """
 
 {headline}
 
-Built with [BYOSM](https://github.com/bsye/BYOSM): one sentence and one command give a small specialist model that does
-one job better than general models, LLMs included, measured on public benchmarks.
+Built with [BYOSM](https://github.com/bsye/BYOSM): one sentence gives a small model for one job, scored against LLMs,
+Jev and models fine-tuned on the same benchmark, with the same code.
 
 """
 RESULTS = """
@@ -159,7 +159,8 @@ def _body(f: CardFacts) -> str:
         notes=sections.notes(f),
     )
     tail = TAIL.format(caveats=sections.caveats(f), name=spec.name)
-    return intro + results + usage + built + "\n" + provenance.llm_section(f) + tail
+    written = test_sets.section(f)
+    return intro + results + written + usage + built + "\n" + provenance.llm_section(f) + tail
 
 
 def model_card(name: str, repo_id: str, license: str) -> str:

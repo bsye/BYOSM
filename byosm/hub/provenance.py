@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ..format import fmt
 from ..metrics import CONSTRAINED, metric_label, unreached
+from ..model_refs import model_ref
 from .facts import CardFacts
 
 DEFINE_STEP = "define"
@@ -37,8 +38,10 @@ def headline(f: CardFacts) -> str:
     short = unreached(f.base.objective, f.board[rival[0]][f.prim].get("metrics") or {})
     if short is not None:
         bound = CONSTRAINED[f.base.objective.metric][1]
-        return f"{score}{interval} on `{f.prim}`; the best rival, `{rival[0]}`, reaches only {short:.1%} {bound}"
-    return f"{score}{interval} on `{f.prim}`, {ours - theirs:+.3f} over `{rival[0]}` ({fmt(theirs, 3)})"
+        name = model_ref(f.p, rival[0])["name"]
+        return f"{score}{interval} on `{f.prim}`; the best rival, {name}, reaches only {short:.1%} {bound}"
+    name = model_ref(f.p, rival[0])["name"]
+    return f"{score}{interval} on `{f.prim}`, {ours - theirs:+.3f} over {name} ({fmt(theirs, 3)})"
 
 
 def llm_section(f: CardFacts) -> str:

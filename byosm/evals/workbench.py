@@ -77,11 +77,11 @@ def _predictor(p: Project, spec: TaskSpec, model: str) -> Any:
     return experiment_predictor(p, spec, p.promoted or "") if model == OURS else get_baseline(model, spec)
 
 
-def _keep(out: dict, model: str, rows: list[dict], probs: Any, spec: TaskSpec) -> None:
+def _keep(out: dict, model: str, rows: list[dict], probs: Any, spec: TaskSpec, exp: str | None) -> None:
     got = out.setdefault(model, {})
     for r, pr in zip(rows, probs, strict=True):
         best = int(pr.argmax())
-        got[r["id"]] = {"label": spec.label_names[best], "confidence": round(float(pr[best]), 4)}
+        got[r["id"]] = {"label": spec.label_names[best], "confidence": round(float(pr[best]), 4), "exp": exp}
 
 
 def _save(p: Project, name: str, model: str, answers: dict) -> dict:
@@ -107,7 +107,7 @@ def run(p: Project, spec: TaskSpec, name: str, models: list[str], log: Callable[
             step = pred.rows_per_round()
             for i in range(0, len(todo), step):
                 chunk = todo[i : i + step]
-                _keep(out, m, chunk, row_probs(pred, chunk, mod), spec)
+                _keep(out, m, chunk, row_probs(pred, chunk, mod), spec, p.promoted if m == OURS else None)
                 out = _save(p, name, m, out[m])
                 emit("writing", split=name, done=min(i + step, len(todo)), total=len(todo), specialist=p.name)
         got = out[m]
