@@ -1,14 +1,14 @@
 import { ChevronDown, ChevronRight, MessagesSquare } from "lucide-react"
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
+import { useNow } from "@/now"
 import { seconds } from "@/format"
 import { modelName, roleTask } from "@/jobs"
 
-const TICK_MS = 1000
 const SHOWN = 200
 
 type Call = {
@@ -50,16 +50,6 @@ function useCalls(): Call[] {
     c.state === "waiting" && !ACTIVE.has(live.jobs[c.job]?.status ?? "") ? { ...c, state: "stopped" as const } : c,
   )
   return out.reverse().slice(0, SHOWN)
-}
-
-function useNow(active: boolean): number {
-  const [now, setNow] = useState(Date.now() / 1000)
-  useEffect(() => {
-    if (!active) return
-    const t = setInterval(() => setNow(Date.now() / 1000), TICK_MS)
-    return () => clearInterval(t)
-  }, [active])
-  return now
 }
 
 export function LlmInspector() {

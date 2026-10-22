@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts"
 import type { Job } from "@/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart"
+import { useNow } from "@/now"
 
 const SHOWN = 12
-const TICK_MS = 1000
 const ROW_PX = 28
 const STATUS_COLOR: Record<Job["status"], string> = {
   queued: "var(--muted-foreground)",
@@ -18,16 +17,6 @@ const STATUS_COLOR: Record<Job["status"], string> = {
 const config = { span: { label: "running" } } satisfies ChartConfig
 
 const clock = (t: number) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-
-function useNow(active: boolean): number {
-  const [now, setNow] = useState(Date.now() / 1000)
-  useEffect(() => {
-    if (!active) return
-    const t = setInterval(() => setNow(Date.now() / 1000), TICK_MS)
-    return () => clearInterval(t)
-  }, [active])
-  return now
-}
 
 export function Timeline({ jobs }: { jobs: Job[] }) {
   const recent = jobs.filter((j) => j.started != null).slice(0, SHOWN).reverse()

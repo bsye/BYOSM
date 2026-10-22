@@ -26,7 +26,7 @@ const VERBS: Record<string, string> = {
 }
 
 const NAMED_FLAGS = new Set(["--apply", "--suite"])
-const EVENT_PREFIX = "@event "
+export const EVENT_PREFIX = "@event "
 
 export type Described = { title: string; target: string | null; subject: string | null }
 
@@ -57,7 +57,7 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   if (last?.kind === "teacher") return `${last.teacher} labelling ${last.done}/${last.total}`
   if (last?.kind === "writing") return `Writing ${last.split} data ${last.done}/${last.total}`
   if (last?.kind === "scored") return `Scored ${last.predictor} on ${last.suite}`
-  return lines.filter((l) => l.trim() && !l.startsWith(EVENT_PREFIX)).at(-1)?.trim() || "Starting"
+  return lines.findLast((l) => l.trim() && !l.startsWith(EVENT_PREFIX))?.trim() || "Starting"
 }
 
 const PROVIDER_PREFIXES = ["openai:", "anthropic:", "claude-code:", "codex:"]
@@ -74,7 +74,7 @@ export function llmUsed(metrics: Metric[]): string | null {
   return m ? modelName(String(m.model)) : null
 }
 
-export type Step = { label: string; detail: string; state: "running" | "done" | "failed" }
+export type Step = { label: string; detail: string; state: "running" | "done" | "failed"; at?: number }
 
 type CallGroup = { label: string; calls: number; failed: number; waiting: number; start: number; end: number }
 
@@ -83,7 +83,7 @@ function callStep(g: CallGroup): Step {
   const time = span > 0 ? `, ${seconds(span)}` : ""
   const failed = g.failed ? `, ${g.failed} failed` : ""
   const detail = g.calls === 1 ? (g.waiting ? "waiting" : seconds(span)) : `${g.calls} calls${time}${failed}`
-  return { label: g.label, detail, state: g.waiting ? "running" : g.failed === g.calls ? "failed" : "done" }
+  return { label: g.label, detail, state: g.waiting ? "running" : g.failed === g.calls ? "failed" : "done", at: g.start }
 }
 
 function progressStep(m: Metric): Step | null {
@@ -119,8 +119,9 @@ export function steps(metrics: Metric[], running: boolean): Step[] {
       out[out.length - 1] = callStep(group)
       continue
     }
-    const step = progressStep(m)
-    if (!step) continue
+    const found = progressStep(m)
+    if (!found) continue
+    const step = { ...found, at: Number(m.at) }
     if (m.kind !== "scored" && out.at(-1)?.label === step.label) out[out.length - 1] = step
     else out.push(step)
   }

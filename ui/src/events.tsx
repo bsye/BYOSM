@@ -77,8 +77,18 @@ export function useJob(id: string): { lines: string[]; metrics: Metric[] } {
   }, [id])
   return {
     lines: [...stored.lines, ...fresh.lines.slice(stored.at.lines)],
-    metrics: [...stored.metrics, ...fresh.metrics.slice(stored.at.metrics)],
+    metrics: unique([...stored.metrics, ...fresh.metrics.slice(stored.at.metrics)]),
   }
+}
+
+function unique(metrics: Metric[]): Metric[] {
+  const seen = new Set<string>()
+  return metrics.filter((m) => {
+    const key = JSON.stringify(m)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 const ENDED = new Set(["done", "failed", "cancelled"])

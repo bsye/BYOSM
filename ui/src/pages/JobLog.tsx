@@ -1,69 +1,71 @@
-import { CircleCheck, CircleX, Loader2, Square } from "lucide-react"
+import { Loader2, Square } from "lucide-react"
 import { useEffect, useRef } from "react"
-import { post, type Job } from "@/api"
-import { Badge } from "@/components/ui/badge"
+import { post } from "@/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useJob, useLive } from "@/events"
-import { took } from "@/format"
-import { llmUsed, steps, type Step } from "@/jobs"
+import { seconds, took } from "@/format"
+import { decisions, stages } from "@/job-story"
+import { currentStep, EVENT_PREFIX, llmUsed, steps, timeLeft } from "@/jobs"
+import { useNow } from "@/now"
+import { DecisionTree } from "./DecisionTree"
 import { JobMetrics } from "./JobMetrics"
+import { JobStages } from "./JobStages"
 import { JobTitle, StatusIcon } from "./Jobs"
 
-const STATUS_VARIANT: Record<Job["status"], "default" | "secondary" | "destructive" | "outline"> = {
-  queued: "outline",
-  running: "default",
-  done: "secondary",
-  failed: "destructive",
-  cancelled: "outline",
-}
+const LOG_TAIL = 2000
 
-export function StatusBadge({ status }: { status: Job["status"] }) {
-  return <Badge variant={STATUS_VARIANT[status]}>{status}</Badge>
-}
-
-const STEP_ICON = { running: Loader2, done: CircleCheck, failed: CircleX }
-
-function Steps({ items }: { items: Step[] }) {
-  if (!items.length) return <p className="text-muted-foreground text-sm">No steps reported yet.</p>
+function Now({ text, since, left, now }: { text: string; since: number | null; left: string | null; now: number }) {
   return (
-    <ol className="divide-y">
-      {items.map((s, i) => {
-        const Icon = STEP_ICON[s.state]
-        return (
-          <li key={i} className="flex items-center gap-3 py-2 text-sm">
-            <Icon className={`size-4 shrink-0 ${s.state === "running" ? "animate-spin" : s.state === "failed" ? "text-destructive" : "text-foreground/70"}`} />
-            <span className="font-medium">{s.label}</span>
-            <span className="text-muted-foreground ml-auto text-xs tabular-nums">{s.detail}</span>
-          </li>
-        )
-      })}
-    </ol>
+    <div className="bg-muted/40 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-4 py-3">
+      <Loader2 className="size-4 shrink-0 animate-spin" />
+      <span className="min-w-0 flex-1 truncate font-medium">{text}</span>
+      <span className="text-muted-foreground text-xs tabular-nums">
+        {since != null && `last update ${seconds(Math.max(0, now - since))} ago`}
+        {left && ` · ${left}`}
+      </span>
+    </div>
   )
 }
 
 function Log({ lines }: { lines: string[] }) {
   const end = useRef<HTMLDivElement>(null)
+  const shown = lines.filter((l) => !l.startsWith(EVENT_PREFIX)).slice(-LOG_TAIL)
   useEffect(() => {
     end.current?.scrollIntoView({ block: "nearest" })
-  }, [lines.length])
+  }, [shown.length])
   return (
-    <div className="bg-muted h-[28rem] overflow-auto rounded-md p-3 font-mono text-xs leading-5 whitespace-pre">
-      {lines.map((l, i) => (
-        <div key={i}>{l}</div>
-      ))}
-      <div ref={end} />
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Log</CardTitle>
+        <CardAction className="text-muted-foreground text-sm tabular-nums">{shown.length} lines</CardAction>
+      </CardHeader>
+      <CardContent>
+        <div className="bg-muted/50 h-96 overflow-auto rounded-md py-2 font-mono text-xs leading-5">
+          {shown.map((l, i) => (
+            <div key={i} className="hover:bg-muted flex gap-3 px-3">
+              <span className="text-muted-foreground/50 w-8 shrink-0 text-right tabular-nums select-none">{i + 1}</span>
+              <span className="whitespace-pre-wrap break-all">{l}</span>
+            </div>
+          ))}
+          {!shown.length && <p className="text-muted-foreground px-3">Waiting for the first line.</p>}
+          <div ref={end} />
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
 export function JobDetail({ id }: { id: string }) {
   const job = useLive().jobs[id]
   const { lines, metrics } = useJob(id)
+  const active = job?.status === "running" || job?.status === "queued"
+  const now = useNow(active)
   if (!job) return <p className="text-muted-foreground text-sm">No job {id} on this server.</p>
-  const active = job.status === "running" || job.status === "queued"
   const llm = llmUsed(metrics)
+  const story = stages(metrics, steps(metrics, active))
+  const choices = decisions(metrics)
+  const last = metrics.at(-1)?.at
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -73,7 +75,7 @@ export function JobDetail({ id }: { id: string }) {
             <JobTitle job={job} />
           </h1>
           <p className="text-muted-foreground/70 text-xs tabular-nums">
-            {job.status}, {took(job.started, job.ended)}
+            {job.status}, {active && job.started ? seconds(now - job.started) : took(job.started, job.ended)}
             {llm && `, LLM ${llm}`}
           </p>
         </div>
@@ -84,23 +86,13 @@ export function JobDetail({ id }: { id: string }) {
           </Button>
         )}
       </div>
+      {active && <Now text={currentStep(metrics, lines)} since={last == null ? job.started : Number(last)} left={timeLeft(metrics)} now={now} />}
+      <div className={`grid gap-4 md:gap-6 ${choices.length ? "@5xl/main:grid-cols-2" : ""}`}>
+        <JobStages items={story} started={job.started} active={active} now={now} />
+        {choices.length > 0 && <DecisionTree items={choices} />}
+      </div>
       <JobMetrics metrics={metrics} />
-      <Tabs defaultValue="steps">
-        <TabsList>
-          <TabsTrigger value="steps">Steps</TabsTrigger>
-          <TabsTrigger value="log">Log</TabsTrigger>
-        </TabsList>
-        <TabsContent value="steps">
-          <Card>
-            <CardContent>
-              <Steps items={steps(metrics, active)} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="log">
-          <Log lines={lines} />
-        </TabsContent>
-      </Tabs>
+      <Log lines={lines} />
     </div>
   )
 }
