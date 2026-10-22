@@ -22,7 +22,11 @@ const VERBS: Record<string, string> = {
   suite: "Suite",
   baseline: "Rival",
   overfit: "Overfitting check",
+  testset: "Write test set",
 }
+
+const NAMED_FLAGS = new Set(["--apply", "--suite"])
+const EVENT_PREFIX = "@event "
 
 export type Described = { title: string; target: string | null; subject: string | null }
 
@@ -30,7 +34,7 @@ export function describe(job: Pick<Job, "args">): Described {
   const [cmd, ...rest] = job.args
   if (cmd === "system") return { title: `${rest[0] === "eval" ? "Score" : "Build"} team`, target: rest[1] ?? null, subject: null }
   const verb = cmd === "improve" && rest.includes("--apply") ? "Run proposal" : (VERBS[cmd] ?? cmd)
-  const plain = rest.filter((a) => !a.startsWith("--"))
+  const plain = rest.filter((a, i) => !a.startsWith("--") && !(rest[i - 1]?.startsWith("--") && !NAMED_FLAGS.has(rest[i - 1])))
   if (cmd === "auto" && plain.length === 1 && plain[0].includes(" ")) return { title: verb, target: null, subject: plain[0] }
   return { title: verb, target: plain[0] ?? null, subject: plain.slice(1).join(" ") || null }
 }
@@ -48,12 +52,12 @@ export const roleTask = (role: unknown) => ROLE_TASKS[String(role)] ?? String(ro
 
 export function currentStep(metrics: Metric[], lines: string[]): string {
   const last = metrics.at(-1)
-  if (last?.kind === "llm" && last.state === "waiting") return `${modelName(String(last.model))}: ${roleTask(last.role)}`
+  if (last?.kind === "llm") return `${modelName(String(last.model))}: ${roleTask(last.role)}`
   if (last?.kind === "epoch") return `Training ${last.experiment}, epoch ${last.epoch}/${last.epochs}`
   if (last?.kind === "teacher") return `${last.teacher} labelling ${last.done}/${last.total}`
   if (last?.kind === "writing") return `Writing ${last.split} data ${last.done}/${last.total}`
   if (last?.kind === "scored") return `Scored ${last.predictor} on ${last.suite}`
-  return lines.at(-1)?.trim() || "Starting"
+  return lines.filter((l) => l.trim() && !l.startsWith(EVENT_PREFIX)).at(-1)?.trim() || "Starting"
 }
 
 const PROVIDER_PREFIXES = ["openai:", "anthropic:", "claude-code:", "codex:"]
