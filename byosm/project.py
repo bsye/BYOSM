@@ -53,6 +53,15 @@ class Project:
             else:
                 row.spec = data
 
+    def add_baselines(self, ids: list[str]) -> list[str]:
+        with session(self.ws) as s:
+            row = s.scalar(select(Specialist).where(Specialist.name == self.name))
+            if row is None:
+                raise KeyError(f"no specialist {self.name!r}")
+            have = list(row.spec.get("baselines", []))
+            row.spec = {**row.spec, "baselines": [*have, *(i for i in ids if i not in have)]}
+            return row.spec["baselines"]
+
     def delete(self) -> None:
         with session(self.ws) as s:
             s.execute(delete(Specialist).where(Specialist.name == self.name))
@@ -100,10 +109,6 @@ class Project:
             sid = self._id(s)
             rows = s.scalars(select(Experiment).where(Experiment.specialist_id == sid)) if sid else []
             return sorted(e.name for e in rows if e.meta is not None)
-
-    def has_experiment(self, exp: str) -> bool:
-        with session(self.ws) as s:
-            return self._experiment(s, exp) is not None
 
     def experiment(self, exp: str) -> dict[str, Any] | None:
         with session(self.ws) as s:

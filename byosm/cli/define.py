@@ -144,10 +144,7 @@ def baseline_add(
         get_baseline(baseline, spec)
     except (KeyError, ValueError, OSError) as e:
         raise typer.BadParameter(str(e)) from e
-    if baseline not in spec.baselines:
-        spec.baselines.append(baseline)
-        p.save_spec(spec)
-    log(f"{name} baselines: {spec.baselines}")
+    log(f"{name} baselines: {p.add_baselines([baseline])}")
     if score:
         from .. import evals
 

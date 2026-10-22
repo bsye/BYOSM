@@ -98,7 +98,6 @@ def add_finetuned(name: str, log: Callable[[str], None] = print) -> list[dict[st
             continue
         added.append({"rival": found[0], "why": found[1]})
         log(f"  {found[0]}: {found[1]}")
-    spec.baselines = [*spec.baselines, *(a["rival"] for a in added if a["rival"] not in spec.baselines)]
-    p.save_spec(spec)
+    p.add_baselines([a["rival"] for a in added])
     p.save_report(REPORT, {"benchmarks": benchmarks(spec), "added": added})
     return added

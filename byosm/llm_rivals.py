@@ -24,10 +24,8 @@ def add_llm_rival(p: Project, conf: dict[str, Any]) -> str:
     stored.setdefault("llm", {})[role] = conf
     save_config(p.ws, stored)
     pid = f"{LLM_ID}:{role}"
+    p.add_baselines([pid])
     spec = p.spec()
-    if pid not in spec.baselines:
-        spec.baselines = [*spec.baselines, pid]
-        p.save_spec(spec)
     models = chosen_models(p, spec)
     if pid not in models:
         choose_models(p, [*models, pid])

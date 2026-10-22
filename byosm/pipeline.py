@@ -19,7 +19,7 @@ from .train import fit
 
 def next_exp(p: Project) -> str:
     n = 1
-    while p.has_experiment(f"v{n}") or p.exp_dir(f"v{n}").exists():
+    while p.experiment(f"v{n}") is not None or p.exp_dir(f"v{n}").exists():
         n += 1
     return f"v{n}"
 
