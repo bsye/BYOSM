@@ -7,12 +7,15 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from ..project import Project
 from ..rt import tag_parts
 from ..spec import TaskSpec
 from ..text import markup_tags, match_label, normalize
-from .request import REQUEST_DIR, counts, score_rows_needed
+from .request import DATA_REQUEST, counts, score_rows_needed
 from .store import TEST_SHARE
 from .table import LABEL_COL, SPLIT_CHOICES, SPLIT_COL, columns, input_column, read_table, resolve_input
+
+DATA_CHECK = "data-check"
 
 BLOCKING = {"missing column", "empty input", "unknown label", "unknown argument type", "bad split", "missing file"}
 BLOCKING |= {"test row also in training", "same input, different labels"}
@@ -76,9 +79,9 @@ def _coverage(spec: TaskSpec, rows: list[dict], need: dict) -> dict[str, dict[st
     return out
 
 
-def _needs(spec: TaskSpec, root: Path) -> dict:
-    req = root / REQUEST_DIR / "request.json"
-    return json.loads(req.read_text())["counts"] if req.exists() else counts(spec, [])
+def _needs(spec: TaskSpec, p: Project) -> dict:
+    req = p.report(DATA_REQUEST)
+    return req["counts"] if req else counts(spec, [])
 
 
 def _shortfalls(cov: dict, spec: TaskSpec) -> list[str]:
@@ -110,18 +113,18 @@ def _noise(spec: TaskSpec, rows: list[tuple[int, dict]], base: Path, judge: bool
 
 
 def check(
-    spec: TaskSpec, root: Path, path: Path, judge: bool = True, cfg: dict | None = None, log: Callable = print
+    spec: TaskSpec, p: Project, path: Path, judge: bool = True, cfg: dict | None = None, log: Callable = print
 ) -> dict:
     rows = list(enumerate(read_table(path), start=FIRST_DATA_ROW))
     if rows and any(c not in rows[0][1] for c in columns(spec)):
         missing = [c for c in columns(spec) if c not in rows[0][1]]
         issues = [(1, "missing column", ", ".join(missing))]
-        return _finish(root, {"file": str(path), "issues": issues, "coverage": {}, "noise": None, "shortfalls": []})
+        return _finish(p, {"file": str(path), "issues": issues, "coverage": {}, "noise": None, "shortfalls": []})
     issues = [(i, k, d) for i, r in rows for k, d in _row_issues(spec, r, path.parent)]
     bad = {i for i, _, _ in issues}
     good = [(i, r) for i, r in rows if i not in bad]
     issues += _duplicates(spec, good, path.parent)
-    cov = _coverage(spec, [r for _, r in good], _needs(spec, root))
+    cov = _coverage(spec, [r for _, r in good], _needs(spec, p))
     log(f"  checked {len(rows)} rows: {len(issues)} issues; probing labels...")
     report = {
         "file": str(path),
@@ -130,16 +133,14 @@ def check(
         "shortfalls": _shortfalls(cov, spec),
         "noise": _noise(spec, good, path.parent, judge, cfg),
     }
-    return _finish(root, report)
+    return _finish(p, report)
 
 
-def _finish(root: Path, report: dict) -> dict:
+def _finish(p: Project, report: dict) -> dict:
     from .check_report import render
 
     blocking = any(k in BLOCKING for _, k, _ in report["issues"])
     report["verdict"] = "fix" if blocking else "needs more" if report["shortfalls"] else "ready"
-    out = root / REQUEST_DIR
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "report.json").write_text(json.dumps(report, indent=2))
-    (out / "report.md").write_text(render(report))
+    report["markdown"] = render(report)
+    p.save_report(DATA_CHECK, json.loads(json.dumps(report)))
     return report

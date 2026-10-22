@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 from typing import Any
 
+from ..project import Project
 from ..spec import TaskSpec
 from .table import LABEL_COL, columns, input_column, write_template
 
 REQUEST_DIR = "data_request"
+DATA_REQUEST = "data-request"
 Z95 = 1.96
 CI_HALF_WIDTH = 0.03
 SIZING_ACCURACY = 0.9
@@ -118,14 +119,14 @@ def _markdown(spec: TaskSpec, reason: str, need: dict, advice: dict, files: list
     return "\n".join(lines) + "\n"
 
 
-def write_request(root: Path, spec: TaskSpec, reason: str, cfg: dict | None = None) -> Path:
+def write_request(p: Project, spec: TaskSpec, reason: str, cfg: dict | None = None) -> Path:
     advice = _advice(spec, cfg)
     need = counts(spec, advice.get("confusable", []))
     tips = {t["label"]: t["tip"] for t in advice.get("tips", [])}
-    out = root / REQUEST_DIR
+    out = p.root / REQUEST_DIR
     files = write_template(
         out, columns(spec), _example_rows(spec, advice.get("examples", [])), _guide(spec, need, tips)
     )
-    (out / "request.md").write_text(_markdown(spec, reason, need, advice, files))
-    (out / "request.json").write_text(json.dumps({"reason": reason, "counts": need, "advice": advice}, indent=2))
+    markdown = _markdown(spec, reason, need, advice, files)
+    p.save_report(DATA_REQUEST, {"reason": reason, "counts": need, "advice": advice, "markdown": markdown})
     return out

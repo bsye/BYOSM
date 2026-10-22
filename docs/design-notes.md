@@ -164,7 +164,7 @@ which avoids loading the dataset builder; the builder info is loaded only as a f
 `byosm/data/request.py`, `check.py`, `probe.py`: the autopilot stops before the first build when some labels have no
 labeled source and the input cannot be generated (anything but text with `synthetic`), and writes
 `data_request/`: `template.csv`, `template.xlsx` (label and split dropdowns, a `labels` sheet with definitions and
-borderline tips), `request.md` and `request.json`. Test rows are sized so accuracy is measured to within 3 points at
+borderline tips), and the request itself as a `data-request` report in the database. Test rows are sized so accuracy is measured to within 3 points at
 95%: `1.96² p(1-p) / 0.03²` with `p` the target capped at 0.9, because a near-perfect target would otherwise ask for
 almost nothing. Training rows start at 50 per label (200 recommended) and double for labels the LLM calls confusable;
 the learning curve in `byosm improve` refines that after the first build. `check-data` blocks on rows that would

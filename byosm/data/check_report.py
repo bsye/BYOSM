@@ -26,7 +26,7 @@ def _issues(issues: list) -> list[str]:
     by_kind = Counter(k for _, k, _ in issues)
     lines = [f"- **{k}**: {n} row(s)" for k, n in by_kind.most_common()]
     shown = [f"  - row {i}: {k}" + (f" ({d})" if d else "") for i, k, d in issues[:MAX_LISTED]]
-    more = [f"  - ...and {len(issues) - MAX_LISTED} more in report.json"] if len(issues) > MAX_LISTED else []
+    more = [f"  - ...and {len(issues) - MAX_LISTED} more in the check report"] if len(issues) > MAX_LISTED else []
     return lines + shown + more
 
 

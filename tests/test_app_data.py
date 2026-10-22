@@ -1,5 +1,3 @@
-import json
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -25,7 +23,7 @@ def client(ws):
 def _request(ws):
     out = ws / "specialists" / "q" / REQUEST_DIR
     out.mkdir(parents=True)
-    (out / "request.json").write_text(json.dumps({"reason": "r", "counts": {"a": {"train_min": 50}}}))
+    Project("q", ws).save_report("data-request", {"reason": "r", "counts": {"a": {"train_min": 50}}})
     (out / "template.csv").write_text("text,label,split\n")
     return out
 
@@ -75,5 +73,5 @@ def test_an_upload_over_the_size_limit_is_refused(client, ws, monkeypatch):
 
 def test_the_check_report_is_served_once_written(client, ws):
     assert client.get("/api/specialists/q/check", headers=AUTH).json() == {"report": None}
-    (_request(ws) / "report.json").write_text(json.dumps({"verdict": "ready"}))
+    Project("q", ws).save_report("data-check", {"verdict": "ready"})
     assert client.get("/api/specialists/q/check", headers=AUTH).json()["report"]["verdict"] == "ready"

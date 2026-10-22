@@ -15,7 +15,7 @@ def request_data(name: str) -> None:
     from ..data.request import write_request
 
     p, spec = _spec(name)
-    out = write_request(p.root, spec, "Requested by hand.", load_config(p.ws))
+    out = write_request(p, spec, "Requested by hand.", load_config(p.ws))
     log(f"wrote {out}: fill template.xlsx (or template.csv), then `byosm check-data {name} <file>`")
 
 
@@ -28,11 +28,11 @@ def check_data(
     """Check a filled table (format, coverage, leakage, likely mislabels) and train on it if it is usable."""
     from ..config import load_config
     from ..data.check import check
-    from ..data.request import REQUEST_DIR
 
     p, spec = _spec(name)
-    report = check(spec, p.root, file.resolve(), judge, load_config(p.ws), log)
-    log(f"verdict: {report['verdict']} (report: {p.root / REQUEST_DIR / 'report.md'})")
+    report = check(spec, p, file.resolve(), judge, load_config(p.ws), log)
+    log(report["markdown"])
+    log(f"verdict: {report['verdict']}")
     if report["verdict"] == "fix":
         raise typer.Exit(1)
     spec.data.local_dir = str(file.resolve())

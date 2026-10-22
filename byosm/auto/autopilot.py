@@ -45,7 +45,7 @@ def _request_data(s: Session, cfg: Any, t0: float) -> dict[str, Any]:
 
     missing = missing_labels(s.base)
     reason = f"No public dataset covers {', '.join(missing)}, and {s.base.modality} examples cannot be generated."
-    out = write_request(s.p.root, s.base, reason, cfg)
+    out = write_request(s.p, s.base, reason, cfg)
     s.log("data", str(out.relative_to(s.p.ws)), reason + " Wrote a template and the rows needed per label.")
     stop = f"data needed: fill {out / 'template.xlsx'}, then `byosm check-data {s.name} <file>`"
     final = {"name": s.name, "won": False, "stop_reason": stop, "data_request": str(out)}

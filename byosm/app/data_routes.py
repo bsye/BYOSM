@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from ..data.request import REQUEST_DIR
+from ..data.check import DATA_CHECK
+from ..data.request import DATA_REQUEST, REQUEST_DIR
 from ..data.table import TABLE_SUFFIXES, TEMPLATE_STEM
 from .catalog import project
 from .errors import missing
@@ -15,16 +15,10 @@ from .errors import missing
 UPLOAD_DIR = "uploads"
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 SAFE_PUNCTUATION = "-_."
-REPORT_FILE = "report.json"
-REQUEST_FILE = "request.json"
 
 
 def _root(ws: Path, name: str) -> Path:
     return missing(project, ws, name).root
-
-
-def _json(path: Path) -> Any:
-    return json.loads(path.read_text()) if path.exists() else None
 
 
 def safe_filename(raw: str) -> str:
@@ -48,7 +42,7 @@ def data_router(ws: Path) -> APIRouter:
         root = _root(ws, name)
         req = root / REQUEST_DIR
         return {
-            "request": _json(req / REQUEST_FILE),
+            "request": missing(project, ws, name).report(DATA_REQUEST),
             "templates": [s[1:] for s in TABLE_SUFFIXES if (req / f"{TEMPLATE_STEM}{s}").exists()],
             "uploads": _uploads(ws, root),
         }
@@ -73,6 +67,6 @@ def data_router(ws: Path) -> APIRouter:
 
     @router.get("/check")
     def check(name: str) -> dict:
-        return {"report": _json(_root(ws, name) / REQUEST_DIR / REPORT_FILE)}
+        return {"report": missing(project, ws, name).report(DATA_CHECK)}
 
     return router
