@@ -10,6 +10,7 @@ from ..spec import TaskSpec
 from ..text import match_label
 from .base import Predictor
 
+MAP_MARK = "#"
 BATCH = 32
 
 
@@ -29,11 +30,13 @@ class HFClassifier(Predictor):
         from transformers import AutoConfig
 
         self.id = f"hf:{repo}"
+        repo, _, given = repo.partition(MAP_MARK)
         cfg = AutoConfig.from_pretrained(repo)
         self.visual = spec.modality in ("image", "document")
         self.proc, self.model = self._load(repo)
         names = spec.label_names
-        matched = {int(k): match_label(v, names) for k, v in cfg.id2label.items()}
+        manual = dict(pair.split("=", 1) for pair in given.split(",") if "=" in pair)
+        matched = {int(k): manual[v] if v in manual else match_label(v, names) for k, v in cfg.id2label.items()}
         self.map = {k: names.index(m) for k, m in matched.items() if m is not None}
         missing = set(range(len(spec.labels))) - set(self.map.values())
         if not self.map:

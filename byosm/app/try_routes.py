@@ -74,9 +74,10 @@ def _rival_search(ws: Path, name: str, q: str) -> list[dict[str, Any]]:
     if not p.exists():
         raise KeyError(f"no specialist {name!r}")
     spec = TaskSpec.load(p.spec_path)
-    queries = [q] if q.strip() else (spec.search.get("baseline") or [spec.summary or spec.description])
+    own = spec.search.get("baseline") or [spec.summary or spec.description]
+    queries = [q] if q.strip() else [*([spec.title] if spec.title else []), *own]
     adapters = hub_adapters()
-    found = model_candidates(spec, queries)
+    found = model_candidates(spec, queries, typed=bool(q.strip()))
     found += [{"repo": r, "downloads": 0, "coverage": 0.0, "tag": ""} for r in adapters if q and q.lower() in r.lower()]
     rows = {c["repo"]: {**c, "baseline": adapters.get(c["repo"], f"hf:{c['repo']}")} for c in found}
     return [{**c, "added": c["baseline"] in spec.baselines} for c in rows.values()]

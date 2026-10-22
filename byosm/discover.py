@@ -22,6 +22,8 @@ TASK_TAG = {
     ("text", "frame"): "token-classification",
 }
 LABEL_FETCH_WORKERS = 8
+CLASSIFIER_SUFFIX = "ForSequenceClassification"
+DEFAULT_NUM_LABELS = 2
 MAX_CANDIDATES = 30
 SCORABLE_TAGS = {"text-classification", "image-classification", "token-classification"}
 
@@ -33,23 +35,28 @@ def _model_labels(repo: str) -> list[str] | None:
         cfg = json.loads(Path(hf_hub_download(repo, "config.json")).read_text())
     except Exception:
         return None
-    return list((cfg.get("id2label") or {}).values())
+    if cfg.get("id2label"):
+        return list(cfg["id2label"].values())
+    classifier = any(a.endswith(CLASSIFIER_SUFFIX) for a in cfg.get("architectures") or [])
+    return [f"LABEL_{i}" for i in range(int(cfg.get("num_labels") or DEFAULT_NUM_LABELS))] if classifier else []
 
 
 def _search_models(q: str, tag: str) -> list[Any]:
     from huggingface_hub import HfApi
 
     try:
-        return list(HfApi().list_models(search=q, pipeline_tag=tag, sort="downloads", limit=15))
+        return list(HfApi().list_models(search=q, pipeline_tag=tag or None, sort="downloads", limit=15))
     except Exception:
         return []
 
 
-def model_candidates(spec: TaskSpec, queries: list[str]) -> list[dict[str, Any]]:
+def model_candidates(spec: TaskSpec, queries: list[str], typed: bool = False) -> list[dict[str, Any]]:
     tag = TASK_TAG.get((spec.modality, spec.task_type))
     if tag not in SCORABLE_TAGS:
         return []
-    models = {m.id: m for q in search_terms(queries) for m in _search_models(q, tag)}
+    tag = "" if typed else tag
+    terms = queries if typed else search_terms(queries)
+    models = {m.id: m for q in terms for m in _search_models(q, tag)}
     top = sorted(models.values(), key=lambda m: -(getattr(m, "downloads", 0) or 0))[:MAX_CANDIDATES]
     with ThreadPoolExecutor(LABEL_FETCH_WORKERS) as pool:
         labels = list(pool.map(_model_labels, [m.id for m in top]))
@@ -59,7 +66,8 @@ def model_candidates(spec: TaskSpec, queries: list[str]) -> list[dict[str, Any]]
             "repo": m.id,
             "downloads": getattr(m, "downloads", 0) or 0,
             "coverage": len({match_label(x, spec.label_names) for x in theirs or []} - {None}) / n,
-            "tag": tag,
+            "labels": list(theirs or []),
+            "tag": getattr(m, "pipeline_tag", None) or tag,
         }
         for m, theirs in zip(top, labels, strict=True)
     ]

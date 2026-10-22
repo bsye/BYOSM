@@ -199,7 +199,7 @@ export function Playground({ d }: { d: Detail }) {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       {d.modality === "audio" && d.exported ? <LiveVad name={d.name} /> : <TryIt d={d} />}
-      <HfRivals name={d.name} />
+      <HfRivals name={d.name} ours={(d.spec.labels as { name: string }[]).map((l) => l.name)} />
       <GeneratedSuites d={d} />
     </div>
   )

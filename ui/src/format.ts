@@ -26,7 +26,7 @@ const RIVAL_NAMES: Record<string, string> = { llm: "the LLM", jev: "Jev", panel:
 export function rivalName(id: string | null | undefined): string {
   if (!id) return "-"
   if (RIVAL_NAMES[id]) return RIVAL_NAMES[id]
-  const repo = id.startsWith("hf:") ? id.slice(3) : id
+  const repo = (id.startsWith("hf:") ? id.slice(3) : id).split("#")[0]
   return repo.slice(repo.lastIndexOf("/") + 1)
 }
 
