@@ -45,6 +45,9 @@ def app_(
     import uvicorn
 
     from ..app import create_app
+    from ..app.ui_build import ensure_built
+
+    ensure_built(log)
 
     secret = token or secrets.token_urlsafe(24)
     shown = "<your token>" if token else secret
