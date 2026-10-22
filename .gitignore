@@ -4,21 +4,10 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 
-# Specialist workspaces: keep specs, experiment metadata and results; not data, weights or exports.
-specialists/*/data/
-specialists/*/cache/
-specialists/*/evals/
-specialists/*/export/
-specialists/*/hub/
-specialists/*/data_request/
-specialists/*/experiments/*/model.pt
-specialists/*/experiments/*/*errors.json
-specialists/*/experiments/*/report.json
+# Specialists and systems live in the database; these folders hold only local weights, exports, media and caches.
+specialists/
+systems/
 .claude/
-
-# Systems: keep the spec, results and board; not data or exports.
-systems/*/evals/
-systems/*/export/
 .env
 byosm/app/static/
 .byosm/

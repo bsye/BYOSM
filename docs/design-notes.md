@@ -23,8 +23,7 @@ predictor and suite, the scoring cache and the board), `reports` (overfitting ch
 dataset suggestions, test-set results, keyed by kind) and `rows`. Only experiments with a `meta` count as trained. The
 board shows the results of trained experiments and the spec's baselines on the spec's suites; results of a removed
 baseline stay as a cache. Files hold only what is a file by nature: weights in `specialists/<name>/experiments/<exp>/`,
-the ONNX bundle in `export/`, and dataset splits until they move to `rows`. `byosm db import` moved the old per-file
-layout in once.
+the ONNX bundle in `export/`, the audio clips and page images that rows point to, and download caches.
 
 **Discovery turns a public benchmark into the primary suite.**
 `byosm/discover.py` `_add_benchmark`, `_split_sources`: for classify tasks, when a matching Hub dataset is found, its
