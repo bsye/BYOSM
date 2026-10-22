@@ -15,4 +15,10 @@ def resources_router(ws: Path) -> APIRouter:
 
         return probe(ws)
 
+    @router.get("/api/opportunities")
+    def opportunities() -> list[dict[str, Any]]:
+        from ..opportunities import trending
+
+        return trending()
+
     return router

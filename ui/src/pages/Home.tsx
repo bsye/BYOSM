@@ -9,8 +9,10 @@ import { useLive } from "@/events"
 import { openJob } from "@/job-sheet"
 import { href } from "@/route"
 import { Machine } from "./Machine"
+import { HealthList, useHealths } from "./HealthList"
+import { Opportunities } from "./Opportunities"
 import { Overview } from "./Overview"
-import { QuickActions } from "./QuickActions"
+import { NextActions } from "./NextActions"
 import { SectionCards } from "./SectionCards"
 import { Section } from "./Section"
 
@@ -32,9 +34,10 @@ function useItems(): Summary[] | null {
   return items
 }
 
-function Prompt() {
+const PROMPT_ID = "home-prompt"
+
+function Prompt({ prompt, setPrompt }: { prompt: string; setPrompt: (p: string) => void }) {
   const llm = useLlmChoice()
-  const [prompt, setPrompt] = useState("")
   const [error, setError] = useState("")
   const start = () =>
     runJob(["auto", prompt.trim()], llm.config())
@@ -45,6 +48,7 @@ function Prompt() {
       <h1 className="text-center text-3xl font-semibold tracking-tight">What should your specialist do?</h1>
       <InputGroup>
         <InputGroupTextarea
+          id={PROMPT_ID}
           className="min-h-24"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -84,7 +88,8 @@ function StatSkeletons() {
   )
 }
 
-function Models({ items }: { items: Summary[] | null }) {
+function Models({ items, onPick }: { items: Summary[] | null; onPick: (p: string) => void }) {
+  const healths = useHealths(items)
   const all = (
     <Button variant="ghost" size="sm" asChild>
       <a href={href("specialists")}>
@@ -96,10 +101,14 @@ function Models({ items }: { items: Summary[] | null }) {
   if (items?.length === 0) return null
   return (
     <Section title="Your models" action={all}>
-      {items ? <SectionCards items={items} /> : <StatSkeletons />}
+      {items ? <SectionCards items={items} healths={healths} /> : <StatSkeletons />}
       <div className="grid gap-4 @5xl/main:grid-cols-2">
         {items ? <Overview items={items} /> : <Skeleton className="h-96 rounded-xl" />}
-        {items ? <QuickActions items={items} /> : <Skeleton className="h-96 rounded-xl" />}
+        {items ? <HealthList items={items} healths={healths} /> : <Skeleton className="h-96 rounded-xl" />}
+      </div>
+      <div className="grid gap-4 @5xl/main:grid-cols-2">
+        {items ? <NextActions items={items} healths={healths} /> : <Skeleton className="h-96 rounded-xl" />}
+        <Opportunities onPick={onPick} />
       </div>
     </Section>
   )
@@ -107,10 +116,17 @@ function Models({ items }: { items: Summary[] | null }) {
 
 export function Home() {
   const items = useItems()
+  const [prompt, setPrompt] = useState("")
+  const pick = (p: string) => {
+    setPrompt(p)
+    const box = document.getElementById(PROMPT_ID)
+    box?.scrollIntoView({ behavior: "smooth", block: "center" })
+    box?.focus()
+  }
   return (
     <div className="flex flex-col gap-8 pb-8">
-      <Prompt />
-      <Models items={items} />
+      <Prompt prompt={prompt} setPrompt={setPrompt} />
+      <Models items={items} onPick={pick} />
       <Machine />
     </div>
   )

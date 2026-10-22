@@ -2,7 +2,9 @@ export const score = (x: number | null | undefined) => (x == null ? "-" : x.toFi
 
 export const signed = (x: number | null | undefined) => (x == null ? "-" : `${x > 0 ? "+" : ""}${x.toFixed(3)}`)
 
-export const params = (x: number | null | undefined) => (x == null ? "-" : `${(x / 1e6).toFixed(1)}M`)
+const BILLION = 1e9
+
+export const params = (x: number | null | undefined) => (x == null ? "-" : x >= BILLION ? `${(x / BILLION).toFixed(1)}B` : `${(x / 1e6).toFixed(1)}M`)
 
 export const ms = (x: number | null | undefined) => (x == null ? "-" : `${x.toFixed(1)} ms`)
 
@@ -35,7 +37,7 @@ export function rivalName(id: string | null | undefined): string {
 
 const THOUSAND = 1000
 
-export function tokens(n: number | null | undefined): string {
+export function compact(n: number | null | undefined): string {
   if (n == null) return "-"
   if (n < THOUSAND) return String(n)
   if (n < THOUSAND * THOUSAND) return `${(n / THOUSAND).toFixed(1)}k`

@@ -1,6 +1,7 @@
 import { TrendingDown, TrendingUp } from "lucide-react"
 import type { Summary } from "@/api"
 import { InfoTip } from "@/components/info-tip"
+import { useShowMore } from "@/components/show-more"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -24,6 +25,7 @@ export function Overview({ items }: { items: Summary[] }) {
     .filter((s) => s.score != null && s.rival?.score != null)
     .map((s) => ({ s, d: (s.score ?? 0) - (s.rival?.score ?? 0) }))
     .sort((a, b) => b.d - a.d)
+  const { shown, footer } = useShowMore(rows)
   if (!rows.length) return null
   return (
     <Card>
@@ -44,7 +46,7 @@ export function Overview({ items }: { items: Summary[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map(({ s, d }) => (
+            {shown.map(({ s, d }) => (
               <TableRow key={s.name} className="cursor-pointer" onClick={() => (window.location.hash = href("specialists", s.name))}>
                 <TableCell className="font-medium">{s.title || s.name}</TableCell>
                 <TableCell className="text-muted-foreground text-right tabular-nums">{score(s.score)}</TableCell>
@@ -61,6 +63,7 @@ export function Overview({ items }: { items: Summary[] }) {
           </TableBody>
         </Table>
       </CardContent>
+      {footer}
     </Card>
   )
 }
