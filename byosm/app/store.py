@@ -6,10 +6,12 @@ from typing import Any
 from sqlalchemy import func, select
 
 from ..db import session
-from ..db.models import Job, JobEvent, JobLine
+from ..db.models import Job, JobEvent, JobLine, Specialist
 from ..events import TARGET
 
 JOB_FIELDS = ("id", "args", "status", "created", "started", "ended", "code", "pid")
+AUTO = "auto"
+AUTO_ARGS = 2
 USAGE_COLUMNS = (
     "job",
     "role",
@@ -65,7 +67,16 @@ class JobStore:
     def targets(self) -> dict[str, str]:
         with session(self.ws) as s:
             rows = s.execute(select(JobEvent.job, JobEvent.data).where(JobEvent.kind == TARGET)).all()
-        return {job: d.get("name") for job, d in rows}
+            prompts = {
+                (sp or {}).get("description"): n for n, sp in s.execute(select(Specialist.name, Specialist.spec))
+            }
+            jobs = s.execute(select(Job.id, Job.args)).all()
+        found = {
+            job: prompts[args[1]]
+            for job, args in jobs
+            if len(args) == AUTO_ARGS and args[0] == AUTO and args[1] in prompts
+        }
+        return found | {job: d.get("name") for job, d in rows}
 
     def lines(self, job_id: str) -> list[str]:
         with session(self.ws) as s:
