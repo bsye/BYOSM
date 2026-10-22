@@ -54,3 +54,36 @@ def test_sets(p: Project, spec: TaskSpec) -> list[dict[str, Any]]:
     ]
     held = held_out_set(p, spec)
     return [*written, *([held] if held else [])]
+
+
+MAX_PAGE = 500
+
+
+def _score(s: dict[str, Any], model: str) -> dict[str, int]:
+    labels = {r["id"]: r["label"] for r in s["rows"]}
+    got = s["results"].get(model, {})
+    scored = [i for i in got if i in labels]
+    return {"right": sum(got[i]["label"] == labels[i] for i in scored), "scored": len(scored)}
+
+
+def summaries(p: Project, spec: TaskSpec) -> list[dict[str, Any]]:
+    return [
+        {
+            "suite": s["suite"],
+            "frozen": s["frozen"],
+            "board": s["board"],
+            "total": len(s["rows"]),
+            "scores": {m: _score(s, m) for m in s["results"]},
+        }
+        for s in test_sets(p, spec)
+    ]
+
+
+def page(p: Project, spec: TaskSpec, suite: str, offset: int, limit: int) -> dict[str, Any]:
+    s = next((t for t in test_sets(p, spec) if t["suite"] == suite), None)
+    if s is None:
+        raise KeyError(f"no test set {suite!r}")
+    rows = list(reversed(s["rows"]))[offset : offset + min(limit, MAX_PAGE)]
+    ids = {r["id"] for r in rows}
+    results = {m: {i: a for i, a in got.items() if i in ids} for m, got in s["results"].items()}
+    return {"total": len(s["rows"]), "rows": rows, "results": results}

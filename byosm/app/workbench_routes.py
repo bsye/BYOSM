@@ -27,9 +27,15 @@ def _project(ws: Path, name: str) -> tuple[Any, Any]:
 
 
 def _sets(ws: Path, name: str) -> list[dict[str, Any]]:
-    from ..evals.test_sets import test_sets
+    from ..evals.test_sets import summaries
 
-    return test_sets(*_project(ws, name))
+    return summaries(*_project(ws, name))
+
+
+def _page(ws: Path, name: str, suite: str, offset: int, limit: int) -> dict[str, Any]:
+    from ..evals.test_sets import page
+
+    return page(*_project(ws, name), suite, offset, limit)
 
 
 def _models(ws: Path, name: str) -> dict[str, Any]:
@@ -53,6 +59,10 @@ def workbench_router(ws: Path) -> APIRouter:
     @router.get("/api/specialists/{name}/written")
     def written(name: str) -> list:
         return missing(_sets, ws, name)
+
+    @router.get("/api/specialists/{name}/written/{suite}/rows")
+    def rows(name: str, suite: str, offset: int = 0, limit: int = 100) -> dict:
+        return missing(_page, ws, name, suite, offset, limit)
 
     @router.get("/api/specialists/{name}/written/{suite}.xlsx")
     def export(name: str, suite: str) -> Response:

@@ -1,7 +1,8 @@
 import { Check, Database, FileSpreadsheet, Loader2, Play, Sparkles, X } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { download, runJob } from "@/api"
 import { InfoTip } from "@/components/info-tip"
+import { LoadMore, useInfinite } from "@/components/infinite"
 import { LlmPicker, useLlmChoice } from "@/components/llm-picker"
 import { ModelName, type ModelRef } from "@/components/model-name"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,7 @@ import { rivalName } from "@/format"
 import { openJob } from "@/job-sheet"
 import { AddLlmRival } from "./AddLlmRival"
 import { NewTestSet } from "./NewTestSet"
-import { accuracy, useWorkbench, type TestSet } from "./workbench-api"
+import { mergeResults, rowsPage, score, useWorkbench, type TestSet } from "./workbench-api"
 
 const OURS = "ours"
 const DEFAULT_SET = "workbench"
@@ -26,7 +27,10 @@ const DEFAULT_SAMPLE = 20
 const modelLabel = (m: string) => (m === OURS ? "this model" : rivalName(m))
 const start = (args: string[], llm?: Record<string, unknown> | null) => runJob(args, llm ?? undefined).then((j) => openJob(j.id))
 
-function Grid({ set, models, refs }: { set: TestSet; models: string[]; refs: Refs }) {
+function Grid({ name, set, models, refs, version }: { name: string; set: TestSet; models: string[]; refs: Refs; version: number }) {
+  const fetchPage = useMemo(() => rowsPage(name, set.suite), [name, set.suite])
+  const page = useInfinite(`${name}/${set.suite}`, fetchPage, mergeResults, version)
+  const results = page.extra ?? {}
   return (
     <ScrollArea className="h-96">
       <Table>
@@ -35,7 +39,7 @@ function Grid({ set, models, refs }: { set: TestSet; models: string[]; refs: Ref
             <TableHead>Input</TableHead>
             <TableHead>Label</TableHead>
             {models.map((m) => {
-              const a = accuracy(set, m)
+              const a = score(set, m)
               return (
                 <TableHead key={m} className="text-right">
                   <ModelName model={refs.models[m === OURS ? (refs.promoted ?? "") : m]} shown={modelLabel(m)} />
@@ -46,12 +50,12 @@ function Grid({ set, models, refs }: { set: TestSet; models: string[]; refs: Ref
           </TableRow>
         </TableHeader>
         <TableBody>
-          {[...set.rows].reverse().map((r) => (
+          {page.rows.map((r) => (
             <TableRow key={r.id}>
               <TableCell className="max-w-md whitespace-normal">{r.input}</TableCell>
               <TableCell className="text-foreground/70">{r.label}</TableCell>
               {models.map((m) => {
-                const got = set.results[m]?.[r.id]
+                const got = results[m]?.[r.id]
                 const right = got?.label === r.label
                 return (
                   <TableCell key={m} className="text-right">
@@ -70,6 +74,7 @@ function Grid({ set, models, refs }: { set: TestSet; models: string[]; refs: Ref
           ))}
         </TableBody>
       </Table>
+      <LoadMore onVisible={page.more} loading={page.loading} done={page.done} shown={page.rows.length} total={page.total} />
     </ScrollArea>
   )
 }
@@ -89,7 +94,7 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
   const setName = picked ?? wb.sets[0]?.suite ?? DEFAULT_SET
   const set = wb.sets.find((s) => s.suite === setName)
   const chosen = wb.models?.chosen ?? []
-  const unscored = set && !set.board ? Math.max(0, ...chosen.map((m) => set.rows.length - accuracy(set, m).scored)) : 0
+  const unscored = set && !set.board ? Math.max(0, ...chosen.map((m) => set.total - score(set, m).scored)) : 0
   const fixed = Boolean(set?.board)
   const names = [...new Set([DEFAULT_SET, BENCHMARK_SET, ...created, ...wb.sets.map((s) => s.suite)])]
   const writeArgs = ["inputs", "write", name, "--per-label", String(perLabel), "--set", setName, ...(instructions.trim() ? ["--instructions", instructions.trim()] : []), ...parallelArgs]
@@ -106,7 +111,7 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
           )}
         </CardTitle>
         <CardAction className="flex gap-2">
-          <Button size="sm" variant="outline" disabled={!set?.rows.length} onClick={() => download(`/specialists/${name}/written/${encodeURIComponent(setName)}.xlsx`, `${name}-${setName}-results.xlsx`)}>
+          <Button size="sm" variant="outline" disabled={!set?.total} onClick={() => download(`/specialists/${name}/written/${encodeURIComponent(setName)}.xlsx`, `${name}-${setName}-results.xlsx`)}>
             <FileSpreadsheet />
             Export
           </Button>
@@ -117,7 +122,7 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
             <SelectContent>
               {names.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s} {wb.sets.find((x) => x.suite === s)?.rows.length ?? 0}
+                  {s} {(wb.sets.find((x) => x.suite === s)?.total ?? 0).toLocaleString()}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -157,13 +162,13 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
             ))}
           </ToggleGroup>
           <AddLlmRival name={name} onAdded={wb.loadModels} />
-          <Button size="sm" className="ml-auto" disabled={!set?.rows.length || !unscored} onClick={() => start(["inputs", "run", name, "--set", setName, ...parallelArgs])}>
+          <Button size="sm" className="ml-auto" disabled={!set?.total || !unscored} onClick={() => start(["inputs", "run", name, "--set", setName, ...parallelArgs])}>
             <Play />
             {fixed ? "Scored on the board" : unscored ? `Score ${unscored} rows` : "All scored"}
           </Button>
         </div>
-        {set?.rows.length ? (
-          <Grid set={set} models={chosen} refs={{ models, promoted }} />
+        {set?.total ? (
+          <Grid name={name} set={set} models={chosen} refs={{ models, promoted }} version={wb.version} />
         ) : (
           <p className="text-muted-foreground text-sm">No inputs in {setName} yet: write some or add rows from the benchmark.</p>
         )}
