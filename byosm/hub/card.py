@@ -3,35 +3,39 @@ from __future__ import annotations
 import yaml
 
 from ..format import fmt
-from . import sections
+from . import provenance, sections
 from .facts import CardFacts, load_facts
 from .tables import comparison_table, detail_table, front_matter
 
 INTRO = """
-# {repo_name}
+# {title}
 
-**{description}**
+`{name}` · {modality} {task_type} · {labels} labels · {mparams:.1f}M parameters · ONNX on any CPU
 
-A single-purpose *System 1* model built with [BYOSM](https://github.com/bsye/BYOSM): {built}, with a calibrated
-decision policy, shipped as a {mparams:.2f}M-parameter ONNX bundle that runs on any CPU with `onnxruntime`.
+> {description}
+
+{headline}
+
+Built with [BYOSM](https://github.com/bsye/BYOSM): one sentence and one command give a small specialist model that does
+one job better than general models, LLMs included, measured on public benchmarks.
 
 """
 RESULTS = """
-## Labels
+## Results, measured by code
 
-{labels}
-
-## Comparison
-
-Every model below, this one and the baselines, was scored by the same code on the same frozen test splits, with its
-decision policy calibrated on the same calib splits. **Bold** = this model.
+Every number in this section was computed by BYOSM's scorer on frozen splits; none was written by an LLM. This model
+and its rivals were scored by the same code, each with its decision threshold calibrated on the same calib split.
+**Bold** = this model.
 
 {comparison}
 
-## Test evaluation (this model)
+### This model, per suite
 
 {detail}
-"""
+
+### Model details
+
+{summary}"""
 USAGE = """
 ## Usage
 
@@ -67,7 +71,8 @@ BUILT = """
 {steps} (each step proposed by `byosm improve` from the previous board):
 {lineage}
 
-{notes}
+{notes}"""
+TAIL = """
 ## Limitations
 
 {caveats}
@@ -126,9 +131,16 @@ def summary_table(f: CardFacts) -> str:
 def _body(f: CardFacts) -> str:
     spec = f.spec
     intro = INTRO.format(
-        repo_name=f.repo_name, description=spec.description, built=sections.built(f), mparams=f.manifest["params"] / 1e6
+        title=f.base.title or f.repo_name,
+        name=spec.name,
+        modality=spec.modality,
+        task_type=spec.task_type,
+        labels=len(spec.labels),
+        mparams=f.manifest["params"] / 1e6,
+        description=spec.description,
+        headline=provenance.headline(f),
     )
-    results = RESULTS.format(labels=sections.labels(f), comparison=comparison_table(f), detail=detail_table(f))
+    results = RESULTS.format(comparison=comparison_table(f), detail=detail_table(f), summary=summary_table(f))
     usage = USAGE.format(
         pip=sections.pip_packages(f),
         repo_id=f.repo_id,
@@ -144,10 +156,9 @@ def _body(f: CardFacts) -> str:
         steps=sections.build_steps(f),
         lineage=sections.lineage_list(f),
         notes=sections.notes(f),
-        caveats=sections.caveats(f),
-        name=spec.name,
     )
-    return intro + summary_table(f) + results + usage + built
+    tail = TAIL.format(caveats=sections.caveats(f), name=spec.name)
+    return intro + results + usage + built + "\n" + provenance.llm_section(f) + tail
 
 
 def model_card(name: str, repo_id: str, license: str) -> str:

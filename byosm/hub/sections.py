@@ -31,17 +31,14 @@ TRAIN_STEPS = (
 )
 
 
-def labels(f: CardFacts) -> str:
-    return "\n".join(f"- **`{lab.name}`**: {lab.definition}" for lab in f.spec.labels)
-
-
 def _source_line(s) -> str:
     part = f", partition `{s.partition}`" if s.partition != "all" else ""
     return f"- [`{s.dataset}`](https://huggingface.co/datasets/{s.dataset}): role `{s.role}`" + part
 
 
 def sources(f: CardFacts) -> str:
-    return "\n".join(_source_line(s) for s in f.spec.data.hf_sources) or "- (none)"
+    listed = "\n".join(_source_line(s) for s in f.spec.data.hf_sources)
+    return listed or ("" if f.spec.data.synthetic else "- (none)")
 
 
 def _shrunk(f: CardFacts) -> str:
@@ -97,7 +94,10 @@ def stream(f: CardFacts) -> str:
 
 
 def example(f: CardFacts) -> str:
-    return EXAMPLES[f.spec.modality]
+    from .provenance import example_input
+
+    real = example_input(f)
+    return f"print(m.predict({real!r}))" if real else EXAMPLES[f.spec.modality]
 
 
 def pip_packages(f: CardFacts) -> str:
@@ -108,14 +108,6 @@ def pip_packages(f: CardFacts) -> str:
         else ["numpy", "onnxruntime"]
     )
     return " ".join(["huggingface_hub"] + [r for r in reqs if r])
-
-
-def built(f: CardFacts) -> str:
-    if f.jepa:
-        return "a JEPA-style encoder pretrained with LeJEPA and trained only for this task"
-    if f.encoders:
-        return f"fine-tuned from {' + '.join(f'[`{e}`](https://huggingface.co/{e})' for e in f.encoders)} for this task only"
-    return "trained only for this task"
 
 
 def notes(f: CardFacts) -> str:
