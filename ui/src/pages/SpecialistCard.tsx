@@ -2,7 +2,7 @@ import { Loader2, Minus, TrendingDown, TrendingUp } from "lucide-react"
 import type { Summary } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { metricName, rivalName, score, signed } from "@/format"
+import { rivalName, score, signed } from "@/format"
 import { href } from "@/route"
 import { createdLabel, kindOf, titleOf } from "./specialist-groups"
 
@@ -54,7 +54,7 @@ export function SpecialistCard({ s, running, showKind }: { s: Summary; running?:
           ) : (
             <p className="flex items-baseline gap-2">
               <span className="text-3xl font-semibold tabular-nums">{score(s.score)}</span>
-              <span className="text-muted-foreground text-xs">test {metricName(s.metric)}</span>
+              <span className="text-muted-foreground text-xs">test {s.metric}</span>
             </p>
           )}
           <div className="text-xs">{s.score != null && <Lead s={s} />}</div>

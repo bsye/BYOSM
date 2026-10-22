@@ -12,9 +12,10 @@ from ..evals.overfit import OVERFIT
 from ..health import health
 from ..hub.facts import suite_dataset
 from ..improve.proposals import PROPOSALS
+from ..metrics import metric_label, unreached
 from ..next_steps import suggestions
 from ..project import Project, list_projects
-from ..spec import TaskSpec
+from ..spec import Objective, TaskSpec
 
 MAX_PAGE = 500
 RESULT_FIELDS = ("objective", "calib_objective", "latency_ms", "params", "n_test", "n_calib")
@@ -28,8 +29,9 @@ def project(ws: Path, name: str) -> Project:
     return p
 
 
-def _result(r: dict) -> dict[str, Any]:
-    return {**{k: r.get(k) for k in RESULT_FIELDS}, "ci": r.get("metrics", {}).get("ci95")}
+def _result(o: Objective, r: dict) -> dict[str, Any]:
+    m = r.get("metrics", {})
+    return {**{k: r.get(k) for k in RESULT_FIELDS}, "ci": m.get("ci95"), "unreached": unreached(o, m)}
 
 
 def _benchmark(spec: TaskSpec, suite: str) -> str:
@@ -57,7 +59,7 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
         "modality": s.modality,
         "task_type": s.task_type,
         "labels": len(s.labels),
-        "metric": s.objective.metric,
+        "metric": metric_label(s.objective),
         "primary_suite": prim,
         "benchmark": _benchmark(s, prim),
         "promoted": p.promoted,
@@ -98,7 +100,7 @@ def _run(p: Project, exp: str) -> dict[str, Any]:
 def detail(ws: Path, name: str) -> dict[str, Any]:
     p = project(ws, name)
     spec = p.spec()
-    board = {pid: {suite: _result(r) for suite, r in by.items()} for pid, by in p.board().items()}
+    board = {pid: {suite: _result(spec.objective, r) for suite, r in by.items()} for pid, by in p.board().items()}
     dd = p.data_dir_for(spec)
     return {
         **summary(ws, name),

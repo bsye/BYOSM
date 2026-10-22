@@ -7,7 +7,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precisio
 
 from .resample import bootstrap_stats
 from .rt import spans
-from .spec import TaskSpec
+from .spec import Objective, TaskSpec
 
 
 def is_span(spec: TaskSpec) -> bool:
@@ -107,6 +107,23 @@ def compute(
         out["span_f1"] = f1_of_counts(np.array([tp, fp, fn]))
     out["objective"] = objective_value(spec, out)
     return out
+
+
+CONSTRAINED = {"recall_at_precision": ("recall", "precision"), "precision_at_recall": ("precision", "recall")}
+
+
+def metric_label(o: Objective) -> str:
+    if o.metric in CONSTRAINED:
+        found, bound = CONSTRAINED[o.metric]
+        return f"{found} at {o.constraint:.0%} {bound}"
+    return o.metric.replace("_", " ").replace("f1", "F1")
+
+
+def unreached(o: Objective, m: dict[str, Any]) -> float | None:
+    if o.metric not in CONSTRAINED:
+        return None
+    reached = m.get(CONSTRAINED[o.metric][1])
+    return reached if reached is not None and reached < o.constraint else None
 
 
 def objective_value(spec: TaskSpec, m: dict[str, Any]) -> float:

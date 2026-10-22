@@ -10,7 +10,7 @@ import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
-import { signed, metricName, ms, params, rivalName, score } from "@/format"
+import { signed, ms, params, rivalName, score } from "@/format"
 import { go } from "@/route"
 import { BoardChart, boardRows } from "./BoardChart"
 import { DataRows } from "./DataRows"
@@ -52,7 +52,7 @@ function Board({ d }: { d: Detail }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          Test {metricName(d.metric)} on {d.benchmark}
+          Test {d.metric} on {d.benchmark}
           <InfoTip>Test with its 95% interval, next to calib. Calib picks the model; test is only reported.</InfoTip>
         </CardTitle>
         {(every.length > rows.length || all) && (
@@ -95,8 +95,14 @@ function Board({ d }: { d: Detail }) {
                     </span>
                   </TableCell>
                   <TableCell className="tabular-nums">
-                    <span className="font-medium">{score(r.test)}</span>{" "}
-                    {res.ci && (
+                    {res.unreached != null ? (
+                      <Badge variant="outline" className="text-muted-foreground font-normal" title="Never reaches the required precision on test, so it scores 0">
+                        precision {(res.unreached * 100).toFixed(1)}%
+                      </Badge>
+                    ) : (
+                      <span className="font-medium">{score(r.test)}</span>
+                    )}{" "}
+                    {res.unreached == null && res.ci && (
                       <span className="text-muted-foreground/70">
                         [{score(res.ci.lo)}, {score(res.ci.hi)}]
                       </span>
@@ -161,7 +167,7 @@ function ModelStats({ d }: { d: Detail }) {
   return (
     <div className={STAT_GRID}>
       <StatCard
-        label={`Test ${metricName(d.metric)}`}
+        label={`Test ${d.metric}`}
         value={score(d.score)}
         detail={best.ci ? `95% CI ${score(best.ci.lo)} to ${score(best.ci.hi)}, ${d.benchmark}` : d.benchmark}
       />

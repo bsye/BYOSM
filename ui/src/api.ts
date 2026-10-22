@@ -62,6 +62,7 @@ export type Result = {
   params: number | null
   n_test: number | null
   ci: { lo: number; hi: number } | null
+  unreached: number | null
 }
 
 export type Summary = {

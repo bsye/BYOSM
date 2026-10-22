@@ -5,7 +5,7 @@ import { InfoTip } from "@/components/info-tip"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
-import { metricName, score } from "@/format"
+import { score } from "@/format"
 import { openJob } from "@/job-sheet"
 
 const SEVERITY: Record<Severity, { label: string; answer: string; icon: LucideIcon; variant: "outline" | "secondary" | "destructive" }> = {
@@ -43,7 +43,7 @@ function Scores({ d, r }: { d: Detail; r: OverfitReport }) {
     return { split: s, score: v, ci: b ? [v - b.lo, b.hi - v] : undefined }
   })
   const low = Math.max(0, Math.floor(Math.min(...rows.map((x) => x.score)) * 10) / 10 - 0.1)
-  const config = { score: { label: metricName(r.metric), color: "var(--chart-1)" } } satisfies ChartConfig
+  const config = { score: { label: d.metric, color: "var(--chart-1)" } } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="h-56 w-full">
       <BarChart accessibilityLayer data={rows} margin={{ left: 8, right: 8 }}>

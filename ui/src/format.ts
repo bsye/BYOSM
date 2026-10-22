@@ -30,8 +30,6 @@ export function rivalName(id: string | null | undefined): string {
   return repo.slice(repo.lastIndexOf("/") + 1)
 }
 
-export const metricName = (metric: string) => metric.split("_").join(" ").replace("f1", "F1")
-
 const THOUSAND = 1000
 
 export function tokens(n: number | null | undefined): string {

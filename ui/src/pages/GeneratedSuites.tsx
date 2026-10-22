@@ -3,7 +3,7 @@ import type { Detail, Suite } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
-import { metricName, rivalName } from "@/format"
+import { rivalName } from "@/format"
 import { TestSets } from "./TestSets"
 
 const GENERATED = "generated"
@@ -32,7 +32,7 @@ function SuiteCard({ d, suite }: { d: Detail; suite: Suite }) {
             {n ? `${n} test inputs` : suite.name} written by {suite.written_by ?? "an LLM"}
           </span>
           <InfoTip>
-            Test {metricName(d.metric)}{judged}. Written by an LLM, so not a public benchmark, and an LLM rival may agree
+            Test {d.metric}{judged}. Written by an LLM, so not a public benchmark, and an LLM rival may agree
             with the LLM that wrote it.
           </InfoTip>
         </CardTitle>
