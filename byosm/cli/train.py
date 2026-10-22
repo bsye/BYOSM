@@ -138,6 +138,7 @@ def exp_create(
     base: Annotated[
         str | None, typer.Option(help="start from this experiment's spec (default: base spec.yaml)")
     ] = None,
+    run: Annotated[bool, typer.Option("--run", help="build the experiment right after creating it")] = False,
 ) -> None:
     """e.g. byosm exp create doctype visual --set document.route=visual"""
     import yaml
@@ -159,6 +160,10 @@ def exp_create(
     proposal = {"parent": base or "spec.yaml", "applied": [{"id": "manual", "why": " ".join(set_), "ops": ops}]}
     (d / "proposal.json").write_text(json.dumps(proposal, indent=2))
     log(f"created {name}/{exp} ({', '.join(set_)}); data key {created.data_key()} -> byosm build {name} --exp {exp}")
+    if run:
+        from ..pipeline import build
+
+        build(name, exp, log)
 
 
 @app.command()
