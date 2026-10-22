@@ -1,4 +1,5 @@
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import { InfoTip } from "@/components/info-tip"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Progress } from "@/components/ui/progress"
@@ -7,8 +8,8 @@ import type { Metric } from "@/events"
 import { score } from "@/format"
 
 const config = {
-  dev_objective: { label: "dev score", color: "var(--chart-1)" },
-  loss: { label: "loss", color: "var(--chart-2)" },
+  dev_objective: { label: "dev score, left axis", color: "var(--chart-1)" },
+  loss: { label: "training loss, right axis", color: "var(--chart-2)" },
 } satisfies ChartConfig
 
 type Epoch = { epoch: number; epochs: number; loss: number; dev_objective: number; experiment: string }
@@ -19,9 +20,14 @@ function Epochs({ items }: { items: Epoch[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Training {run?.experiment}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Training {run?.experiment}
+          <InfoTip>
+            One point per epoch, a full pass over the training rows. The dev score is the specialist's metric on rows it does not train on: higher is better, and the best epoch is kept. The loss is the error on the training rows: lower is better. Dev falling while the loss keeps dropping is the sign of overfitting.
+          </InfoTip>
+        </CardTitle>
         <CardAction className="text-muted-foreground text-sm tabular-nums">
-          Epoch {run?.epoch}/{run?.epochs}, dev {score(run?.dev_objective)}
+          Epoch {run?.epoch} of {run?.epochs}, dev {score(run?.dev_objective)}
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -29,7 +35,7 @@ function Epochs({ items }: { items: Epoch[] }) {
         <ChartContainer config={config} className="h-56 w-full">
           <LineChart data={rows} margin={{ left: 8, right: 8 }}>
             <CartesianGrid vertical={false} />
-            <XAxis dataKey="epoch" tickLine={false} axisLine={false} />
+            <XAxis dataKey="epoch" tickLine={false} axisLine={false} tickFormatter={(v) => `epoch ${v}`} />
             <YAxis yAxisId="dev" domain={["auto", "auto"]} tickLine={false} axisLine={false} width={44} />
             <YAxis yAxisId="loss" orientation="right" domain={["auto", "auto"]} tickLine={false} axisLine={false} width={44} />
             <ChartTooltip content={<ChartTooltipContent />} />
