@@ -5,11 +5,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .data import hf_source
+from .benchmark_search import add_benchmark
 from .data.hf_source.hub import search_terms
 from .events import stage
-from .llm import get_llm
-from .spec import EvalSuite, HFSource, TaskSpec
+from .spec import TaskSpec
 from .text import match_label
 
 TASK_TAG = {
@@ -21,8 +20,6 @@ TASK_TAG = {
     ("text", "frame"): "token-classification",
 }
 SCORABLE_TAGS = {"text-classification", "image-classification", "token-classification"}
-
-HELD_OUT_SPLITS = ("test", "validation", "val", "valid")
 
 
 def _model_labels(repo: str) -> list[str] | None:
@@ -65,78 +62,6 @@ def baseline_models(spec: TaskSpec, queries: list[str], k: int = 2, min_overlap:
     return [(repo, why) for _, repo, why in found[:k]]
 
 
-PICK_BENCH = """You pick a public benchmark for a classifier. From the Hugging Face search results, choose the dataset \
-that best matches the task and labels and has a held-out split (test or validation). Answer with its exact id, or "" if \
-none fits. Prefer widely used, established benchmarks."""
-
-
-def _pick_benchmark(spec: TaskSpec, hits: list[dict], cfg: dict | None) -> dict[str, Any]:
-    listing = "\n".join(f"- {h['id']} (downloads={h['downloads']}, {', '.join(h['tags'])})" for h in hits)
-    task = f"Task: {spec.summary or spec.description}\nModality: {spec.modality}\nLabels: {spec.label_names}"
-    return get_llm("spec", cfg).json(
-        PICK_BENCH,
-        f"{task}\n\nResults:\n{listing}",
-        {"type": "object", "properties": {"dataset": {"type": "string"}, "why": {"type": "string"}}},
-    )
-
-
-def _split_sources(
-    spec: TaskSpec, src: HFSource, held: str, splits: list[str]
-) -> tuple[HFSource, HFSource | None, str | None]:
-    n_lab = len(spec.labels)
-    ev = src.model_copy(update={"split": held, "sampling": "balanced", "per_label": max(50, 4000 // n_lab)})
-    train_split = next((s for s in ("train",) if s in splits and s != held), None)
-    if not train_split:
-        return ev, None, None
-    per_label = max(100, spec.data.train_size // n_lab)
-    tr = src.model_copy(update={"split": train_split, "sampling": "balanced", "per_label": per_label})
-    return ev, tr, train_split
-
-
-def benchmark(
-    spec: TaskSpec, queries: list[str], cfg: dict | None, log: Callable[[str], None]
-) -> tuple[HFSource | None, HFSource | None, str]:
-    from datasets import get_dataset_split_names
-
-    hits = hf_source.search(queries)
-    if not hits:
-        return None, None, "no Hub results for the benchmark queries"
-    out = _pick_benchmark(spec, hits, cfg)
-    ds = out.get("dataset", "")
-    if ds not in {h["id"] for h in hits}:
-        return None, None, "no suitable benchmark among the search results"
-    try:
-        splits = get_dataset_split_names(ds)
-    except Exception as e:
-        return None, None, f"{ds}: cannot read splits ({type(e).__name__})"
-    held = next((s for s in HELD_OUT_SPLITS if s in splits), None)
-    if not held:
-        return None, None, f"{ds} has no held-out split ({splits})"
-    tmp = spec.model_copy(deep=True)
-    tmp.data.hf_sources = [HFSource(dataset=ds, role="labeled", split=held)]
-    mapped = hf_source.resolve(tmp, cfg, log)
-    if not mapped:
-        return None, None, f"{ds}: could not map its columns/labels onto ours"
-    ev, tr, train_split = _split_sources(spec, mapped[0], held, splits)
-    return ev, tr, f"{ds}: {out.get('why', '')} (eval on `{held}`" + (f", train on `{train_split}`)" if tr else ")")
-
-
-def _add_benchmark(
-    spec: TaskSpec, queries: list[str], cfg: dict | None, log: Callable[[str], None], decisions: list[dict]
-) -> None:
-    try:
-        ev, tr, why = benchmark(spec, queries, cfg, log)
-    except Exception as e:
-        ev, tr, why = None, None, f"benchmark search failed: {type(e).__name__}: {e}"
-    if ev:
-        for e in spec.evals:
-            e.primary = False
-        spec.evals.append(EvalSuite(name="bench", kind="hf", source=ev, max_items=5000, primary=True))
-        if tr:
-            spec.data.hf_sources.append(tr)
-    decisions.append({"step": "benchmark", "choice": ev.dataset if ev else None, "why": why})
-
-
 def _default_baselines(spec: TaskSpec, bl: list[str], decisions: list[dict]) -> None:
     if spec.modality in ("text", "document", "image") and spec.task_type == "classify" and "llm" not in bl:
         bl.append("llm")
@@ -167,7 +92,7 @@ def discover(
     spec = spec.model_copy(deep=True)
     decisions: list[dict] = []
     if spec.task_type == "classify" and queries.get("benchmark"):
-        _add_benchmark(spec, queries["benchmark"], cfg, log, decisions)
+        add_benchmark(spec, queries["benchmark"], cfg, log, decisions)
     bl = list(spec.baselines)
     _default_baselines(spec, bl, decisions)
     _model_baselines(spec, queries.get("baseline") or [], bl, decisions)
