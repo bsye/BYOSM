@@ -19,12 +19,26 @@ create index if not exists events_job on events (job);
 """
 
 
-USAGE_COLUMNS = ("job", "role", "model", "calls", "failed", "tokens_in", "tokens_out", "seconds", "last")
+USAGE_COLUMNS = (
+    "job",
+    "role",
+    "model",
+    "calls",
+    "failed",
+    "tokens_in",
+    "tokens_out",
+    "seconds",
+    "last",
+    "counted",
+    "counted_seconds",
+)
 USAGE_SQL = """
 select job, json_extract(data, '$.role'), json_extract(data, '$.model'),
   sum(json_extract(data, '$.state') = 'done'), sum(json_extract(data, '$.state') = 'failed'),
   coalesce(sum(json_extract(data, '$.tokens_in')), 0), coalesce(sum(json_extract(data, '$.tokens_out')), 0),
-  round(coalesce(sum(json_extract(data, '$.seconds')), 0), 1), max(json_extract(data, '$.at'))
+  round(coalesce(sum(json_extract(data, '$.seconds')), 0), 1), max(json_extract(data, '$.at')),
+  sum(json_extract(data, '$.tokens_out') is not null),
+  round(coalesce(sum(case when json_extract(data, '$.tokens_out') is not null then json_extract(data, '$.seconds') end), 0), 1)
 from events
 where json_extract(data, '$.kind') = 'llm' and json_extract(data, '$.state') in ('done', 'failed')
 group by 1, 2, 3

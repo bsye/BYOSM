@@ -117,7 +117,7 @@ export function steps(metrics: Metric[], running: boolean): Step[] {
       group.calls += 1
       group.failed += c.state === "failed" ? 1 : 0
       group.waiting += c.state === "waiting" ? 1 : 0
-      group.end = Math.max(group.end, Number(c.at) + Number(c.seconds ?? 0))
+      group.end = Math.max(group.end, Number(c.at) + Number(c.waited ?? 0) + Number(c.seconds ?? 0))
       out[out.length - 1] = callStep(group)
       continue
     }

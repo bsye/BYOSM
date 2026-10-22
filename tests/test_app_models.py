@@ -25,6 +25,8 @@ def test_usage_adds_up_tokens_per_job_task_and_model(ws):
         "tokens_out": 25,
         "seconds": 4.0,
         "last": None,
+        "counted": 2,
+        "counted_seconds": 4.0,
     }
 
 

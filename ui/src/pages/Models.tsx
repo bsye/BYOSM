@@ -63,6 +63,9 @@ function UsageTable({ rows }: { rows: Usage[] }) {
               <TableHead className="text-right">Input</TableHead>
               <TableHead className="text-right">Output</TableHead>
               <TableHead className="text-right">LLM time</TableHead>
+              <TableHead className="text-right">Tokens per call</TableHead>
+              <TableHead className="text-right">Output tokens/s</TableHead>
+              <TableHead className="text-right">Time per call</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -78,6 +81,9 @@ function UsageTable({ rows }: { rows: Usage[] }) {
                 <TableCell className="text-right tabular-nums">{counted(u, u.tokens_in)}</TableCell>
                 <TableCell className="text-right tabular-nums">{counted(u, u.tokens_out)}</TableCell>
                 <TableCell className="text-foreground/70 text-right tabular-nums">{seconds(u.seconds)}</TableCell>
+                <TableCell className="text-right tabular-nums">{u.counted ? tokens(Math.round((u.tokens_in + u.tokens_out) / u.counted)) : "-"}</TableCell>
+                <TableCell className="text-right tabular-nums">{u.counted && u.counted_seconds ? (u.tokens_out / u.counted_seconds).toFixed(1) : "-"}</TableCell>
+                <TableCell className="text-foreground/70 text-right tabular-nums">{seconds(u.seconds / Math.max(1, u.calls))}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -99,7 +105,7 @@ export function Models() {
       <h1 className="text-2xl font-semibold">Models</h1>
       <div className={STAT_GRID}>
         <StatCard label="Tokens" value={tokens(total)} detail={`${tokens(sum(m.usage, (u) => u.tokens_out))} output`} />
-        <StatCard label="LLM calls" value={String(sum(m.usage, (u) => u.calls))} detail={`${perJob.size} jobs`} />
+        <StatCard label="LLM calls" value={String(sum(m.usage, (u) => u.calls))} detail={`${perJob.size} jobs, ${tokens(Math.round(total / Math.max(1, sum(m.usage, (u) => u.counted))))} tokens per call`} />
         <StatCard label="Loaded locally" value={String(m.loaded?.length ?? "-")} detail={gigabytes(m.loaded?.reduce((n, x) => n + (x.bytes ?? 0), 0))} />
         <StatCard label="Budget per job" value={budget ? tokens(budget) : "None"} detail={`largest job ${tokens(biggest)}`} />
       </div>

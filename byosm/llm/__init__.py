@@ -125,16 +125,20 @@ class Observed:
         if _spent["budget"] and _spent["tokens"] >= _spent["budget"]:
             raise LLMError(f"token budget reached: {_spent['tokens']} of {_spent['budget']} tokens for this job")
         emit("llm", **base, state="waiting", prompt=prompt[:PREVIEW_CHARS], images=len(images or []))
+        t1 = t0
         try:
             with self.gate or contextlib.nullcontext():
+                t1 = time.time()
                 out = self.llm.json(system, prompt, schema, **({"images": images} if images else {}))
         except Exception as e:
-            emit("llm", **base, state="failed", seconds=round(time.time() - t0, 1), error=str(e)[:PREVIEW_CHARS])
+            timing = {"seconds": round(time.time() - t1, 1), "waited": round(t1 - t0, 1)}
+            emit("llm", **base, state="failed", **timing, error=str(e)[:PREVIEW_CHARS])
             raise
         answer = json.dumps(out, ensure_ascii=False)[:PREVIEW_CHARS]
         used = take_usage()
         _spent["tokens"] += (used["tokens_in"] or 0) + (used["tokens_out"] or 0)
-        emit("llm", **base, state="done", seconds=round(time.time() - t0, 1), answer=answer, **used)
+        timing = {"seconds": round(time.time() - t1, 1), "waited": round(t1 - t0, 1)}
+        emit("llm", **base, state="done", **timing, answer=answer, **used)
         return out
 
 
