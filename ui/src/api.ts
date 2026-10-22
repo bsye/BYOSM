@@ -94,6 +94,7 @@ export type Run = {
   params: number | null
   n_train: number | null
   train_seconds: number | null
+  ablation_arm: boolean
   best_epoch: number | null
   history: { epoch: number; loss: number; dev: number }[]
 }
@@ -108,7 +109,19 @@ export type Suite = {
   judged_by: string | null
 }
 
+export type AblationSeed = { seed: number; calib: number | null; p_better: number | null; test: number }
+
+export type Ablation = {
+  change: Record<string, unknown>
+  base: string
+  verdict: "better" | "worse" | "not sure"
+  seeds: AblationSeed[]
+  calib: number | null
+  test: number | null
+}
+
 export type Detail = Summary & {
+  ablations: Ablation[]
   data_check: unknown
   health: unknown
   data_suggestions: unknown

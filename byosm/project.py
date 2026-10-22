@@ -167,11 +167,6 @@ class Project:
                 data,
             )
 
-    def save_board(self, board: dict[str, dict[str, dict]]) -> None:
-        for pid, by_suite in board.items():
-            for suite, data in by_suite.items():
-                self.save_result(pid, suite, data)
-
     def drop_result(self, pid: str, suite: str) -> None:
         with session(self.ws) as s:
             s.execute(delete(Result).filter_by(specialist_id=self._need(s), predictor=pid, suite=suite))
@@ -179,6 +174,11 @@ class Project:
     def report(self, kind: str) -> Any:
         with session(self.ws) as s:
             return s.scalar(select(Report.data).filter_by(specialist_id=self._id(s), kind=kind))
+
+    def reports(self, prefix: str) -> dict[str, Any]:
+        with session(self.ws) as s:
+            found = select(Report.kind, Report.data).filter_by(specialist_id=self._id(s))
+            return dict(s.execute(found.where(Report.kind.startswith(prefix))).tuples().all())
 
     def save_report(self, kind: str, data: Any) -> None:
         with session(self.ws) as s:

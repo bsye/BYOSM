@@ -114,6 +114,12 @@ def import_runtime(out):
     return rt.load(out)
 
 
+def save_board(p, board):
+    for pid, by_suite in board.items():
+        for suite, data in by_suite.items():
+            p.save_result(pid, suite, data)
+
+
 def write_pdf(path, pages):
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas

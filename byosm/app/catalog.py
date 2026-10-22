@@ -4,6 +4,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from ..ablation import is_arm
+from ..ablation import summaries as ablation_summaries
 from ..auto.standing import best_baseline
 from ..data.store import SPLITS, Dataset
 from ..data.sufficiency import data_check
@@ -91,6 +93,7 @@ def _run(p: Project, exp: str) -> dict[str, Any]:
     return {
         "name": exp,
         "parent": _parent(p, exp),
+        "ablation_arm": is_arm(exp),
         "params": m.get("params"),
         "n_train": m.get("n_train"),
         "train_seconds": m.get("train_seconds"),
@@ -121,6 +124,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "data_check": data_check(p, spec),
         "health": health(p, spec),
         "data_suggestions": saved_suggestions(p),
+        "ablations": ablation_summaries(p),
     }
 
 

@@ -1,4 +1,5 @@
 import pytest
+from conftest import save_board
 
 from byosm.data.store import ShingleIndex, write
 from byosm.evals import overfit, overfit_checks
@@ -65,7 +66,7 @@ def toy(ws, monkeypatch):
         "v1": {"bench": _result([True, True] + [True] * 4 + [False] * 4, [True] * 4, {"lo": 0.55, "hi": 0.65})},
         "v2": {"bench": _result([False] * 10, [False] * 4, {"lo": 0.0, "hi": 0.0})},
     }
-    p.save_board(board)
+    save_board(p, board)
     p.promote("v1")
     scorer = Scorer()
     monkeypatch.setattr(overfit, "score", scorer)
@@ -99,7 +100,7 @@ def test_the_check_is_cached_and_reuses_the_train_score_when_only_the_board_chan
     assert scorer.calls == 1
     board = p.board()
     board["v2"]["bench"]["calib_objective"] = 0.99
-    p.save_board(board)
+    save_board(p, board)
     again = overfit.check("toy", ws=p.ws, log=lambda m: None)
     assert scorer.calls == 1 and _by_check(again)["selection"]["numbers"]["median_others"] == 0.99
     p.save_experiment("v1", meta={**p.meta("v1"), "train_seconds": 1})

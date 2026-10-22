@@ -1,3 +1,5 @@
+from conftest import save_board
+
 from byosm.health import health
 from byosm.project import Project
 from byosm.spec import EvalSuite, Label, TaskSpec
@@ -16,7 +18,7 @@ def _specialist(ws, rows):
     p.save_spec(spec)
     p.save_experiment("v1", meta={})
     p.promote("v1")
-    p.save_board(rows)
+    save_board(p, rows)
     return p, spec
 
 

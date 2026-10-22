@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 import yaml
+from conftest import save_board
 from typer.testing import CliRunner
 
 from byosm.cli import app
@@ -54,7 +55,7 @@ def toy(tmp_path, monkeypatch):
         "v2": {"bench": _result("experiment", 5 / 6, 0.75, TEST_UNITS, 2_000_000)},
         "rival": {"bench": _result("baseline", 0.5, 0.5, BASE_UNITS, 9_000_000)},
     }
-    p.save_board(board)
+    save_board(p, board)
     p.promote("v2")
     return tmp_path
 
@@ -136,7 +137,7 @@ def test_seed_groups_and_stale_rows(toy):
         p.save_experiment(exp, spec=_trained(p, {"ema": True, "seed": i}), meta={})
         board[exp] = {"bench": _result("experiment", acc, calib, BASE_UNITS, 2_000_000) | {"fingerprint": "old"}}
     board["v2"]["bench"]["fingerprint"] = "new"
-    p.save_board(board)
+    save_board(p, board)
     seeds = blocks()["toy:seeds"]
     assert seeds.startswith(
         "| recipe | seeds | train rows | test accuracy % | calib accuracy % |\n|---|---|---|---|---|\n"
@@ -154,7 +155,7 @@ def _replicates(p: Project, runs: tuple[tuple[float, float, str], ...]) -> None:
         p.save_experiment(exp, spec=_trained(p, {"seed": i}), meta={})
         board[exp] = {"bench": _result("experiment", acc, calib, BASE_UNITS, 2_000_000) | {"fingerprint": fp}}
     board["v2"]["bench"]["fingerprint"] = "new"
-    p.save_board(board)
+    save_board(p, board)
 
 
 def test_a_lone_replicate_on_another_fingerprint_stays_in_the_main_table(toy):

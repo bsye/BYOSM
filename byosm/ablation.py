@@ -8,6 +8,7 @@ from .improve import apply_ops
 from .project import Project
 
 PREFIX = "ablation:"
+ARM_PREFIX = "abl-"
 SPLITS = ("calib", "test")
 SEED_PATH = "train.seed"
 
@@ -33,8 +34,8 @@ def _pairs(p: Project, base: str, change: dict[str, Any], seeds: list[int]) -> l
     return [
         (
             seed,
-            _arm(p, base, f"abl-{slug}-off-s{seed}", before, seed, f"ablation baseline: {before}"),
-            _arm(p, base, f"abl-{slug}-on-s{seed}", change, seed, f"ablation change: {change}"),
+            _arm(p, base, f"{ARM_PREFIX}{slug}-off-s{seed}", before, seed, f"ablation baseline: {before}"),
+            _arm(p, base, f"{ARM_PREFIX}{slug}-on-s{seed}", change, seed, f"ablation change: {change}"),
         )
         for seed in seeds
     ]
@@ -79,3 +80,33 @@ def ablate(name: str, base: str, change: dict[str, Any], seeds: list[int], log: 
 
 def _line(cmp: dict | None) -> str:
     return f"{cmp['delta']:+.4f} (P(better) {cmp['p_better']:.2f})" if cmp else "no paired units"
+
+
+def _mean(xs: list[float]) -> float | None:
+    return sum(xs) / len(xs) if xs else None
+
+
+def summaries(p: Project) -> list[dict]:
+    return [
+        {
+            "change": r["change"],
+            "base": r["base"],
+            "verdict": r["verdict"],
+            "seeds": [
+                {
+                    "seed": s["seed"],
+                    "calib": (s["calib"] or {}).get("delta"),
+                    "p_better": (s["calib"] or {}).get("p_better"),
+                    "test": s["test_delta"],
+                }
+                for s in r["seeds"]
+            ],
+            "calib": _mean([s["calib"]["delta"] for s in r["seeds"] if s["calib"]]),
+            "test": _mean([s["test_delta"] for s in r["seeds"]]),
+        }
+        for r in p.reports(PREFIX).values()
+    ]
+
+
+def is_arm(exp: str) -> bool:
+    return exp.startswith(ARM_PREFIX)

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { params, score, seconds } from "@/format"
+import { Ablations } from "./Ablations"
 
 const COLORS = 5
 const DEFAULT_SHOWN = 4
@@ -14,7 +15,7 @@ const calib = (d: Detail, run: string) => d.board[run]?.[d.primary_suite]?.calib
 
 function byCalib(d: Detail): Detail["runs"] {
   const key = (name: string) => (name === d.promoted ? Infinity : (calib(d, name) ?? -Infinity))
-  return [...d.runs].sort((a, b) => key(b.name) - key(a.name))
+  return d.runs.filter((r) => !r.ablation_arm).sort((a, b) => key(b.name) - key(a.name))
 }
 
 function defaults(d: Detail): string[] {
@@ -101,6 +102,7 @@ export function Runs({ d }: { d: Detail }) {
           </Table>
         </CardContent>
       </Card>
+      <Ablations items={d.ablations} />
     </div>
   )
 }

@@ -1,3 +1,5 @@
+from conftest import save_board
+
 from byosm.next_steps import suggestions
 from byosm.project import Project
 from byosm.spec import Label, TaskSpec
@@ -16,7 +18,7 @@ def _specialist(ws, n_test, n_calib, rivals=("jev",)):
     p.exp_dir("v1").mkdir(parents=True)
     p.save_experiment("v1", meta={})
     p.promote("v1")
-    p.save_board({"v1": {"builtin": {"kind": "experiment", "objective": 0.9, "n_test": n_test, "n_calib": n_calib}}})
+    save_board(p, {"v1": {"builtin": {"kind": "experiment", "objective": 0.9, "n_test": n_test, "n_calib": n_calib}}})
     return p
 
 
