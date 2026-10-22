@@ -53,7 +53,7 @@ def _build_v1(s: Session) -> None:
     from ..pipeline import build
 
     ts = time.time()
-    build(s.name, "v1", s.echo)
+    build(s.name, "v1", s.echo, data_seconds=s.data_seconds())
     s.durations.append(time.time() - ts)
     st = standing(s.name, s.margin)
     s.log("build", "v1", f"{st['suite']} {st['metric']} {st['ours']:.4f}; best baseline {st['best_baseline']}")

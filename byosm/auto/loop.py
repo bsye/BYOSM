@@ -91,7 +91,7 @@ def _experiment(s: Session, st: dict, pick: dict, fresh: list[dict]) -> bool | N
     exp = improve.apply(s.name, [pick["id"]])
     ts = time.time()
     try:
-        build(s.name, exp, s.echo)
+        build(s.name, exp, s.echo, data_seconds=s.data_seconds())
     except Exception as e:
         s.log("experiment", exp, f"{pick['id']} failed: {type(e).__name__}: {str(e)[:200]}", proposal=pick)
         return None

@@ -8,6 +8,8 @@ from typing import Any
 
 from ..config import Project
 
+DATA_BUDGET_SHARE = 0.4
+
 
 class Log:
     def __init__(self, p: Project, echo: Callable[[str], None]):
@@ -42,3 +44,6 @@ class Session:
 
     def mean_duration(self) -> float:
         return sum(self.durations) / max(1, len(self.durations))
+
+    def data_seconds(self) -> float:
+        return DATA_BUDGET_SHARE * max(0.0, self.deadline - time.time())

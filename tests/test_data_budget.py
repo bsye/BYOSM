@@ -1,8 +1,12 @@
+import time
+
 import pytest
 from conftest import FakeLLM
 
 from byosm import data as data_stage
-from byosm import llm
+from byosm import llm, pipeline
+from byosm.auto import autopilot
+from byosm.auto.state import DATA_BUDGET_SHARE, Session
 from byosm.data import budget
 from byosm.spec import Label, TaskSpec
 from byosm.spec.sections import Axis, DataPlan
@@ -92,3 +96,13 @@ def test_the_train_floor_is_per_label():
     have = {"train": 0, "dev": 0, "test": 0}
     floor = {"train": 2 * budget.MIN_TRAIN_PER_LABEL, "dev": 0, "test": 0}
     assert budget.shrink(need, have, 0.0, floor)["train"] == 2 * budget.MIN_TRAIN_PER_LABEL
+
+
+def test_the_autopilot_gives_the_data_stage_its_share_of_the_time_left(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(pipeline, "build", lambda name, exp, log, data_seconds=None: seen.update(seconds=data_seconds))
+    st = {"suite": "s", "metric": "m", "ours": 0.5, "best_baseline": None}
+    monkeypatch.setattr(autopilot, "standing", lambda *_: st)
+    s = Session("qa", None, lambda *_, **__: None, None, 0.0, time.time() + HOUR, lambda _: None)
+    autopilot._build_v1(s)
+    assert seen["seconds"] == pytest.approx(DATA_BUDGET_SHARE * HOUR, rel=1e-3)
