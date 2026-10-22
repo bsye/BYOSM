@@ -49,21 +49,6 @@ def _examples(ws: Path, name: str) -> dict[str, Any]:
     return {"examples": by, "rivals": spec.baselines, "repos": repos}
 
 
-def _written(ws: Path, name: str) -> list[dict[str, Any]]:
-    from ..config import Project
-    from ..evals.testset import written_logs
-    from ..spec import TaskSpec
-
-    p = Project(name, ws)
-    if not p.exists():
-        raise KeyError(f"no specialist {name!r}")
-    frozen = {e.name for e in TaskSpec.load(p.spec_path).evals}
-    return [
-        {"suite": s, "frozen": s in frozen, "rows": [{"input": r["input"], "label": r["label"]} for r in rows]}
-        for s, rows in written_logs(p).items()
-    ]
-
-
 def _rival_search(ws: Path, name: str, q: str) -> list[dict[str, Any]]:
     from ..config import Project
     from ..discover import model_candidates
@@ -118,10 +103,6 @@ def try_router(ws: Path) -> APIRouter:
     @router.get("/api/specialists/{name}/rivals/search")
     def rival_search(name: str, q: str = "") -> list:
         return missing(_rival_search, ws, name, q)
-
-    @router.get("/api/specialists/{name}/written")
-    def written(name: str) -> list:
-        return missing(_written, ws, name)
 
     @router.post("/api/specialists/{name}/compare")
     def compare(name: str, body: CompareRequest) -> dict:

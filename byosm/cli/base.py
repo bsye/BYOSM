@@ -41,11 +41,15 @@ app = typer.Typer(cls=PromptFirst, add_completion=False, no_args_is_help=True, h
 suite_app = typer.Typer(no_args_is_help=True, help="Manage eval suites (frozen test sets) of a specialist.")
 baseline_app = typer.Typer(no_args_is_help=True, help="Manage baselines (competitors scored on every suite).")
 system_app = typer.Typer(no_args_is_help=True, help="Teams of specialists that do a whole task, scored end to end.")
+inputs_app = typer.Typer(
+    no_args_is_help=True, help="Sets of test inputs you write or sample, scored by the models you pick."
+)
 exp_app = typer.Typer(no_args_is_help=True, help="Create experiment variants (ablations) by editing spec paths.")
 app.add_typer(suite_app, name="suite")
 app.add_typer(baseline_app, name="baseline")
 app.add_typer(exp_app, name="exp")
 app.add_typer(system_app, name="system")
+app.add_typer(inputs_app, name="inputs")
 console = Console()
 
 

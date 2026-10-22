@@ -23,6 +23,7 @@ from .lock import claim, release
 from .models_routes import models_router
 from .systems_routes import systems_router
 from .try_routes import try_router
+from .workbench_routes import workbench_router
 
 STATIC_DIR = Path(__file__).parent / "static"
 LOCAL_HOSTS = ["127.0.0.1", "localhost"]
@@ -160,6 +161,7 @@ def create_app(
     app.include_router(systems_router(ws, Depends(check)))
     app.include_router(config_router(ws, Depends(check)))
     app.include_router(try_router(ws), dependencies=[Depends(check)])
+    app.include_router(workbench_router(ws), dependencies=[Depends(check)])
     app.include_router(live_router(ws, runner), dependencies=[Depends(check)])
     app.include_router(models_router(ws, runner), dependencies=[Depends(check)])
     app.include_router(data_router(ws), dependencies=[Depends(check)])

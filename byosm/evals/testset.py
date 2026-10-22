@@ -29,7 +29,7 @@ def written_logs(p: Project) -> dict[str, list[dict]]:
     return {f.name.removesuffix(WRITTEN_SUFFIX): read(f) for f in logs}
 
 
-def _logger(path: Path) -> Callable[[list[dict]], None]:
+def written_logger(path: Path) -> Callable[[list[dict]], None]:
     lock = threading.Lock()
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -47,7 +47,7 @@ def _resumed(spec: TaskSpec, path: Path, against: list[dict], cfg: dict, log: Ca
     return judge(spec, rows, cfg, log=log) if rows and spec.data.judge else rows
 
 
-def _existing(p: Project, spec: TaskSpec) -> list[dict]:
+def existing_rows(p: Project, spec: TaskSpec) -> list[dict]:
     ds = Dataset(p.data_dir_for(spec))
     return [r for split in SPLITS for r in ds.load(split)]
 
@@ -61,7 +61,7 @@ def _collect(
     spec: TaskSpec, per_label: int, against: list[dict], cfg: dict, log: Callable[[str], None], path: Path
 ) -> list[dict]:
     kept = _resumed(spec, path, against, cfg, log)
-    on_rows = _logger(path)
+    on_rows = written_logger(path)
     for _ in range(MAX_ROUNDS):
         short = _short(spec, kept, per_label)
         if not short:
@@ -97,7 +97,7 @@ def write_testset(
 ) -> EvalSuite:
     _check(spec, suite)
     cfg = cfg or load_config()
-    rows = _collect(spec, per_label, _existing(p, spec), cfg, log, written_path(p, suite))
+    rows = _collect(spec, per_label, existing_rows(p, spec), cfg, log, written_path(p, suite))
     calib, test = _calib_test(spec, rows, per_label)
     if not test:
         raise ValueError(f"the LLM wrote no usable examples for {spec.name}")
