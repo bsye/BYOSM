@@ -91,6 +91,7 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   if (last?.kind === "teacher") return `${last.teacher} labelling ${last.done}/${last.total}`
   if (last?.kind === "writing") return `Writing ${last.split} data ${last.done}/${last.total}`
   if (last?.kind === "scored") return `Scored ${last.predictor} on ${last.suite}`
+  if (last?.kind === "gpu") return "Waiting for the GPU: another job is training"
   return openStage(metrics) ?? (lines.findLast((l) => l.trim() && !l.startsWith(EVENT_PREFIX))?.trim() || "Starting")
 }
 
