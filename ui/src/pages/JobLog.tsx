@@ -7,12 +7,13 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { useJob, useLive } from "@/events"
 import { seconds, took } from "@/format"
 import { decisions, stages } from "@/job-story"
-import { currentStep, EVENT_PREFIX, failure, llmUsed, steps, timeLeft } from "@/jobs"
+import { currentStep, describe, EVENT_PREFIX, failure, llmUsed, steps, timeLeft } from "@/jobs"
 import { useNow } from "@/now"
+import { href } from "@/route"
 import { DecisionTree } from "./DecisionTree"
 import { JobMetrics } from "./JobMetrics"
 import { JobStages } from "./JobStages"
-import { JobTitle, StatusIcon } from "./Jobs"
+import { StatusIcon } from "./Jobs"
 
 const LOG_TAIL = 2000
 
@@ -67,13 +68,24 @@ export function JobDetail({ id }: { id: string }) {
   const story = stages(metrics, steps(metrics, active))
   const choices = decisions(metrics)
   const last = metrics.at(-1)?.at
+  const d = describe(job)
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <StatusIcon status={job.status} />
-            <JobTitle job={job} />
+          <h1 className="flex items-start gap-2 text-2xl font-semibold">
+            <span className="pt-2">
+              <StatusIcon status={job.status} />
+            </span>
+            <span className="min-w-0">
+              {d.title}{" "}
+              {d.target && (
+                <a className="text-muted-foreground hover:underline" href={href("specialists", d.target)}>
+                  {d.target}
+                </a>
+              )}
+              {d.subject && <span className="text-muted-foreground block truncate text-sm font-normal">{d.subject}</span>}
+            </span>
           </h1>
           <p className="text-muted-foreground/70 text-xs tabular-nums">
             {job.status}, {active && job.started ? seconds(now - job.started) : took(job.started, job.ended)}
