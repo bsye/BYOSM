@@ -13,29 +13,13 @@
 
 <p align="center"><img src="docs/screenshots/hero.gif" alt="The specialists, then one specialist with its health, board, experiments, data and test sets" width="100%"></p>
 
-## What it does
+## Features
 
 <table>
-<tr>
-<td width="33%" valign="top"><b>Bring your own LLM</b><br>Claude Code or Codex subscription, Ollama or LM Studio, or an Anthropic or OpenAI key. A model and effort per task, a token budget per job.</td>
-<td width="33%" valign="top"><b>Finds data on Hugging Face</b><br>Searches the Hub and the web for public benchmarks and labelled datasets that fit your labels.</td>
-<td width="33%" valign="top"><b>Writes data, then checks it</b><br>An LLM writes and labels training rows; a blind judge LLM relabels them and only rows it agrees with are kept.</td>
-</tr>
-<tr>
-<td valign="top"><b>No leaks between splits</b><br>Near-duplicates are grouped before splitting. A data check flags thin labels and suggests datasets to add.</td>
-<td valign="top"><b>Same scorer for every rival</b><br>LLMs, Hub models (with a measured label mapping), LiveKit and Silero, on the same frozen splits, with 95% intervals.</td>
-<td valign="top"><b>Health score</b><br>Every check behind one score, a production-ready verdict, and what blocks it.</td>
-</tr>
-<tr>
-<td valign="top"><b>Experiments the LLM proposes</b><br>Each with its reason and spec edits. The autopilot runs them and keeps a model only if it wins on calib.</td>
-<td valign="top"><b>Every job live</b><br>Stages, progress, the LLM's decisions and the log as they happen. Tokens and calls per task and model.</td>
-<td valign="top"><b>Your own test sets</b><br>Written by an LLM or sampled from the benchmark, scored by the models you pick, exported to Excel.</td>
-</tr>
-<tr>
-<td valign="top"><b>Ships as int8 ONNX</b><br>One bundle that needs only numpy and onnxruntime. Python, command line, HTTP server or Docker image.</td>
-<td valign="top"><b>Publishes to the Hub</b><br>With a model card that keeps what code measured apart from what an LLM wrote.</td>
-<td valign="top"><b>Teams that act as you type</b><br>Specialists chained into one system that fires before the sentence ends, with no LLM at runtime.</td>
-</tr>
+<tr><td>✅ <a href="#7-choose-the-llms">Claude Code or Codex subscription</a></td><td>✅ <a href="#7-choose-the-llms">Ollama, LM Studio or API keys</a></td><td>✅ <a href="#1-describe-the-task">Hugging Face datasets and benchmarks</a></td><td>✅ <a href="#2-watch-it-build">LLM-written data, checked by a judge</a></td></tr>
+<tr><td>✅ <a href="docs/methodology.md">No leaks between splits</a></td><td>✅ <a href="#4-compare-with-rivals">Same scorer for every rival</a></td><td>✅ <a href="#3-check-its-health">Health score, production ready</a></td><td>✅ <a href="#3-check-its-health">Experiments and autopilot</a></td></tr>
+<tr><td>✅ <a href="#2-watch-it-build">Every job live</a></td><td>✅ <a href="#5-test-it-on-new-inputs">Test sets, Excel export</a></td><td>✅ <a href="#5-test-it-on-new-inputs">Hub models as rivals</a></td><td>✅ <a href="#6-act-while-the-user-types">Teams that act as you type</a></td></tr>
+<tr><td>✅ <a href="#8-ship-it">int8 ONNX on any CPU</a></td><td>✅ <a href="#8-ship-it">HTTP server and Docker</a></td><td>✅ <a href="#8-ship-it">Publish to the Hub</a></td><td>✅ <a href="docs/details.md">SQLite or Postgres</a></td></tr>
 </table>
 
 ## Run it
@@ -47,24 +31,6 @@ python3.11 -m venv .venv && .venv/bin/pip install -e '.[dev,silero]'
 ```
 
 State lives in one database: SQLite by default, Postgres with `DATABASE_URL` (`pip install -e '.[postgres]'`).
-
-## Why the numbers hold up
-
-A small model "beating GPT" is easy to fake. Each of these guards runs in code on every specialist; none is a promise in prose.
-
-| Risk | Guard |
-|---|---|
-| Grading on your own homework | Rivals (LLMs, Hub models, LiveKit, Silero) go through the same scorer, on the same frozen splits, with thresholds calibrated on the same calib split. |
-| Picking the lucky run | Promotion and the autopilot decide on calib only. Test is reported once, with a 95% bootstrap interval. |
-| A lead that is noise | Every "ours vs theirs" is a paired bootstrap over the same rows; the health check counts a lead only when 95% of resamples keep it. |
-| Memorising the training data | The overfitting check compares train, dev, calib and test, flags a dev curve that peaks and falls, and flags calib over-use. |
-| Test rows leaking into training | Near-duplicate rows are grouped before splitting, so paraphrases never straddle train and test; the overfitting check also measures train/test overlap and the score without it. |
-| Tiny test sets | Health fails "Precise score" below 100 test rows; a build adopts a bigger held-out set when an experiment brings one. |
-| Only good on its own kind of data | "Holds on new inputs" scores it on test sets written separately; a model is not production ready until that is measured. |
-| A metric that hides the trade-off | Constrained metrics carry their bound ("recall at 98% precision"), and a rival that never reaches the bound shows what it does reach. |
-| Numbers typed by hand | The result tables are regenerated from the results database by `byosm report`; model cards separate what code measured from what an LLM wrote. |
-
-Rules and benchmarks: [Methodology](docs/methodology.md). Every number: [Results](docs/results.md).
 
 ## Tour
 
@@ -131,5 +97,23 @@ Models on Hugging Face: [bsye](https://huggingface.co/bsye) ·
 [byosm-doctype](https://huggingface.co/bsye/byosm-doctype) ·
 [byosm-intent](https://huggingface.co/bsye/byosm-intent) ·
 [byosm-vad](https://huggingface.co/bsye/byosm-vad)
+
+## Why the numbers hold up
+
+A small model "beating GPT" is easy to fake. Each of these guards runs in code on every specialist; none is a promise in prose.
+
+| Risk | Guard |
+|---|---|
+| Grading on your own homework | Rivals (LLMs, Hub models, LiveKit, Silero) go through the same scorer, on the same frozen splits, with thresholds calibrated on the same calib split. |
+| Picking the lucky run | Promotion and the autopilot decide on calib only. Test is reported once, with a 95% bootstrap interval. |
+| A lead that is noise | Every "ours vs theirs" is a paired bootstrap over the same rows; the health check counts a lead only when 95% of resamples keep it. |
+| Memorising the training data | The overfitting check compares train, dev, calib and test, flags a dev curve that peaks and falls, and flags calib over-use. |
+| Test rows leaking into training | Near-duplicate rows are grouped before splitting, so paraphrases never straddle train and test; the overfitting check also measures train/test overlap and the score without it. |
+| Tiny test sets | Health fails "Precise score" below 100 test rows; a build adopts a bigger held-out set when an experiment brings one. |
+| Only good on its own kind of data | "Holds on new inputs" scores it on test sets written separately; a model is not production ready until that is measured. |
+| A metric that hides the trade-off | Constrained metrics carry their bound ("recall at 98% precision"), and a rival that never reaches the bound shows what it does reach. |
+| Numbers typed by hand | The result tables are regenerated from the results database by `byosm report`; model cards separate what code measured from what an LLM wrote. |
+
+Rules and benchmarks: [Methodology](docs/methodology.md). Every number: [Results](docs/results.md).
 
 <p align="center"><b>Tour</b> · <a href="docs/assumptions.md">Goal and bet</a> · <a href="docs/methodology.md">Methodology</a> · <a href="docs/results.md">Results</a> · <a href="docs/details.md">Details</a></p>
