@@ -57,11 +57,35 @@ class ShingleIndex:
             for g in s:
                 self.index.setdefault(g, []).append(i)
 
+    def add(self, text: str) -> int:
+        i = len(self.texts)
+        self.texts.append(text)
+        self.exact.setdefault(normalize(text), i)
+        self.ref.append(shingles(text))
+        for g in self.ref[i]:
+            self.index.setdefault(g, []).append(i)
+        return i
+
     def nearest(self, text: str) -> tuple[int, float] | None:
         s = shingles(text)
         hits = Counter(i for g in s for i in self.index.get(g, ()))
         scored = [(i, c / len(s | self.ref[i])) for i, c in hits.most_common(NEAR_CANDIDATES)]
         return max(scored, key=lambda t: t[1], default=None)
+
+
+def near_groups(texts: list[Any], near: float = NEAR_DUPLICATE) -> list[int]:
+    index, of_text, out = ShingleIndex([]), [], []
+    for i, t in enumerate(texts):
+        if not isinstance(t, str):
+            out.append(i)
+            continue
+        same = index.exact.get(normalize(t))
+        hit = index.nearest(t) if same is None else None
+        g = of_text[same] if same is not None else of_text[hit[0]] if hit and hit[1] > near else i
+        index.add(t)
+        of_text.append(g)
+        out.append(g)
+    return out
 
 
 def dedupe(rows: list[dict], against: list[dict] | None = None, near: float = NEAR_DUPLICATE) -> list[dict]:

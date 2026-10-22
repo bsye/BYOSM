@@ -7,7 +7,7 @@ from typing import Any
 
 from ..spec import HFSource, TaskSpec
 from . import audio_mix, budget, hf_source, panel, segments
-from .store import DEV_SHARE, TEST_SHARE, Dataset, dedupe, record, write
+from .store import DEV_SHARE, TEST_SHARE, Dataset, dedupe, near_groups, record, write
 from .table import is_table, table_rows
 
 MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
@@ -22,6 +22,13 @@ def _split3(items: list, rng: random.Random, dev: float = DEV_SHARE, test: float
     n = len(items)
     a, b = int(n * (1 - dev - test)), int(n * (1 - test))
     return {"train": items[:a], "dev": items[a:b], "test": items[b:]}
+
+
+def _group_split3(items: list[tuple], rng: random.Random) -> dict[str, list]:
+    groups: dict[int, list] = {}
+    for g, item in zip(near_groups([x for x, _ in items]), items, strict=True):
+        groups.setdefault(g, []).append(item)
+    return {s: [item for group in part for item in group] for s, part in _split3(list(groups.values()), rng).items()}
 
 
 def _save_media(spec: TaskSpec, data_dir: Path, split: str, x: Any) -> str:
@@ -119,7 +126,7 @@ def _add_hf(
             continue
         log(f"  {src.dataset}: {len(rows)} rows as {src.role}")
         if src.role == "labeled":
-            for s, part in _split3([r for r in rows if r[1]], rng).items():
+            for s, part in _group_split3([r for r in rows if r[1]], rng).items():
                 for x, y in part:
                     inp = x if spec.modality == "text" else _save_media(spec, data_dir, s, x)
                     splits[s].append(record(inp, y, f"hf:{src.dataset}"))
