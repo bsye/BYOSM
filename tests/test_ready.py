@@ -37,3 +37,14 @@ def test_it_stops_when_no_untried_step_is_left(monkeypatch):
     )
     out = until_ready("x", lambda args: None, log=lambda _: None)
     assert out["stop"] == "no untried step left" and out["rounds"] == 1
+
+
+def test_a_step_that_unblocks_a_check_runs_first(monkeypatch):
+    from byosm.auto.ready import _next
+
+    found = [
+        {"id": "finetuned", "args": ["rivals", "x"], "gain": 0, "unblocks": []},
+        {"id": "robust", "args": ["suite", "x"], "gain": 14, "unblocks": ["Holds on new inputs"]},
+    ]
+    monkeypatch.setattr(steps_module, "suggestions", lambda name: found)
+    assert _next("x", set())["id"] == "robust"

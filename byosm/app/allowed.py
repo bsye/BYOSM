@@ -28,6 +28,7 @@ ALLOWED_COMMANDS = (
     "rivals",
     "ablate",
     "next",
+    "ready",
     "inputs",
     "datasets",
     "system",

@@ -11,7 +11,8 @@ BUDGET_H = 6.0
 def _next(name: str, tried: set[tuple]) -> dict[str, Any] | None:
     from ..next_steps import suggestions
 
-    return next((s for s in suggestions(name) if (s["id"], *s["args"]) not in tried), None)
+    fresh = [s for s in suggestions(name) if (s["id"], *s["args"]) not in tried]
+    return max(fresh, key=lambda s: (bool(s.get("unblocks")), s.get("gain") or 0), default=None)
 
 
 def until_ready(

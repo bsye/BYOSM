@@ -1,3 +1,4 @@
+import { toast } from "sonner"
 import { api, runJob } from "@/api"
 import { openJob } from "@/job-sheet"
 import type { NextStep } from "./NextSteps"
@@ -7,8 +8,11 @@ type Llm = Record<string, unknown> | null
 
 const steps = (name: string) => api<NextStep[]>(`/next-steps/${encodeURIComponent(name)}`)
 
-async function startAll(runs: Promise<{ id: string } | null>[]) {
-  const jobs = (await Promise.all(runs)).filter((j): j is { id: string } => j != null)
+export async function startAll(runs: Promise<{ id: string } | null>[]) {
+  const done = await Promise.allSettled(runs)
+  const jobs = done.flatMap((r) => (r.status === "fulfilled" && r.value ? [r.value] : []))
+  const failed = done.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : []))
+  if (failed.length) toast.error(`${failed.length} could not start`, { description: failed[0] })
   if (jobs[0]) openJob(jobs[0].id)
 }
 

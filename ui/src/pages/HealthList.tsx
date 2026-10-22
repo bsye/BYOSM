@@ -1,6 +1,6 @@
 import { Loader2, Rocket } from "lucide-react"
 import { useEffect, useState } from "react"
-import { api, runJob, type Summary } from "@/api"
+import { api, type Summary } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { useShowMore } from "@/components/show-more"
 import { Badge } from "@/components/ui/badge"
@@ -10,8 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
-import { openJob } from "@/job-sheet"
 import { href } from "@/route"
+import { untilReady } from "./stat-actions"
 
 export type Health = { score: number; ready: boolean; ready_score: number; blockers: string[] }
 export type Healths = Record<string, Health | null>
@@ -38,11 +38,7 @@ function Status({ h }: { h: Health | null | undefined }) {
 }
 
 function AutoReady({ names, done }: { names: string[]; done: () => void }) {
-  const start = async () => {
-    const jobs = await Promise.all(names.map((n) => runJob(["ready", n])))
-    if (jobs[0]) openJob(jobs[0].id)
-    done()
-  }
+  const start = () => untilReady(names, null).then(done)
   return (
     <Button size="sm" disabled={!names.length} onClick={start}>
       <Rocket />
