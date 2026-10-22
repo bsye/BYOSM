@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { LlmPicker, useLlmChoice } from "@/components/llm-picker"
 import { openJob } from "@/job-sheet"
 
-export type NextStep = { id: string; title: string; why: string; args: string[]; experiments?: string[] }
+export type NextStep = { id: string; title: string; why: string; args: string[]; experiments?: string[]; gain?: number | null; unblocks?: string[] }
 
 const VALUE_CHARS = 60
 const EXPERIMENTS = "experiments"

@@ -7,13 +7,27 @@ from .data.sufficiency import MIN_CALIB_ITEMS, MIN_TEST_ITEMS, data_check
 from .dataset_search import saved_suggestions
 from .finetuned_rivals import REPORT as FINETUNED
 from .finetuned_rivals import benchmarks
-from .health import OK, checks
+from .health import CREDIT, FAIL, OK, UNKNOWN, checks
 from .held_out import bigger_held_out
 from .improve.proposals import PROPOSALS
 from .project import Project
 from .spec import TaskSpec
 
 WHY_CHARS = 300
+EXPERIMENT_CHECKS = ("target", "rival", "weakest")
+STEP_CHECKS = {
+    "adopt-data": ("certainty",),
+    "rebuild-data": ("certainty",),
+    "find-data": ("data", "weakest"),
+    "more-data": ("data", "weakest"),
+    "finetuned": ("rival",),
+    "score-rivals": ("rival",),
+    "experiments": EXPERIMENT_CHECKS,
+    "propose": EXPERIMENT_CHECKS,
+    "overfit": ("overfit",),
+    "robust": ("robust",),
+    "export": ("export",),
+}
 FIX_TITLES = {
     "overfit": "Check for overfitting",
     "robust": "Score on inputs it never saw",
@@ -96,13 +110,21 @@ def _from_checks(p: Project, spec: TaskSpec) -> list[dict[str, Any]]:
     ]
 
 
+def _with_gain(step: dict[str, Any], cs: list[dict]) -> dict[str, Any]:
+    total = sum(c["weight"] for c in cs) or 1
+    hit = [c for c in cs if c["id"] in STEP_CHECKS.get(step["id"], ())]
+    gain = round(100 * sum(c["weight"] * (1 - CREDIT[c["status"]]) for c in hit) / total)
+    return {**step, "gain": gain, "unblocks": [c["title"] for c in hit if c["status"] in (FAIL, UNKNOWN)]}
+
+
 def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
     p = Project(name, ws)
     if not p.exists():
         raise KeyError(f"no specialist {name!r}")
     spec = p.spec()
     if not p.promoted:
-        return [_step("build", "Build the first model", "Nothing has been trained yet.", ["build", name])]
+        first = _step("build", "Build the first model", "Nothing has been trained yet.", ["build", name])
+        return [{**first, "gain": None, "unblocks": []}]
     prim = spec.primary_suite()
     check = data_check(p, spec)
     steps = [
@@ -112,4 +134,5 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         _rivals(p, spec, prim),
         _experiments(p),
     ]
-    return [s for s in steps if s] + _from_checks(p, spec)
+    cs = checks(p, spec)
+    return [_with_gain(s, cs) for s in [s for s in steps if s] + _from_checks(p, spec)]

@@ -95,3 +95,15 @@ def test_no_experiment_data_is_offered_when_the_own_held_out_set_is_big_enough(w
     for split in ("test", "dev"):
         Dataset(p.data_dir_for(p.spec())).save(split, rows)
     assert bigger_held_out(p) is None
+
+
+def test_a_step_gains_the_health_its_checks_are_missing():
+    from byosm.next_steps import _with_gain
+
+    cs = [
+        {"id": "data", "title": "Enough data", "weight": 1, "status": "fail"},
+        {"id": "weakest", "title": "No weak label", "weight": 1, "status": "warn"},
+        {"id": "rival", "title": "Beats the best rival", "weight": 2, "status": "ok"},
+    ]
+    step = _with_gain({"id": "find-data", "title": "t", "why": "w", "args": []}, cs)
+    assert step["gain"] == 38 and step["unblocks"] == ["Enough data"]
