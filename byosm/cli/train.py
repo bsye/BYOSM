@@ -162,6 +162,15 @@ def exp_create(
         build(name, exp, log)
 
 
+@app.command("adopt-data")
+def adopt_data(name: str, exp: str) -> None:
+    """Make an experiment's data the specialist's benchmark, rescore every model on it and promote the best on calib."""
+    from ..held_out import adopt_data as adopt
+
+    _spec(name)
+    adopt(name, exp, log)
+
+
 @app.command()
 def promote(name: str, exp: str) -> None:
     """Choose which experiment ships."""

@@ -68,3 +68,17 @@ def test_too_few_rows_per_label_is_too_small_and_asks_for_more_data(ws):
     p.save_report("data-suggestions", found)
     step = next(s for s in suggestions("qa") if s["id"] == "more-data")
     assert step["title"] == "Train with org/more" and step["args"][:2] == ["exp", "create"]
+
+
+def test_a_bigger_held_out_set_from_an_experiment_is_offered_as_the_benchmark(ws):
+    from byosm.data.store import Dataset, record
+    from byosm.spec import DataPlan
+
+    p = _specialist(ws, n_test=5, n_calib=18)
+    big = p.spec().model_copy(update={"data": DataPlan(train_size=999)})
+    p.save_experiment("v2", spec=big, meta={})
+    rows = [record(f"x{i}", "question", "t") for i in range(120)]
+    for split in ("test", "dev"):
+        Dataset(p.data_dir_for(big)).save(split, rows)
+    first = suggestions("qa")[0]
+    assert first["args"] == ["adopt-data", "qa", "v2"] and "120 test and 120 calib" in first["why"]

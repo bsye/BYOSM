@@ -906,3 +906,13 @@ enough data, a precise score, no weak label, latency within budget and a current
 share of credit (pass 1, warning 0.5). Production ready means 80 or more and no check failing or unmeasured: an
 unmeasured check is not evidence of quality. Calibration is not graded because results store labels, not confidences.
 The rival bootstrap takes seconds on large test sets, so it is cached by the two results' fingerprints.
+
+## Adopting an experiment's data as the benchmark
+
+An experiment that changes the data plan builds its own splits, but the board scores every model on the specialist's
+builtin suite, the held-out split of the base spec's data. When that split is below `MIN_TEST_ITEMS` or
+`MIN_CALIB_ITEMS`, every model can tie (turn-completion: 9 test rows, calib 0.000 for all), so selection never moves.
+`byosm adopt-data NAME EXP` (`byosm/held_out.py`) copies the experiment's data plan into the spec, rescores every
+experiment and baseline on the new held-out split, and promotes the best on calib. Next steps offers it when an
+experiment has a big enough held-out set. Older experiments may have trained on rows that land in the new test split;
+the overfitting check's overlap finding shows it.

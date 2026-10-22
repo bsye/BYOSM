@@ -6,11 +6,12 @@ from typing import Any
 from .data.sufficiency import MIN_CALIB_ITEMS, MIN_TEST_ITEMS, data_check
 from .dataset_search import saved_suggestions
 from .health import OK, checks
+from .held_out import bigger_held_out
 from .improve.proposals import PROPOSALS
 from .project import Project
 from .spec import TaskSpec
 
-WHY_CHARS = 220
+WHY_CHARS = 300
 FIX_TITLES = {
     "overfit": "Check for overfitting",
     "robust": "Score on inputs it never saw",
@@ -25,6 +26,10 @@ def _step(sid: str, title: str, why: str, args: list[str]) -> dict[str, Any]:
 def _held_out(p: Project, check: dict | None) -> dict[str, Any] | None:
     if not check or (check["test"] >= MIN_TEST_ITEMS and check["calib"] >= MIN_CALIB_ITEMS) or not check["test"]:
         return None
+    if bigger := bigger_held_out(p):
+        exp, n_test, n_calib = bigger
+        why = f"Every model is scored on {check['test']} test rows, too few to tell them apart. {exp} built {n_test} test and {n_calib} calib rows: make them the benchmark, rescore every model and promote the best on calib."
+        return _step("adopt-data", f"Score every model on {exp}'s data", why, ["adopt-data", p.name, exp])
     why = f"The test set has {check['test']} rows and calib {check['calib']}: scores on so few rows say almost nothing. Rebuilding the data splits by group of similar rows."
     return _step("rebuild-data", "Rebuild the data with a bigger held-out set", why, ["build", p.name, "--force-data"])
 

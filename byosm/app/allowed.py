@@ -24,6 +24,7 @@ ALLOWED_COMMANDS = (
     "suite",
     "baseline",
     "testset",
+    "adopt-data",
     "next",
     "inputs",
     "datasets",
