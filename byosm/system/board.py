@@ -6,11 +6,10 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from ..config import Project
 from ..evals.identity import baseline_identity
 from ..events import stage
+from ..project import Project
 from ..rt import System, tag_parts
-from ..spec import TaskSpec
 from .bundle import set_gate, system_manifest
 from .frames import SPLITS, exact_bootstrap, materialize, summary, units
 from .rival import PROMPT_VERSION, llm_frames
@@ -23,8 +22,8 @@ BOARD_FILE = "board.json"
 
 def vocabulary(spec: SystemSpec) -> tuple[list[str], list[str]]:
     router, tagger = spec.role("router"), spec.role("tagger")
-    actions = TaskSpec.load(Project(router[1].specialist).spec_path).label_names if router else []
-    tags = TaskSpec.load(Project(tagger[1].specialist).spec_path).label_names if tagger else []
+    actions = Project(router[1].specialist).spec().label_names if router else []
+    tags = Project(tagger[1].specialist).spec().label_names if tagger else []
     return actions, sorted({tag_parts(t)[1] for t in tags} - {""})
 
 

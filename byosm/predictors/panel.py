@@ -18,8 +18,8 @@ class Panel(Predictor):
 
     def __init__(self, spec: TaskSpec):
         super().__init__(spec)
-        from ..config import Project
         from ..data.panel import load_panel
+        from ..project import Project
 
         self.stats = load_panel(Project(spec.name).data_dir_for(spec))
         if not self.stats:

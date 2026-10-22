@@ -2,10 +2,10 @@ import pytest
 from conftest import FakeLLM
 
 from byosm import llm
-from byosm.config import Project
 from byosm.data.store import Dataset, read, record
 from byosm.evals import workbench
 from byosm.evals.testset import written_path
+from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 from byosm.spec.sections import DataPlan
 
@@ -30,7 +30,7 @@ def qa(ws):
         data=DataPlan(per_call=5),
         baselines=["llm"],
     )
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     rows = [record(f"what about thing {i}?", "question", "x") for i in range(30)]
     Dataset(p.data_dir_for(spec)).save("test", rows)
     return p, spec

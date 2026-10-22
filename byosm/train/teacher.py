@@ -24,10 +24,12 @@ def _teacher_targets(
     log: Callable[[str], None],
 ) -> tuple[list[Any], list[Any], list[Any]]:
     from ..predictors import ExperimentPredictor
+    from ..project import Project
 
-    tspec = TaskSpec.load(teacher_dir / "spec.yaml")
+    p, name = Project(spec.name), teacher_dir.name
+    tspec = p.exp_spec(name)
     teacher_dev = dev if spec.task_type == "classify" else "cpu"
-    teacher = ExperimentPredictor(tspec, teacher_dir, teacher_dir.name, device=teacher_dev)
+    teacher = ExperimentPredictor(tspec, p.meta(name), teacher_dir, name, device=teacher_dev)
     tmod = get_modality(tspec, str(data_dir))
     seen = {str(r["input"]) for r in train_rows}
     unlabeled = [r for r in ds.unlabeled() if r.get("source") != "train-inputs" and str(r["input"]) not in seen]

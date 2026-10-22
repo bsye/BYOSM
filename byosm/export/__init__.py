@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from ..config import Project
 from ..evals.selection import calibrated_threshold
 from ..events import stage
+from ..project import Project
 from ..runtime import Specialist
 from ..spec import TaskSpec
 from .bundle import check_out_dir, clear_out_dir, manifest_for, seal, write_bundle
@@ -47,8 +47,8 @@ def export(
         raise RuntimeError("nothing promoted yet; pass --exp")
     out = out or (p.root / "export")
     check_out_dir(out)
-    sp = Specialist(p.exp_dir(exp), "cpu")
-    base = TaskSpec.load(p.spec_path)
+    sp = Specialist(p.exp_spec(exp), p.meta(exp), p.exp_dir(exp), "cpu")
+    base = p.spec()
     decision, metrics = _calibrated_decision(p, exp, base)
     kind = frontend_kind(sp)
     clear_out_dir(out)

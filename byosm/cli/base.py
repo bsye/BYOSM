@@ -6,7 +6,7 @@ import typer
 from rich.console import Console
 from typer.core import TyperGroup
 
-from ..config import Project
+from ..project import Project
 
 if TYPE_CHECKING:
     from ..spec import TaskSpec
@@ -44,10 +44,12 @@ system_app = typer.Typer(no_args_is_help=True, help="Teams of specialists that d
 inputs_app = typer.Typer(
     no_args_is_help=True, help="Sets of test inputs you write or sample, scored by the models you pick."
 )
+db_app = typer.Typer(no_args_is_help=True, help="The database that holds every specialist, result and report.")
 exp_app = typer.Typer(no_args_is_help=True, help="Create experiment variants (ablations) by editing spec paths.")
 app.add_typer(suite_app, name="suite")
 app.add_typer(baseline_app, name="baseline")
 app.add_typer(exp_app, name="exp")
+app.add_typer(db_app, name="db")
 app.add_typer(system_app, name="system")
 app.add_typer(inputs_app, name="inputs")
 console = Console()
@@ -58,9 +60,8 @@ def log(msg: str) -> None:
 
 
 def _spec(name: str) -> tuple[Project, TaskSpec]:
-    from ..spec import TaskSpec
 
     p = Project(name)
     if not p.exists():
-        raise typer.BadParameter(f"no specialist {name!r} in {p.ws / 'specialists'}")
-    return p, TaskSpec.load(p.spec_path)
+        raise typer.BadParameter(f"no specialist {name!r}")
+    return p, p.spec()

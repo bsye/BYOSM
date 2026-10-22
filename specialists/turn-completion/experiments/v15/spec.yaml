@@ -1,0 +1,253 @@
+name: turn-completion
+title: Turn completion
+created: '2026-10-22T10:55:46.662234+02:00'
+description: detect whether a user has finished their turn in a voice conversation, from the transcript so far
+modality: text
+task_type: classify
+summary: From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether
+  the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more
+  (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification
+  of a partial-utterance.
+input_description: 'A raw ASR transcript fragment of the user''s current in-progress turn, starting at session/session-turn
+  boundary (the moment the user began speaking after the assistant''s previous turn ended). May be one word, a few
+  words, a partial clause, or a near-complete sentence. May contain trailing whitespace, a trailing partial token
+  (mid-word), punctuation the ASR has or has not yet emitted, or filler words ("um", "uh", "you know"). It is case-preserved,
+  lightly punctuated, no speaker IDs, no timestamps. Never includes the assistant''s speech. Examples: "I think
+  we should", "I think we should schedule a call next", "I think we should schedule a call next week.", "um so basically
+  the thing is", "I need to reschedule my flight to San Francisco on", "I need to reschedule my flight to San Francisco
+  on the 14th".'
+labels:
+- name: finished
+  definition: 'The user has completed a self-contained, communicative turn: an intent that the other party can act
+    on or respond to without further words. Typically ends in a period, question mark, or a clear syntactic/semantic
+    terminal (imperative, declaration, complete question, complete thanks/refusal, complete answer to the last question).
+    Includes turns that end on a filler or trailing comma when the intent is clearly complete ("Okay." / "Sure,
+    fine").'
+- name: unfinished
+  definition: 'The user is still producing the turn: the utterance is syntactically or pragmatically incomplete
+    (missing object, missing verb, trailing "and", "but", "so", relative-pronoun gap, question word without interrogative
+    clause), OR it ends on a pause/filler with more clearly coming, OR the ASR fragment cuts mid-word. Includes
+    mid-question ("what does the"), mid-list ("red and blue").'
+positive_label: finished
+objective:
+  metric: recall_at_precision
+  target: 0.9
+  constraint: 0.98
+languages:
+- en
+diversity_axes:
+- name: turn_type
+  values:
+  - declarative
+  - imperative
+  - yes-no question
+  - wh question
+  - answer to previous question
+  - backchannel acknowledgment
+  - list / enumeration
+- name: completion_state
+  values:
+  - complete sentence with terminal punctuation
+  - complete sentence no punctuation (ASR lag)
+  - trailing preposition / conjunction / object-gap
+  - trailing filler (um, uh, so, like)
+  - trailing partial token (mid-word cut)
+  - complete but weak close (OK, fine, yeah)
+- name: turn_length
+  values:
+  - 1-2 tokens
+  - 3-6 tokens
+  - 7-12 tokens
+  - 13-20 tokens
+  - 21+ tokens
+- name: domain_register
+  values:
+  - casual chit-chat
+  - customer service
+  - support / troubleshooting
+  - booking / scheduling
+  - technical how-to
+  - medical / symptom description
+  - coding / dev Q&A
+- name: ASR_artifact
+  values:
+  - clean punctuation
+  - no punctuation at all
+  - mid-word final token
+  - trailing number / date fragment
+  - trailing proper-noun fragment
+  - filler-rich (um, uh scattered)
+- name: prior_context_strength
+  values:
+  - first turn of session (no assistant prior)
+  - direct answer to a short assistant question
+  - mid free-form elaboration
+  - response to multi-part assistant prompt
+hard_cases:
+- '"I think"  -- unfinished (almost always more follows) but could close as a complete assertion in casual talk;
+  default unfinished'
+- '"So basically, the thing is" -- unfinished (expectant frame)'
+- '"I need help"  -- finished (complete request)'
+- '"I need help with"  -- unfinished (trailing preposition)'
+- '"What does this do?"  -- finished'
+- '"What does this"  -- unfinished (verb missing)'
+- '"Yeah"  -- finished (backchannel acknowledgment)'
+- '"Yeah, um, and then so"  -- unfinished'
+- '"I would like to book a flight to"  -- unfinished'
+- '"I would like to book a flight to Paris"  -- finished even with no period'
+- '"The number is 123"  -- UNFINISHED (trailing number often not the end of a phone/ID; more digits expected)  --
+  but finished if the prior question was "give me the last 3 digits"; model must use context cue; default unfinished
+  when length is short'
+- '"Okay fine."  -- finished'
+- '"Okay fine, and"  -- unfinished'
+- '"Um, wait, I mean"  -- unfinished (self-repair in progress)'
+- '"I mean, the red one"  -- finished (answer completed)'
+- '"I mean the"  -- unfinished'
+- '"Actually, no"  -- finished (clear refusal)'
+- '"Actually"  -- UNFINISHED (usually a hedge before the real content)'
+- '"Actually, no thanks"  -- finished'
+- '"Can you hear me"  -- finished (yes/no question)'
+- '"Can you hear"  -- UNFINISHED (object missing; though colloquially closable, default unfinished)'
+- '"Thank you very much"  -- finished'
+- '"Thank you very"  -- UNFINISHED'
+- '"The total is"  -- UNFINISHED (amount gap is the most common real hard case -- user is about to say a number)'
+- '"The total is 42"  -- finished'
+- '"I live in"  -- UNFINISHED (place gap)'
+- '"I live in 5th Street"  -- finished even though no city'
+- '"So what I am thinking is"  -- UNFINISHED'
+- '"So what I am thinking is we ship on Friday"  -- finished'
+- '"Hmm"  -- ambiguous: treat as UNFINISHED (hesitation, more likely to follow) unless the prior context is a yes/no
+  question and only "hmm" is given, in which case finished; in a zero-context classifier default to finished only
+  if length >= 2'
+- '"Yeah, I guess so"  -- finished'
+- '"Yeah, I guess"  -- finished even without "so" (colloquial close)'
+- '"I, uh, the thing"  -- UNFINISHED (mid-repair)'
+- '"I, uh, the thing is, it is broken"  -- finished'
+- '"Give me the address of"  -- UNFINISHED'
+- '"Give me the address of the blue one"  -- finished'
+- '"I am"  -- UNFINISHED (tense expects complement)'
+- '"I am fine"  -- finished'
+- '"Are you"  -- UNFINISHED (predicate missing)'
+- '"Are you free"  -- finished (predicate implied),"",  -- finished (yes/no question),'
+- '"I want"  -- UNFINISHED'
+- '"I want it"  -- finished'
+- '"Um, what about"  -- UNFINISHED'
+- '"Um, what about Tuesday"  -- finished'
+backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+latency_budget_ms: 4.0
+frame_hop_ms: 10.0
+data:
+  synthetic: true
+  train_size: 6000
+  dev_size: 400
+  test_size: 800
+  per_call: 25
+  max_minutes: 120.0
+  judge: true
+  hf_queries:
+  - voice activity turn end detection transcript
+  - dialogue act segmentation
+  - turn-taking prediction text
+  - asr partial transcription turn boundary
+  - conversation completion detection
+  - dialogue state finished turn
+  - speech pause endpointer transcript
+  - multi-turn dialogue classification
+  - customer service dialogue turns
+  - spoken dialogue assistant turns
+  hf_sources:
+  - dataset: anyreach-ai/semantic-turn-taking-benchmark
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: balanced
+    per_label: 3000
+    config: default
+    split: ten
+    input_column: conversation
+    label_column: original_label
+    label_map:
+    - - finished
+      - finished
+    - - unfinished
+      - unfinished
+    max_rows: 5000
+  local_dir: null
+  teachers: []
+  teacher_rows: 2000
+  audio:
+    sample_rate: 16000
+    clip_seconds: 4.0
+    snr_db:
+    - -5.0
+    - 30.0
+    max_events: 3
+    label_by_energy: true
+    fill_ms: 60
+train:
+  pretrain_steps: 200
+  pretrain_lambda: 0.05
+  epochs: 8
+  batch_size: 32
+  lr_backbone: 5.0e-05
+  lr_head: 0.001
+  freeze_backbone: false
+  max_len: 128
+  refine_rounds: 2
+  refine_examples: 300
+  pool: mean
+  layer_decay_floor: 0.5
+  probe_epochs: 0
+  ema: true
+  seed: 0
+  holdout_test: auto
+  precision: auto
+  distill_from: null
+  distill_alpha: 0.3
+  distill_temperature: 2.0
+  distill_unlabeled: 20000
+  prefix_rate: 0.0
+decision:
+  kind: threshold
+  threshold: null
+  deactivation_offset: 0.15
+  min_on_ms: 50.0
+  min_off_ms: 550.0
+  smooth_alpha_per_32ms: 0.35
+document:
+  route: fused
+  text_backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+  image_backbone: hf:facebook/dinov2-small
+  image_pool: mean
+  max_pages: 8
+  max_len: 256
+  image_size: 224
+  dpi: 100
+  ocr: auto
+  dim: 256
+  modality_dropout: 0.2
+evals:
+- name: builtin
+  kind: builtin
+  source: null
+  path: null
+  max_items: 400
+  primary: true
+  written_by: null
+  judged_by: null
+baselines:
+- llm
+search:
+  benchmark:
+  - turn-taking detection benchmark
+  - utterance completion prediction dataset
+  - asr partial transcript finality
+  - endpointing detection benchmark text
+  - dialogue turn boundary detection
+  baseline:
+  - utterance completion prediction model
+  - turn end detection model transcript
+  - asr turn finality classifier
+  - endpointer text-based model
+  - dialogue act turn boundary model

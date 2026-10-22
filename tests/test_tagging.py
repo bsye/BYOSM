@@ -3,12 +3,12 @@ import random
 import numpy as np
 import pytest
 
-from byosm.config import Project
 from byosm.data.hf_source.rows import _tag_sequence
 from byosm.data.store import write
 from byosm.export import export
 from byosm.metrics import bootstrap, compute, objective_of_units, units
 from byosm.pipeline import build
+from byosm.project import Project
 from byosm.rt import OUTSIDE, bio, spans
 from byosm.spec import Label, Objective, TaskSpec
 from byosm.text import markup_tags
@@ -79,7 +79,7 @@ def test_bracket_markup_becomes_words_and_bio_tags():
 def test_tagging_pipeline_end_to_end(ws, load_runtime):
     spec = tagging_spec()
     p = Project("ner").ensure()
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     rng = random.Random(0)
     dd = p.data_dir_for(spec)
     for split, n in (("train", 300), ("dev", 40), ("test", 40)):

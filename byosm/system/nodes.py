@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
-from ..config import Project
+from ..project import Project
 from ..rt import tag_parts
 from ..spec import DataPlan, EvalSuite, HFSource, Label, Objective, TaskSpec
 from ..spec.backbones import MINILM
@@ -77,7 +77,7 @@ def build_node(node: Node, system: SystemSpec, log: Callable[[str], None]) -> Pr
     p = Project(node.specialist)
     if not p.exists():
         p.ensure()
-        node_spec(node, system).save(p.spec_path)
+        p.save_spec(node_spec(node, system))
         log(f"[system] created node {node.specialist} ({node.role})")
     if not p.promoted:
         build(node.specialist, log=log)

@@ -1,15 +1,14 @@
 from typer.testing import CliRunner
 
 from byosm.cli import app
-from byosm.config import Project
+from byosm.project import Project
 from byosm.spec import compile_spec
 
 
 def test_the_compiler_names_the_task_and_avoids_taken_names(ws):
     first = compile_spec(None, "detect questions")
     assert first.name == "question-detector"
-    Project(first.name).ensure()
-    first.save(Project(first.name).spec_path)
+    Project(first.name).save_spec(first)
     assert compile_spec(None, "detect questions").name == "question-detector-2"
 
 

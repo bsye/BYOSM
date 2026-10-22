@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from ..auto.standing import standing
-from ..config import Project
 from ..evals import board_rows
 from ..format import cpu, params
 from ..hub.facts import lineage, suite_dataset
+from ..project import Project
 from ..spec import TaskSpec
 from .cells import STALE, fold_note, folded, num, score, stale_ids, stale_note, train_rows
 from .origin import built_from
@@ -57,7 +57,7 @@ def _footer(p: Project, spec: TaskSpec, prim: str, notes: tuple[set[str], int, b
 
 def specialist_block(name: str) -> str:
     p = Project(name)
-    spec = TaskSpec.load(p.spec_path)
+    spec = p.spec()
     prim = spec.primary_suite()
     _, rows = board_rows(name)
     hidden = _replicates(p, prim)
@@ -86,7 +86,7 @@ def _calib(ours: float | None, theirs: float) -> str:
 
 def summary_row(name: str) -> str:
     p = Project(name)
-    spec = TaskSpec.load(p.spec_path)
+    spec = p.spec()
     prim = spec.primary_suite()
     board = p.board()
     ours = board.get(p.promoted or "", {}).get(prim)

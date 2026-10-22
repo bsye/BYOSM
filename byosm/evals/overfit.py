@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import Any
 
 from .. import metrics
-from ..config import Project
 from ..data.store import Dataset, ShingleIndex
 from ..events import stage
 from ..improve.diagnosis import scored_experiment, training_summary
+from ..project import Project
 from ..spec import EvalSuite, TaskSpec
 from ..train.loop import split_rows
 from . import overfit_checks as checks
@@ -25,6 +25,7 @@ from .suites import fingerprint, stored
 TRAIN_SAMPLE = 1000
 SAMPLE_SEED = 0
 OVERFIT_VERSION = "1"
+OVERFIT = "overfit"
 VERDICTS = {
     "ok": "No sign of overfitting or leakage.",
     "warn": "Some signs of overfitting: read the findings.",
@@ -41,9 +42,9 @@ def _primary(base: TaskSpec) -> EvalSuite:
 
 
 def _fingerprints(p: Project, base: TaskSpec, exp: str) -> tuple[str, str]:
-    meta = (p.exp_dir(exp) / "meta.json").read_text()
+    meta = json.dumps(p.meta(exp), sort_keys=True)
     train_fp = _hash(exp, meta, fingerprint(p, base, _primary(base)), str(TRAIN_SAMPLE), OVERFIT_VERSION)
-    return _hash(train_fp, p.board_path.read_text()), train_fp
+    return _hash(train_fp, json.dumps(p.board(), sort_keys=True)), train_fp
 
 
 def _train_rows(p: Project, spec: TaskSpec) -> tuple[list[dict], Path]:
@@ -110,7 +111,7 @@ def _curve(p: Project, exp: str, spec: TaskSpec) -> dict:
 
 
 def _report(p: Project, base: TaskSpec, exp: str, train: dict, train_rows: list[dict]) -> dict[str, Any]:
-    spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml")
+    spec = p.exp_spec(exp)
     board, prim = p.board(), base.primary_suite()
     results = board[exp]
     r = results[prim]
@@ -131,25 +132,22 @@ def check(
     name: str,
     exp: str | None = None,
     ws: Path | None = None,
-    out: Path | None = None,
     force: bool = False,
     log: Callable[[str], None] = print,
 ) -> dict[str, Any]:
     p = Project(name, ws)
-    base = TaskSpec.load(p.spec_path)
+    base = p.spec()
     board = p.board()
     exp = exp or scored_experiment(p, board)
     if base.primary_suite() not in board.get(exp, {}):
         raise RuntimeError(f"{exp} has no {base.primary_suite()} result yet - run `byosm eval {name}` first")
-    target = out or p.overfit_path
-    old = json.loads(target.read_text()) if target.exists() and not force else {}
+    old = ({} if force else p.report(OVERFIT)) or {}
     fp, train_fp = _fingerprints(p, base, exp)
     if old.get("fingerprint") == fp:
         return old
-    spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml")
+    spec = p.exp_spec(exp)
     rows = _train_rows(p, spec)
     train = old["train"] if old.get("train_fingerprint") == train_fp else _train_score(p, base, exp, spec, rows, log)
     report = {"fingerprint": fp, "train_fingerprint": train_fp, **_report(p, base, exp, train, rows[0])}
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(_dumps(report))
+    p.save_report(OVERFIT, json.loads(_dumps(report)))
     return report

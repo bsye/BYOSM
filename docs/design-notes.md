@@ -15,11 +15,16 @@ of it, so an experiment can be rebuilt from its own `spec.yaml`. Scoring and pro
 `objective` still drives epoch selection, the dev threshold and the refine target check, labels still drive the
 training targets, and `evals` still decides whether `holdout_test: auto` folds the builtin test split into training.
 
-**One directory per specialist.**
-`byosm/config.py` `Project`: `specialists/<name>/` holds the base `spec.yaml`, `data/<data_key>/`, `evals/<suite>/`
-(frozen suites), `baselines/<id>/` and `experiments/<exp>/` (model, snapshot spec, `meta.json`, `results/`), plus
-`board.json`, `proposals.json`, `cache/`, `export/`, the autopilot's `auto.json` and `auto.md`, and a `promoted` file
-naming the shipped experiment. Only directories with a `meta.json` count as experiments.
+**One database holds every specialist.**
+`byosm/project.py` `Project` reads and writes the database in `byosm/db/` through SQLAlchemy: SQLite in
+`.byosm/byosm.sqlite` by default, Postgres when `DATABASE_URL` is set, one schema for both. Tables: `specialists` (spec,
+promoted experiment), `experiments` (snapshot spec, `meta`, the proposal it applied, dev errors), `results` (one row per
+predictor and suite, the scoring cache and the board), `reports` (overfitting check, proposals, autopilot decisions,
+dataset suggestions, test-set results, keyed by kind) and `rows`. Only experiments with a `meta` count as trained. The
+board shows the results of trained experiments and the spec's baselines on the spec's suites; results of a removed
+baseline stay as a cache. Files hold only what is a file by nature: weights in `specialists/<name>/experiments/<exp>/`,
+the ONNX bundle in `export/`, and dataset splits until they move to `rows`. `byosm db import` moved the old per-file
+layout in once.
 
 **Discovery turns a public benchmark into the primary suite.**
 `byosm/discover.py` `_add_benchmark`, `_split_sources`: for classify tasks, when a matching Hub dataset is found, its

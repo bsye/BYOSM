@@ -10,7 +10,8 @@ from typing import Any
 
 import numpy as np
 
-from .config import Project, secret
+from .config import secret
+from .project import Project
 
 URL_KEY, API_KEY_KEY, SECRET_KEY, PUBLIC_URL_KEY = (
     "LIVEKIT_URL",

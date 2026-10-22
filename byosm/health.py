@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 from .auto.standing import best_baseline
-from .config import Project
 from .data.sufficiency import ENOUGH, MIN_TEST_ITEMS, THIN, data_check
+from .evals.overfit import OVERFIT
 from .evals.selection import compare
 from .export.bundle import exported_current
+from .project import Project
 from .spec import TaskSpec
 
 OK, WARN, FAIL, UNKNOWN = "ok", "warn", "fail", "unknown"
@@ -20,7 +19,7 @@ CI_WIDTH_OK, CI_WIDTH_WARN = 0.04, 0.10
 LABEL_OK, LABEL_WARN = 0.8, 0.5
 DROP_OK, DROP_WARN = 0.05, 0.15
 SLOW_FACTOR = 2.0
-LEAD_FILE = Path("cache") / "lead.json"
+LEAD = "lead"
 
 
 def _check(cid: str, title: str, weight: int, status: str, value: str, why: str, args: list[str] | None = None):
@@ -34,13 +33,11 @@ def _graded(v: float, ok: float, warn: float, higher_is_better: bool = True) -> 
 
 
 def _lead(p: Project, spec: TaskSpec, mine: dict, theirs: dict) -> dict | None:
-    f = p.root / LEAD_FILE
-    saved = json.loads(f.read_text()) if f.exists() else {}
+    saved = p.report(LEAD) or {}
     key = f"{mine.get('fingerprint')}:{theirs.get('fingerprint')}"
     if key not in saved:
         saved = {key: compare(spec, mine, theirs, "test")}
-        f.parent.mkdir(exist_ok=True)
-        f.write_text(json.dumps(saved))
+        p.save_report(LEAD, saved)
     return saved[key]
 
 
@@ -68,7 +65,7 @@ def _target(spec: TaskSpec, mine: dict) -> dict:
 
 
 def _overfit(p: Project) -> dict:
-    r = json.loads(p.overfit_path.read_text()) if p.overfit_path.exists() else None
+    r = p.report(OVERFIT)
     if not r or r.get("experiment") != p.promoted:
         why = "No overfitting check for the current model."
         return _check("overfit", "No overfitting", 2, UNKNOWN, "not checked", why, ["overfit", p.name])

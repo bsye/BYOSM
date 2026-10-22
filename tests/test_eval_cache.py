@@ -1,13 +1,11 @@
-import json
-
 import pytest
 import yaml
 
-from byosm.config import Project
 from byosm.evals import board, run
 from byosm.evals.identity import baseline_identity
 from byosm.evals.suites import fingerprint
 from byosm.llm import PROVIDERS, clear_cache
+from byosm.project import Project
 from byosm.spec import TaskSpec
 from byosm.spec.sections import EvalSuite, Label, Objective
 
@@ -48,18 +46,20 @@ def toy(tmp_path, monkeypatch):
     monkeypatch.setitem(PROVIDERS, "fake", FakeLLM)
     monkeypatch.setattr("huggingface_hub.constants.HF_HUB_CACHE", str(tmp_path / "hub"))
     p = Project("toy").ensure()
-    TaskSpec(
-        name="toy",
-        description="toy task",
-        summary="toy yes/no",
-        modality="text",
-        labels=[Label(name="no", definition="no"), Label(name="yes", definition="yes")],
-        objective=Objective(metric="accuracy"),
-        evals=[EvalSuite(name="bench", primary=True)],
-        baselines=["llm", f"hf:{HF_REPO}"],
-    ).save(p.spec_path)
+    p.save_spec(
+        TaskSpec(
+            name="toy",
+            description="toy task",
+            summary="toy yes/no",
+            modality="text",
+            labels=[Label(name="no", definition="no"), Label(name="yes", definition="yes")],
+            objective=Objective(metric="accuracy"),
+            evals=[EvalSuite(name="bench", primary=True)],
+            baselines=["llm", f"hf:{HF_REPO}"],
+        )
+    )
     p.exp_dir("v1").mkdir(parents=True)
-    (p.exp_dir("v1") / "meta.json").write_text("{}")
+    p.save_experiment("v1", meta={})
     scorer = Scorer(tmp_path)
     monkeypatch.setattr(board, "materialize", lambda *a: ([{}], [{}], tmp_path))
     monkeypatch.setattr(board, "score", scorer)
@@ -115,11 +115,9 @@ def test_a_first_download_of_hf_weights_is_not_rescored_next_run(toy):
 
 def test_existing_experiment_caches_stay_valid(toy):
     p = Project("toy")
-    base = TaskSpec.load(p.spec_path)
+    base = p.spec()
     fp = fingerprint(p, base, base.evals[0])
-    cache = p.exp_dir("v1") / "results" / "bench.json"
-    cache.parent.mkdir(parents=True)
-    cache.write_text(json.dumps({"kind": "experiment", "objective": 0.9, "metrics": {}, "fingerprint": fp}))
+    p.save_result("v1", "bench", {"kind": "experiment", "objective": 0.9, "metrics": {}, "fingerprint": fp})
     results = run("toy", baselines=[], log=lambda m: None)
     assert toy.calls == []
     assert results["v1"]["bench"]["objective"] == 0.9
@@ -159,8 +157,10 @@ def test_a_cached_llm_baseline_survives_a_machine_without_its_key(toy, tmp_path,
 
 
 def _strip_identities(p):
-    for f in p.baselines_dir.glob("*/*.json"):
-        f.write_text(json.dumps({k: v for k, v in json.loads(f.read_text()).items() if k != "identity"}))
+    for pid, by_suite in p.board().items():
+        for suite, r in by_suite.items():
+            if r["kind"] == "baseline":
+                p.save_result(pid, suite, {k: v for k, v in r.items() if k != "identity"})
 
 
 def test_baseline_caches_from_before_identity_tracking_are_adopted_not_rescored(toy, tmp_path):
@@ -177,7 +177,7 @@ def test_baseline_caches_from_before_identity_tracking_are_adopted_not_rescored(
 
 def test_plain_baselines_store_no_identity(toy):
     p = Project("toy")
-    base = TaskSpec.load(p.spec_path)
-    base.model_copy(update={"baselines": ["energy"]}).save(p.spec_path)
+    base = p.spec()
+    p.save_spec(base.model_copy(update={"baselines": ["energy"]}))
     run("toy", log=lambda m: None)
-    assert "identity" not in json.loads((p.baselines_dir / "energy" / "bench.json").read_text())
+    assert "identity" not in p.result("energy", "bench")

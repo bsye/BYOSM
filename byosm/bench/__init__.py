@@ -6,11 +6,12 @@ from typing import Any
 
 import numpy as np
 
-from ..config import Project, find_workspace
 from ..config import device as pick_device
+from ..config import find_workspace
 from ..data.store import Dataset
 from ..modalities import get_modality
 from ..model import SpecialistModel, count_params
+from ..project import Project
 from ..runtime import Specialist
 from ..spec import BACKBONES, TaskSpec
 from ..train import evaluate_rows
@@ -26,7 +27,7 @@ def _task_row(s: TaskSpec, model: SpecialistModel, gmod: Any, threshold: Any, de
     raws = [mod.load(r) for r in test_rows]
     g = evaluate_rows(model, gmod, s, test_rows, raws, dev, threshold, head=s.name)["metrics"]
     meta = p.meta(p.best_dir.name)
-    specialist = Specialist(p.best_dir).model
+    specialist = Specialist(p.exp_spec(p.promoted), meta, p.best_dir).model
     sm = evaluate_rows(specialist, mod, s, test_rows, raws, dev, meta["threshold"])["metrics"]
     return {
         "task": s.name,
@@ -40,7 +41,7 @@ def _task_row(s: TaskSpec, model: SpecialistModel, gmod: Any, threshold: Any, de
 
 
 def run(names: list[str], generalist_backbone: str | None = None, log: Callable[[str], None] = print) -> dict[str, Any]:
-    specs = [TaskSpec.load(Project(n).best_dir / "spec.yaml") for n in names]
+    specs = [Project(n).exp_spec(Project(n).promoted) for n in names]
     mods = {s.modality for s in specs}
     if len(mods) != 1:
         raise ValueError(f"bench compares specialists of one modality; got {mods}")

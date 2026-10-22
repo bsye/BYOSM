@@ -1,12 +1,10 @@
-import json
-
 import pytest
 
 from byosm import improve
-from byosm.config import Project
 from byosm.events import EVENTS_ENV, parse
 from byosm.export import export
 from byosm.pipeline import build
+from byosm.project import Project
 from byosm.spec import compile_spec
 
 
@@ -22,7 +20,7 @@ def test_text_pipeline_end_to_end(ws, load_runtime, monkeypatch, capsys):
     spec.train.epochs, spec.train.pretrain_steps, spec.train.refine_rounds = 3, 10, 1
     spec.baselines = ["llm"]
     p = Project("isq").ensure()
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     build("isq", log=quiet)
     assert p.promoted == "v1"
     board = p.board()
@@ -35,7 +33,7 @@ def test_text_pipeline_end_to_end(ws, load_runtime, monkeypatch, capsys):
 
     _, _ = improve.propose("isq", use_llm=False, log=quiet)
     proposal = {"id": "x", "why": "", "ops": [{"op": "set", "path": "train.epochs", "value": 2}]}
-    (p.root / "proposals.json").write_text(json.dumps({"from": "v1", "proposals": [proposal]}))
+    p.save_report("proposals", {"from": "v1", "proposals": [proposal]})
     exp = improve.apply("isq", ["x"])
     assert exp == "v2"
     build("isq", exp, log=quiet)

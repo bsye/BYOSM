@@ -1,7 +1,5 @@
-import json
-
-from byosm.config import Project
 from byosm.next_steps import suggestions
+from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 
 
@@ -14,13 +12,11 @@ def _specialist(ws, n_test, n_calib, rivals=("jev",)):
         labels=[Label(name="statement", definition="no"), Label(name="question", definition="yes")],
         baselines=list(rivals),
     )
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     p.exp_dir("v1").mkdir(parents=True)
-    (p.exp_dir("v1") / "meta.json").write_text("{}")
+    p.save_experiment("v1", meta={})
     p.promote("v1")
-    p.board_path.write_text(
-        json.dumps({"v1": {"builtin": {"kind": "experiment", "objective": 0.9, "n_test": n_test, "n_calib": n_calib}}})
-    )
+    p.save_board({"v1": {"builtin": {"kind": "experiment", "objective": 0.9, "n_test": n_test, "n_calib": n_calib}}})
     return p
 
 
@@ -33,8 +29,8 @@ def test_a_tiny_held_out_set_comes_first(ws):
 def test_the_untried_proposals_form_one_experiments_step(ws):
     p = _specialist(ws, n_test=500, n_calib=200, rivals=())
     proposals = [{"id": "more-data", "why": "a"}, {"id": "regularize", "why": "b"}]
-    (p.root / "proposals.json").write_text(json.dumps({"from": "v1", "proposals": proposals}))
-    (p.exp_dir("v1") / "proposal.json").write_text(json.dumps({"applied": [{"id": "regularize"}]}))
+    p.save_report("proposals", {"from": "v1", "proposals": proposals})
+    p.save_experiment("v1", proposal={"applied": [{"id": "regularize"}]})
     step = next(s for s in suggestions("qa") if s["id"] == "experiments")
     assert step["experiments"] == ["more-data"] and "--each" in step["args"]
 
@@ -46,8 +42,8 @@ def test_unscored_rivals_a_missing_overfit_check_one_suite_and_a_stale_export_ar
 
 
 def test_a_specialist_with_no_model_is_built_first(ws):
-    TaskSpec(name="qa", description="q", modality="text", labels=[Label(name="a", definition="a")]).save(
-        Project("qa").ensure().spec_path
+    Project("qa").save_spec(
+        TaskSpec(name="qa", description="q", modality="text", labels=[Label(name="a", definition="a")])
     )
     assert [s["id"] for s in suggestions("qa")] == ["build"]
 
@@ -55,7 +51,7 @@ def test_a_specialist_with_no_model_is_built_first(ws):
 def _with_rows(p, per_label):
     from byosm.data.store import Dataset, record
 
-    spec = TaskSpec.load(p.spec_path)
+    spec = p.spec()
     rows = [record(f"{lab} example {i}", lab, "x") for lab in spec.label_names for i in range(per_label)]
     Dataset(p.data_dir_for(spec)).save("train", rows)
 
@@ -65,10 +61,10 @@ def test_too_few_rows_per_label_is_too_small_and_asks_for_more_data(ws):
 
     p = _specialist(ws, n_test=500, n_calib=200)
     _with_rows(p, 10)
-    check = data_check(p, TaskSpec.load(p.spec_path))
+    check = data_check(p, p.spec())
     assert check["verdict"] == TOO_SMALL and check["labels"]["question"]["rows"] == 10
     assert next(s for s in suggestions("qa") if s["id"] == "find-data")["args"] == ["datasets", "qa"]
     found = [{"dataset": "org/more", "role": "labeled", "why": "fits", "args": ["exp", "create", "qa", "try-more"]}]
-    (p.root / "data-suggestions.json").write_text(json.dumps(found))
+    p.save_report("data-suggestions", found)
     step = next(s for s in suggestions("qa") if s["id"] == "more-data")
     assert step["title"] == "Train with org/more" and step["args"][:2] == ["exp", "create"]

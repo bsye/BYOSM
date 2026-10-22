@@ -5,8 +5,10 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-from ..config import PUBLISH_LICENSE, Project
+from ..config import PUBLISH_LICENSE
+from ..evals.dumps import _dumps
 from ..export.bundle import is_exported
+from ..project import Project
 from .card import model_card
 from .facts import lineage
 
@@ -17,8 +19,8 @@ def _stage(p: Project, repo_id: str, license: str, experiment: str) -> Path:
     if stage.exists():
         shutil.rmtree(stage)
     shutil.copytree(export_dir, stage, ignore=shutil.ignore_patterns("__pycache__", "README.md"))
-    shutil.copy(p.exp_dir(experiment) / "spec.yaml", stage / "spec.yaml")
-    shutil.copy(p.board_path, stage / "board.json")
+    p.exp_spec(experiment).save(stage / "spec.yaml")
+    (stage / "board.json").write_text(_dumps(p.board()))
     (stage / "lineage.json").write_text(json.dumps(lineage(p, experiment), indent=2))
     (stage / "README.md").write_text(model_card(p.name, repo_id, license))
     return stage

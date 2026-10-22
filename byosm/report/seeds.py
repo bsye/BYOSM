@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from statistics import mean, stdev
 
-import yaml
-
-from ..config import Project
-from ..spec import TaskSpec
+from ..project import Project
 from .cells import STALE, fold_note, folded, stale_ids, stale_note, train_rows
 
 SEEDS = "seeds"
@@ -41,7 +38,7 @@ def recipes(by: dict[str, dict]) -> dict[str, list[str]]:
 
 
 def _train(p: Project, exp: str) -> dict:
-    return yaml.safe_load((p.exp_dir(exp) / "spec.yaml").read_text()).get("train") or {}
+    return p.exp_spec(exp).model_dump(mode="json").get("train") or {}
 
 
 def _varying(settings: dict[str, dict]) -> list[str]:
@@ -80,7 +77,7 @@ def _note(prim: str, top: str | None, any_folded: bool, stale: set[str]) -> str:
 
 def seeds_block(name: str) -> str:
     p = Project(name)
-    spec = TaskSpec.load(p.spec_path)
+    spec = p.spec()
     prim = spec.primary_suite()
     by = scored(p, prim)
     found = recipes(by)

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from ..format import fmt
 from .facts import CardFacts
 
@@ -16,10 +14,10 @@ NO_RIVAL = "No rival scored yet."
 
 
 def spec_author(f: CardFacts) -> str | None:
-    auto = f.p.root / "auto.json"
-    if not auto.exists():
-        return None
-    first = next((d for d in json.loads(auto.read_text()).get("decisions", []) if d.get("step") == DEFINE_STEP), None)
+    from ..auto.state import AUTOPILOT
+
+    decisions = (f.p.report(AUTOPILOT) or {}).get("decisions", [])
+    first = next((d for d in decisions if d.get("step") == DEFINE_STEP), None)
     return (first.get("by") or "an LLM") if first else None
 
 

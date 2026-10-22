@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from byosm.app import create_app
 from byosm.app.jobs import LOST_LINE
 from byosm.app.store import JobStore
+from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 
 TOKEN = "t0ken"
@@ -17,8 +18,7 @@ POLL_SECONDS = 0.05
 @pytest.fixture
 def client(ws):
     spec = TaskSpec(name="q", description="is it a question", modality="text", labels=[Label(name="a", definition="")])
-    (ws / "specialists" / "q").mkdir(parents=True)
-    spec.save(ws / "specialists" / "q" / "spec.yaml")
+    Project("q", ws).save_spec(spec)
     with TestClient(create_app(ws, TOKEN), base_url="http://127.0.0.1") as c:
         yield c
 
@@ -41,7 +41,7 @@ def test_specialists_are_listed_read_and_edited(client):
 def test_the_specialist_detail_carries_the_overfitting_check(client, ws):
     assert client.get("/api/specialists/q", headers=AUTH).json()["overfit"] is None
     report = {"experiment": "v1", "verdict": "warn", "findings": []}
-    (ws / "specialists" / "q" / "overfit.json").write_text(json.dumps(report))
+    Project("q", ws).save_report("overfit", report)
     assert client.get("/api/specialists/q", headers=AUTH).json()["overfit"] == report
 
 
@@ -97,7 +97,6 @@ def test_the_app_command_takes_a_fixed_token_and_extra_hosts(ws, monkeypatch):
 
 
 def test_a_second_app_on_the_same_workspace_is_refused(ws):
-    import json
     import os
 
     from byosm.app.lock import LOCK_PATH, WorkspaceBusyError

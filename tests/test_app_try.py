@@ -10,9 +10,9 @@ AUTH = {"Authorization": "Bearer t"}
 def test_examples_come_from_the_test_split_per_label_with_published_repos(ws):
     spec = TaskSpec(name="q", description="topic", modality="text", labels=[Label(name=n, definition=n) for n in "ab"])
     root = ws / "specialists" / "q"
-    root.mkdir(parents=True)
-    spec.save(root / "spec.yaml")
-    from byosm.config import Project
+    from byosm.project import Project
+
+    Project("q", ws).save_spec(spec)
 
     Dataset(Project("q", ws).data_dir_for(spec)).save("test", [record(f"x{i}", "ab"[i % 2], "t") for i in range(10)])
     (root / "hub" / "me__byosm-q").mkdir(parents=True)

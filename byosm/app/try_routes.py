@@ -24,14 +24,13 @@ class CompareRequest(BaseModel):
 
 
 def _examples(ws: Path, name: str) -> dict[str, Any]:
-    from ..config import Project
     from ..data.store import Dataset
-    from ..spec import TaskSpec
+    from ..project import Project
 
     p = Project(name, ws)
     if not p.exists():
         raise KeyError(f"no specialist {name!r}")
-    spec = TaskSpec.load(p.spec_path)
+    spec = p.spec()
     ds = Dataset(p.data_dir_for(spec))
     rows = (ds.load("test") or ds.load("dev")) if spec.modality == "text" and spec.task_type == "classify" else []
     by: dict[str, list[str]] = {}
@@ -51,15 +50,14 @@ def _examples(ws: Path, name: str) -> dict[str, Any]:
 
 
 def _rival_search(ws: Path, name: str, q: str) -> list[dict[str, Any]]:
-    from ..config import Project
     from ..discover import model_candidates
     from ..predictors.base import hub_adapters
-    from ..spec import TaskSpec
+    from ..project import Project
 
     p = Project(name, ws)
     if not p.exists():
         raise KeyError(f"no specialist {name!r}")
-    spec = TaskSpec.load(p.spec_path)
+    spec = p.spec()
     own = spec.search.get("baseline") or [spec.summary or spec.description]
     queries = [q] if q.strip() else [*([spec.title] if spec.title else []), *own]
     adapters = hub_adapters()
@@ -79,7 +77,7 @@ def _timed(fn: Callable[[], Any]) -> dict[str, Any]:
 
 
 def try_router(ws: Path) -> APIRouter:
-    from ..config import Project
+    from ..project import Project
     from ..spec import TaskSpec
 
     router = APIRouter()
@@ -110,7 +108,7 @@ def try_router(ws: Path) -> APIRouter:
         p = Project(name, ws)
         if not p.exists():
             raise HTTPException(404, f"no specialist {name!r}")
-        spec = TaskSpec.load(p.spec_path)
+        spec = p.spec()
         if spec.modality != "text" or spec.task_type != "classify":
             raise HTTPException(422, "comparing on one input works for text classification for now")
         asked = [body.rival] if body.rival in spec.baselines else spec.baselines

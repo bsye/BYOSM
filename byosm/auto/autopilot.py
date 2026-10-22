@@ -4,9 +4,10 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from ..config import PUBLISH_LICENSE, Project, load_config
+from ..config import PUBLISH_LICENSE, load_config
 from ..data.request import missing_labels
 from ..llm import role_model
+from ..project import Project
 from .loop import improve_until_stop
 from .report import _report
 from .standing import standing
@@ -36,7 +37,7 @@ def _define(p: Project, log: Log, spec: Any, cfg: Any, echo: Callable) -> None:
     for d in decisions:
         log("discover:" + d["step"], d["choice"], d["why"], **{k: d[k] for k in DECISION_EXTRAS if k in d})
     p.ensure()
-    spec.save(p.spec_path)
+    p.save_spec(spec)
 
 
 def _request_data(s: Session, cfg: Any, t0: float) -> dict[str, Any]:
@@ -156,7 +157,6 @@ def run(
     use_llm: bool = True,
     echo: Callable[[str], None] = print,
 ) -> dict[str, Any]:
-    from ..spec import TaskSpec
 
     cfg = load_config()
     fresh = None if name and Project(name).exists() else _compile(name, prompt, modality, cfg)
@@ -166,7 +166,7 @@ def run(
     t0 = time.time()
     if fresh:
         _define(p, log, fresh, cfg, echo)
-    s = Session(name, p, log, TaskSpec.load(p.spec_path), margin, t0 + budget_h * 3600, echo)
+    s = Session(name, p, log, p.spec(), margin, t0 + budget_h * 3600, echo)
     if not p.experiments() and missing_labels(s.base):
         return _request_data(s, cfg, t0)
     if not p.experiments():

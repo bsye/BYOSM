@@ -7,9 +7,9 @@ from typing import Any
 import numpy as np
 import torch
 
-from ..config import Project
 from ..data.store import Dataset
 from ..modalities import get_modality
+from ..project import Project
 from ..runtime import Specialist
 from .bundle import load_runtime
 

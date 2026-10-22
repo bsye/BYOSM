@@ -101,7 +101,7 @@ Still open:
 
 ## Results
 
-Every table below is generated from `specialists/*/board.json` by `byosm report`, never typed by hand.
+Every table below is generated from the results database by `byosm report`, never typed by hand.
 `byosm report --check` fails the tests if one is stale.
 
 Rivals: `llm` is Qwen 3.8 27B, local and zero-shot. `jev` is TypeSafe's Jev judgment model, zero-shot over the same
@@ -122,7 +122,7 @@ public fine-tuned checkpoints.
 | Token-tag every token in a lease-agreement text to identify spans of DATE, AMOUNT, and PARTY (landlord, tenant, guarantor, or other named signatory) using BIO tagging. | lease-entities-builtin (span_f1) | v1 (70.69M) | 0.514 [0.389, 0.651] | hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 (183.92M) | 0.301 [0.178, 0.432] | +0.213, P(better) = 1.00 | 0.632 vs 0.370 (ahead) |
 | Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
-| From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification of a partial-utterance. | turn-completion-builtin (recall_at_precision) | v1 (22.71M) | 0.750 [0.250, 1.000] | llm (-) | 0.500 [0.000, 1.000] | +0.250, P(better) = 0.73 | 0.000 vs 0.923 (behind) |
+| From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification of a partial-utterance. | turn-completion-builtin (recall_at_precision) | v1 (22.71M) | 1.000 [1.000, 1.000] | llm (-) | 1.000 [1.000, 1.000] | +0.000, P(better) = 0.50 | 0.000 vs 1.000 (behind) |
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
 <!-- /report:summary -->
 
@@ -178,7 +178,7 @@ Suite `rvl` (chainyo/rvl-cdip): 3200 test and 800 calib items. Selection uses ca
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
 | **final-s1** (promoted) | ampemallrd-s1 + `train.holdout_test=auto` | 8964 (+1470 builtin test) | 22.74M | 2.36ms | 0.937 [0.928, 0.948] | 0.948 |
-| ampemallrd-s1 | spec.yaml + `train.layer_decay_floor=0.5 train.probe_epochs=0 train.ema=true train.seed=1` | 7494 | 22.74M | 3.37ms | 0.934 [0.924, 0.943] | 0.943 |
+| ampemallrd-s1 | spec.yaml + `train.layer_decay_floor=0.5 train.probe_epochs=0 train.ema=true train.seed=1` | 7494 | 22.74M | 2.45ms | 0.934 [0.924, 0.943] | 0.943 |
 | jev | outside baseline | - | - | 394.55ms | 0.808 [0.792, 0.822] | 0.784 |
 | llm | outside baseline | - | - | - | 0.772 [0.756, 0.788] | 0.713 |
 
@@ -193,7 +193,7 @@ Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses cali
 <!-- report:bank-panel -->
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
-| jev | outside baseline | - | - | 372.94ms | 0.807 [0.792, 0.822] | 0.776 |
+| jev | outside baseline | - | - | 374.56ms | 0.807 [0.792, 0.822] | 0.776 |
 | **v1** (promoted) | no recorded parent | 4228 (+70 builtin test) | 22.74M | 2.38ms | 0.797 [0.780, 0.812] | 0.747 |
 | panel | outside baseline | - | - | - | 0.779 [0.763, 0.794] | 0.750 |
 | llm | outside baseline | - | - | - | 0.770 [0.752, 0.787] | 0.716 |
@@ -258,10 +258,10 @@ While typing (gate tuned on calib: confidence 0.9, 2 agreeing keystrokes): the a
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
 | **v1** (promoted) | no recorded parent | 5241 (+781 builtin test) | 22.72M | 3.61ms | 0.898 [0.883, 0.913] | 0.904 |
-| hf:j-hartmann/emotion-english-distilroberta-base | outside baseline | - | 82.12M | 25.05ms | 0.838 [0.819, 0.856] | 0.813 |
+| hf:j-hartmann/emotion-english-distilroberta-base | outside baseline | - | 82.12M | 7.30ms | 0.838 [0.819, 0.856] | 0.813 |
 | jev | outside baseline | - | - | 397.88ms | 0.590 [0.564, 0.613] | 0.583 |
 | llm | outside baseline | - | - | - | 0.549 [0.519, 0.572] | 0.489 |
-| hf:SamLowe/roberta-base-go_emotions | outside baseline | - | 124.67M | 26.37ms | 0.548 [0.523, 0.570] | 0.519 |
+| hf:SamLowe/roberta-base-go_emotions | outside baseline | - | 124.67M | 14.36ms | 0.548 [0.523, 0.570] | 0.519 |
 
 Suite `bench` (dair-ai/emotion): 1492 test and 374 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:emotion -->
@@ -278,9 +278,9 @@ Suite `bench` (dair-ai/emotion): 1492 test and 374 calib items. Selection uses c
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
 | **v3** (promoted) | v2 + `data.hf_sources.3.per_label=30000` | 107112 (+17112 builtin test) | 22.72M | 3.24ms | 0.947 [0.937, 0.955] | 0.955 |
-| hf:mrm8488/bert-mini-finetuned-age_news-classification | outside baseline | - | 11.17M | 1.47ms | 0.930 [0.919, 0.939] | 0.934 |
+| hf:mrm8488/bert-mini-finetuned-age_news-classification | outside baseline | - | 11.17M | 1.60ms | 0.930 [0.919, 0.939] | 0.934 |
 | v2 | v1 + more-data | 14383 (+2383 builtin test) | 22.72M | 3.10ms | 0.921 [0.910, 0.930] | 0.925 |
-| hf:Maddyhf1/ag-news-topic-classification-distilbert | outside baseline | - | 66.96M | 9.07ms | 0.914 [0.902, 0.923] | 0.917 |
+| hf:Maddyhf1/ag-news-topic-classification-distilbert | outside baseline | - | 66.96M | 8.35ms | 0.914 [0.902, 0.923] | 0.917 |
 | v1 | no recorded parent | 5999 (+917 builtin test) | 22.72M | 3.19ms | 0.903 [0.891, 0.913] | 0.914 |
 | jev | outside baseline | - | - | 356.66ms | 0.855 [0.841, 0.869] | 0.838 |
 | llm | outside baseline | - | - | - | 0.814 [0.799, 0.830] | 0.800 |
@@ -410,15 +410,15 @@ builtin suite's held-out split, so they see more data.
 |---|---|---|---|---|---|---|---|---|---|
 | full | 3 | 7494 | true | keep | 0.5 | auto | 1 | 92.97 ± 0.29 | 94.70 ± 0.19 |
 | **final** | 3 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 0 | 93.44 ± 0.27 | 94.37 ± 0.37 |
-| no-ema | 2 | 7494 | false | - | 0.1 | auto | 1 | 93.13 ± 0.75 | 94.24 ± 0.57 |
-| no-probe | 2 | 7494 | true | - | 0.1 | auto | 0 | 93.25 ± 0.34 | 94.24 ± 0.34 |
+| no-ema | 2 | 7494 | false | auto | 0.1 | auto | 1 | 93.13 ± 0.75 | 94.24 ± 0.57 |
+| no-probe | 2 | 7494 | true | auto | 0.1 | auto | 0 | 93.25 ± 0.34 | 94.24 ± 0.34 |
 | ampemallrd | 3 | 7494 | true | keep | 0.5 | auto | 0 | 93.14 ± 0.21 | 94.10 ± 0.37 |
 | ampllrd | 3 | 7494 | false | keep | 0.5 | auto | 0 | 92.59 ± 0.42 | 93.94 ± 0.52 |
-| no-llrd | 2 | 7494 | true | - | 1.0 | auto | 1 | 92.99 ± 0.14 | 93.91 ± 0.11 |
-| new | 2 | 7494 | true | - | 0.1 | auto | 1 | 92.72 ± 0.23 | 93.83 ± 0.69 |
+| no-llrd | 2 | 7494 | true | auto | 1.0 | auto | 1 | 92.99 ± 0.14 | 93.91 ± 0.11 |
+| new | 2 | 7494 | true | auto | 0.1 | auto | 1 | 92.72 ± 0.23 | 93.83 ± 0.69 |
 | ampema | 3 | 7494 | true | keep | 1.0 | auto | 0 | 93.01 ± 0.21 | 93.72 ± 1.06 |
 | amp | 3 | 7494 | false | keep | 1.0 | auto | 0 | 92.53 ± 0.31 | 93.67 ± 0.56 |
-| old | 3 | 7494 | false | - | 1.0 | fp32 | 0 | 92.52 ± 0.25 | 93.67 ± 0.56 |
+| old | 3 | 7494 | false | auto | 1.0 | fp32 | 0 | 92.52 ± 0.25 | 93.67 ± 0.56 |
 
 Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `full`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:intent:seeds -->
@@ -497,7 +497,8 @@ byosm/
   llm/          provider-agnostic JSON calls
   bench/        specialists vs generalist
   report/       README tables
-specialists/<name>/   spec.yaml, experiments/, baselines/, board.json
+  db/           SQLAlchemy schema: SQLite by default, Postgres via DATABASE_URL
+specialists/<name>/   local weights and exports only; everything else is in the database
 docs/design-notes.md  why things are the way they are
 ```
 
@@ -509,12 +510,21 @@ includes ESC-50 (CC BY-NC): check data licences before any other use.
 <!-- report:turn-completion -->
 | model | built from | train rows | params | CPU | test recall_at_precision [95% CI] | calib recall_at_precision |
 |---|---|---|---|---|---|---|
-| v4 | v1 + regularize | 642 | 22.71M | 3.99ms | 1.000 [1.000, 1.000] | 0.000 |
-| **v1** (promoted) | no recorded parent | 642 | 22.71M | 3.17ms | 0.750 [0.250, 1.000] | 0.000 |
-| v2 | v1 + new-split | 642 | 22.71M | 2.45ms | 0.750 [0.250, 1.000] | 0.000 |
-| v3 | v1 + new-split | 642 | 22.71M | 3.50ms | 0.750 [0.250, 1.000] | 0.000 |
-| v5 | v1 + llm-exp-1-hard-negatives-encoding | 642 | 22.71M | 3.31ms | 0.750 [0.250, 1.000] | 0.000 |
-| llm | outside baseline | - | - | - | 0.500 [0.000, 1.000] | 0.923 |
+| **v1** (promoted) | no recorded parent | 642 | 22.71M | 5.62ms | 1.000 [1.000, 1.000] | 0.000 |
+| v2 | v1 + new-split | 642 | 22.71M | 5.92ms | 1.000 [1.000, 1.000] | 0.000 |
+| v3 | v1 + new-split | 642 | 22.71M | 3.99ms | 1.000 [1.000, 1.000] | 0.000 |
+| v4 | v1 + regularize | 642 | 22.71M | 4.80ms | 1.000 [1.000, 1.000] | 0.000 |
+| v5 | v1 + llm-exp-1-hard-negatives-encoding | 642 | 22.71M | 3.99ms | 1.000 [1.000, 1.000] | 0.000 |
+| livekit-turn | outside baseline | - | - | 4.90ms | 1.000 [1.000, 1.000] | 0.000 |
+| llm | outside baseline | - | - | - | 1.000 [1.000, 1.000] | 1.000 |
+| v10 | v1 + llm-exp-1-hard-negatives-encoding | 639 | 22.71M | 3.81ms | 0.000 [0.000, 1.000] | 0.000 |
+| v11 | v1 + regularize | 639 | 22.71M | 14.60ms | 0.000 [0.000, 1.000] | 0.000 |
+| v12 | no recorded parent | 639 | 22.71M | 14.13ms | 0.000 [0.000, 1.000] | 0.000 |
+| v13 | no recorded parent | 639 | 22.71M | 3.79ms | 0.000 [0.000, 1.000] | 0.000 |
+| v14 | no recorded parent | 639 | 22.71M | 3.55ms | 0.000 [0.000, 1.000] | 0.000 |
+| v7 | v1 + llm-exp-4-contextual-data | 639 | 22.71M | 3.73ms | 0.000 [0.000, 1.000] | 0.000 |
+| v8 | v1 + llm-exp-3-tuning-hyperparams | 639 | 22.71M | 3.94ms | 0.000 [0.000, 1.000] | 0.000 |
+| v9 | v1 + llm-exp-2-better-encoder | 639 | 66.37M | 14.12ms | 0.000 [0.000, 1.000] | 0.000 |
 
-Suite `builtin` (turn-completion-builtin): 5 test and 18 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+Suite `builtin` (turn-completion-builtin): 9 test and 17 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
 <!-- /report:turn-completion -->

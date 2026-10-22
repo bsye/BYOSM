@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from ..config import Project
 from ..format import fmt, interval, params
+from ..project import Project
+
+SUMMARY = "autopilot-summary"
 
 
 def _selection_line(final: dict) -> str:
@@ -50,4 +52,4 @@ def _report(p: Project, decisions: list[dict], final: dict) -> None:
         "",
     ]
     lines += [f"- `{d['t']}` **{d['step']}** → {d['choice']}: {d['why']}" for d in decisions]
-    (p.root / "auto.md").write_text("\n".join(lines) + "\n")
+    p.save_report(SUMMARY, "\n".join(lines) + "\n")

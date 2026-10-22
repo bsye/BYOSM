@@ -1,8 +1,6 @@
-import json
-
-from byosm.config import Project
 from byosm.health import health
-from byosm.spec import Label, TaskSpec
+from byosm.project import Project
+from byosm.spec import EvalSuite, Label, TaskSpec
 
 
 def _specialist(ws, rows):
@@ -13,11 +11,12 @@ def _specialist(ws, rows):
         modality="text",
         labels=[Label(name="statement", definition="no"), Label(name="question", definition="yes")],
         baselines=["jev"],
+        evals=[EvalSuite(name="builtin", primary=True), EvalSuite(name="llm-written", kind="generated")],
     )
-    spec.save(p.spec_path)
-    p.exp_dir("v1").mkdir(parents=True)
+    p.save_spec(spec)
+    p.save_experiment("v1", meta={})
     p.promote("v1")
-    p.board_path.write_text(json.dumps(rows))
+    p.save_board(rows)
     return p, spec
 
 

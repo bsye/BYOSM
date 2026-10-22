@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -11,8 +10,8 @@ import numpy as np
 import torch
 
 from . import metrics
-from .config import Project
 from .modalities import get_modality
+from .project import Project
 from .spec import TaskSpec
 from .train import build_model, to_device
 
@@ -31,10 +30,8 @@ def timed_ms(fn: Callable[[], Any], n: int, warmup: int = 0, sync: Callable[[], 
 
 
 class Specialist:
-    def __init__(self, run_dir: str | Path, device: str = "cpu"):
-        run_dir = Path(run_dir)
-        self.spec = TaskSpec.load(run_dir / "spec.yaml")
-        self.meta = json.loads((run_dir / "meta.json").read_text())
+    def __init__(self, spec: TaskSpec, meta: dict, run_dir: Path, device: str = "cpu"):
+        self.spec, self.meta = spec, meta
         self.threshold = self.meta.get("threshold")
         self.mod = get_modality(self.spec)
         self.model = build_model(self.spec, self.mod)
@@ -47,7 +44,7 @@ class Specialist:
         from .evals.selection import calibrated_threshold
 
         p = Project(name)
-        sp = cls(p.best_dir, device)
+        sp = cls(p.exp_spec(p.promoted), p.meta(p.promoted), p.best_dir, device)
         sp.threshold = calibrated_threshold(p, p.promoted)
         return sp
 

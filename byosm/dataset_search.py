@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from typing import Any
 
 from .benchmark_search import PICKER_ROLE, RULE, prefer_real_rows, try_sources
-from .config import Project, load_config
+from .config import load_config
 from .data import hf_source
 from .data.hf_source.mapping import pick_sources
 from .data.hf_source.research import research
 from .llm import role_model
+from .project import Project
 from .spec import HFSource, TaskSpec
 
 MAX_EXTRA_SOURCES = 3
 STEP = "datasets"
-SUGGESTIONS_FILE = "data-suggestions.json"
+SUGGESTIONS = "data-suggestions"
 UNMAPPED = "picked, but its columns or labels do not map onto ours"
 
 
@@ -91,11 +91,10 @@ def suggest_datasets(p: Project, spec: TaskSpec, cfg: dict | None, log: Callable
         }
         for m in found["mapped"]
     ]
-    (p.root / SUGGESTIONS_FILE).write_text(json.dumps(out, indent=2))
+    p.save_report(SUGGESTIONS, out)
     log(f"{len(out)} datasets fit {spec.name}" + "".join(f"\n  - {s['dataset']}: {s['why']}" for s in out))
     return out
 
 
 def saved_suggestions(p: Project) -> list[dict] | None:
-    f = p.root / SUGGESTIONS_FILE
-    return json.loads(f.read_text()) if f.exists() else None
+    return p.report(SUGGESTIONS)

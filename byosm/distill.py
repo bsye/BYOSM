@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
-from .config import Project
+from .project import Project
 from .spec import TaskSpec
 
 TINY_TEXT = "hf:google/bert_uncased_L-4_H-256_A-4"
@@ -44,12 +43,9 @@ def create(
     teacher_exp = teacher_exp or p.promoted
     if not teacher_exp:
         raise RuntimeError("no teacher: promote an experiment first")
-    spec = student_spec(TaskSpec.load(p.exp_dir(teacher_exp) / "spec.yaml"), teacher_exp, overrides)
+    spec = student_spec(p.exp_spec(teacher_exp), teacher_exp, overrides)
     exp = exp or f"distill-{teacher_exp}"
-    d = p.exp_dir(exp)
-    d.mkdir(parents=True, exist_ok=True)
-    spec.save(d / "spec.yaml")
     why = f"distill {teacher_exp} into {STUDENTS[spec.modality][1]}"
     proposal = {"parent": teacher_exp, "applied": [{"id": "distill", "why": why, "ops": []}]}
-    (d / "proposal.json").write_text(json.dumps(proposal, indent=2))
+    p.save_experiment(exp, spec=spec, proposal=proposal)
     return exp

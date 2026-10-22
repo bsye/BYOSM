@@ -5,8 +5,8 @@ import random
 from collections.abc import Callable
 from pathlib import Path
 
-from ..config import Project
 from ..data.store import Dataset, read, record, write
+from ..project import Project
 from ..spec import EvalSuite, TaskSpec
 
 SCORE_VERSION = "3"

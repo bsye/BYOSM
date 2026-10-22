@@ -44,15 +44,14 @@ def test_a_system_board_becomes_a_report_block(ws):
 
 
 def test_a_router_only_team_scores_on_its_router_held_out_rows(ws):
-    from byosm.config import Project
     from byosm.data.store import Dataset, record
+    from byosm.project import Project
     from byosm.spec import HFSource, Label, TaskSpec
     from byosm.system.frames import BUILTIN_SPLIT, _fetch
     from byosm.system.spec import Node, SystemSpec, SystemSuite
 
     spec = TaskSpec(name="r", description="d", modality="text", labels=[Label(name="a", definition="a")])
-    (ws / "specialists" / "r").mkdir(parents=True)
-    spec.save(ws / "specialists" / "r" / "spec.yaml")
+    Project("r").save_spec(spec)
     Dataset(Project("r").data_dir_for(spec)).save("test", [record("hi", "a", "t"), record("yo", "a", "t")])
     node = Node(specialist="r", role="router", task="t", source=HFSource(dataset="x"))
     team = SystemSpec(name="t", description="d", nodes={"r": node})

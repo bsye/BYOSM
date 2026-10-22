@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..config import Project
+from ..project import Project
 from ..spec import TaskSpec
 from .request import counts
 from .store import Dataset
@@ -14,8 +14,7 @@ SHORT_SHARE = 0.25
 
 
 def _trained_on(p: Project, spec: TaskSpec) -> TaskSpec:
-    f = p.exp_dir(p.promoted or "") / "spec.yaml"
-    return TaskSpec.load(f) if p.promoted and f.exists() else spec
+    return p.exp_spec(p.promoted) if p.promoted else spec
 
 
 def data_check(p: Project, spec: TaskSpec) -> dict[str, Any] | None:

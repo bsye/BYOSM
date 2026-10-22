@@ -20,11 +20,11 @@ PROBE_CHUNK = 480
 class ExperimentPredictor(Predictor):
     kind = "experiment"
 
-    def __init__(self, spec: TaskSpec, run_dir: Path, name: str, device: str = "cpu"):
+    def __init__(self, spec: TaskSpec, meta: dict, run_dir: Path, name: str, device: str = "cpu"):
         super().__init__(spec)
         from ..runtime import Specialist
 
-        self.sp = Specialist(run_dir, device)
+        self.sp = Specialist(spec, meta, run_dir, device)
         self.device = device
         self.id = name
         self.params = int(self.sp.meta["params"])

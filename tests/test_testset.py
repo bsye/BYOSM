@@ -7,10 +7,10 @@ from typer.testing import CliRunner
 from byosm import llm
 from byosm.app.catalog import detail
 from byosm.cli import app
-from byosm.config import Project
 from byosm.data.store import Dataset, normalize, read, record
 from byosm.evals import board, testset
 from byosm.evals.testset import write_testset, written_logs, written_path
+from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 from byosm.spec.sections import Axis, DataPlan, EvalSuite
 
@@ -42,7 +42,7 @@ def qa(ws):
         data=DataPlan(per_call=5, judge=True),
         baselines=["llm"],
     )
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     Dataset(p.data_dir_for(spec)).save(
         "train", [record(t, "question" if "?" in t else "statement", "x") for t in KNOWN]
     )
@@ -63,7 +63,7 @@ def test_the_llm_writes_n_new_examples_per_label_into_a_frozen_suite(qa):
 def test_the_suite_is_registered_but_never_primary(qa):
     p, spec = qa
     write_testset(p, spec, PER_LABEL, "llm-written")
-    saved = TaskSpec.load(p.spec_path)
+    saved = p.spec()
     assert [(e.name, e.primary) for e in saved.evals] == [("builtin", True), ("llm-written", False)]
     assert TaskSpec(**{**saved.model_dump(), "evals": saved.evals[1:]}).primary_suite() == "builtin"
     with pytest.raises(ValueError):
@@ -136,12 +136,12 @@ def test_a_spec_edit_made_while_the_inputs_are_written_survives(qa, monkeypatch)
     real = testset.generate
 
     def edit_then_generate(*a, **k):
-        edited = TaskSpec.load(p.spec_path)
+        edited = p.spec()
         edited.baselines = [*edited.baselines, "jev"]
-        edited.save(p.spec_path)
+        p.save_spec(edited)
         return real(*a, **k)
 
     monkeypatch.setattr(testset, "generate", edit_then_generate)
     write_testset(p, spec, PER_LABEL, "llm-written")
-    saved = TaskSpec.load(p.spec_path)
+    saved = p.spec()
     assert "jev" in saved.baselines and "llm-written" in [e.name for e in saved.evals]

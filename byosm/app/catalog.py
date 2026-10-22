@@ -6,14 +6,15 @@ from pathlib import Path
 from typing import Any
 
 from ..auto.standing import best_baseline
-from ..config import Project, list_projects
 from ..data.store import SPLITS, Dataset
 from ..data.sufficiency import data_check
 from ..dataset_search import saved_suggestions
+from ..evals.overfit import OVERFIT
 from ..health import health
 from ..hub.facts import suite_dataset
-from ..improve.proposals import PROPOSALS_FILE
+from ..improve.proposals import PROPOSALS
 from ..next_steps import suggestions
+from ..project import Project, list_projects
 from ..spec import TaskSpec
 
 MAX_PAGE = 500
@@ -44,7 +45,7 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
     from ..export.bundle import is_exported
 
     p = project(ws, name)
-    s = TaskSpec.load(p.spec_path)
+    s = p.spec()
     prim = s.primary_suite()
     board = p.board()
     best = board.get(p.promoted or "", {}).get(prim, {})
@@ -77,8 +78,7 @@ def specialists(ws: Path) -> list[dict[str, Any]]:
 
 
 def _parent(p: Project, exp: str) -> str | None:
-    f = p.exp_dir(exp) / "proposal.json"
-    return json.loads(f.read_text()).get("parent") if f.exists() else None
+    return (p.proposal(exp) or {}).get("parent")
 
 
 def _run(p: Project, exp: str) -> dict[str, Any]:
@@ -98,7 +98,7 @@ def _run(p: Project, exp: str) -> dict[str, Any]:
 
 def detail(ws: Path, name: str) -> dict[str, Any]:
     p = project(ws, name)
-    spec = TaskSpec.load(p.spec_path)
+    spec = p.spec()
     board = {pid: {suite: _result(r) for suite, r in by.items()} for pid, by in p.board().items()}
     dd = p.data_dir_for(spec)
     return {
@@ -108,9 +108,9 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "suites": [{k: getattr(e, k) for k in SUITE_FIELDS} for e in spec.evals],
         "baselines": spec.baselines,
         "runs": [_run(p, e) for e in p.experiments()],
-        "proposals": json.loads(proposals.read_text()) if (proposals := p.root / PROPOSALS_FILE).exists() else None,
+        "proposals": p.report(PROPOSALS),
         "data": Dataset(dd).summary() if (dd / "train.jsonl").exists() else None,
-        "overfit": json.loads(p.overfit_path.read_text()) if p.overfit_path.exists() else None,
+        "overfit": p.report(OVERFIT),
         "next": suggestions(name, ws),
         "data_check": data_check(p, spec),
         "health": health(p, spec),
@@ -121,19 +121,21 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
 def save_spec(ws: Path, name: str, body: dict) -> dict[str, Any]:
     p = project(ws, name)
     spec = TaskSpec(**{**body, "name": name})
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     return spec.model_dump(mode="json")
 
 
 def delete(ws: Path, name: str) -> None:
-    shutil.rmtree(project(ws, name).root)
+    p = project(ws, name)
+    p.delete()
+    shutil.rmtree(p.root, ignore_errors=True)
 
 
 def rows(ws: Path, name: str, split: str, offset: int, limit: int) -> dict[str, Any]:
     if split not in SPLITS:
         raise KeyError(f"split must be one of {', '.join(SPLITS)}")
     p = project(ws, name)
-    data = Dataset(p.data_dir_for(TaskSpec.load(p.spec_path))).load(split)
+    data = Dataset(p.data_dir_for(p.spec())).load(split)
     return {"total": len(data), "rows": data[offset : offset + min(limit, MAX_PAGE)]}
 
 

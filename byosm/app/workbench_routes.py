@@ -14,13 +14,12 @@ class Models(BaseModel):
 
 
 def _project(ws: Path, name: str) -> tuple[Any, Any]:
-    from ..config import Project
-    from ..spec import TaskSpec
+    from ..project import Project
 
     p = Project(name, ws)
     if not p.exists():
         raise KeyError(f"no specialist {name!r}")
-    return p, TaskSpec.load(p.spec_path)
+    return p, p.spec()
 
 
 def _sets(ws: Path, name: str) -> list[dict[str, Any]]:

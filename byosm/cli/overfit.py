@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated, Any
 
 import typer
@@ -49,11 +48,10 @@ def print_overfit(r: dict[str, Any]) -> None:
 def overfit(
     name: str,
     exp: Annotated[str | None, typer.Option(help="experiment to check (default: promoted)")] = None,
-    out: Annotated[Path | None, typer.Option(help="write the report here instead of specialists/NAME")] = None,
     force: Annotated[bool, typer.Option(help="ignore the cached report")] = False,
 ) -> None:
     """Check whether a specialist memorised its training data, over-used calib, or its benchmark leaks into training."""
     from ..evals.overfit import check
 
     _spec(name)
-    print_overfit(check(name, exp, out=out, force=force, log=log))
+    print_overfit(check(name, exp, force=force, log=log))

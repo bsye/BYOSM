@@ -1,40 +1,37 @@
 from __future__ import annotations
 
-import json
 import random
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
-from ..config import Project, load_config
+from ..config import load_config
 from ..data.store import Dataset, append, read, write
 from ..events import emit, stage
+from ..project import Project
 from ..spec import TaskSpec
 from .testset import WRITTEN_SPLIT, existing_rows, written_path
 
-RESULTS_SUFFIX = ".results.json"
-MODELS_FILE = "test-models.json"
+RESULTS_PREFIX = "workbench:"
+MODELS = "test-models"
 OURS = "ours"
 SAMPLE_SEED = 7
 SCORE_CHUNK = 16
 
 
-def results_path(p: Project, name: str) -> Path:
-    return p.evals_dir / f"{name}{RESULTS_SUFFIX}"
+def _results_report(name: str) -> str:
+    return f"{RESULTS_PREFIX}{name}"
 
 
 def results(p: Project, name: str) -> dict[str, dict[str, dict]]:
-    f = results_path(p, name)
-    return json.loads(f.read_text()) if f.exists() else {}
+    return p.report(_results_report(name)) or {}
 
 
 def chosen_models(p: Project, spec: TaskSpec) -> list[str]:
-    f = p.root / MODELS_FILE
-    return json.loads(f.read_text()) if f.exists() else [OURS, *spec.baselines]
+    return p.report(MODELS) or [OURS, *spec.baselines]
 
 
 def choose_models(p: Project, models: list[str]) -> None:
-    (p.root / MODELS_FILE).write_text(json.dumps(models))
+    p.save_report(MODELS, models)
 
 
 def _add(p: Project, name: str, rows: list[dict]) -> int:
@@ -88,7 +85,7 @@ def _keep(out: dict, model: str, rows: list[dict], probs: Any, spec: TaskSpec) -
 def _save(p: Project, name: str, model: str, answers: dict) -> dict:
     merged = results(p, name)
     merged.setdefault(model, {}).update(answers)
-    results_path(p, name).write_text(json.dumps(merged))
+    p.save_report(_results_report(name), merged)
     return merged
 
 

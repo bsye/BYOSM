@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -38,10 +37,6 @@ def build_meta(
     }
 
 
-def save_run(spec: TaskSpec, run_dir: Path, best: dict[str, Any], meta: dict[str, Any]) -> None:
+def save_run(run_dir: Path, best: dict[str, Any]) -> None:
     run_dir.mkdir(parents=True, exist_ok=True)
     torch.save(best["state"], run_dir / "model.pt")
-    spec.save(run_dir / "spec.yaml")
-    (run_dir / "meta.json").write_text(json.dumps(meta, indent=2))
-    errors = json.dumps(best["dev"]["errors"], indent=2, ensure_ascii=False, default=str)
-    (run_dir / "dev_errors.json").write_text(errors)

@@ -1,10 +1,10 @@
 import csv
 
-from byosm.config import Project
 from byosm.data import _local
 from byosm.data.check import check
 from byosm.data.request import missing_labels, score_rows_needed, write_request
 from byosm.data.table import read_table
+from byosm.project import Project
 from byosm.spec import HFSource, compile_spec
 
 QUESTIONS = [f"what about item {i}?" for i in range(12)]
@@ -15,7 +15,7 @@ def spec_without_data(ws):
     spec = compile_spec("q", "detect questions")
     spec.data.synthetic = False
     p = Project("q").ensure()
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     return p, spec
 
 

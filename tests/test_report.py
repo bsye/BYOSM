@@ -1,13 +1,11 @@
-import json
-
 import numpy as np
 import pytest
 import yaml
 from typer.testing import CliRunner
 
 from byosm.cli import app
-from byosm.config import Project
 from byosm.format import cpu, fmt, interval, params
+from byosm.project import Project
 from byosm.report import blocks, fill, keys_in, replace_block, unexpected
 from byosm.report.cells import num, score
 from byosm.spec import TaskSpec
@@ -36,27 +34,27 @@ def toy(tmp_path, monkeypatch):
     (tmp_path / "byosm.yaml").write_text(yaml.safe_dump({"llm": {"default": {"provider": "fake"}}}))
     monkeypatch.chdir(tmp_path)
     p = Project("toy").ensure()
-    TaskSpec(
-        name="toy",
-        description="toy task",
-        summary="toy yes/no",
-        modality="text",
-        labels=[Label(name="no", definition="no"), Label(name="yes", definition="yes")],
-        objective=Objective(metric="accuracy"),
-        evals=[EvalSuite(name="bench", primary=True)],
-        baselines=["rival"],
-    ).save(p.spec_path)
+    p.save_spec(
+        TaskSpec(
+            name="toy",
+            description="toy task",
+            summary="toy yes/no",
+            modality="text",
+            labels=[Label(name="no", definition="no"), Label(name="yes", definition="yes")],
+            objective=Objective(metric="accuracy"),
+            evals=[EvalSuite(name="bench", primary=True)],
+            baselines=["rival"],
+        )
+    )
     for exp, parent in (("v1", None), ("v2", "v1")):
-        p.exp_dir(exp).mkdir(parents=True, exist_ok=True)
-        if parent:
-            proposal = {"parent": parent, "applied": [{"id": "more-data", "why": "", "ops": []}]}
-            (p.exp_dir(exp) / "proposal.json").write_text(json.dumps(proposal))
+        applied = [{"id": "more-data", "why": "", "ops": []}]
+        p.save_experiment(exp, meta={}, proposal={"parent": parent, "applied": applied} if parent else None)
     board = {
         "v1": {"bench": _result("experiment", 0.5, 0.5, BASE_UNITS, 2_000_000)},
         "v2": {"bench": _result("experiment", 5 / 6, 0.75, TEST_UNITS, 2_000_000)},
         "rival": {"bench": _result("baseline", 0.5, 0.5, BASE_UNITS, 9_000_000)},
     }
-    p.board_path.write_text(json.dumps(board))
+    p.save_board(board)
     p.promote("v2")
     return tmp_path
 
@@ -71,11 +69,16 @@ def test_blocks_render_board(toy):
     assert "6 test and 4 calib items" in out["toy"] and "Every scored experiment is listed." in out["toy"]
 
 
+def _trained(p: Project, train: dict) -> TaskSpec:
+    spec = p.spec()
+    return spec.model_copy(update={"train": spec.train.model_copy(update=train)})
+
+
 def test_built_from_names_only_lineage_and_folds(toy):
     p = Project("toy")
-    (p.exp_dir("v1") / "spec.yaml").write_text(yaml.safe_dump({"train": {"epochs": 3}}))
-    (p.exp_dir("v2") / "spec.yaml").write_text(yaml.safe_dump({"train": {"epochs": 5, "ema": True}}))
-    (p.exp_dir("v2") / "meta.json").write_text(json.dumps({"n_train": 120, "n_test_folded": 20}))
+    p.save_experiment("v1", spec=_trained(p, {"epochs": 3}))
+    p.save_experiment("v2", spec=_trained(p, {"epochs": 5, "ema": True}))
+    p.save_experiment("v2", meta={"n_train": 120, "n_test_folded": 20})
     row = blocks()["toy"].split("\n")[2]
     assert "| v1 + more-data | 120 (+20 builtin test) |" in row and "differs" not in row
     assert "builtin suite's held-out split" in blocks()["toy"]
@@ -83,9 +86,7 @@ def test_built_from_names_only_lineage_and_folds(toy):
 
 def test_summary_without_baseline(toy):
     p = Project("toy")
-    board = json.loads(p.board_path.read_text())
-    del board["rival"]
-    p.board_path.write_text(json.dumps(board))
+    p.drop_result("rival", "bench")
     assert "no outside baseline scored yet" in blocks()["summary"]
 
 
@@ -127,14 +128,14 @@ def test_unknown_and_repeated_blocks_are_flagged():
 
 def test_seed_groups_and_stale_rows(toy):
     p = Project("toy")
-    board = json.loads(p.board_path.read_text())
+    board = p.board()
     for i, (acc, calib) in enumerate(((0.5, 0.6), (0.7, 0.8))):
         exp = f"rec-s{i}"
         p.exp_dir(exp).mkdir(parents=True, exist_ok=True)
-        (p.exp_dir(exp) / "spec.yaml").write_text(yaml.safe_dump({"train": {"ema": True, "seed": i}}))
+        p.save_experiment(exp, spec=_trained(p, {"ema": True, "seed": i}), meta={})
         board[exp] = {"bench": _result("experiment", acc, calib, BASE_UNITS, 2_000_000) | {"fingerprint": "old"}}
     board["v2"]["bench"]["fingerprint"] = "new"
-    p.board_path.write_text(json.dumps(board))
+    p.save_board(board)
     seeds = blocks()["toy:seeds"]
     assert seeds.startswith(
         "| recipe | seeds | train rows | test accuracy % | calib accuracy % |\n|---|---|---|---|---|\n"
@@ -145,14 +146,14 @@ def test_seed_groups_and_stale_rows(toy):
 
 
 def _replicates(p: Project, runs: tuple[tuple[float, float, str], ...]) -> None:
-    board = json.loads(p.board_path.read_text())
+    board = p.board()
     for i, (acc, calib, fp) in enumerate(runs):
         exp = f"rec-s{i}"
         p.exp_dir(exp).mkdir(parents=True, exist_ok=True)
-        (p.exp_dir(exp) / "spec.yaml").write_text(yaml.safe_dump({"train": {"seed": i}}))
+        p.save_experiment(exp, spec=_trained(p, {"seed": i}), meta={})
         board[exp] = {"bench": _result("experiment", acc, calib, BASE_UNITS, 2_000_000) | {"fingerprint": fp}}
     board["v2"]["bench"]["fingerprint"] = "new"
-    p.board_path.write_text(json.dumps(board))
+    p.save_board(board)
 
 
 def test_a_lone_replicate_on_another_fingerprint_stays_in_the_main_table(toy):

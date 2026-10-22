@@ -1,12 +1,10 @@
-import json
-
 import pytest
 
 from byosm import llm
 from byosm.auto import run
-from byosm.config import Project
 from byosm.discover import discover
-from byosm.spec import TaskSpec, compile_spec
+from byosm.project import Project
+from byosm.spec import compile_spec
 
 
 @pytest.mark.slow
@@ -19,12 +17,12 @@ def test_autopilot_end_to_end(ws):
     spec.objective.target = 0.9
     spec, _ = discover(spec, {}, None, lambda m: None)
     p.ensure()
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     final = run("auto", budget_h=1, max_experiments=4, max_params_m=1.0, echo=lambda m: None)
-    report = (p.root / "auto.md").read_text()
-    steps = [d["step"] for d in json.loads((p.root / "auto.json").read_text())["decisions"]]
-    assert "llm" in TaskSpec.load(p.spec_path).baselines
+    report = p.report("autopilot-summary")
+    steps = [d["step"] for d in p.report("autopilot")["decisions"]]
+    assert "llm" in p.spec().baselines
     assert final["won"] and final["ours"] > final["best_baseline"][1]
     assert "distill" in steps and "overfit" in steps and "export" in steps and "WON" in report
-    assert json.loads((p.root / "overfit.json").read_text())["experiment"] == final["exp"]
+    assert p.report("overfit")["experiment"] == final["exp"]
     assert (p.root / "export" / "manifest.json").exists()

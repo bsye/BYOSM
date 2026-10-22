@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from ..config import Project
 from ..events import emit, stage
 from ..predictors import ExperimentPredictor, Predictor, get_baseline
+from ..project import Project
 from ..spec import EvalSuite, TaskSpec
-from .dumps import _dumps
 from .identity import baseline_identity
 from .scoring import score
 from .suites import fingerprint, materialize
@@ -18,23 +16,9 @@ Job = tuple[str, str, Callable[[], Predictor]]
 SuiteData = tuple[list[dict], list[dict], Path, list[str]]
 
 
-def _cache(p: Project, pred_kind: str, pid: str, suite: str) -> Path:
-    if pred_kind == "experiment":
-        base = p.exp_dir(pid) / "results"
-    else:
-        base = p.baselines_dir / pid.replace("/", "_").replace(":", "_")
-    return base / f"{suite}.json"
-
-
-def _kept_results(p: Project, base: TaskSpec) -> dict[str, dict[str, dict]]:
-    keep_ids, keep_suites = set(p.experiments()) | set(base.baselines), {s.name for s in base.evals}
-    old = p.board()
-    return {pid: {s: r for s, r in by.items() if s in keep_suites} for pid, by in old.items() if pid in keep_ids}
-
-
 def experiment_predictor(p: Project, base: TaskSpec, exp: str) -> ExperimentPredictor:
-    spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml").model_copy(update={"decision": base.decision})
-    return ExperimentPredictor(spec, p.exp_dir(exp), exp)
+    spec = p.exp_spec(exp).model_copy(update={"decision": base.decision})
+    return ExperimentPredictor(spec, p.meta(exp), p.exp_dir(exp), exp)
 
 
 def _jobs(p: Project, base: TaskSpec, suite: EvalSuite, exps: list[str], bls: list[str]) -> list[Job]:
@@ -52,18 +36,13 @@ def _identity(kind: str, pid: str) -> str | None:
     return None if kind == "experiment" else baseline_identity(pid)
 
 
-def _write(cache: Path, r: dict) -> None:
-    cache.parent.mkdir(parents=True, exist_ok=True)
-    cache.write_text(_dumps(r))
-
-
-def _fresh(cache: Path, cached: dict, fp: str, kind: str, pid: str, log: Callable[[str], None]) -> bool:
+def _fresh(p: Project, pid: str, suite: str, cached: dict, fp: str, kind: str) -> bool:
     if cached.get("fingerprint") != fp:
         return False
     identity = _identity(kind, pid)
     if identity is not None and "identity" not in cached:
         cached["identity"] = identity
-        _write(cache, cached)
+        p.save_result(pid, suite, cached)
     return cached.get("identity") == identity
 
 
@@ -72,9 +51,8 @@ def _cached_or_scored(
 ) -> dict | None:
     kind, pid, make = job
     calib, test, root, space = data
-    cache = _cache(p, kind, pid, suite)
-    cached = json.loads(cache.read_text()) if not force and cache.exists() else {}
-    if _fresh(cache, cached, fp, kind, pid, log):
+    cached = (None if force else p.result(pid, suite)) or {}
+    if _fresh(p, pid, suite, cached, fp, kind):
         return cached
     log(f"  scoring {pid} on {suite} ({len(test)} test items)...")
     try:
@@ -87,15 +65,8 @@ def _cached_or_scored(
     r["fingerprint"] = fp
     if identity is not None:
         r["identity"] = identity
-    _write(cache, r)
+    p.save_result(pid, suite, r)
     return r
-
-
-def _drop(results: dict[str, dict[str, dict]], pid: str, suite: str, log: Callable[[str], None]) -> None:
-    if results.get(pid, {}).pop(suite, None) is not None:
-        log(f"  {pid}: old {suite} result dropped from the board")
-    if pid in results and not results[pid]:
-        del results[pid]
 
 
 @stage("Score")
@@ -108,10 +79,9 @@ def run(
     log: Callable[[str], None] = print,
 ) -> dict[str, dict[str, dict]]:
     p = Project(name)
-    base = TaskSpec.load(p.spec_path)
+    base = p.spec()
     exps = experiments if experiments is not None else p.experiments()
     bls = baselines if baselines is not None else base.baselines
-    results = _kept_results(p, base)
     for suite in base.evals:
         if suites and suite.name not in suites:
             continue
@@ -121,17 +91,14 @@ def run(
             continue
         fp = fingerprint(p, base, suite)
         for job in _jobs(p, base, suite, exps, bls):
-            r = _cached_or_scored(p, base, suite.name, job, fp, force, data, log)
-            if r is not None:
-                results.setdefault(job[1], {})[suite.name] = r
-            else:
-                _drop(results, job[1], suite.name, log)
-    p.board_path.write_text(_dumps(results))
-    return results
+            if _cached_or_scored(p, base, suite.name, job, fp, force, data, log) is None:
+                p.drop_result(job[1], suite.name)
+                log(f"  {job[1]}: old {suite.name} result dropped from the board")
+    return p.board()
 
 
 def _board_row(pid: str, by_suite: dict[str, dict], suites: list[str], promoted: bool) -> dict[str, Any]:
-    any_r = next(iter(by_suite.values()))
+    any_r = by_suite.get(suites[0]) or next(iter(by_suite.values()))
     row: dict[str, Any] = {
         "id": pid,
         "kind": any_r["kind"],
@@ -153,9 +120,9 @@ def _board_row(pid: str, by_suite: dict[str, dict], suites: list[str], promoted:
 
 def board_rows(name: str) -> tuple[list[str], list[dict]]:
     p = Project(name)
-    base = TaskSpec.load(p.spec_path)
-    suites = [s.name for s in base.evals]
-    rows = [_board_row(pid, by_suite, suites, pid == p.promoted) for pid, by_suite in p.board().items()]
+    base = p.spec()
     prim = base.primary_suite()
+    suites = [prim, *(s.name for s in base.evals if s.name != prim)]
+    rows = [_board_row(pid, by_suite, suites, pid == p.promoted) for pid, by_suite in p.board().items()]
     rows.sort(key=lambda r: -(r.get(prim) or -1))
     return suites, rows

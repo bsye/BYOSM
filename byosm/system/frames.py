@@ -30,15 +30,14 @@ def _gold(row: dict, spec: SystemSpec, names: list[str] | None) -> dict:
 
 
 def _held_out(spec: SystemSpec, suite: SystemSuite) -> list[dict]:
-    from ..config import Project
     from ..data.store import Dataset
-    from ..spec import TaskSpec
+    from ..project import Project
 
     router = spec.role("router")
     if router is None or spec.role("tagger"):
         raise ValueError("a builtin system suite needs a router and no tagger: its rows carry no argument spans")
     p = Project(router[1].specialist)
-    rows = Dataset(p.data_dir_for(TaskSpec.load(p.spec_path))).load("test")[: suite.max_items]
+    rows = Dataset(p.data_dir_for(p.spec())).load("test")[: suite.max_items]
     return [{"input": r["input"], "action": r["label"], "args": []} for r in rows]
 
 

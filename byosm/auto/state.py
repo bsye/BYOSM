@@ -6,18 +6,17 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..config import Project
 from ..events import emit
+from ..project import Project
 
 DATA_BUDGET_SHARE = 0.4
+AUTOPILOT = "autopilot"
 
 
 class Log:
     def __init__(self, p: Project, echo: Callable[[str], None]):
-        self.p, self.echo, self.decisions = p, echo, []
-        f = p.root / "auto.json"
-        if f.exists():
-            self.decisions = json.loads(f.read_text()).get("decisions", [])
+        self.p, self.echo = p, echo
+        self.decisions = (p.report(AUTOPILOT) or {}).get("decisions", [])
 
     def __call__(self, step: str, choice: Any, why: str, **extra: Any) -> None:
         d = {"t": time.strftime("%Y-%m-%d %H:%M:%S"), "step": step, "choice": choice, "why": why, **extra}
@@ -27,9 +26,8 @@ class Log:
         self.save()
 
     def save(self, final: dict | None = None) -> None:
-        self.p.root.mkdir(parents=True, exist_ok=True)
-        (self.p.root / "auto.json").write_text(
-            json.dumps({"decisions": self.decisions, "final": final}, indent=2, default=str)
+        self.p.save_report(
+            AUTOPILOT, json.loads(json.dumps({"decisions": self.decisions, "final": final}, default=str))
         )
 
 

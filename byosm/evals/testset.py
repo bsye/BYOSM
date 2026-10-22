@@ -4,11 +4,12 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
-from ..config import TESTSET_PER_LABEL, TESTSET_SUITE, Project, load_config
+from ..config import TESTSET_PER_LABEL, TESTSET_SUITE, load_config
 from ..data.store import SPLITS, Dataset, append, dedupe, label_counts, read
 from ..data.synth_text import generate, judge
 from ..events import stage
 from ..llm import role_model
+from ..project import Project
 from ..spec import EvalSuite, TaskSpec
 from .suites import CALIB_EVERY_NTH_ITEM, freeze, suite_dir
 
@@ -106,7 +107,7 @@ def write_testset(
     judge = role_model(JUDGE_ROLE, cfg) if spec.data.judge else None
     es = EvalSuite(name=suite, kind="generated", written_by=role_model(WRITER_ROLE, cfg), judged_by=judge)
     freeze(suite_dir(p, es), es, calib, test)
-    fresh = TaskSpec.load(p.spec_path)
+    fresh = p.spec()
     fresh.evals.append(es)
-    fresh.save(p.spec_path)
+    p.save_spec(fresh)
     return es

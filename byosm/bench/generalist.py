@@ -8,11 +8,11 @@ import numpy as np
 import torch
 
 from .. import jepa
-from ..config import Project
 from ..config import device as pick_device
 from ..data.store import Dataset
 from ..modalities import get_modality
 from ..model import SpecialistModel, task_loss, warmup_cosine
+from ..project import Project
 from ..spec import TaskSpec
 from ..train import batches, cpu_state, evaluate_rows, targets_of, to_device
 

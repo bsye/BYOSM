@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
-from .config import Project
 from .data.sufficiency import MIN_CALIB_ITEMS, MIN_TEST_ITEMS, data_check
 from .dataset_search import saved_suggestions
 from .health import OK, checks
-from .improve.proposals import PROPOSALS_FILE
+from .improve.proposals import PROPOSALS
+from .project import Project
 from .spec import TaskSpec
 
 WHY_CHARS = 220
@@ -54,15 +53,12 @@ def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
 def tried_proposals(p: Project) -> set[str]:
     out = set()
     for exp in p.experiments():
-        f = p.exp_dir(exp) / "proposal.json"
-        if f.exists():
-            out |= {a["id"] for a in json.loads(f.read_text()).get("applied", [])}
+        out |= {a["id"] for a in (p.proposal(exp) or {}).get("applied", [])}
     return out
 
 
 def _experiments(p: Project) -> dict[str, Any]:
-    f = p.root / PROPOSALS_FILE
-    saved = json.loads(f.read_text()) if f.exists() else {}
+    saved = p.report(PROPOSALS) or {}
     fresh = [pr["id"] for pr in saved.get("proposals", []) if pr["id"] not in tried_proposals(p)]
     if saved.get("from") != p.promoted or not fresh:
         why = "Every lined-up experiment has run. The LLM reads the board and the errors and lines up new ones."
@@ -89,7 +85,7 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
     p = Project(name, ws)
     if not p.exists():
         raise KeyError(f"no specialist {name!r}")
-    spec = TaskSpec.load(p.spec_path)
+    spec = p.spec()
     if not p.promoted:
         return [_step("build", "Build the first model", "Nothing has been trained yet.", ["build", name])]
     prim = spec.primary_suite()

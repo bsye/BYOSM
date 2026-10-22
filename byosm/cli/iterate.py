@@ -5,7 +5,8 @@ from typing import Annotated
 
 import typer
 
-from ..config import PUBLISH_LICENSE, Project
+from ..config import PUBLISH_LICENSE
+from ..project import Project
 from .base import _spec, app, log
 from .train import board, build
 
@@ -131,9 +132,11 @@ def auto(
         log(f"\nstopped: {final['stop_reason']}")
         return
     board(final["name"], detail=True)
+    from ..auto.report import SUMMARY
+
     p = Project(final["name"])
     verdict = "WON" if final["won"] else "did not win"
-    log(f"\n{verdict}: {final['stop_reason']} ({final['hours']} h). Report: {p.root / 'auto.md'}")
+    log(f"\n{verdict}: {final['stop_reason']} ({final['hours']} h).\n\n{p.report(SUMMARY) or ''}")
 
 
 @app.command()

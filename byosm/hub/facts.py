@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from ..config import Project
+from ..project import Project
 from ..spec import TaskSpec
 
 PIPELINE_TAG = {
@@ -27,11 +27,10 @@ NC_DATASETS = {"ashraq/esc50": "ESC-50 (CC BY-NC 3.0)"}
 def lineage(p: Project, exp: str) -> list[dict]:
     chain, cur = [], exp
     while cur:
-        f = p.exp_dir(cur) / "proposal.json"
-        if not f.exists():
+        pr = p.proposal(cur)
+        if not pr:
             chain.append({"exp": cur, "applied": []})
             break
-        pr = json.loads(f.read_text())
         chain.append({"exp": cur, "parent": pr["parent"], "applied": pr["applied"]})
         cur = pr["parent"]
     return list(reversed(chain))
@@ -85,10 +84,10 @@ class CardFacts:
 
 def load_facts(name: str, repo_id: str, license: str) -> CardFacts:
     p = Project(name)
-    base = TaskSpec.load(p.spec_path)
+    base = p.spec()
     m = json.loads((p.root / "export" / "manifest.json").read_text())
     exp = m["experiment"]
-    spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml")
+    spec = p.exp_spec(exp)
     datasets = sorted({s.dataset for s in spec.data.hf_sources} | {e.source.dataset for e in base.evals if e.source})
     return CardFacts(
         p=p,
@@ -97,7 +96,7 @@ def load_facts(name: str, repo_id: str, license: str) -> CardFacts:
         base=base,
         spec=spec,
         manifest=m,
-        meta=json.loads((p.exp_dir(exp) / "meta.json").read_text()),
+        meta=p.meta(exp),
         board=p.board(),
         exp=exp,
         tag=PIPELINE_TAG.get((spec.modality, spec.task_type), "other"),

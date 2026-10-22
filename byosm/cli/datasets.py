@@ -36,5 +36,5 @@ def check_data(
     if report["verdict"] == "fix":
         raise typer.Exit(1)
     spec.data.local_dir = str(file.resolve())
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     log(f"{name} now trains on {file}; next: `byosm auto {name}`")

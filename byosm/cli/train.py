@@ -34,10 +34,10 @@ def data(name: str, exp: str | None = None, force: bool = False) -> None:
     """Only build (or show) the dataset an experiment would train on."""
     from ..config import load_config
     from ..data.store import Dataset
-    from ..pipeline import ensure_data, exp_spec
+    from ..pipeline import ensure_data
 
     p, base = _spec(name)
-    spec = exp_spec(p, exp) if exp else base
+    spec = p.exp_spec(exp) if exp else base
     dd = ensure_data(p, spec, load_config(p.ws), log, force)
     log(json.dumps({s: v["n"] for s, v in Dataset(dd).summary().items()}))
 
@@ -144,21 +144,17 @@ def exp_create(
     import yaml
 
     from ..improve import apply_ops
-    from ..spec import TaskSpec
 
     p, spec = _spec(name)
     if base:
-        spec = TaskSpec.load(p.exp_dir(base) / "spec.yaml")
+        spec = p.exp_spec(base)
     ops = []
     for kv in set_:
         k, v = kv.split("=", 1)
         ops.append({"op": "set", "path": k, "value": yaml.safe_load(v)})
     created = apply_ops(spec, ops)
-    d = p.exp_dir(exp)
-    d.mkdir(parents=True, exist_ok=True)
-    created.save(d / "spec.yaml")
-    proposal = {"parent": base or "spec.yaml", "applied": [{"id": "manual", "why": " ".join(set_), "ops": ops}]}
-    (d / "proposal.json").write_text(json.dumps(proposal, indent=2))
+    proposal = {"parent": base, "applied": [{"id": "manual", "why": " ".join(set_), "ops": ops}]}
+    p.save_experiment(exp, spec=created, proposal=proposal)
     log(f"created {name}/{exp} ({', '.join(set_)}); data key {created.data_key()} -> byosm build {name} --exp {exp}")
     if run:
         from ..pipeline import build

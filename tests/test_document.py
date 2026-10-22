@@ -3,11 +3,11 @@ import random
 import pytest
 from PIL import Image
 
-from byosm.config import Project
 from byosm.data.store import Dataset, record
 from byosm.export import export
 from byosm.modalities.document import OCRStore
 from byosm.pipeline import build
+from byosm.project import Project
 from byosm.spec import DocumentCfg, EvalSuite, Label, TaskSpec, TrainCfg
 
 
@@ -63,7 +63,7 @@ def write_corpus(dd, make_pdf):
 def test_document_fused_pipeline_and_export(ws, tiny_bert, load_runtime, make_pdf):
     p = Project("doc").ensure()
     spec = doc_spec(tiny_bert)
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     dd = p.data_dir_for(spec)
     write_corpus(dd, make_pdf)
     build("doc", log=quiet)

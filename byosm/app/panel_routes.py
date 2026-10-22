@@ -8,7 +8,6 @@ from pydantic import BaseModel
 
 from ..data.panel import load_panel
 from ..data.review import load_review, reviewed_labels, save_review
-from ..spec import TaskSpec
 from .catalog import project
 from .errors import missing
 
@@ -20,7 +19,7 @@ class Review(BaseModel):
 
 def panel(ws: Path, name: str) -> dict[str, Any]:
     p = project(ws, name)
-    spec = TaskSpec.load(p.spec_path)
+    spec = p.spec()
     dd = p.data_dir_for(spec)
     human = reviewed_labels(p.reviewed_path)
     teachers = spec.data.teachers
@@ -45,7 +44,7 @@ def panel(ws: Path, name: str) -> dict[str, Any]:
 
 def review(ws: Path, name: str, body: Review) -> dict[str, Any]:
     p = project(ws, name)
-    if body.label not in TaskSpec.load(p.spec_path).label_index:
+    if body.label not in p.spec().label_index:
         raise ValueError(f"{body.label!r} is not one of {name}'s labels")
     return save_review(p.reviewed_path, body.input, body.label)
 

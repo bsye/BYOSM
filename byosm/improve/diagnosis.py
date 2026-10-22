@@ -1,23 +1,21 @@
 from __future__ import annotations
 
-import json
 from collections import Counter
 from typing import Any
 
-from ..config import Project
 from ..data.store import SPLITS, read
+from ..project import Project
 from ..spec import TaskSpec
 
 
 def _confusions(p: Project, exp: str, suite: str, spec: TaskSpec, k: int = 6) -> list[tuple[str, str, int]]:
-    f = p.exp_dir(exp) / "results" / f"{suite}.json"
-    cm = json.loads(f.read_text())["metrics"].get("confusion") if f.exists() else None
+    r = p.result(exp, suite)
+    cm = r["metrics"].get("confusion") if r else None
     names = spec.label_names
     if cm:
         pairs = [(names[i], names[j], c) for i, row in enumerate(cm) for j, c in enumerate(row) if i != j and c]
     else:
-        ef = p.exp_dir(exp) / "dev_errors.json"
-        errs = json.loads(ef.read_text()) if ef.exists() else []
+        errs = (p.experiment(exp) or {}).get("errors") or []
         counts = Counter((e["gold"], e["pred"]) for e in errs if e.get("gold") != "frames")
         pairs = [(g, pr, c) for (g, pr), c in counts.items()]
     return sorted(pairs, key=lambda t: -t[2])[:k]
@@ -70,11 +68,11 @@ def training_summary(meta: dict, spec: TaskSpec) -> dict[str, Any]:
 
 def diagnose(name: str) -> dict[str, Any]:
     p = Project(name)
-    base = TaskSpec.load(p.spec_path)
+    base = p.spec()
     board = p.board()
     exp = scored_experiment(p, board)
-    spec = TaskSpec.load(p.exp_dir(exp) / "spec.yaml")
-    meta = json.loads((p.exp_dir(exp) / "meta.json").read_text())
+    spec = p.exp_spec(exp)
+    meta = p.meta(exp)
     binary = spec.positive_label is not None or len(spec.labels) == 2
     suites = {s: _suite_summary(p, exp, spec, board, s, r, binary) for s, r in board[exp].items()}
     head = {

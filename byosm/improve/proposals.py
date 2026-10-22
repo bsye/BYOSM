@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 
-from ..config import Project
 from ..events import stage
-from ..spec import TaskSpec
+from ..project import Project
 from .analyst import llm_proposals
 from .cost import estimate
 from .diagnosis import diagnose
 from .paths import apply_ops
 from .registry import rule_proposals, unique
 
-PROPOSALS_FILE = "proposals.json"
+PROPOSALS = "proposals"
 
 
 @stage("Find what to try next")
@@ -22,7 +20,7 @@ def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print)
     for pr in props:
         pr["cost"] = estimate(dg, pr)
     p = Project(name)
-    (p.root / PROPOSALS_FILE).write_text(json.dumps({"from": dg["experiment"], "proposals": props}, indent=2))
+    p.save_report(PROPOSALS, {"from": dg["experiment"], "proposals": props})
     return dg, props
 
 
@@ -30,15 +28,12 @@ def apply(name: str, ids: list[str], exp: str | None = None) -> str:
     from ..pipeline import next_exp
 
     p = Project(name)
-    saved = json.loads((p.root / PROPOSALS_FILE).read_text())
+    saved = p.report(PROPOSALS) or {"proposals": []}
     chosen = [pr for pr in saved["proposals"] if pr["id"] in ids]
     if len(chosen) != len(ids):
         raise KeyError(f"unknown proposal ids: {set(ids) - {pr['id'] for pr in chosen}}")
     parent = saved["from"]
-    spec = apply_ops(TaskSpec.load(p.exp_dir(parent) / "spec.yaml"), [o for pr in chosen for o in pr["ops"]])
+    spec = apply_ops(p.exp_spec(parent), [o for pr in chosen for o in pr["ops"]])
     exp = exp or next_exp(p)
-    ed = p.exp_dir(exp)
-    ed.mkdir(parents=True, exist_ok=True)
-    spec.save(ed / "spec.yaml")
-    (ed / "proposal.json").write_text(json.dumps({"parent": parent, "applied": chosen}, indent=2))
+    p.save_experiment(exp, spec=spec, proposal={"parent": parent, "applied": chosen})
     return exp

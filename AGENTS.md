@@ -29,7 +29,7 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 
 ## Evidence
 
-- Every number in the README, a model card or a commit comes from a results file under `specialists/` and is
+- Every number in the README, a model card or a commit comes from the database (`byosm db url`) and is
   regenerated, not typed by hand (`byosm report`).
 - Benchmarks are public and industry-standard (AVA-Speech, Banking77, RVL-CDIP). Baselines are scored by the same code.
 - Selection (promotion, autopilot keep/revert) decides on the calib split; test is only reported, with a 95% CI and a
@@ -75,6 +75,6 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 ```bash
 .venv/bin/python -m pytest -q tests     # tests
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
-.venv/bin/byosm report                  # regenerate the README result tables from specialists/*/board.json
+.venv/bin/byosm report                  # regenerate the README result tables from the database
 .venv/bin/byosm report --check          # fails if the README result tables are stale
 ```

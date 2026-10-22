@@ -1,10 +1,8 @@
-import json
-
 import pytest
 
-from byosm.config import Project
 from byosm.data.store import ShingleIndex, write
 from byosm.evals import overfit, overfit_checks
+from byosm.project import Project
 from byosm.spec import TaskSpec
 from byosm.spec.sections import EvalSuite, Label, Objective
 
@@ -49,7 +47,7 @@ def toy(ws, monkeypatch):
         evals=[EvalSuite(name="bench", kind="local", primary=True)],
     )
     spec.train.epochs = len(HISTORY)
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     dd = p.data_dir_for(spec)
     write(dd / "train.jsonl", [{"id": str(i), "input": t, "label": "yes"} for i, t in enumerate(TRAIN_TEXTS)])
     write(dd / "dev.jsonl", [{"id": "d", "input": "dev row", "label": "yes"}])
@@ -58,21 +56,21 @@ def toy(ws, monkeypatch):
     write(p.evals_dir / "bench" / "calib.jsonl", test[:4])
     for exp in ("v1", "v2"):
         p.exp_dir(exp).mkdir(parents=True)
-        spec.save(p.exp_dir(exp) / "spec.yaml")
+        p.save_experiment(exp, spec=spec)
     history = [{"epoch": i, "loss": loss, "dev_objective": d} for i, (loss, d) in enumerate(HISTORY)]
     meta = {"dev": {"objective": 0.85}, "best_epoch": 2, "history": history}
-    (p.exp_dir("v1") / "meta.json").write_text(json.dumps(meta))
-    (p.exp_dir("v2") / "meta.json").write_text(json.dumps(meta))
+    p.save_experiment("v1", meta=meta)
+    p.save_experiment("v2", meta=meta)
     board = {
         "v1": {"bench": _result([True, True] + [True] * 4 + [False] * 4, [True] * 4, {"lo": 0.55, "hi": 0.65})},
         "v2": {"bench": _result([False] * 10, [False] * 4, {"lo": 0.0, "hi": 0.0})},
     }
-    p.board_path.write_text(json.dumps(board))
+    p.save_board(board)
     p.promote("v1")
     scorer = Scorer()
     monkeypatch.setattr(overfit, "score", scorer)
     monkeypatch.setattr(overfit, "experiment_predictor", lambda p, base, exp: exp)
-    return p, scorer, TaskSpec.load(p.spec_path)
+    return p, scorer, p.spec()
 
 
 def _by_check(report):
@@ -91,7 +89,7 @@ def test_the_check_finds_memorisation_leakage_and_calib_overuse(toy):
     assert found["overlap"]["severity"] == "fail" and (leak["exact"], leak["near"]) == (2, 0)
     assert leak["test_without_overlap"] == 0.5 and leak["same_label"] == 2
     assert found["curve"]["severity"] == "warn" and "still rising" in found["curve"]["explanation"]
-    assert json.loads(p.overfit_path.read_text())["verdict"] == "fail"
+    assert p.report("overfit")["verdict"] == "fail"
 
 
 def test_the_check_is_cached_and_reuses_the_train_score_when_only_the_board_changes(toy):
@@ -101,10 +99,10 @@ def test_the_check_is_cached_and_reuses_the_train_score_when_only_the_board_chan
     assert scorer.calls == 1
     board = p.board()
     board["v2"]["bench"]["calib_objective"] = 0.99
-    p.board_path.write_text(json.dumps(board))
+    p.save_board(board)
     again = overfit.check("toy", ws=p.ws, log=lambda m: None)
     assert scorer.calls == 1 and _by_check(again)["selection"]["numbers"]["median_others"] == 0.99
-    (p.exp_dir("v1") / "meta.json").write_text(json.dumps({**p.meta("v1"), "train_seconds": 1}))
+    p.save_experiment("v1", meta={**p.meta("v1"), "train_seconds": 1})
     overfit.check("toy", ws=p.ws, log=lambda m: None)
     assert scorer.calls == 2
 

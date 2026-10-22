@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 from rich.table import Table
 
-from ..config import Project, write_default_config
+from ..config import write_default_config
+from ..project import Project
 from .base import _spec, app, baseline_app, console, log, suite_app
 
 if TYPE_CHECKING:
@@ -41,9 +42,9 @@ def new(
     elif spec.modality == "text":
         spec.baselines = ["llm"]
     p.ensure()
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     _show_spec(spec)
-    log(f"\nspec: {p.spec_path}\nnext: review it, optionally `byosm suite add {name} ...`, then `byosm build {name}`")
+    log(f"\nnext: review it, optionally `byosm suite add {name} ...`, then `byosm build {name}`")
 
 
 def _show_spec(spec: TaskSpec) -> None:
@@ -119,7 +120,7 @@ def _append_suite(p: Project, spec: TaskSpec, es: EvalSuite) -> None:
         for e in spec.evals:
             e.primary = False
     spec.evals.append(es)
-    spec.save(p.spec_path)
+    p.save_spec(spec)
 
 
 @suite_app.command("ls")
@@ -145,7 +146,7 @@ def baseline_add(
         raise typer.BadParameter(str(e)) from e
     if baseline not in spec.baselines:
         spec.baselines.append(baseline)
-        spec.save(p.spec_path)
+        p.save_spec(spec)
     log(f"{name} baselines: {spec.baselines}")
     if score:
         from .. import evals

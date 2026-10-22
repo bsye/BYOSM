@@ -8,8 +8,8 @@ from typing import Any
 
 import numpy as np
 
-from ..config import Project
 from ..modalities import get_modality
+from ..project import Project
 from ..runtime import Specialist
 from .bundle import load_runtime
 

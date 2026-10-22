@@ -5,8 +5,8 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-from ..config import Project
 from ..export.bundle import RT_SOURCE
+from ..project import Project
 from ..rt import NODES_DIR, SYSTEM_MANIFEST
 from .spec import SystemProject
 

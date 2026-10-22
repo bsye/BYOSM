@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from ..config import Project
 from ..format import fmt, interval
+from ..project import Project
 
 STALE = "†"
 

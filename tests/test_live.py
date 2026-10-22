@@ -1,12 +1,12 @@
 import jwt
 import pytest
-import yaml
 from fastapi.testclient import TestClient
 
 from byosm import live
 from byosm.app import create_app
 from byosm.app.live_routes import reachable
-from byosm.config import Project
+from byosm.project import Project
+from byosm.spec import TaskSpec
 
 AUTH = {"Authorization": "Bearer t"}
 
@@ -29,7 +29,7 @@ def test_a_closed_port_is_not_reachable():
 def audio(ws):
     p = Project("mic").ensure()
     spec = {"name": "mic", "description": "speech", "modality": "audio", "task_type": "frame"}
-    p.spec_path.write_text(yaml.safe_dump({**spec, "labels": [{"name": "speech", "definition": "talking"}]}))
+    p.save_spec(TaskSpec.model_validate({**spec, "labels": [{"name": "speech", "definition": "talking"}]}))
     return p
 
 

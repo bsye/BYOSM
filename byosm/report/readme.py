@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..config import Project, list_projects
+from ..project import Project, list_projects
 from .seeds import SEEDS, seeds_block
 from .systems import SYSTEM, reported_systems, system_block
 from .tables import SUMMARY_HEAD, specialist_block, summary_row

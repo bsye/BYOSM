@@ -13,7 +13,7 @@ def report(
     readme: Annotated[Path, typer.Option(help="file holding the <!-- report:<name> --> blocks")] = Path("README.md"),
     check: Annotated[bool, typer.Option("--check", help="write nothing; exit 1 if any block is out of date")] = False,
 ) -> None:
-    """Regenerate the README result tables from specialists/*/board.json, between <!-- report:<name> --> markers."""
+    """Regenerate the README result tables from the results database, between <!-- report:<name> --> markers."""
     from ..report import sync
 
     current, missing, extra = sync(readme, check)

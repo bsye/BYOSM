@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 from byosm.cli import app
 from byosm.export import export
 from byosm.export.bundle import BUNDLE_FORMAT, BUNDLE_MARKER, clear_out_dir
+from byosm.project import Project
 
 
 def test_export_refuses_a_directory_that_is_not_a_bundle(ws):
@@ -72,9 +73,14 @@ def _bundle(out):
 def test_export_with_a_bad_experiment_keeps_the_previous_bundle(ws):
     out = ws / "export"
     _bundle(out)
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(KeyError):
         export("anything", exp="does-not-exist", out=out, log=lambda _: None)
     assert (out / "model.onnx").read_text() == "good"
+
+
+def _stub_project(monkeypatch):
+    for method in ("spec", "exp_spec", "meta"):
+        monkeypatch.setattr(Project, method, lambda *_: None)
 
 
 def test_an_interrupted_export_can_be_redone(ws, monkeypatch):
@@ -88,7 +94,7 @@ def test_an_interrupted_export_can_be_redone(ws, monkeypatch):
         return {}, [], None, {}
 
     monkeypatch.setattr(ex, "Specialist", lambda *_: object())
-    monkeypatch.setattr(ex.TaskSpec, "load", lambda _: None)
+    _stub_project(monkeypatch)
     monkeypatch.setattr(ex, "_calibrated_decision", lambda *_: ({}, {}))
     monkeypatch.setattr(ex, "frontend_kind", lambda _: "text")
     monkeypatch.setattr(ex, "build_frontend", frontend)
@@ -111,7 +117,7 @@ def _stub_export(monkeypatch, failing_step):
         return {}, [], None, {}
 
     monkeypatch.setattr(ex, "Specialist", lambda *_: SimpleNamespace(spec=None))
-    monkeypatch.setattr(ex.TaskSpec, "load", lambda _: None)
+    _stub_project(monkeypatch)
     monkeypatch.setattr(ex, "_calibrated_decision", lambda *_: ({}, {}))
     monkeypatch.setattr(ex, "frontend_kind", lambda _: "text")
     monkeypatch.setattr(ex, "build_frontend", frontend)
@@ -190,8 +196,8 @@ def test_containerize_builds_the_export_folder_and_refuses_an_unexported_special
 
     root = ws / "specialists" / "q"
     root.mkdir(parents=True)
-    TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")]).save(
-        root / "spec.yaml"
+    Project("q", ws).save_spec(
+        TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
     )
     assert "export first" in CliRunner().invoke(app, ["containerize", "q"]).output
     (root / "export").mkdir()

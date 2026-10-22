@@ -3,6 +3,8 @@ from __future__ import annotations
 from ..data.budget import fit_line, load_fit
 from .facts import CardFacts
 
+CARD_NOTES = "card-notes"
+
 SYNTH_LINE = "- LLM-written examples, double-labelled (generator + blind judge); held-out sets from an independent evaluator prompt\n"
 STREAM_SECTION = """
 ### Streaming
@@ -111,8 +113,8 @@ def pip_packages(f: CardFacts) -> str:
 
 
 def notes(f: CardFacts) -> str:
-    notes_f = f.p.root / "CARD.md"
-    return f"\n## Notes\n\n{notes_f.read_text().strip()}\n" if notes_f.exists() else ""
+    text = f.p.report(CARD_NOTES)
+    return f"\n## Notes\n\n{text.strip()}\n" if text else ""
 
 
 def _precision_part(precision: str) -> str:

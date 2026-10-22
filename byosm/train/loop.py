@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import random
 import time
 from collections.abc import Callable
@@ -130,7 +131,7 @@ def _build(spec: TaskSpec, mod: Modality, dev: str, log: Callable[[str], None]) 
 @stage("Train")
 def fit(
     spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None] = print, seed: int | None = None
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], list[Any]]:
     seed = spec.train.seed if seed is None else seed
     torch.manual_seed(seed)
     rng = random.Random(seed)
@@ -165,5 +166,5 @@ def fit(
         "n_test_folded": n_folded,
     }
     meta = build_meta(spec, best, history, jepa_hist, n_params, dev, round(time.time() - t0, 1), counts)
-    save_run(spec, run_dir, best, meta)
-    return meta
+    save_run(run_dir, best)
+    return meta, json.loads(json.dumps(best["dev"]["errors"], default=str))

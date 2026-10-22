@@ -26,15 +26,14 @@ def reachable(url: str) -> bool:
 
 
 def _session(ws: Path, name: str, runner: Any) -> dict[str, Any]:
-    from ..config import Project
     from ..export.bundle import exported_bundle
     from ..live import settings, token
-    from ..spec import TaskSpec
+    from ..project import Project
 
     p = Project(name, ws)
     if not p.exists():
         raise KeyError(f"no specialist {name!r}")
-    if TaskSpec.load(p.spec_path).modality != "audio":
+    if p.spec().modality != "audio":
         raise ValueError("live microphone tests are for audio specialists")
     exported_bundle(p.root, name)
     s = settings(ws)

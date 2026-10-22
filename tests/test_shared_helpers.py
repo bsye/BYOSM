@@ -1,6 +1,4 @@
-import json
-
-from byosm.config import Project
+from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 from byosm.text import normalize
 
@@ -26,11 +24,14 @@ def test_label_index_follows_label_order():
 
 
 def test_board_is_empty_until_written(tmp_path):
-    p = Project("b", tmp_path).ensure()
-    assert p.board_path == p.root / "board.json"
-    assert not p.board_path.exists() and p.board() == {}
-    p.board_path.write_text(json.dumps({"v1": {"builtin": {"objective": 0.5}}}))
-    assert p.board() == {"v1": {"builtin": {"objective": 0.5}}}
+    p = Project("b", tmp_path)
+    p.save_spec(TaskSpec(name="b", description="b", modality="text", labels=[Label(name="a", definition="a")]))
+    assert p.board() == {}
+    p.save_experiment("v1", meta={})
+    p.save_board(
+        {"v1": {"builtin": {"kind": "experiment", "objective": 0.5}}, "gone": {"builtin": {"kind": "baseline"}}}
+    )
+    assert p.board() == {"v1": {"builtin": {"kind": "experiment", "objective": 0.5}}}
 
 
 def test_search_terms_drop_filler_words_and_keep_the_id():

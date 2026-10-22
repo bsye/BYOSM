@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from byosm.app import create_app, data_routes
 from byosm.data.request import REQUEST_DIR
+from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 
 TOKEN = "t0ken"
@@ -16,7 +17,7 @@ TABLE = b"text,label,split\nhello,a,\n"
 def client(ws):
     spec = TaskSpec(name="q", description="is it a question", modality="text", labels=[Label(name="a", definition="")])
     (ws / "specialists" / "q").mkdir(parents=True)
-    spec.save(ws / "specialists" / "q" / "spec.yaml")
+    Project("q", ws).save_spec(spec)
     with TestClient(create_app(ws, TOKEN), base_url="http://127.0.0.1") as c:
         yield c
 

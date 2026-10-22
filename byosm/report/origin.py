@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from ..config import Project
 from ..hub.facts import lineage
+from ..project import Project
 
 MANUAL = "manual"
 

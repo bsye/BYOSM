@@ -6,7 +6,8 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
-from ..config import PUBLISH_LICENSE, Project, find_workspace, list_projects
+from ..config import PUBLISH_LICENSE, find_workspace
+from ..project import Project, list_projects
 from .base import _spec, app, console, log
 
 MODEL_DOCKERFILE = Path(__file__).resolve().parents[2] / "docker" / "model.Dockerfile"
@@ -106,11 +107,10 @@ def ls() -> None:
     for c in ("name", "modality", "backbone", "experiments", "promoted", "exported"):
         t.add_column(c)
     from ..export.bundle import is_exported
-    from ..spec import TaskSpec
 
     for n in list_projects():
         p = Project(n)
-        s = TaskSpec.load(p.spec_path)
+        s = p.spec()
         exported = "yes" if is_exported(p.root / "export") else "-"
         t.add_row(n, f"{s.modality}/{s.task_type}", s.backbone, ", ".join(p.experiments()), p.promoted or "-", exported)
     console.print(t)

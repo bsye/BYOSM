@@ -1,12 +1,10 @@
-import json
-
 import pytest
 
 from byosm import export, hub, improve
 from byosm.auto import autopilot, loop
 from byosm.auto.state import Log, Session
-from byosm.config import Project
 from byosm.improve import proposals
+from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 
 LOST = {"won": False, "exp": "v1", "ours": 0.5, "suite": "builtin", "best_baseline": ("hf:x", 0.9)}
@@ -20,10 +18,10 @@ def make_project(ws):
         modality="text",
         labels=[Label(name="a", definition=""), Label(name="b", definition="")],
     )
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     p.exp_dir("v1").mkdir()
-    spec.save(p.exp_dir("v1") / "spec.yaml")
-    (p.exp_dir("v1") / "meta.json").write_text(json.dumps({"params": 50e6}))
+    p.save_experiment("v1", spec=spec)
+    p.save_experiment("v1", meta={"params": 50e6})
     p.promote("v1")
     return p, spec
 
@@ -44,7 +42,7 @@ def test_duplicate_llm_ids_are_dropped_and_apply_works(ws, monkeypatch):
     _, props = improve.propose("t", log=lambda m: None)
     assert [pr["why"] for pr in props] == ["rule", "other"]
     exp = improve.apply("t", ["llm-a"])
-    assert TaskSpec.load(p.exp_dir(exp) / "spec.yaml").train.epochs == 3
+    assert p.exp_spec(exp).train.epochs == 3
 
 
 def test_proposal_whose_ops_do_not_apply_is_skipped(ws, monkeypatch):
@@ -74,7 +72,7 @@ def test_only_a_winner_is_distilled_and_published(ws, monkeypatch, won):
     monkeypatch.setattr(hub, "publish", lambda *a, **k: calls.append("publish"))
     monkeypatch.setattr(autopilot, "_report", lambda p, decisions, final: None)
     autopilot.run("t", publish="me/t", echo=lambda m: None)
-    decisions = json.loads((p.root / "auto.json").read_text())["decisions"]
+    decisions = p.report("autopilot")["decisions"]
     assert calls == (["distill", "export", "publish"] if won else ["export"])
     skipped = {d["step"] for d in decisions if "did not win" in d["why"]}
     assert skipped == (set() if won else {"distill", "export", "publish"})
@@ -102,7 +100,7 @@ def test_student_is_kept_only_if_it_still_wins(ws, monkeypatch, student_wins):
 
     def create(name, teacher):
         p.exp_dir("v2").mkdir()
-        (p.exp_dir("v2") / "meta.json").write_text(json.dumps({"params": 5e6}))
+        p.save_experiment("v2", meta={"params": 5e6})
         return "v2"
 
     monkeypatch.setattr(distill, "create", create)

@@ -4,9 +4,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from byosm.app import create_app
-from byosm.config import Project
 from byosm.data.panel import PANEL_FILE
 from byosm.data.review import reviewed_labels, write_review
+from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 
 TOKEN = "t0ken"
@@ -26,7 +26,7 @@ def client(ws):
     spec.data.teachers = ["llm", "jev"]
     p = Project("topic", ws)
     p.root.mkdir(parents=True)
-    spec.save(p.spec_path)
+    p.save_spec(spec)
     dd = p.data_dir_for(spec)
     dd.mkdir(parents=True)
     (dd / PANEL_FILE).write_text(json.dumps(SUMMARY))

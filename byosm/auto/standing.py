@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..config import Project
+from ..project import Project
 
 
 def _baselines(board: dict, prim: str, field: str | None = None) -> dict[str, Any]:
@@ -30,10 +30,9 @@ def _test_view(base: Any, board: dict, prim: str, mine: dict | None, best_bl: tu
 
 def standing(name: str, margin: float) -> dict[str, Any]:
     from .. import evals
-    from ..spec import TaskSpec
 
     p = Project(name)
-    base = TaskSpec.load(p.spec_path)
+    base = p.spec()
     prim = base.primary_suite()
     b = p.board()
     mine = b.get(p.promoted or "", {}).get(prim)

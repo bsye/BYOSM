@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from ..config import free_name
 from ..events import stage
 from ..llm import get_llm
+from ..project import free_name
 from ..text import slug
 from .backbones import BACKBONES, DEFAULT_BACKBONE
 from .prompt import _SPEC_SCHEMA, _SPEC_SYSTEM
