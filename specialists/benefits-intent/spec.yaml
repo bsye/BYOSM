@@ -261,6 +261,14 @@ evals:
   primary: true
   written_by: null
   judged_by: null
+- name: llm-written
+  kind: generated
+  source: null
+  path: null
+  max_items: 400
+  primary: false
+  written_by: qwen3.8:27b
+  judged_by: qwen3.8:27b
 baselines:
 - jev
 - llm
