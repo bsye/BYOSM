@@ -1,67 +1,69 @@
-import { TrendingDown, TrendingUp } from "lucide-react"
 import type { Summary } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useLive } from "@/events"
-import { rivalName } from "@/format"
+import type { Health, Healths } from "./HealthList"
 
 const PRIMARY = 0
 
-type Stat = { label: string; value: string; badge?: { up?: boolean; text: string }; line: string }
+type Stat = { label: string; value: string; badge?: string; line: string }
 
-function stats(items: Summary[], running: number): Stat[] {
-  const scored = items.filter((s) => s.score != null && s.rival?.score != null)
-  const margins = scored.map((s) => ({ name: s.name, rival: s.rival?.name, d: (s.score ?? 0) - (s.rival?.score ?? 0) }))
-  const ahead = margins.filter((m) => m.d > 0).length
-  const best = [...margins].sort((a, b) => b.d - a.d)[0]
+function counted<T>(xs: T[]): [T, number][] {
+  const c = new Map<T, number>()
+  for (const x of xs) c.set(x, (c.get(x) ?? 0) + 1)
+  return [...c.entries()].sort((a, b) => b[1] - a[1])
+}
+
+function stats(items: Summary[], healths: Healths): Stat[] {
+  const known = items.flatMap((s) => (healths[s.name] ? [{ s, h: healths[s.name] as Health }] : []))
+  const pending = items.filter((s) => healths[s.name] === undefined).length
+  const ready = known.filter((k) => k.h.ready).length
+  const mean = known.length ? Math.round(known.reduce((n, k) => n + k.h.score, 0) / known.length) : null
+  const close = known.filter((k) => !k.h.ready).sort((a, b) => b.h.score - a.h.score)[0]
+  const [blocker, blocks] = counted(known.flatMap((k) => k.h.blockers))[0] ?? [null, 0]
   return [
     {
-      label: "Ahead of the best rival",
-      value: `${ahead} / ${scored.length}`,
-      badge: { text: `${Math.round((ahead / Math.max(1, scored.length)) * 100)}%` },
-      line: "public benchmarks, test",
+      label: "Ready for production",
+      value: `${ready} / ${items.length}`,
+      badge: items.length ? `${Math.round((ready / items.length) * 100)}%` : undefined,
+      line: pending ? `checking ${pending} more` : `${items.length - ready} need work`,
     },
     {
-      label: "Biggest lead",
-      value: best ? `+${best.d.toFixed(3)}` : "-",
-      line: best ? `${best.name} vs ${rivalName(best.rival)}` : "nothing scored yet",
+      label: "Average health",
+      value: mean == null ? "-" : String(mean),
+      badge: mean == null ? undefined : `ready at ${known[0].h.ready_score}`,
+      line: `across ${known.length} models`,
     },
     {
-      label: "Specialists",
-      value: String(items.length),
-      line: `${items.filter((s) => s.exported).length} exported`,
+      label: "Closest to ready",
+      value: close ? String(close.h.score) : "-",
+      line: close ? `${close.s.title || close.s.name}, blocked by ${close.h.blockers[0] ?? "a low score"}` : "every model is ready",
     },
     {
-      label: "Running jobs",
-      value: String(running),
-      line: running ? "streaming live" : "idle",
+      label: "Top blocker",
+      value: blocker ?? "None",
+      line: blocker ? `holds back ${blocks} of ${known.length} models` : "nothing blocks production",
     },
   ]
 }
 
-export function SectionCards({ items }: { items: Summary[] }) {
-  const running = Object.values(useLive().jobs).filter((j) => j.status === "running" || j.status === "queued").length
+export function SectionCards({ items, healths }: { items: Summary[]; healths: Healths }) {
   return (
-    <div className="grid grid-cols-2 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
-      {stats(items, running).map((s, i) => (
+    <div className="grid auto-rows-fr grid-cols-2 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+      {stats(items, healths).map((s, i) => (
         <Card key={s.label} className="@container/card h-full">
           <CardHeader>
             <CardDescription className="line-clamp-1">{s.label}</CardDescription>
-            <CardTitle className={i === PRIMARY ? "text-3xl font-semibold tabular-nums @[250px]/card:text-4xl" : "text-2xl font-semibold tabular-nums"}>
+            <CardTitle className={i === PRIMARY ? "text-3xl font-semibold tabular-nums @[250px]/card:text-4xl" : "line-clamp-1 text-2xl font-semibold tabular-nums"}>
               {s.value}
             </CardTitle>
             {s.badge && (
               <CardAction>
-                <Badge variant="outline">
-                  {s.badge.up === true && <TrendingUp />}
-                  {s.badge.up === false && <TrendingDown />}
-                  {s.badge.text}
-                </Badge>
+                <Badge variant="outline">{s.badge}</Badge>
               </CardAction>
             )}
           </CardHeader>
-          <CardFooter className="mt-auto hidden flex-col items-start gap-1 text-sm @xl/main:flex">
-            <div className="text-muted-foreground line-clamp-1">{s.line}</div>
+          <CardFooter className="text-muted-foreground mt-auto text-sm">
+            <span className="line-clamp-1">{s.line}</span>
           </CardFooter>
         </Card>
       ))}

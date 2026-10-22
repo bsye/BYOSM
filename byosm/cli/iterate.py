@@ -5,6 +5,7 @@ from typing import Annotated
 
 import typer
 
+from ..auto.ready import BUDGET_H, MAX_ROUNDS
 from ..config import PUBLISH_LICENSE
 from ..project import Project
 from .base import _spec, app, log
@@ -172,3 +173,17 @@ def next_(
     for s in steps if run_all else []:
         with stage(s["title"]):
             app(s["args"], standalone_mode=False)
+
+
+@app.command("ready")
+def ready(
+    name: str,
+    rounds: Annotated[int, typer.Option(help="most steps to run")] = MAX_ROUNDS,
+    budget: Annotated[float, typer.Option(help="wall-clock budget in hours")] = BUDGET_H,
+) -> None:
+    """Run the suggested next steps, one after the other, until the specialist's health says it is ready for
+    production, no untried step is left, or the budget runs out."""
+    from ..auto.ready import until_ready
+
+    out = until_ready(name, lambda args: app(args, standalone_mode=False), log, rounds, budget)
+    log(f"{name}: {'ready for production' if out['ready'] else 'not ready, ' + out['stop']}")
