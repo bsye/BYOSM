@@ -1,0 +1,175 @@
+name: card-spend
+description: Categorise a card or bank transaction description into one of 17 spending categories
+modality: text
+task_type: classify
+summary: Categorise a card or bank transaction description into one of 17 spending categories
+input_description: ''
+labels:
+- name: education
+  definition: Education
+- name: entertainment
+  definition: Entertainment
+- name: fees
+  definition: Fees
+- name: groceries
+  definition: Groceries
+- name: healthcare
+  definition: Healthcare
+- name: income
+  definition: Income
+- name: insurance
+  definition: Insurance
+- name: mortgage
+  definition: Mortgage
+- name: personal_care
+  definition: Personal Care
+- name: rent
+  definition: Rent
+- name: restaurants
+  definition: Restaurants
+- name: shopping
+  definition: Shopping
+- name: subscription
+  definition: Subscription
+- name: transfer
+  definition: Transfer
+- name: transportation
+  definition: Transportation
+- name: travel
+  definition: Travel
+- name: utilities
+  definition: Utilities
+positive_label: null
+objective:
+  metric: accuracy
+  target: 0.9
+  constraint: 0.99
+languages:
+- en
+diversity_axes: []
+hard_cases: []
+backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+latency_budget_ms: 10.0
+frame_hop_ms: 10.0
+data:
+  synthetic: false
+  train_size: 3000
+  dev_size: 400
+  test_size: 600
+  per_call: 25
+  judge: true
+  hf_queries: []
+  hf_sources:
+  - dataset: DoDataThings/us-bank-transaction-categories-v2
+    role: labeled
+    format: rows
+    partition: all
+    max_files: 40
+    sampling: stream
+    per_label: 100
+    config: null
+    split: train
+    input_column: description
+    label_column: category
+    label_map:
+    - - Education
+      - education
+    - - Entertainment
+      - entertainment
+    - - Fees
+      - fees
+    - - Groceries
+      - groceries
+    - - Healthcare
+      - healthcare
+    - - Income
+      - income
+    - - Insurance
+      - insurance
+    - - Mortgage
+      - mortgage
+    - - Personal Care
+      - personal_care
+    - - Rent
+      - rent
+    - - Restaurants
+      - restaurants
+    - - Shopping
+      - shopping
+    - - Subscription
+      - subscription
+    - - Transfer
+      - transfer
+    - - Transportation
+      - transportation
+    - - Travel
+      - travel
+    - - Utilities
+      - utilities
+    max_rows: 68000
+  local_dir: null
+  teachers: []
+  teacher_rows: 2000
+  audio:
+    sample_rate: 16000
+    clip_seconds: 4.0
+    snr_db:
+    - -5.0
+    - 30.0
+    max_events: 3
+    label_by_energy: true
+    fill_ms: 60
+train:
+  pretrain_steps: 200
+  pretrain_lambda: 0.05
+  epochs: 5
+  batch_size: 32
+  lr_backbone: 5.0e-05
+  lr_head: 0.001
+  freeze_backbone: false
+  max_len: 128
+  refine_rounds: 2
+  refine_examples: 300
+  pool: mean
+  layer_decay_floor: 0.5
+  probe_epochs: 0
+  ema: true
+  seed: 0
+  holdout_test: keep
+  precision: auto
+  distill_from: null
+  distill_alpha: 0.3
+  distill_temperature: 2.0
+  distill_unlabeled: 20000
+  prefix_rate: 0.0
+decision:
+  kind: threshold
+  threshold: null
+  deactivation_offset: 0.15
+  min_on_ms: 50.0
+  min_off_ms: 550.0
+  smooth_alpha_per_32ms: 0.35
+document:
+  route: fused
+  text_backbone: hf:sentence-transformers/all-MiniLM-L6-v2
+  image_backbone: hf:facebook/dinov2-small
+  image_pool: mean
+  max_pages: 8
+  max_len: 256
+  image_size: 224
+  dpi: 100
+  ocr: auto
+  dim: 256
+  modality_dropout: 0.2
+evals:
+- name: builtin
+  kind: builtin
+  source: null
+  path: null
+  max_items: 2000
+  primary: true
+  written_by: null
+  judged_by: null
+baselines:
+- jev
+search: {}
