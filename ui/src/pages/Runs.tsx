@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { params, score } from "@/format"
+import { params, score, seconds } from "@/format"
 
 const COLORS = 5
 const DEFAULT_SHOWN = 4
@@ -84,7 +84,7 @@ export function Runs({ d }: { d: Detail }) {
                   <TableCell className="tabular-nums">{score(d.board[r.name]?.[d.primary_suite]?.objective)}</TableCell>
                   <TableCell>{params(r.params)}</TableCell>
                   <TableCell>{r.n_train ?? "-"}</TableCell>
-                  <TableCell>{r.train_seconds == null ? "-" : `${Math.round(r.train_seconds / 6) / 10} min`}</TableCell>
+                  <TableCell>{r.train_seconds == null ? "-" : seconds(r.train_seconds)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

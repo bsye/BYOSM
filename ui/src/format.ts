@@ -7,11 +7,16 @@ export const ms = (x: number | null | undefined) => (x == null ? "-" : `${x.toFi
 export const when = (t: number | null | undefined) => (t == null ? "-" : new Date(t * 1000).toLocaleTimeString())
 
 const MINUTE = 60
+const HOUR = 60 * MINUTE
+
+export function seconds(s: number): string {
+  if (Math.round(s) < MINUTE) return `${Math.round(s)} s`
+  if (s < HOUR) return `${Math.round(s / MINUTE)} min`
+  return `${Math.floor(s / HOUR)} h ${Math.round((s % HOUR) / MINUTE)} min`
+}
 
 export function took(a: number | null, b: number | null): string {
-  if (a == null) return "-"
-  const s = (b ?? Date.now() / 1000) - a
-  return s < MINUTE ? `${Math.round(s)} s` : `${Math.round((s / MINUTE) * 10) / 10} min`
+  return a == null ? "-" : seconds((b ?? Date.now() / 1000) - a)
 }
 
 const RIVAL_NAMES: Record<string, string> = { llm: "the LLM", jev: "Jev", panel: "the teacher panel", silero: "Silero", energy: "an energy threshold" }

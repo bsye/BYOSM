@@ -1,3 +1,4 @@
+import { seconds } from "@/format"
 import { ChevronDown, ChevronRight, MessagesSquare } from "lucide-react"
 import { Fragment, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -112,7 +113,7 @@ export function LlmInspector() {
                         <TableCell>
                           <Badge variant={STATE_VARIANT[c.state]}>{c.state}</Badge>
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{secs == null ? "-" : `${secs.toFixed(1)} s`}</TableCell>
+                        <TableCell className="text-right tabular-nums">{secs == null ? "-" : seconds(secs)}</TableCell>
                       </TableRow>
                       {expanded && (
                         <TableRow>

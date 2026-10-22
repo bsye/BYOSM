@@ -1,5 +1,6 @@
 import type { Job } from "@/api"
 import type { Metric } from "@/events"
+import { seconds } from "@/format"
 
 const VERBS: Record<string, string> = {
   auto: "Create",
@@ -75,7 +76,7 @@ export function steps(metrics: Metric[], running: boolean): Step[] {
       const c = calls.get(id) as Metric
       out.push({
         label: `Ask ${c.role}`,
-        detail: `${c.model}${c.seconds != null ? `, ${c.seconds} s` : ""}`,
+        detail: `${c.model}${c.seconds != null ? `, ${seconds(Number(c.seconds))}` : ""}`,
         state: c.state === "waiting" ? "running" : c.state === "failed" ? "failed" : "done",
       })
     } else if (m.kind === "epoch") {
@@ -117,7 +118,6 @@ export function timeLeft(metrics: Metric[]): string | null {
   const total = Number(last[keys.total])
   if (!first || done <= 0 || first === last) return null
   const perStep = (Number(last.at) - Number(first.at)) / done
-  const seconds = perStep * (total - Number(last[keys.done]))
-  if (!(seconds > 0)) return null
-  return seconds < 90 ? `${Math.round(seconds)} s left` : seconds < 5400 ? `${Math.round(seconds / 60)} min left` : `${(seconds / 3600).toFixed(1)} h left`
+  const left = perStep * (total - Number(last[keys.done]))
+  return left > 0 ? `${seconds(left)} left` : null
 }
