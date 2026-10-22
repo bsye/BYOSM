@@ -19,6 +19,7 @@ import { Palette } from "@/pages/Palette"
 import { Models } from "@/pages/Models"
 import { Settings } from "@/pages/Settings"
 import { CostsPage } from "@/pages/Costs"
+import { Deployments } from "@/pages/Deployments"
 import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
 import { useRoute } from "@/route"
@@ -31,6 +32,7 @@ function Page({ route }: { route: string[] }) {
   if (section === "jobs") return <Jobs id={id} />
   if (section === "models") return <Models />
   if (section === "costs") return <CostsPage />
+  if (section === "deployments") return <Deployments />
   if (section === "keys") return <Settings />
   if (section === "settings") return <Settings />
   return <Specialists />

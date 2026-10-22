@@ -38,7 +38,7 @@ export function UseIt({ d }: { d: Detail }) {
   const dir = `specialists/${d.name}/export`
   const image = `byosm-${d.name.toLowerCase()}`
   const example = d.modality === "text" ? "your text here" : "path/to/input"
-  const build = () => runJob(["containerize", d.name]).then((j) => openJob(j.id))
+  const run = () => runJob(["deploy", d.name]).then((j) => openJob(j.id))
   return (
     <div className="grid auto-rows-fr gap-4 @3xl/main:grid-cols-2">
       <Snippet
@@ -52,11 +52,11 @@ export function UseIt({ d }: { d: Detail }) {
       />
       <Snippet
         title="Container"
-        code={`byosm containerize ${d.name}\ndocker run --rm --read-only -p ${MODEL_PORT}:${MODEL_PORT} ${image}`}
+        code={`byosm deploy ${d.name}\n\n# or by hand\nbyosm containerize ${d.name}\ndocker run --rm --read-only --cpus 1 --memory 1g -p ${MODEL_PORT}:${MODEL_PORT} ${image}`}
         action={
-          <Button variant="outline" size="sm" onClick={build}>
+          <Button variant="outline" size="sm" onClick={run}>
             <Container />
-            Build image
+            Run in container
           </Button>
         }
       />

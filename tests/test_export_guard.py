@@ -211,7 +211,7 @@ def test_containerize_builds_the_export_folder_and_refuses_an_unexported_special
     import shutil
     import subprocess
 
-    from byosm.cli.ship import MODEL_DOCKERFILE
+    from byosm.deploy import DOCKERFILE as MODEL_DOCKERFILE
     from byosm.spec import Label, TaskSpec
 
     root = ws / "specialists" / "q"

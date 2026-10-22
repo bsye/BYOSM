@@ -3,6 +3,8 @@ from __future__ import annotations
 ALLOWED_COMMANDS = (
     "ls",
     "containerize",
+    "deploy",
+    "undeploy",
     "show",
     "board",
     "new",

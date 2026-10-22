@@ -1045,3 +1045,12 @@ GPU memory on Apple silicon is wired memory, invisible in process sizes: one tra
 process showed 0.5 GB. Each training therefore caps PyTorch's MPS allocator at 90% of the GPU's recommended working set
 divided by the slots, so two trainings cannot take more than the GPU has, and one that needs more fails with an
 out-of-memory error instead of freezing the machine. The machine card shows the wired memory.
+
+## Each model in its own container
+
+`byosm deploy NAME` runs an exported specialist the way it would run in production, isolated from the app and from other
+models: the image from `docker/model.Dockerfile` (python-slim, the bundle's requirements, a non-root user), a read-only
+filesystem, at most 1 CPU and 1 GB, published only on 127.0.0.1 at a free port, and labelled `byosm.specialist` so the
+app can find it again after a restart. The Deployments page lists them from `docker ps` and `docker stats`, refreshes
+every five seconds, and sends test inputs to the container itself, so the answer and its time are the container's own.
+`byosm undeploy NAME` stops it; a stopped container leaves nothing behind (`--rm`).

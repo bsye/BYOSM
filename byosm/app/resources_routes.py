@@ -5,9 +5,14 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 COSTS_TTL_S = 60
+
+
+class TryInput(BaseModel):
+    input: str
 
 
 def resources_router(ws: Path) -> APIRouter:
@@ -30,6 +35,28 @@ def resources_router(ws: Path) -> APIRouter:
         from ..ideas import saved
 
         return saved(ws)
+
+    @router.get("/api/deployments")
+    def deployments() -> list[dict[str, Any]]:
+        from ..deploy import deployments as running
+
+        return running()
+
+    @router.post("/api/deployments/{name}/predict")
+    def predict(name: str, body: TryInput) -> dict[str, Any]:
+        from ..deploy import predict as ask
+
+        try:
+            return ask(name, body.input)
+        except KeyError as e:
+            raise HTTPException(404, str(e).strip("'\"")) from e
+
+    @router.post("/api/deployments/{name}/stop")
+    def stop(name: str) -> dict[str, Any]:
+        from ..deploy import stop as halt
+
+        halt(name)
+        return {"stopped": name}
 
     @router.get("/api/costs")
     def costs() -> dict[str, Any]:

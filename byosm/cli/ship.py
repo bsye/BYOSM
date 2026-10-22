@@ -7,11 +7,9 @@ import typer
 from rich.table import Table
 
 from ..config import PUBLISH_LICENSE, find_workspace
+from ..deploy import MODEL_PORT
 from ..project import Project, list_projects
 from .base import _spec, app, console, log
-
-MODEL_DOCKERFILE = Path(__file__).resolve().parents[2] / "docker" / "model.Dockerfile"
-MODEL_PORT = 8800
 
 
 def _bundle(name: str) -> Path:
@@ -74,22 +72,32 @@ def containerize(
     name: str, tag: Annotated[str | None, typer.Option(help="image tag (default: byosm-<name>)")] = None
 ) -> None:
     """Build a Docker image that serves one exported bundle in isolation: python-slim, the bundle's requirements, non-root."""
-    import shutil
-    import subprocess
+    from ..deploy import build
 
-    bundle = _bundle(name)
-    docker = shutil.which("docker")
-    if not docker or not MODEL_DOCKERFILE.exists():
-        log(f"needs the docker CLI on PATH and {MODEL_DOCKERFILE} (a source checkout of byosm)")
-        raise typer.Exit(1)
-    image = tag or f"byosm-{name.lower()}"
-    built = subprocess.run([docker, "build", "-f", str(MODEL_DOCKERFILE), "-t", image, str(bundle)])
-    if built.returncode:
-        raise typer.Exit(built.returncode)
+    image = build(name, _bundle(name), log, tag)
     log(
         f"built {image}\n  docker run --rm --read-only -p {MODEL_PORT}:{MODEL_PORT} {image}\n"
         f'  curl -d \'{{"input": "..."}}\' http://127.0.0.1:{MODEL_PORT}/v1/{name}/predict'
     )
+
+
+@app.command()
+def deploy(name: str) -> None:
+    """Run the specialist in its own container: read-only, 1 CPU and 1 GB at most, on a free local port. Builds the image first if needed."""
+    from ..deploy import build, deploy, has_image
+
+    if not has_image(name):
+        build(name, _bundle(name), log)
+    deploy(name, log)
+
+
+@app.command()
+def undeploy(name: str) -> None:
+    """Stop the specialist's container."""
+    from ..deploy import stop
+
+    stop(name)
+    log(f"stopped {name}")
 
 
 @app.command()
