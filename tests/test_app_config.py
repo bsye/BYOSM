@@ -24,6 +24,8 @@ def test_a_job_can_choose_its_own_llm_for_every_role(ws, monkeypatch):
     from byosm.config import LLM_OVERRIDE_ENV, load_config
     from byosm.llm import role_config
 
+    own = {"llm": {"default": {"provider": "fake"}, "spec": {"provider": "anthropic", "model": "claude-opus-5-5"}}}
+    (ws / "byosm.yaml").write_text(yaml.safe_dump(own))
     chosen = {"provider": "claude-code", "model": "claude-haiku-5-5"}
     monkeypatch.setenv(LLM_OVERRIDE_ENV, json.dumps(chosen))
     assert role_config(load_config(ws)["llm"], "spec") == chosen

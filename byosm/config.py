@@ -69,7 +69,7 @@ def load_config(ws: Path | None = None) -> dict[str, Any]:
     if os.environ.get(CONCURRENCY_ENV):
         merged["concurrency"] = int(os.environ[CONCURRENCY_ENV])
     if os.environ.get(LLM_OVERRIDE_ENV):
-        merged["llm"]["default"] = json.loads(os.environ[LLM_OVERRIDE_ENV])
+        merged["llm"] = {"default": json.loads(os.environ[LLM_OVERRIDE_ENV])}
     return merged
 
 
