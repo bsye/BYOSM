@@ -8,7 +8,7 @@ export type NextStep = { id: string; title: string; why: string; args: string[] 
 
 const start = (args: string[]) => runJob(args).then((j) => openJob(j.id))
 
-export function NextSteps({ name, steps, busy }: { name: string; steps: NextStep[]; busy: boolean }) {
+export function NextSteps({ name, steps }: { name: string; steps: NextStep[] }) {
   if (!steps.length) return null
   return (
     <Card>
@@ -19,7 +19,7 @@ export function NextSteps({ name, steps, busy }: { name: string; steps: NextStep
         </CardTitle>
         {steps.length > 1 && (
           <CardAction>
-            <Button size="sm" disabled={busy} onClick={() => start(["next", name, "--all"])}>
+            <Button size="sm" onClick={() => start(["next", name, "--all"])}>
               <Play />
               Do all {steps.length}
             </Button>
@@ -35,7 +35,7 @@ export function NextSteps({ name, steps, busy }: { name: string; steps: NextStep
                 <p className="font-medium">{s.title}</p>
                 <p className="text-muted-foreground text-xs">{s.why}</p>
               </div>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => start(s.args)}>
+              <Button size="sm" variant="outline" onClick={() => start(s.args)}>
                 <Play />
                 Run
               </Button>

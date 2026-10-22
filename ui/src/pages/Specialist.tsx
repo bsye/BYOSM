@@ -10,7 +10,6 @@ import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
-import { describe } from "@/jobs"
 import { signed, metricName, ms, params, rivalName, score } from "@/format"
 import { go } from "@/route"
 import { BoardChart, boardRows } from "./BoardChart"
@@ -181,7 +180,6 @@ function Model({ name }: { name: string }) {
   const [error, setError] = useState("")
   const jobs = Object.values(useLive().jobs)
   const finished = jobs.filter((j) => j.status === "done").length
-  const busy = jobs.some((j) => (j.status === "running" || j.status === "queued") && describe(j).target === name)
   const load = useCallback(
     () => api<Detail>(`/specialists/${name}`).then(setD).catch((e) => setError(String(e))),
     [name],
@@ -224,7 +222,7 @@ function Model({ name }: { name: string }) {
           </Button>
         </div>
       </div>
-      <NextSteps name={name} steps={d.next} busy={busy} />
+      <NextSteps name={name} steps={d.next} />
       <ModelStats d={d} />
       <Tabs defaultValue="board">
         <TabsList>
