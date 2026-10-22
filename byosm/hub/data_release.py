@@ -63,6 +63,26 @@ def _write(path: Path, rows: list[dict]) -> None:
     path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
 
 
+def _blank(v: object) -> object:
+    return dict.fromkeys(v) if isinstance(v, dict) else None
+
+
+def _shape(found: dict[str, list[dict]]) -> dict[str, object]:
+    return {k: _blank(v) for rows in found.values() for r in rows for k, v in r.items() if v is not None}
+
+
+def _features(shape: dict[str, object]) -> list[dict]:
+    return [
+        {"name": k, "struct": _features(dict.fromkeys(v))} if isinstance(v, dict) else {"name": k, "dtype": "string"}
+        for k, v in shape.items()
+    ]
+
+
+def uniform(found: dict[str, list[dict]]) -> dict[str, list[dict]]:
+    shape = _shape(found)
+    return {n: [{k: r.get(k, b) for k, b in shape.items()} for r in rows] for n, rows in found.items()}
+
+
 def splits(f: CardFacts) -> dict[str, list[dict]]:
     trained = Dataset(f.p.data_dir_for(f.spec))
     names = f.meta.get("train_splits") or BASE_TRAIN
@@ -74,8 +94,8 @@ def splits(f: CardFacts) -> dict[str, list[dict]]:
         "validation": [{k: r.get(k) for k in FIELDS} for r in bench.load("dev")],
         "test": _with_answers(f, held) if held else [{k: r.get(k) for k in FIELDS} for r in bench.load("test")],
     }
-    out |= {s["suite"]: _with_answers(f, s) for s in test_sets(f.p, f.base) if not s["board"] and s["rows"]}
-    return out
+    sets = (s for s in test_sets(f.p, f.base) if not s["board"] and s["rows"])
+    return uniform(out) | {s["suite"]: uniform({"rows": _with_answers(f, s)})["rows"] for s in sets}
 
 
 def _source_lines(found: dict[str, list[dict]]) -> str:
@@ -110,14 +130,19 @@ def _config(name: str, files: dict[str, str]) -> dict:
 
 
 def front(f: CardFacts, found: dict[str, list[dict]], total: int) -> str:
-    extra = [_config(n, {"test": f"test-sets/{n}.jsonl"}) for n in found if n not in MAIN_SPLITS]
+    extra = [n for n in found if n not in MAIN_SPLITS]
+    groups = {"default": {s: found[s] for s in MAIN_SPLITS}} | {n: {"test": found[n]} for n in extra}
     meta = {
         "license": f.license,
         "language": list(f.base.languages),
         "task_categories": ["text-classification"],
         "pretty_name": f"{f.base.title or f.base.name} data",
         "size_categories": ["10K<n<100K" if total >= 10_000 else "1K<n<10K"],
-        "configs": [_config("default", {s: f"data/{s}.jsonl" for s in MAIN_SPLITS}), *extra],
+        "configs": [
+            _config("default", {s: f"data/{s}.jsonl" for s in MAIN_SPLITS}),
+            *(_config(n, {"test": f"test-sets/{n}.jsonl"}) for n in extra),
+        ],
+        "dataset_info": [{"config_name": n, "features": _features(_shape(g))} for n, g in groups.items()],
     }
     return yaml.safe_dump(meta, sort_keys=False, allow_unicode=True)
 
