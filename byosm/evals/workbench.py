@@ -36,7 +36,6 @@ def choose_models(p: Project, models: list[str]) -> None:
 
 def _add(p: Project, name: str, rows: list[dict]) -> int:
     path = written_path(p, name)
-    path.parent.mkdir(parents=True, exist_ok=True)
     append(path, rows)
     return len(rows)
 
@@ -45,7 +44,6 @@ def write_more(p: Project, spec: TaskSpec, name: str, per_label: int, log: Calla
     from ..data.synth_text import generate
 
     path = written_path(p, name)
-    path.parent.mkdir(parents=True, exist_ok=True)
     shown: list[dict] = []
 
     def show(rows: list[dict]) -> None:

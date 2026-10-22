@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import uuid
 from collections import Counter
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+from ..db.rows import append, exists, read, write
 from ..text import normalize
 
 DEV_SHARE = 0.1
@@ -17,24 +17,8 @@ NEAR_DUPLICATE = 0.7
 NEAR_CANDIDATES = 3
 
 
-def read(path: Path) -> list[dict]:
-    if not path.exists():
-        return []
+def read_file(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-
-
-def write(path: Path, rows: Iterable[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as f:
-        for r in rows:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
-
-
-def append(path: Path, rows: Iterable[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a") as f:
-        for r in rows:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
 
 def record(input: Any, label: Any, source: str, **meta: Any) -> dict:
@@ -136,6 +120,9 @@ class Dataset:
 
     def unlabeled(self) -> list[dict]:
         return read(self.dir / "unlabeled.jsonl")
+
+    def built(self) -> bool:
+        return exists(self.path("train"))
 
     def summary(self) -> dict[str, Any]:
         return {s: {"n": len(rows := self.load(s)), "labels": label_counts(rows)} for s in SPLITS}

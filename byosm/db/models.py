@@ -73,7 +73,7 @@ class Row(Base):
     __tablename__ = "rows"
     __table_args__ = (Index("rows_lookup", "specialist_id", "collection", "split", "position"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    specialist_id: Mapped[int] = _owned()
+    specialist_id: Mapped[int | None] = mapped_column(ForeignKey("specialists.id", ondelete="CASCADE"))
     collection: Mapped[str] = mapped_column(String(200))
     split: Mapped[str] = mapped_column(String(50))
     position: Mapped[int] = mapped_column(Integer)

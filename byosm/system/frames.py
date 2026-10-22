@@ -5,7 +5,7 @@ from collections import Counter
 
 import numpy as np
 
-from ..data.store import read, write
+from ..data.store import exists, read, write
 from ..evals.suites import CALIB_EVERY_NTH_ITEM
 from ..metrics import f1_of_counts
 from ..resample import bootstrap_stats
@@ -61,9 +61,8 @@ def _fetch(spec: SystemSpec, suite: SystemSuite) -> list[dict]:
 
 def materialize(sp: SystemProject, suite: SystemSuite) -> dict[str, list[dict]]:
     d = sp.root / "evals" / suite.name
-    if not (d / "test.jsonl").exists():
+    if not exists(d / "test.jsonl"):
         rows = _fetch(sp.spec(), suite)
-        d.mkdir(parents=True, exist_ok=True)
         write(d / "calib.jsonl", rows[::CALIB_EVERY_NTH_ITEM])
         write(d / "test.jsonl", [r for i, r in enumerate(rows) if i % CALIB_EVERY_NTH_ITEM])
     return {s: read(d / f"{s}.jsonl") for s in SPLITS}

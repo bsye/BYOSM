@@ -21,7 +21,7 @@ def data_check(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
     if spec.task_type != "classify":
         return None
     dd = p.data_dir_for(_trained_on(p, spec))
-    have = Dataset(dd).summary()["train"]["labels"] if (dd / "train.jsonl").exists() else None
+    have = Dataset(dd).summary()["train"]["labels"] if Dataset(dd).built() else None
     if have is None and not p.promoted:
         return None
     need = counts(spec, []) if have is not None else {}

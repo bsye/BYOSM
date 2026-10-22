@@ -7,6 +7,7 @@ from typing import Any
 
 from ..auto.report import SUMMARY
 from ..auto.state import AUTOPILOT
+from ..data.store import read_file
 from ..dataset_search import SUGGESTIONS
 from ..evals.overfit import OVERFIT
 from ..evals.workbench import MODELS, RESULTS_PREFIX
@@ -15,6 +16,7 @@ from ..hub.sections import CARD_NOTES
 from ..improve.proposals import PROPOSALS
 from ..project import Project
 from ..spec import TaskSpec
+from . import rows
 
 JSON_REPORTS = {
     "overfit.json": OVERFIT,
@@ -27,6 +29,8 @@ JSON_REPORTS = {
 TEXT_REPORTS = {"auto.md": SUMMARY, "CARD.md": CARD_NOTES}
 STALE_EXPERIMENT_FILES = ("test_errors.json", "report.json")
 WORKBENCH_RESULTS = ".results.json"
+ROW_DIRS = ("specialists", "systems")
+ROW_SKIP = {"export", "hub"}
 
 
 def _json(f: Path) -> Any:
@@ -87,10 +91,18 @@ def import_specialist(root: Path, ws: Path) -> list[Path]:
     return [f for f in done if f.exists()]
 
 
+def import_rows(ws: Path, log: Callable[[str], None]) -> list[Path]:
+    files = sorted(f for d in ROW_DIRS for f in (ws / d).glob(f"**/*{rows.SUFFIX}") if not ROW_SKIP & set(f.parts))
+    for f in files:
+        rows.write(f, read_file(f))
+    log(f"  {len(files)} row files imported")
+    return files
+
+
 def import_workspace(ws: Path, log: Callable[[str], None]) -> list[Path]:
     done: list[Path] = []
     for spec in sorted((ws / "specialists").glob("*/spec.yaml")):
         files = import_specialist(spec.parent, ws)
         log(f"  {spec.parent.name}: {len(files)} files imported")
         done += files
-    return done
+    return done + import_rows(ws, log)

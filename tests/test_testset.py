@@ -1,5 +1,3 @@
-import json
-
 import pytest
 from conftest import FakeLLM
 from typer.testing import CliRunner
@@ -68,8 +66,7 @@ def test_the_suite_is_registered_but_never_primary(qa):
     assert TaskSpec(**{**saved.model_dump(), "evals": saved.evals[1:]}).primary_suite() == "builtin"
     with pytest.raises(ValueError):
         EvalSuite(name="x", kind="generated", primary=True)
-    suite_json = json.loads((p.evals_dir / "llm-written" / "suite.json").read_text())
-    assert suite_json["written_by"] == "fake"
+    assert saved.evals[1].written_by == "fake"
 
 
 def test_the_writer_model_shows_in_the_specialist_detail(qa, ws):
@@ -121,7 +118,6 @@ def test_every_written_input_is_logged_as_it_arrives_and_kept_after_the_suite_is
 def test_a_stopped_run_resumes_from_the_inputs_it_already_wrote(qa, monkeypatch):
     p, spec = qa
     done = [record(f"what about stop {i}?", "question", "llm:fake") for i in range(PER_LABEL)]
-    written_path(p, "llm-written").parent.mkdir(parents=True, exist_ok=True)
     testset.append(written_path(p, "llm-written"), done)
     asked = []
     real = testset.generate

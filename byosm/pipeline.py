@@ -33,7 +33,7 @@ def ensure_data(
     seconds: float | None = None,
 ) -> Path:
     dd = p.data_dir_for(spec)
-    if force or not (dd / "train.jsonl").exists():
+    if force or not Dataset(dd).built():
         log(f"[data] {spec.name} -> data/{spec.data_key()}")
         dd.mkdir(parents=True, exist_ok=True)
         summary = data_stage.build(spec, dd, cfg, log, reviewed_labels(p.reviewed_path), seconds)

@@ -5,7 +5,8 @@ import random
 from collections.abc import Callable
 from pathlib import Path
 
-from ..data.store import Dataset, read, record, write
+from ..data.store import Dataset, read, read_file, record, write
+from ..db import rows as stored_rows
 from ..project import Project
 from ..spec import EvalSuite, TaskSpec
 
@@ -22,8 +23,9 @@ def suite_dir(p: Project, suite: EvalSuite) -> Path:
 def fingerprint(p: Project, spec: TaskSpec, suite: EvalSuite) -> str:
     d = suite_dir(p, suite)
     blob = suite.model_dump_json(exclude_defaults=True)
-    if d.exists():
-        blob += "".join(f.read_text()[:FINGERPRINT_CHARS_PER_FILE] for f in sorted(d.glob("*.jsonl")))
+    blob += "".join(
+        stored_rows.text(d / f"{split}.jsonl", FINGERPRINT_CHARS_PER_FILE) for split in stored_rows.splits(d)
+    )
     if suite.kind == "builtin":
         blob += spec.data_key()
     space = suite.label_space(spec.label_names)
@@ -39,7 +41,7 @@ def stored(p: Project, base: TaskSpec, suite: EvalSuite) -> tuple[list[dict], li
         ds = Dataset(dd)
         return ds.load("dev"), ds.load("test"), dd
     d = suite_dir(p, suite)
-    return (read(d / "calib.jsonl"), read(d / "test.jsonl"), d) if (d / "test.jsonl").exists() else None
+    return (read(d / "calib.jsonl"), read(d / "test.jsonl"), d) if stored_rows.exists(d / "test.jsonl") else None
 
 
 def materialize(
@@ -56,10 +58,8 @@ def materialize(
 
 
 def freeze(d: Path, suite: EvalSuite, calib: list[dict], test: list[dict]) -> None:
-    d.mkdir(parents=True, exist_ok=True)
     write(d / "calib.jsonl", calib)
     write(d / "test.jsonl", test)
-    (d / "suite.json").write_text(suite.model_dump_json(indent=2))
 
 
 def _fetch(
@@ -76,7 +76,7 @@ def _fetch(
 
 def _split_local(suite: EvalSuite) -> tuple[list[dict], list[dict]]:
     calib, test = [], []
-    for r in read(Path(suite.path)):
+    for r in read_file(Path(suite.path)):
         (calib if r.get("split") == "calib" else test).append(r)
     return calib, test
 

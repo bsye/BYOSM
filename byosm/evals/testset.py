@@ -7,6 +7,7 @@ from pathlib import Path
 from ..config import TESTSET_PER_LABEL, TESTSET_SUITE, load_config
 from ..data.store import SPLITS, Dataset, append, dedupe, label_counts, read
 from ..data.synth_text import generate, judge
+from ..db.rows import splits
 from ..events import stage
 from ..llm import role_model
 from ..project import Project
@@ -18,7 +19,8 @@ JUDGE_ROLE = "judge"
 WRITTEN_SPLIT = "test"
 OVERSAMPLE = 2
 MAX_ROUNDS = 4
-WRITTEN_SUFFIX = ".written.jsonl"
+WRITTEN_MARK = ".written"
+WRITTEN_SUFFIX = f"{WRITTEN_MARK}.jsonl"
 
 
 def written_path(p: Project, suite: str) -> Path:
@@ -26,13 +28,12 @@ def written_path(p: Project, suite: str) -> Path:
 
 
 def written_logs(p: Project) -> dict[str, list[dict]]:
-    logs = sorted(p.evals_dir.glob(f"*{WRITTEN_SUFFIX}"), key=lambda f: f.stat().st_mtime, reverse=True)
-    return {f.name.removesuffix(WRITTEN_SUFFIX): read(f) for f in logs}
+    logs = [n for n in splits(p.evals_dir, newest_first=True) if n.endswith(WRITTEN_MARK)]
+    return {n.removesuffix(WRITTEN_MARK): read(p.evals_dir / f"{n}.jsonl") for n in logs}
 
 
 def written_logger(path: Path) -> Callable[[list[dict]], None]:
     lock = threading.Lock()
-    path.parent.mkdir(parents=True, exist_ok=True)
 
     def add(rows: list[dict]) -> None:
         with lock:
@@ -42,7 +43,7 @@ def written_logger(path: Path) -> Callable[[list[dict]], None]:
 
 
 def _resumed(spec: TaskSpec, path: Path, against: list[dict], cfg: dict, log: Callable[[str], None]) -> list[dict]:
-    rows = dedupe(read(path), against=against) if path.exists() else []
+    rows = dedupe(read(path), against=against)
     if rows:
         log(f"  resuming from {len(rows)} inputs already written to {path.name}")
     return judge(spec, rows, cfg, log=log) if rows and spec.data.judge else rows

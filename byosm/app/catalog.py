@@ -109,7 +109,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "baselines": spec.baselines,
         "runs": [_run(p, e) for e in p.experiments()],
         "proposals": p.report(PROPOSALS),
-        "data": Dataset(dd).summary() if (dd / "train.jsonl").exists() else None,
+        "data": Dataset(dd).summary() if Dataset(dd).built() else None,
         "overfit": p.report(OVERFIT),
         "next": suggestions(name, ws),
         "data_check": data_check(p, spec),
