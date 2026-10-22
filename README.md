@@ -115,13 +115,14 @@ public fine-tuned checkpoints.
 | Which of the assistant's 60 actions a request asks for (MASSIVE intents) | AmazonScience/massive (accuracy) | stream (22.74M) | 0.890 [0.877, 0.901] | jev (-) | 0.815 [0.799, 0.831] | +0.075, P(better) = 1.00 | 0.894 vs 0.824 (ahead) |
 | 77-way banking intent classification | mteb/banking77 (accuracy) | v1 (22.74M) | 0.797 [0.780, 0.812] | jev (-) | 0.807 [0.792, 0.822] | -0.010, P(better) = 0.09 | 0.747 vs 0.776 (behind) |
 | Route a member's request about insurance or benefits to one of 39 support intents | benefits-intent-builtin (accuracy) | v1 (22.73M) | 0.997 [0.996, 0.999] | jev (-) | 0.910 [0.903, 0.919] | +0.087, P(better) = 1.00 | 0.999 vs 0.909 (ahead) |
-| Categorise a card or bank transaction description into one of 17 spending categories | card-spend-builtin (accuracy) | v1 (22.72M) | 0.999 [0.999, 1.000] | jev (-) | 0.799 [0.787, 0.810] | +0.200, P(better) = 1.00 | 0.998 vs 0.803 (ahead) |
+| Categorise a card or bank transaction description into one of 17 spending categories | card-spend-builtin (accuracy) | v1 (22.72M) | 0.999 [0.999, 1.000] | llm (-) | 0.840 [0.831, 0.849] | +0.159, P(better) = 1.00 | 0.998 vs 0.891 (ahead) |
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
 | Classify the primary emotion expressed in a short English text (single sentence, tweet-style or short social media string) into one of six named emotions (sadness, joy, love, anger, fear, surprise). Any text that does not clearly express one of these dominates falls into a catch-all neutral-other class (including neutral statements, irony/sarcasm without a dominant named emotion, ambiguity, or non-English). | dair-ai/emotion (accuracy) | v1 (22.72M) | 0.898 [0.883, 0.913] | hf:j-hartmann/emotion-english-distilroberta-base (82.12M) | 0.838 [0.819, 0.856] | +0.060, P(better) = 1.00 | 0.904 vs 0.813 (ahead) |
 | 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | jev (-) | 0.808 [0.792, 0.822] | +0.129, P(better) = 1.00 | 0.948 vs 0.784 (ahead) |
 | Token-tag every token in a lease-agreement text to identify spans of DATE, AMOUNT, and PARTY (landlord, tenant, guarantor, or other named signatory) using BIO tagging. | lease-entities-builtin (span_f1) | v1 (70.69M) | 0.514 [0.389, 0.651] | hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 (183.92M) | 0.301 [0.178, 0.432] | +0.213, P(better) = 1.00 | 0.632 vs 0.370 (ahead) |
 | Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
+| From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification of a partial-utterance. | turn-completion-builtin (recall_at_precision) | v1 (22.71M) | 0.750 [0.250, 1.000] | llm (-) | 0.500 [0.000, 1.000] | +0.250, P(better) = 0.73 | 0.000 vs 0.923 (behind) |
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
 <!-- /report:summary -->
 
@@ -215,6 +216,7 @@ Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses cali
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
 | **v1** (promoted) | no recorded parent | 29250 | 22.73M | 2.70ms | 0.997 [0.996, 0.999] | 0.999 |
+| llm | outside baseline | - | - | - | 0.911 [0.903, 0.918] | 0.900 |
 | jev | outside baseline | - | - | 252.16ms | 0.910 [0.903, 0.919] | 0.909 |
 
 Suite `builtin` (benefits-intent-builtin): 5153 test and 3473 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
@@ -224,6 +226,7 @@ Suite `builtin` (benefits-intent-builtin): 5153 test and 3473 calib items. Selec
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
 | **v1** (promoted) | no recorded parent | 51000 | 22.72M | 2.76ms | 0.999 [0.999, 1.000] | 0.998 |
+| llm | outside baseline | - | - | - | 0.840 [0.831, 0.849] | 0.891 |
 | jev | outside baseline | - | - | 240.18ms | 0.799 [0.787, 0.810] | 0.803 |
 
 Suite `builtin` (card-spend-builtin): 5436 test and 3641 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
@@ -502,3 +505,16 @@ Datasets, weights and exports are never committed.
 
 **Licence.** CC BY-NC 4.0 ([LICENSE](LICENSE)), for the code and the published models. The VAD's training data
 includes ESC-50 (CC BY-NC): check data licences before any other use.
+
+<!-- report:turn-completion -->
+| model | built from | train rows | params | CPU | test recall_at_precision [95% CI] | calib recall_at_precision |
+|---|---|---|---|---|---|---|
+| v4 | v1 + regularize | 642 | 22.71M | 3.99ms | 1.000 [1.000, 1.000] | 0.000 |
+| **v1** (promoted) | no recorded parent | 642 | 22.71M | 3.17ms | 0.750 [0.250, 1.000] | 0.000 |
+| v2 | v1 + new-split | 642 | 22.71M | 2.45ms | 0.750 [0.250, 1.000] | 0.000 |
+| v3 | v1 + new-split | 642 | 22.71M | 3.50ms | 0.750 [0.250, 1.000] | 0.000 |
+| v5 | v1 + llm-exp-1-hard-negatives-encoding | 642 | 22.71M | 3.31ms | 0.750 [0.250, 1.000] | 0.000 |
+| llm | outside baseline | - | - | - | 0.500 [0.000, 1.000] | 0.923 |
+
+Suite `builtin` (turn-completion-builtin): 5 test and 18 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+<!-- /report:turn-completion -->
