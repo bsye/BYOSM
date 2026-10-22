@@ -88,7 +88,23 @@ def masked_mean(feats: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     return (feats * m).sum(1) / m.sum(1).clamp(min=1.0)
 
 
+TORCH_WEIGHTS = (
+    "model.safetensors",
+    "pytorch_model.bin",
+    "model.safetensors.index.json",
+    "pytorch_model.bin.index.json",
+)
 Hook = Callable[..., Any]
+
+
+def trainable(repo: str) -> bool:
+    from huggingface_hub import list_repo_files
+
+    try:
+        files = list_repo_files(repo)
+    except Exception:
+        return True
+    return any(name.rpartition("/")[2] in TORCH_WEIGHTS for name in files)
 
 
 def pretrained(repo: str) -> nn.Module:

@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable
 from typing import Any
 
-from .paths import ALLOWED, allowed
+from .paths import ALLOWED, allowed, untrainable
 
 LLM_SYSTEM = """You are the research lead improving a tiny single-purpose model. Given its spec, the board (our experiment \
 vs baselines on several frozen eval suites), the training curve and the most confused label pairs, propose at most 4 \
@@ -79,4 +79,11 @@ def llm_proposals(dg: dict[str, Any], log: Callable[[str], None]) -> list[dict]:
     except Exception as e:
         log(f"  (LLM proposals skipped: {type(e).__name__}: {str(e)[:100]})")
         return []
-    return _parse(out)
+    return [p for p in _parse(out) if _buildable(p, log)]
+
+
+def _buildable(proposal: dict, log: Callable[[str], None]) -> bool:
+    bad = untrainable(proposal["ops"])
+    if bad:
+        log(f"  (dropped {proposal['id']}: {', '.join(bad)} has no PyTorch weights to fine-tune)")
+    return not bad

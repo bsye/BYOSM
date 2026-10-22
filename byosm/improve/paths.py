@@ -4,6 +4,7 @@ import copy
 from typing import Any
 
 from ..spec import TaskSpec
+from ..spec.sections import HUB_PREFIX
 
 ALLOWED = [
     "data.hf_sources",
@@ -19,6 +20,8 @@ ALLOWED = [
     "|refine_examples|pool|layer_decay_floor|probe_epochs|ema|precision|seed",
     "document.route|text_backbone|image_backbone|max_pages|max_len|image_size|ocr|dim|modality_dropout",
 ]
+
+BACKBONE_PATHS = ("backbone", "document.text_backbone", "document.image_backbone")
 
 
 def _segment_matches(pattern: str, part: str) -> bool:
@@ -56,3 +59,10 @@ def apply_ops(spec: TaskSpec, ops: list[dict]) -> TaskSpec:
     for o in ops:
         _apply_op(d, o)
     return TaskSpec.model_validate(d)
+
+
+def untrainable(ops: list[dict]) -> list[str]:
+    from ..modalities.base import trainable
+
+    repos = {o["value"] for o in ops if o["path"] in BACKBONE_PATHS and str(o["value"]).startswith(HUB_PREFIX)}
+    return sorted(r for r in repos if not trainable(r[len(HUB_PREFIX) :]))

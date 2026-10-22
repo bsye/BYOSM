@@ -984,3 +984,17 @@ the splits the published experiment trained on (with the split each row came fro
 every test set, with each model's answer on every test row. Each row keeps its `source`; the dataset card lists the
 licence of every public source from its own card. The model card's metadata gets `language`, `base_model` and points
 its evaluation result at that dataset, so a reader can rescore any rival on the same rows.
+
+## Proposals must be buildable
+
+The analyst sees the rivals on the board and may propose one of them as the new backbone. Some Hub models ship only
+ONNX weights, which run as rivals but cannot be fine-tuned, so a job that tries crashes after its data step. Before a
+proposal is applied, `improve.paths.untrainable` lists its Hub backbones that have no PyTorch weights, and the proposal
+is dropped with a log line. The check is one file listing per repo; when the Hub cannot be reached it lets the proposal
+through, since loading from the local cache may still work.
+
+## A crashed job keeps its error
+
+The job wrapper writes the exit code in a `finally` block. Python prints an uncaught traceback only after that block, so
+the runner saw the exit code, read the log one last time and deleted it before the error landed. The wrapper now prints
+the traceback itself before writing the exit code.
