@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 CONFIG_NAME = "byosm.yaml"
 ENV_FILE = ".env"
 LLM_OVERRIDE_ENV = "BYOSM_LLM"
+CONCURRENCY_ENV = "BYOSM_CONCURRENCY"
 TESTSET_PER_LABEL = 20
 TESTSET_SUITE = "llm-written"
 HF_TOKEN_KEY = "HF_TOKEN"
@@ -65,6 +66,8 @@ def load_config(ws: Path | None = None) -> dict[str, Any]:
     cfg = stored_config(ws)
     merged = {**DEFAULT_CONFIG, **(cfg or {})}
     merged["llm"] = {**DEFAULT_CONFIG["llm"], **((cfg or {}).get("llm") or {})}
+    if os.environ.get(CONCURRENCY_ENV):
+        merged["concurrency"] = int(os.environ[CONCURRENCY_ENV])
     if os.environ.get(LLM_OVERRIDE_ENV):
         merged["llm"]["default"] = json.loads(os.environ[LLM_OVERRIDE_ENV])
     return merged

@@ -14,7 +14,6 @@ from .base import Predictor, register_baseline
 IMAGE_SIDE = 1000
 MIN_DOCUMENT_DPI = 100
 PAGE_TEXT_CHARS = 1500
-WORKERS = 8
 TAG_BATCH = 10
 SYSTEM = (
     "You are an expert annotator. Classify each item strictly according to the label definitions. "
@@ -37,6 +36,13 @@ def image_ref(first: int, last: int, count: int) -> str:
     if count > 1:
         return f" (images {first}-{last})"
     return f" (image {first})" if count else ""
+
+
+def _workers() -> int:
+    from ..config import load_config
+    from ..data.synth_text import concurrency
+
+    return concurrency(load_config())
 
 
 @register_baseline(
@@ -108,7 +114,7 @@ class ZeroShotLLM(Predictor):
         schema = {"type": "object", "properties": {"labels": label_list}}
         bs = self.batch[self.spec.modality]
         chunks = [rows[i : i + bs] for i in range(0, len(rows), bs)]
-        parts = pmap(lambda chunk: self._labels(chunk, mod, schema), chunks, WORKERS)
+        parts = pmap(lambda chunk: self._labels(chunk, mod, schema), chunks, _workers())
         out = np.zeros((len(rows), len(names)), np.float32)
         for i, label in enumerate(label for part in parts for label in part):
             out[i, names.index(label) if label in names else 0] = 1.0
@@ -132,7 +138,7 @@ class ZeroShotLLM(Predictor):
         names = self.spec.label_names
         fallback = names.index(OUTSIDE) if OUTSIDE in names else 0
         chunks = [rows[i : i + TAG_BATCH] for i in range(0, len(rows), TAG_BATCH)]
-        tagged = [t for part in pmap(self._tags, chunks, WORKERS) for t in part]
+        tagged = [t for part in pmap(self._tags, chunks, _workers()) for t in part]
         out = []
         for r, tags in zip(rows, tagged, strict=True):
             n = len(str(r["input"]).split())

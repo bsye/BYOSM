@@ -1,6 +1,7 @@
 import { Check, Database, FileSpreadsheet, Loader2, Play, Sparkles, X } from "lucide-react"
 import { useState } from "react"
 import { download, runJob } from "@/api"
+import { InfoTip } from "@/components/info-tip"
 import { LlmPicker, useLlmChoice } from "@/components/llm-picker"
 import { ModelName, type ModelRef } from "@/components/model-name"
 import { Button } from "@/components/ui/button"
@@ -81,6 +82,8 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
   const [perLabel, setPerLabel] = useState(DEFAULT_PER_LABEL)
   const [sample, setSample] = useState(DEFAULT_SAMPLE)
   const [instructions, setInstructions] = useState("")
+  const [parallel, setParallel] = useState("")
+  const parallelArgs = Number(parallel) > 0 ? ["--parallel", String(Math.floor(Number(parallel)))] : []
   const [created, setCreated] = useState<string[]>([])
   const setName = picked ?? wb.sets[0]?.suite ?? DEFAULT_SET
   const set = wb.sets.find((s) => s.suite === setName)
@@ -88,7 +91,7 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
   const unscored = set && !set.board ? Math.max(0, ...chosen.map((m) => set.rows.length - accuracy(set, m).scored)) : 0
   const fixed = Boolean(set?.board)
   const names = [...new Set([DEFAULT_SET, BENCHMARK_SET, ...created, ...wb.sets.map((s) => s.suite)])]
-  const writeArgs = ["inputs", "write", name, "--per-label", String(perLabel), "--set", setName, ...(instructions.trim() ? ["--instructions", instructions.trim()] : [])]
+  const writeArgs = ["inputs", "write", name, "--per-label", String(perLabel), "--set", setName, ...(instructions.trim() ? ["--instructions", instructions.trim()] : []), ...parallelArgs]
   return (
     <Card>
       <CardHeader>
@@ -131,6 +134,7 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
         <div className="flex flex-wrap items-center gap-2">
           <Input type="number" min={1} className="h-8 w-20 tabular-nums" aria-label="Inputs per label" value={perLabel} onChange={(e) => setPerLabel(Math.max(1, Number(e.target.value) || 1))} />
           <LlmPicker llm={llm} label="LLM that writes the inputs" />
+          <Input type="number" min={1} className="h-8 w-28 tabular-nums" placeholder="Parallel: auto" aria-label="LLM calls at the same time" value={parallel} onChange={(e) => setParallel(e.target.value)} />
           <Button size="sm" variant="outline" disabled={!llm.choice || fixed} onClick={() => start(writeArgs, llm.config())}>
             <Sparkles />
             Write {perLabel * labels}
@@ -140,6 +144,7 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
             <Database />
             Add from benchmark
           </Button>
+          {fixed && <InfoTip>This is the benchmark every model is compared on, so it stays as it is. Pick or create another set to add inputs.</InfoTip>}
         </div>
         <Input placeholder="Extra instructions for the writer, e.g. noisy phone calls with fillers" aria-label="Extra instructions" disabled={fixed} value={instructions} onChange={(e) => setInstructions(e.target.value)} />
         <div className="flex flex-wrap items-center gap-2">
@@ -150,7 +155,7 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
-          <Button size="sm" className="ml-auto" disabled={!set?.rows.length || !unscored} onClick={() => start(["inputs", "run", name, "--set", setName])}>
+          <Button size="sm" className="ml-auto" disabled={!set?.rows.length || !unscored} onClick={() => start(["inputs", "run", name, "--set", setName, ...parallelArgs])}>
             <Play />
             {fixed ? "Scored on the board" : unscored ? `Score ${unscored} rows` : "All scored"}
           </Button>

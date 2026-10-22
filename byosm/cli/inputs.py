@@ -9,16 +9,30 @@ from .base import _spec, app, inputs_app, log
 SetOpt = Annotated[str, typer.Option("--set", help="name of the input set")]
 
 
+ParallelOpt = Annotated[int | None, typer.Option(help="LLM calls at the same time (default: byosm.yaml concurrency)")]
+
+
+def _set_parallel(n: int | None) -> None:
+    import os
+
+    from ..config import CONCURRENCY_ENV
+
+    if n:
+        os.environ[CONCURRENCY_ENV] = str(n)
+
+
 @inputs_app.command("write")
 def write(
     name: str,
     per_label: Annotated[int, typer.Option(help="new inputs per label")] = 10,
     set_: SetOpt = "workbench",
     instructions: Annotated[str, typer.Option(help="extra instructions for the LLM that writes the inputs")] = "",
+    parallel: ParallelOpt = None,
 ) -> None:
     """Have the LLM write new labelled inputs and add them to a set; nothing is scored."""
     from ..evals.workbench import write_more
 
+    _set_parallel(parallel)
     p, spec = _spec(name)
     log(f"added {write_more(p, spec, set_, per_label, log, instructions)} inputs to {set_}")
 
@@ -39,11 +53,13 @@ def run(
     model: Annotated[
         list[str] | None, typer.Option(help="ours, a rival id, or several (default: the saved choice)")
     ] = None,
+    parallel: ParallelOpt = None,
 ) -> None:
     """Score every input of a set with each chosen model; rows already scored by a model are kept."""
     from ..evals.workbench import chosen_models
     from ..evals.workbench import run as score
 
+    _set_parallel(parallel)
     p, spec = _spec(name)
     score(p, spec, set_, model or chosen_models(p, spec), log)
 
