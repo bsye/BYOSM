@@ -141,6 +141,19 @@ def no_web_research(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def fresh_shared_database():
+    import os
+
+    from byosm.db.engine import URL_ENV, engine
+    from byosm.db.models import Base
+
+    if os.environ.get(URL_ENV):
+        eng = engine(os.environ[URL_ENV])
+        Base.metadata.drop_all(eng)
+        Base.metadata.create_all(eng)
+
+
+@pytest.fixture(autouse=True)
 def seeded():
     random.seed(SEED)
     np.random.seed(SEED)
