@@ -1,16 +1,71 @@
-# BYOSM: Build Your Own Specialist Model
+<h1 align="center">BYOSM</h1>
 
+<p align="center"><b>Build Your Own Specialist Model.</b><br>One sentence in, a small model out that beats the big ones at its job, on a public benchmark, on any CPU.</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="Licence CC BY-NC 4.0" src="https://img.shields.io/badge/licence-CC%20BY--NC%204.0-lightgrey"></a>
+  <a href="https://huggingface.co/bsye"><img alt="Models on Hugging Face" src="https://img.shields.io/badge/models-Hugging%20Face-yellow"></a>
+  <img alt="Python 3.11" src="https://img.shields.io/badge/python-3.11-blue">
+  <img alt="Runs on CPU with ONNX" src="https://img.shields.io/badge/runs%20on-CPU%20%C2%B7%20ONNX-green">
+</p>
+
+<p align="center"><img src="docs/screenshots/specialists.jpg" alt="Every specialist against its best rival" width="100%"></p>
+
+<p align="center">
+  <a href="#run-it">Run it</a> ·
+  <a href="#tour">Tour</a> ·
+  <a href="#results">Results</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#quickstart">Command line</a>
+</p>
+
+## Run it
+
+```bash
+git clone https://github.com/bsye/BYOSM && cd BYOSM
+python3.11 -m venv .venv && .venv/bin/pip install -e '.[dev,silero]'
+.venv/bin/byosm app                     # opens http://127.0.0.1:8765 with its token
 ```
- ____  __   __  ___   ____   __  __
-| __ ) \ \ / / / _ \ / ___| |  \/  |
-|  _ \  \ V / | | | |\___ \ | |\/| |
-| |_) |  | |  | |_| | ___) || |  | |
-|____/   |_|   \___/ |____/ |_|  |_|
 
-  one sentence  ->  a small model that beats the big ones at its job
-```
+Self-host with Docker: `BYOSM_APP_TOKEN=<long random string> docker compose -f docker/compose.yaml up`.
+It brings its own LLM picker: local Ollama or LM Studio, Claude Code, Codex, or an API key.
 
-**Models on Hugging Face:** [bsye](https://huggingface.co/bsye) ·
+## Tour
+
+### Describe the task
+
+One sentence and the LLM you have. The autopilot writes the spec, finds the benchmark and the rivals, and trains until
+it wins or the budget ends.
+
+<img src="docs/screenshots/create.jpg" alt="Create: one sentence and a provider" width="100%">
+
+### Watch it build
+
+Every job live: its step, its progress and every call it makes to the LLM, even with several jobs running.
+
+<img src="docs/screenshots/job.jpg" alt="A running job and its LLM calls" width="100%">
+
+### See it against its rivals
+
+Test score with its 95% interval, the lead over the best rival, CPU time per input and size, with an overfitting check
+under the board.
+
+<img src="docs/screenshots/board.jpg" alt="A specialist's board against Jev" width="100%">
+
+### Test it on new inputs
+
+An LLM writes as many labelled inputs as you ask for, each one shown as it arrives, and every model is scored on them.
+
+<img src="docs/screenshots/written.jpg" alt="Inputs an LLM writes, shown as they arrive" width="100%">
+
+### Act while the user types
+
+A team of specialists wired to your functions fires the action before the sentence is finished, with no LLM at
+runtime.
+
+<img src="docs/screenshots/team.jpg" alt="A team firing an action after 33 of 55 characters" width="100%">
+
+Models on Hugging Face: [bsye](https://huggingface.co/bsye) ·
 [byosm-doctype](https://huggingface.co/bsye/byosm-doctype) ·
 [byosm-intent](https://huggingface.co/bsye/byosm-intent) ·
 [byosm-vad](https://huggingface.co/bsye/byosm-vad)
@@ -353,9 +408,9 @@ Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seed
 
 ## Quickstart
 
+Installed as in [Run it](#run-it):
+
 ```bash
-git clone https://github.com/bsye/BYOSM && cd BYOSM
-python3.11 -m venv .venv && .venv/bin/pip install -e '.[dev,silero]'
 byosm build vad && byosm board vad        # no LLM needed: spec.yaml lists every data source
 byosm export vad && byosm predict vad clip.wav
 ```
@@ -380,20 +435,6 @@ byosm export vad && byosm predict vad clip.wav
 | `byosm publish <name> --repo <id>` | push to Hugging Face with a generated model card |
 | `byosm bench <a> <b> ...` | specialists vs one generalist (not run yet, see above) |
 | `byosm report [--check]` | regenerate the tables in this README |
-
-## The app
-
-`byosm app` serves a local web UI over the same pipeline: start a specialist from one sentence with the LLM you have
-(local Ollama or LM Studio, Claude Code, Codex, or an API), watch every job and LLM call live, compare each model with
-its rivals, check it for overfitting, and copy the code to use it.
-
-| Create | Specialists |
-|---|---|
-| ![Create](docs/screenshots/create.jpg) | ![Specialists](docs/screenshots/specialists.jpg) |
-
-| A specialist's board | A team, acting while you type |
-|---|---|
-| ![Board](docs/screenshots/board.jpg) | ![Team](docs/screenshots/team.jpg) |
 
 ## Details
 
