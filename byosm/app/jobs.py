@@ -11,41 +11,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..config import MAX_PARALLEL_JOBS
 from ..events import EVENTS_ENV, parse
+from ..resources import can_start_job, max_jobs
+from .allowed import ALLOWED_COMMANDS
 from .detached import LOG_SUFFIX, Tail, alive, exit_code, forget, job_file, kill_group, spawn
 from .hub import Hub
 from .store import JOB_FIELDS, JobStore
 
-ALLOWED_COMMANDS = (
-    "ls",
-    "containerize",
-    "show",
-    "board",
-    "new",
-    "build",
-    "data",
-    "eval",
-    "overfit",
-    "improve",
-    "auto",
-    "distill",
-    "export",
-    "publish",
-    "listen",
-    "report",
-    "request-data",
-    "check-data",
-    "promote",
-    "exp",
-    "suite",
-    "baseline",
-    "testset",
-    "next",
-    "inputs",
-    "system",
-)
 TERMINAL_COLUMNS = "160"
+ADMIT_POLL_S = 2
 ENTRY = "from byosm.cli import app; app()"
 LOST_LINE = "the job process ended without reporting an exit code"
 FOLLOW_SECONDS = 0.1
@@ -69,7 +43,7 @@ class Job:
 
 
 class Runner:
-    def __init__(self, ws: Path, hub: Hub, parallel: int = MAX_PARALLEL_JOBS) -> None:
+    def __init__(self, ws: Path, hub: Hub, parallel: int | None = None) -> None:
         self.ws, self.hub, self.store = ws, hub, JobStore(ws)
         self.jobs = {row["id"]: Job(**row) for row in self.store.jobs()}
         self.todo: queue.Queue[Job] = queue.Queue()
@@ -83,7 +57,8 @@ class Runner:
         for job in self.jobs.values():
             if job.status == "queued":
                 self.todo.put(job)
-        for _ in range(max(1, parallel)):
+        self.cap = parallel or max_jobs()
+        for _ in range(max(1, self.cap)):
             threading.Thread(target=self._work, daemon=True).start()
 
     def submit(self, args: list[str], llm: dict[str, Any] | None = None) -> Job:
@@ -139,9 +114,17 @@ class Runner:
             if self.stopped:
                 return
             if job.status == "queued":
+                self._admit()
                 self._run(job)
             elif job.status == "running":
                 self._follow(job)
+
+    def _admit(self) -> None:
+        while not self.stopped:
+            running = sum(j.status == "running" for j in self.jobs.values())
+            if running < self.cap and can_start_job(running):
+                return
+            time.sleep(ADMIT_POLL_S)
 
     def _env(self, job: Job) -> dict[str, str]:
         from ..config import LLM_OVERRIDE_ENV, env_file

@@ -51,7 +51,6 @@ BUDGET_KEY = "tokens_per_job"
 _providers: dict[str, LLM] = {}
 _gates: dict[str, threading.BoundedSemaphore] = {}
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "[::1]")
-LOCAL_MAX_PARALLEL = 1
 
 
 CONNECTION = ("provider", "base_url", "api_key", "api_key_env")
@@ -91,8 +90,10 @@ def get_llm(role: str = "default", cfg: dict | None = None) -> LLM:
 
 
 def _limit(conf: dict) -> int | None:
+    from ..resources import local_parallel
+
     local = any(host in str(conf.get("base_url") or "") for host in LOCAL_HOSTS)
-    limit = conf.pop("max_parallel", LOCAL_MAX_PARALLEL if local else None)
+    limit = conf.pop("max_parallel", None) or (local_parallel() if local else None)
     return int(limit) if limit else None
 
 

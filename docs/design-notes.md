@@ -394,10 +394,11 @@ environment or the workspace `.env` (`byosm/config.py` `secret`, `.env` is gitig
 `jev-latest`, so a new Jev version behind the same name is not detected; rescore with `--force` after a release.
 Latency is measured through the API, so it includes the network.
 
-**A local LLM server gets one call at a time.**
-`byosm/llm/__init__.py` `_gate`: every role config shares a semaphore per endpoint and model; endpoints on
-`LOCAL_HOSTS` default to `LOCAL_MAX_PARALLEL` (1), hosted ones are unlimited, and `max_parallel` on a role overrides
-both. Gotcha: Ollama serves requests one after another, so eight parallel clients made every request wait in its
+**A local LLM server gets as many calls as free memory allows; a hosted one is not limited.**
+`byosm/llm/__init__.py` `_gate`, `byosm/resources.py`: every role config shares a semaphore per endpoint and model;
+endpoints on `LOCAL_HOSTS` allow one call per `LOCAL_CALL_GB` of free memory (at least one), hosted ones are
+unlimited (a job still sends at most `REMOTE_PARALLEL` at once), and `max_parallel` on a role overrides both. Jobs follow
+the same idea: the app starts a queued job when nothing runs or at least `JOB_GB` is free, up to one per CPU. Gotcha: Ollama serves requests one after another, so eight parallel clients made every request wait in its
 queue until the ten-minute timeout, fail and retry, and two jobs sharing it made no progress for hours. The gate only
 works inside one process; two jobs on the same local server still share it.
 

@@ -11,7 +11,6 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from ..config import MAX_PARALLEL_JOBS
 from . import catalog, keys, panel_routes
 from .config_routes import config_router
 from .data_routes import data_router
@@ -139,7 +138,7 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
 
 def create_app(
-    ws: Path, token: str, hosts: list[str] | None = None, parallel: int = MAX_PARALLEL_JOBS, port: int | None = None
+    ws: Path, token: str, hosts: list[str] | None = None, parallel: int | None = None, port: int | None = None
 ) -> FastAPI:
     app = FastAPI(title="byosm", summary="Local API over the BYOSM pipeline")
     app.state.token = token

@@ -11,11 +11,11 @@ from ..spec import TaskSpec
 from .prompts import ANALYZE_SYSTEM, EVAL_SYSTEM, GEN_SYSTEM, JUDGE_SYSTEM, REFINE_SCHEMA
 from .store import dedupe, record
 
-DEFAULT_CONCURRENCY = 8
-
 
 def concurrency(cfg: dict | None) -> int:
-    return (cfg or {}).get("concurrency", DEFAULT_CONCURRENCY)
+    from ..resources import REMOTE_PARALLEL
+
+    return (cfg or {}).get("concurrency", REMOTE_PARALLEL)
 
 
 def role(split: str) -> str:

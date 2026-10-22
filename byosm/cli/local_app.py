@@ -6,7 +6,7 @@ from typing import Annotated
 
 import typer
 
-from ..config import MAX_PARALLEL_JOBS, find_workspace
+from ..config import find_workspace
 from .base import app, log
 
 DEFAULT_PORT = 8765
@@ -28,7 +28,9 @@ def app_(
     ] = "127.0.0.1",
     port: int = DEFAULT_PORT,
     open_browser: Annotated[bool, typer.Option("--open/--no-open", help="open the UI in the browser")] = True,
-    parallel: Annotated[int, typer.Option(help="how many jobs run at the same time")] = MAX_PARALLEL_JOBS,
+    parallel: Annotated[
+        int | None, typer.Option(help="most jobs at the same time (default: as many as CPUs and free memory allow)")
+    ] = None,
     token: Annotated[
         str, typer.Option(envvar=TOKEN_ENV, help="fixed API token (default: a new random one each start)")
     ] = "",
