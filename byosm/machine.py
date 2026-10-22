@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import select
 
 from .db import Experiment, session
+from .train.gpu import busy_slots, slots
 
 ADAM_BYTES_PER_PARAM = 16
 FROZEN_BYTES_PER_PARAM = 4
@@ -107,7 +108,12 @@ def machine(ws: Path) -> dict[str, Any]:
             "load": round(os.getloadavg()[0] / cores, 2),
             "percent": psutil.cpu_percent(interval=CPU_SAMPLE_S),
         },
-        "memory": {"total": mem.total, "available": mem.available, "byosm": _byosm_memory()},
+        "memory": {
+            "total": mem.total,
+            "available": mem.available,
+            "byosm": _byosm_memory(),
+            "wired": getattr(mem, "wired", 0),
+        },
         "accelerator": accel,
         "disk": {"total": disk.total, "free": disk.free},
         "battery": _battery(),
@@ -116,4 +122,5 @@ def machine(ws: Path) -> dict[str, Any]:
             "frozen": accel["memory"] // training_bytes(1, frozen=True),
         },
         "backbones": backbones(ws),
+        "gpu_slots": {"total": slots(), "busy": busy_slots(ws)},
     }

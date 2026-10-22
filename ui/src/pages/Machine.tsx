@@ -1,4 +1,4 @@
-import { BatteryCharging, BatteryMedium, Cpu } from "lucide-react"
+import { BatteryCharging, BatteryMedium, Cpu, Gpu } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api } from "@/api"
 import { InfoTip } from "@/components/info-tip"
@@ -18,12 +18,13 @@ type Backbone = { backbone: string; params: number; rows_per_second: number; run
 
 export type MachineInfo = {
   cpu: { name: string; cores: number; load: number; percent: number }
-  memory: { total: number; available: number; byosm: number }
+  memory: { total: number; available: number; byosm: number; wired: number }
   accelerator: { kind: string; name: string; memory: number }
   disk: { total: number; free: number }
   battery: { percent: number; plugged: boolean } | null
   largest: { full: number; frozen: number }
   backbones: Backbone[]
+  gpu_slots: { total: number; busy: number }
 }
 
 function useMachine(): MachineInfo | null {
@@ -113,6 +114,10 @@ function Badges({ m }: { m: MachineInfo }) {
         <Cpu />
         {m.cpu.name}, {m.cpu.cores} cores
       </Badge>
+      <Badge variant={m.gpu_slots.busy ? "secondary" : "outline"} title="Trainings on the GPU now, of the most allowed at once">
+        <Gpu />
+        GPU {m.gpu_slots.busy} of {m.gpu_slots.total} training
+      </Badge>
       <BatteryBadge b={m.battery} />
     </div>
   )
@@ -151,7 +156,7 @@ function Stats({ m }: { m: MachineInfo }) {
           label="Memory"
           value={`${gigabytes(m.memory.available)} free`}
           share={used / m.memory.total}
-          line={`of ${gigabytes(m.memory.total)}, BYOSM uses ${gigabytes(m.memory.byosm)}`}
+          line={`of ${gigabytes(m.memory.total)}, GPU holds ${gigabytes(m.memory.wired)}, BYOSM ${gigabytes(m.memory.byosm)}`}
         />
         <Stat
           label="Largest fine-tune"
