@@ -23,6 +23,7 @@ class Predictor:
     task_types: tuple[str, ...] = ("classify", "frame")
     chunk_ms: float | None = None
     label_space: list[str] | None = None
+    hub_repo: str | None = None
 
     def __init__(self, spec: TaskSpec):
         self.spec = spec
@@ -70,3 +71,7 @@ def register_baseline(name: str, summary: str) -> Callable[[type[Predictor]], ty
         return cls
 
     return deco
+
+
+def hub_adapters() -> dict[str, str]:
+    return {cls.hub_repo: name for name, cls in BASELINES.items() if getattr(cls, "hub_repo", None)}

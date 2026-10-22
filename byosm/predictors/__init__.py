@@ -7,6 +7,7 @@ from .experiment import ExperimentPredictor
 from .hf import HFClassifier, HFTagger
 from .jev import Jev
 from .panel import Panel
+from .turn import LiveKitTurn
 from .zero_shot import ZeroShotLLM
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
     "HFClassifier",
     "HFTagger",
     "Jev",
+    "LiveKitTurn",
     "Panel",
     "Predictor",
     "SileroVAD",
