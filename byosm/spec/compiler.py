@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from ..config import free_name
+from ..events import stage
 from ..llm import get_llm
 from ..text import slug
 from .backbones import BACKBONES, DEFAULT_BACKBONE
@@ -75,6 +76,7 @@ def _task_fields(out: dict) -> dict:
     return {**_present(out, {k: k for k in present}), **_given(out, {k: k for k in given})}
 
 
+@stage("Write the spec")
 def compile_spec(name: str | None, description: str, modality: str | None = None, cfg: dict | None = None) -> TaskSpec:
     out = get_llm("spec", cfg).json(_SPEC_SYSTEM, _prompt(description, modality), _SPEC_SCHEMA)
     mod = modality or out["modality"]

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import Project
-from ..events import emit
+from ..events import emit, stage
 from ..predictors import ExperimentPredictor, Predictor, get_baseline
 from ..spec import EvalSuite, TaskSpec
 from .dumps import _dumps
@@ -98,6 +98,7 @@ def _drop(results: dict[str, dict[str, dict]], pid: str, suite: str, log: Callab
         del results[pid]
 
 
+@stage("Score")
 def run(
     name: str,
     experiments: list[str] | None = None,

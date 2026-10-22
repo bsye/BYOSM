@@ -11,6 +11,7 @@ from .config import Project, load_config
 from .data import synth_text
 from .data.review import reviewed_labels
 from .data.store import Dataset
+from .events import stage
 from .spec import TaskSpec
 from .train import fit
 
@@ -27,6 +28,7 @@ def exp_spec(p: Project, exp: str) -> TaskSpec:
     return TaskSpec.load(f if f.exists() else p.spec_path)
 
 
+@stage("Prepare data")
 def ensure_data(
     p: Project,
     spec: TaskSpec,

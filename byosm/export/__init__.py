@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ..config import Project
 from ..evals.selection import calibrated_threshold
+from ..events import stage
 from ..runtime import Specialist
 from ..spec import TaskSpec
 from .bundle import check_out_dir, clear_out_dir, manifest_for, seal, write_bundle
@@ -32,6 +33,7 @@ def _calibrated_decision(p: Project, exp: str, base: TaskSpec) -> tuple[dict, di
     return d, {s: _suite_metrics(v) for s, v in board.get(exp, {}).items()}
 
 
+@stage("Export")
 def export(
     name: str,
     exp: str | None = None,

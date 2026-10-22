@@ -7,6 +7,7 @@ from typing import Any
 
 from .data import hf_source
 from .data.hf_source.hub import search_terms
+from .events import stage
 from .llm import get_llm
 from .spec import EvalSuite, HFSource, TaskSpec
 from .text import match_label
@@ -159,6 +160,7 @@ def _model_baselines(spec: TaskSpec, queries: list[str], bl: list[str], decision
         decisions.append({"step": "baseline", "choice": None, "why": f"model search failed: {type(e).__name__}"})
 
 
+@stage("Find a benchmark and rivals")
 def discover(
     spec: TaskSpec, queries: dict[str, list[str]], cfg: dict | None = None, log: Callable[[str], None] = print
 ) -> tuple[TaskSpec, list[dict]]:

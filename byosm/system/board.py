@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ..config import Project
 from ..evals.identity import baseline_identity
+from ..events import stage
 from ..rt import System, tag_parts
 from ..spec import TaskSpec
 from .bundle import set_gate, system_manifest
@@ -84,6 +85,7 @@ def _suite_board(sp: SystemProject, suite: SystemSuite, log: Callable, force: bo
     return out
 
 
+@stage("Score the team")
 def evaluate(sp: SystemProject, log: Callable[[str], None] = print, force: bool = False) -> dict:
     board = {s.name: _suite_board(sp, s, log, force) for s in sp.spec().evals}
     first = next(iter(board.values()), {})

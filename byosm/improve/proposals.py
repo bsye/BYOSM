@@ -4,6 +4,7 @@ import json
 from collections.abc import Callable
 
 from ..config import Project
+from ..events import stage
 from ..spec import TaskSpec
 from .analyst import llm_proposals
 from .cost import estimate
@@ -14,6 +15,7 @@ from .registry import rule_proposals, unique
 PROPOSALS_FILE = "proposals.json"
 
 
+@stage("Find what to try next")
 def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print) -> tuple[dict, list[dict]]:
     dg = diagnose(name)
     props = unique(rule_proposals(dg) + (llm_proposals(dg, log) if use_llm else []))

@@ -12,7 +12,7 @@ import torch
 from .. import jepa
 from ..config import device as pick_device
 from ..data.store import Dataset
-from ..events import emit
+from ..events import emit, stage
 from ..modalities import Modality, get_modality
 from ..model import SpecialistModel, count_params
 from ..spec import TaskSpec
@@ -127,6 +127,7 @@ def _build(spec: TaskSpec, mod: Modality, dev: str, log: Callable[[str], None]) 
     return model, n_params
 
 
+@stage("Train")
 def fit(
     spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None] = print, seed: int | None = None
 ) -> dict[str, Any]:

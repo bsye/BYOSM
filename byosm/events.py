@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import time
+from collections.abc import Iterator
 from typing import Any
 
 EVENTS_ENV = "BYOSM_EVENTS"
@@ -22,3 +24,15 @@ def parse(line: str) -> dict[str, Any] | None:
     except ValueError:
         return None
     return data if isinstance(data, dict) else None
+
+
+@contextlib.contextmanager
+def stage(name: str) -> Iterator[None]:
+    t0 = time.time()
+    emit("stage", name=name, state="running")
+    try:
+        yield
+    except BaseException:
+        emit("stage", name=name, state="failed", seconds=round(time.time() - t0, 1))
+        raise
+    emit("stage", name=name, state="done", seconds=round(time.time() - t0, 1))

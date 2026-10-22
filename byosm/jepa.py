@@ -7,6 +7,7 @@ from typing import Any
 import torch
 from rich.progress import Progress
 
+from .events import stage
 from .model import SpecialistModel, warmup_cosine
 
 
@@ -58,6 +59,7 @@ def _log_step(log: Callable[[str], None], step: int, steps: int, loss: float, pa
     )
 
 
+@stage("Pretrain")
 def pretrain(
     model: SpecialistModel,
     modality: Any,

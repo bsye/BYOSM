@@ -11,6 +11,7 @@ from typing import Any
 from .. import metrics
 from ..config import Project
 from ..data.store import Dataset, ShingleIndex
+from ..events import stage
 from ..improve.diagnosis import scored_experiment, training_summary
 from ..spec import EvalSuite, TaskSpec
 from ..train.loop import split_rows
@@ -125,6 +126,7 @@ def _report(p: Project, base: TaskSpec, exp: str, train: dict, train_rows: list[
     return {**head, **verdicts, "findings": findings, "skipped": skipped}
 
 
+@stage("Overfitting check")
 def check(
     name: str,
     exp: str | None = None,

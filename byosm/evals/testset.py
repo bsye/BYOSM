@@ -7,6 +7,7 @@ from pathlib import Path
 from ..config import TESTSET_PER_LABEL, TESTSET_SUITE, Project, load_config
 from ..data.store import SPLITS, Dataset, append, dedupe, label_counts, read
 from ..data.synth_text import generate, judge
+from ..events import stage
 from ..llm import role_model
 from ..spec import EvalSuite, TaskSpec
 from .suites import CALIB_EVERY_NTH_ITEM, freeze, suite_dir
@@ -85,6 +86,7 @@ def _check(spec: TaskSpec, suite: str) -> None:
         raise ValueError(f"suite {suite} exists; pass another name with --suite")
 
 
+@stage("Write test inputs")
 def write_testset(
     p: Project,
     spec: TaskSpec,
