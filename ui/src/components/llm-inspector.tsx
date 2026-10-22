@@ -1,4 +1,3 @@
-import { seconds } from "@/format"
 import { ChevronDown, ChevronRight, MessagesSquare } from "lucide-react"
 import { Fragment, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
+import { seconds } from "@/format"
 import { modelName, roleTask } from "@/jobs"
 
 const TICK_MS = 1000
@@ -79,10 +79,7 @@ export function LlmInspector() {
       <SheetContent side="bottom" className="max-h-[70vh]">
         <SheetHeader>
           <SheetTitle>LLM calls</SheetTitle>
-          <SheetDescription>
-            Every call a running job makes to its LLM: which role asked, which model answered, how long it took, and what was
-            sent and returned.
-          </SheetDescription>
+          <SheetDescription className="sr-only">Every LLM call of the running jobs, with its prompt and answer.</SheetDescription>
         </SheetHeader>
         <div className="overflow-auto px-4 pb-4">
           {calls.length === 0 ? (

@@ -89,7 +89,6 @@ function callStep(g: CallGroup): Step {
 function progressStep(m: Metric): Step | null {
   if (m.kind === "epoch") return { label: `Train ${m.experiment}`, detail: `epoch ${m.epoch}/${m.epochs}, dev ${Number(m.dev_objective).toFixed(3)}`, state: "done" }
   if (m.kind === "teacher") return { label: `Label with ${m.teacher}`, detail: `${m.done}/${m.total}`, state: "done" }
-  if (m.kind === "writing") return { label: `Write ${m.split} data`, detail: `${m.done}/${m.total} calls`, state: "done" }
   if (m.kind === "scored") return { label: `Score ${m.predictor}`, detail: `${m.suite}: ${m.objective == null ? "-" : Number(m.objective).toFixed(3)}`, state: "done" }
   return null
 }
