@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import json
+import threading
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -39,6 +41,9 @@ def register_provider(name: str, factory: Callable[..., LLM]) -> None:
 
 
 _cache: dict[str, LLM] = {}
+_gates: dict[str, threading.BoundedSemaphore] = {}
+LOCAL_HOSTS = ("localhost", "127.0.0.1", "[::1]")
+LOCAL_MAX_PARALLEL = 1
 
 
 CONNECTION = ("provider", "base_url", "api_key", "api_key_env")
@@ -70,13 +75,24 @@ def get_llm(role: str = "default", cfg: dict | None = None) -> LLM:
         provider = conf.pop("provider", "anthropic")
         if provider not in PROVIDERS:
             raise LLMError(f"unknown provider {provider!r}; known: {sorted(PROVIDERS)}")
-        _cache[key] = Observed(PROVIDERS[provider](**conf), role)
+        gate = _gate(conf)
+        _cache[key] = Observed(PROVIDERS[provider](**conf), role, gate)
     return _cache[key]
 
 
+def _gate(conf: dict) -> threading.BoundedSemaphore | None:
+    url = str(conf.get("base_url") or "")
+    local = any(host in url for host in LOCAL_HOSTS)
+    limit = conf.pop("max_parallel", LOCAL_MAX_PARALLEL if local else None)
+    if not limit:
+        return None
+    endpoint = f"{url}|{conf.get('model')}"
+    return _gates.setdefault(endpoint, threading.BoundedSemaphore(int(limit)))
+
+
 class Observed:
-    def __init__(self, llm: LLM, role: str):
-        self.llm, self.role = llm, role
+    def __init__(self, llm: LLM, role: str, gate: threading.BoundedSemaphore | None = None):
+        self.llm, self.role, self.gate = llm, role, gate
         self.name = getattr(llm, "name", type(llm).__name__)
 
     def __getattr__(self, attr: str) -> Any:
@@ -92,7 +108,8 @@ class Observed:
         base = {"call": call, "role": self.role, "model": self.name, "at": round(t0, 2)}
         emit("llm", **base, state="waiting", prompt=prompt[:PREVIEW_CHARS], images=len(images or []))
         try:
-            out = self.llm.json(system, prompt, schema, **({"images": images} if images else {}))
+            with self.gate or contextlib.nullcontext():
+                out = self.llm.json(system, prompt, schema, **({"images": images} if images else {}))
         except Exception as e:
             emit("llm", **base, state="failed", seconds=round(time.time() - t0, 1), error=str(e)[:PREVIEW_CHARS])
             raise

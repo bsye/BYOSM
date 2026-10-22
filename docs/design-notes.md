@@ -381,6 +381,13 @@ environment or the workspace `.env` (`byosm/config.py` `secret`, `.env` is gitig
 `jev-latest`, so a new Jev version behind the same name is not detected; rescore with `--force` after a release.
 Latency is measured through the API, so it includes the network.
 
+**A local LLM server gets one call at a time.**
+`byosm/llm/__init__.py` `_gate`: every role config shares a semaphore per endpoint and model; endpoints on
+`LOCAL_HOSTS` default to `LOCAL_MAX_PARALLEL` (1), hosted ones are unlimited, and `max_parallel` on a role overrides
+both. Gotcha: Ollama serves requests one after another, so eight parallel clients made every request wait in its
+queue until the ten-minute timeout, fail and retry, and two jobs sharing it made no progress for hours. The gate only
+works inside one process; two jobs on the same local server still share it.
+
 **Results are cached by fingerprint, and our weights are not in it.**
 `byosm/evals/suites.py` `fingerprint`, `byosm/evals/board.py` `_cached_or_scored`, `byosm/evals/identity.py`: the cache
 key covers the suite definition (without defaults, like the decision policy), the first `FINGERPRINT_CHARS_PER_FILE` (100,000) characters of each frozen suite file,
