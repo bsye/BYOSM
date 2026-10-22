@@ -4,14 +4,15 @@ import type { Summary } from "@/api"
 import { LlmSelect, useStandardChoice } from "@/components/llm-picker"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Health, Healths } from "./HealthList"
-import { bestSteps, unblock, untilReady } from "./stat-actions"
+import { bestSteps, unblock, untilReady, type Progress } from "./stat-actions"
 
 const PRIMARY = 0
 
 type Llm = Record<string, unknown> | null
-type Stat = { label: string; value: string; badge?: string; line: string; hint?: string; action?: { label: string; run: (llm: Llm) => Promise<void> } }
+type Stat = { label: string; value: string; badge?: string; line: string; hint?: string; action?: { label: string; run: (llm: Llm, progress: Progress) => Promise<void> } }
 
 function counted<T>(xs: T[]): [T, number][] {
   const c = new Map<T, number>()
@@ -34,50 +35,51 @@ function stats(items: Summary[], healths: Healths): Stat[] {
       value: `${ready} / ${items.length}`,
       badge: items.length ? `${Math.round((ready / items.length) * 100)}%` : undefined,
       line: pending ? `checking ${pending} more` : `${items.length - ready} need work`,
-      action: notReady.length ? { label: "Auto", run: (llm) => untilReady(notReady, llm) } : undefined,
+      action: notReady.length ? { label: "Auto", run: (llm, progress) => untilReady(notReady, llm, progress) } : undefined,
     },
     {
       label: "Average health",
       value: mean == null ? "-" : String(mean),
-      badge: mean == null ? undefined : `ready: ${known[0].h.ready_score}+ and unblocked`,
+      badge: mean == null ? undefined : `goal ${known[0].h.ready_score}+`,
       line: `across ${known.length} models`,
-      action: known.length ? { label: "Run all", run: (llm) => bestSteps(known.map((k) => k.s.name), llm) } : undefined,
+      action: known.length ? { label: "Run all", run: (llm, progress) => bestSteps(known.map((k) => k.s.name), llm, progress) } : undefined,
     },
     {
       label: "Closest to ready",
       value: close ? String(close.h.score) : "-",
       line: close ? close.s.title || close.s.name : "every model is ready",
       hint: close ? `blocked by ${close.h.blockers.join(", ") || "a low score"}` : undefined,
-      action: close ? { label: "Auto", run: (llm) => untilReady([close.s.name], llm) } : undefined,
+      action: close ? { label: "Auto", run: (llm, progress) => untilReady([close.s.name], llm, progress) } : undefined,
     },
     {
       label: "Top blocker",
       value: blocker ?? "None",
       line: blocker ? `holds back ${blocks} of ${known.length} models` : "nothing blocks production",
-      action: blocker ? { label: "Fix all", run: (llm) => unblock(blocked, blocker, llm) } : undefined,
+      action: blocker ? { label: "Fix all", run: (llm, progress) => unblock(blocked, blocker, llm, progress) } : undefined,
     },
   ]
 }
 
 function Action({ action }: { action: NonNullable<Stat["action"]> }) {
   const llm = useStandardChoice()
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<[number, number] | null>(null)
   const start = () => {
-    setBusy(true)
-    action.run(llm.config()).finally(() => setBusy(false))
+    setBusy([0, 0])
+    action.run(llm.config(), (n, total) => setBusy([n, total])).finally(() => setBusy(null))
   }
   return (
     <div className="flex w-full items-center gap-2">
       <LlmSelect providers={llm.providers} value={llm.value} onChange={llm.pick} label="LLM for this action" standard className="min-w-0 flex-1" />
-      <Button size="sm" disabled={busy} onClick={start}>
+      <Button size="sm" disabled={busy != null} onClick={start}>
         {busy ? <Loader2 className="animate-spin" /> : <Play />}
-        {action.label}
+        {busy && busy[1] > 1 ? `${busy[0]} / ${busy[1]}` : action.label}
       </Button>
     </div>
   )
 }
 
 export function SectionCards({ items, healths }: { items: Summary[]; healths: Healths }) {
+  const loading = items.some((s) => healths[s.name] === undefined)
   return (
     <div className="grid auto-rows-fr grid-cols-2 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
       {stats(items, healths).map((s, i) => (
@@ -85,7 +87,7 @@ export function SectionCards({ items, healths }: { items: Summary[]; healths: He
           <CardHeader>
             <CardDescription className="line-clamp-1">{s.label}</CardDescription>
             <CardTitle className={i === PRIMARY ? "text-3xl font-semibold tabular-nums @[250px]/card:text-4xl" : "line-clamp-1 text-2xl font-semibold tabular-nums"}>
-              {s.value}
+              {loading && i > PRIMARY ? <Skeleton className="h-8 w-24" /> : s.value}
             </CardTitle>
             {s.badge && (
               <CardAction>
@@ -97,7 +99,8 @@ export function SectionCards({ items, healths }: { items: Summary[]; healths: He
             <span className="line-clamp-1" title={s.hint}>
               {s.line}
             </span>
-            {s.action && <Action action={s.action} />}
+            {s.action && !loading && <Action action={s.action} />}
+            {loading && <Skeleton className="h-8 w-full" />}
           </CardFooter>
         </Card>
       ))}
