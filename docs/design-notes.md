@@ -1041,3 +1041,7 @@ and train on `mps` or `cuda` at a time. The machine decides how many: one per 8 
 memory, at most two (two on an 18-thread, 64 GB M5 Max); `gpu_jobs` in `byosm.yaml` overrides it. The slots are
 `flock`ed files under `.byosm/gpu`, so the operating system releases a slot when its job dies, and a waiting job logs
 that it waits. LLM work (writing and checking data, analysis) needs no slot and keeps running alongside.
+GPU memory on Apple silicon is wired memory, invisible in process sizes: one training was holding 36.7 GB while its
+process showed 0.5 GB. Each training therefore caps PyTorch's MPS allocator at 90% of the GPU's recommended working set
+divided by the slots, so two trainings cannot take more than the GPU has, and one that needs more fails with an
+out-of-memory error instead of freezing the machine. The machine card shows the wired memory.

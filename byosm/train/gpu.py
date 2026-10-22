@@ -11,6 +11,7 @@ SLOTS_KEY = "gpu_jobs"
 MAX_AUTO_SLOTS = 2
 CORES_PER_TRAINING = 8
 GB_PER_TRAINING = 16
+MPS_SHARE = 0.9
 LOCK_DIR = Path(".byosm") / "gpu"
 WAIT_S = 5
 
@@ -27,7 +28,7 @@ def auto_slots() -> int:
     return max(1, min(MAX_AUTO_SLOTS, fits))
 
 
-def _slots() -> int:
+def slots() -> int:
     from ..config import load_config
 
     return max(1, int(load_config().get(SLOTS_KEY) or auto_slots()))
@@ -44,6 +45,17 @@ def _try(path: Path):
     return handle
 
 
+def _cap_memory(device: str, log: Callable[[str], None]) -> None:
+    import torch
+
+    if device != "mps" or not torch.backends.mps.is_available():
+        return
+
+    share = MPS_SHARE / slots()
+    torch.mps.set_per_process_memory_fraction(share)
+    log(f"  this training may use {share:.0%} of the GPU's {torch.mps.recommended_max_memory() / 1024**3:.0f} GB")
+
+
 @contextlib.contextmanager
 def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
     if device not in GPU_DEVICES:
@@ -54,7 +66,7 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
 
     base, waited = find_workspace() / LOCK_DIR, 0.0
     while True:
-        handle = next((h for i in range(_slots()) if (h := _try(base / f"slot-{i}.lock"))), None)
+        handle = next((h for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None)
         if handle:
             break
         if not waited:
@@ -64,8 +76,21 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
         waited += WAIT_S
     if waited:
         log(f"  got the GPU after {waited:.0f} s")
+    _cap_memory(device, log)
     try:
         yield
     finally:
         fcntl.flock(handle, fcntl.LOCK_UN)
         handle.close()
+
+
+def busy_slots(ws: Path) -> int:
+    held = 0
+    for path in (ws / LOCK_DIR).glob("slot-*.lock"):
+        handle = _try(path)
+        if handle is None:
+            held += 1
+        else:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+            handle.close()
+    return held
