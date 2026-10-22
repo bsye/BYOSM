@@ -924,3 +924,11 @@ rival, the data check's judge, mapping several Hub datasets) runs its calls thro
 `parallel_calls(cfg)`. That is unlimited up to `REMOTE_PARALLEL` unless a run sets `--parallel`; the real limit is the
 per-endpoint gate, which the Models page sets ("Parallel calls") and which follows free memory for local models. There
 is no second, global `concurrency` cap any more, because it silently throttled remote models to a handful of calls.
+
+## Artifacts on Hugging Face
+
+The database holds every record; weights and ONNX exports are files. `artifact_repo` in `byosm.yaml` names a private
+Hugging Face model repo that mirrors them under the same `specialists/<name>/...` paths (`byosm/artifacts.py`).
+`byosm store push NAME` uploads a specialist's weights and export, `byosm store pull NAME` downloads them, and loading an
+experiment whose `model.pt` is missing pulls just that experiment. Push refuses a public repo. Nothing is uploaded
+unless `artifact_repo` is set.

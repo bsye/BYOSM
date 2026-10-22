@@ -50,6 +50,10 @@ app.add_typer(suite_app, name="suite")
 app.add_typer(baseline_app, name="baseline")
 app.add_typer(exp_app, name="exp")
 app.add_typer(db_app, name="db")
+store_app = typer.Typer(
+    no_args_is_help=True, help="Weights and exports in a private Hugging Face repo (artifact_repo)."
+)
+app.add_typer(store_app, name="store")
 app.add_typer(system_app, name="system")
 app.add_typer(inputs_app, name="inputs")
 console = Console()

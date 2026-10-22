@@ -29,13 +29,22 @@ def timed_ms(fn: Callable[[], Any], n: int, warmup: int = 0, sync: Callable[[], 
     return ts
 
 
+def _weights(spec: TaskSpec, run_dir: Path) -> Path:
+    path = run_dir / "model.pt"
+    if path.exists():
+        return path
+    from .artifacts import weights
+
+    return weights(Project(spec.name), run_dir.name)
+
+
 class Specialist:
     def __init__(self, spec: TaskSpec, meta: dict, run_dir: Path, device: str = "cpu"):
         self.spec, self.meta = spec, meta
         self.threshold = self.meta.get("threshold")
         self.mod = get_modality(self.spec)
         self.model = build_model(self.spec, self.mod)
-        self.model.load_state_dict(torch.load(run_dir / "model.pt", map_location="cpu"))
+        self.model.load_state_dict(torch.load(_weights(spec, run_dir), map_location="cpu"))
         self.device = device
         self.model.to(device).eval()
 
