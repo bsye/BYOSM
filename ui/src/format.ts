@@ -1,5 +1,7 @@
 export const score = (x: number | null | undefined) => (x == null ? "-" : x.toFixed(3))
 
+export const signed = (x: number | null | undefined) => (x == null ? "-" : `${x > 0 ? "+" : ""}${x.toFixed(3)}`)
+
 export const params = (x: number | null | undefined) => (x == null ? "-" : `${(x / 1e6).toFixed(1)}M`)
 
 export const ms = (x: number | null | undefined) => (x == null ? "-" : `${x.toFixed(1)} ms`)

@@ -1,6 +1,7 @@
 import { InfoTip } from "@/components/info-tip"
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis } from "recharts"
 import type { Summary } from "@/api"
+import { signed } from "@/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 
@@ -27,7 +28,7 @@ export function Overview({ items }: { items: Summary[] }) {
             <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel={false} indicator="line" />} />
             <Bar dataKey="lead" radius={6}>
-              <LabelList dataKey="lead" position="top" className="fill-foreground" fontSize={12} />
+              <LabelList dataKey="lead" position="top" className="fill-foreground tabular-nums" fontSize={12} formatter={(v) => signed(Number(v))} />
               {data.map((d) => (
                 <Cell key={d.name} fill={d.lead >= 0 ? "var(--color-lead)" : "var(--destructive)"} />
               ))}

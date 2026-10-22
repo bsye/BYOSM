@@ -17,7 +17,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
-import { metricName, rivalName, score } from "@/format"
+import { metricName, signed, rivalName, score } from "@/format"
 import { describe } from "@/jobs"
 import { go, href } from "@/route"
 import { Overview } from "./Overview"
@@ -65,8 +65,7 @@ function Delta({ s }: { s: Summary }) {
     <span className="text-muted-foreground flex w-full min-w-0 items-center gap-1">
       <Icon className="size-3.5 shrink-0" />
       <span className="text-foreground font-medium tabular-nums">
-        {d > 0 ? "+" : ""}
-        {d.toFixed(3)}
+        {signed(d)}
       </span>
       <span className="min-w-0 truncate">vs {rivalName(s.rival.name)}</span>
     </span>

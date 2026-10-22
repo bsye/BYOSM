@@ -10,7 +10,7 @@ import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
-import { metricName, ms, params, rivalName, score } from "@/format"
+import { signed, metricName, ms, params, rivalName, score } from "@/format"
 import { go } from "@/route"
 import { BoardChart, boardRows } from "./BoardChart"
 import { DataRows } from "./DataRows"
@@ -161,7 +161,7 @@ function ModelStats({ d }: { d: Detail }) {
       />
       <StatCard
         label="Lead over best rival"
-        value={lead == null ? "-" : `${lead > 0 ? "+" : ""}${lead.toFixed(3)}`}
+        value={signed(lead)}
         detail={d.rival ? `vs ${rivalName(d.rival.name)}` : "no rival scored yet"}
       />
       <StatCard label="CPU per input" value={ms(best.latency_ms)} detail={d.promoted ?? ""} />

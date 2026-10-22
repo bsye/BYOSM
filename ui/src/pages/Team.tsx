@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { useLive } from "@/events"
-import { rivalName, score } from "@/format"
+import { signed, rivalName, score } from "@/format"
 import { go, href } from "@/route"
 import { SystemDiagram } from "./SystemDiagram"
 import { TypeDemo } from "./TypeDemo"
@@ -55,8 +55,7 @@ function Stats({ suite }: { suite: Suite }) {
             <span className="flex items-center gap-1">
               {lead >= 0 ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
               <span className="text-foreground font-medium tabular-nums">
-                {lead >= 0 ? "+" : ""}
-                {lead.toFixed(3)}
+                {signed(lead)}
               </span>
               vs {rivalName(llm?.[0])}
             </span>
