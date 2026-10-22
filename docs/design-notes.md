@@ -940,3 +940,12 @@ Promotion after a build, the autopilot's keep/revert and the health check's "bea
 resamples. Promotion used to compare calib point estimates, which let turn-completion's v17 replace v15 on a calib lead
 that held in 88% of resamples (interval -0.77 to +0.94), while v15 stayed ahead on test even at v17's best threshold.
 With a bound like recall at 98% precision on a 391-row calib split, a handful of rows decides the score.
+
+## Fine-tuned rivals
+
+Jev and an LLM are not the bar to beat when someone already fine-tuned a model on the same benchmark. `byosm rivals NAME`
+(`byosm/finetuned_rivals.py`) asks the web-research LLM for the strongest public models fine-tuned on the primary
+benchmark or the labelled training source, checks each id exists on the Hub, then adds models tagged on the Hub as
+trained on that dataset. It skips models above 1B parameters, keeps up to two whose labels name ours, or whose
+`LABEL_n` outputs map onto ours on at least 80% of our dev rows, and scores them with the same code. Next steps offers
+it once per specialist with a public benchmark.

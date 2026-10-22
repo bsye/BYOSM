@@ -160,3 +160,17 @@ def baseline_available() -> None:
 
     for k, c in sorted(BASELINES.items()):
         log(f"{k:10s} {'/'.join(c.modalities) or 'any'} {'/'.join(c.task_types)}  {c.summary}")
+
+
+@app.command("rivals")
+def rivals(name: str) -> None:
+    """Find models fine-tuned on this specialist's benchmark on Hugging Face, add the best as rivals and score them."""
+    from .. import evals
+    from ..finetuned_rivals import add_finetuned
+
+    _spec(name)
+    added = add_finetuned(name, log)
+    if not added:
+        log("no fine-tuned rival found that maps onto these labels")
+        return
+    evals.run(name, experiments=[], baselines=[a["rival"] for a in added], log=log)

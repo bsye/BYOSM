@@ -24,6 +24,7 @@ const VERBS: Record<string, string> = {
   overfit: "Overfitting check",
   testset: "Write test set",
   "adopt-data": "Adopt data",
+  rivals: "Add fine-tuned rivals",
   next: "Do next steps",
   datasets: "Find datasets",
 }

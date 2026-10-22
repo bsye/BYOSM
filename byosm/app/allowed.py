@@ -25,6 +25,7 @@ ALLOWED_COMMANDS = (
     "baseline",
     "testset",
     "adopt-data",
+    "rivals",
     "next",
     "inputs",
     "datasets",

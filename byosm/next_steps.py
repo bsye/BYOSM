@@ -5,6 +5,8 @@ from typing import Any
 
 from .data.sufficiency import MIN_CALIB_ITEMS, MIN_TEST_ITEMS, data_check
 from .dataset_search import saved_suggestions
+from .finetuned_rivals import REPORT as FINETUNED
+from .finetuned_rivals import benchmarks
 from .health import OK, checks
 from .held_out import bigger_held_out
 from .improve.proposals import PROPOSALS
@@ -45,6 +47,13 @@ def _more_data(p: Project, check: dict | None) -> dict[str, Any] | None:
     top = found[0]
     why = f"{labels} have fewer training rows than recommended. {top['dataset']} fits: {top['why']}"
     return _step("more-data", f"Train with {top['dataset']}", why, top["args"])
+
+
+def _finetuned(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
+    if spec.modality != "text" or spec.task_type != "classify" or not benchmarks(spec) or p.report(FINETUNED):
+        return None
+    why = f"Models fine-tuned on {benchmarks(spec)[0]} are the fairest rival. Searches Hugging Face, adds the best ones whose labels map onto ours, and scores them."
+    return _step("finetuned", "Score fine-tuned rivals", why, ["rivals", p.name])
 
 
 def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
@@ -98,6 +107,7 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
     steps = [
         _held_out(p, check),
         _more_data(p, check),
+        _finetuned(p, spec),
         _rivals(p, spec, prim),
         _experiments(p),
     ]
