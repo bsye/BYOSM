@@ -49,6 +49,7 @@ function Board({ d }: { d: Detail }) {
   const keep = new Set([d.promoted, ...d.baselines])
   const others = every.filter((r) => !keep.has(r.model)).slice(0, FOCUS_OTHERS).map((r) => r.model)
   const rows = all ? every : every.filter((r) => keep.has(r.model) || others.includes(r.model))
+  const caughtLabels = Object.keys(d.board[d.promoted ?? ""]?.[d.primary_suite]?.caught ?? {})
   return (
     <Card>
       <CardHeader>
@@ -84,6 +85,9 @@ function Board({ d }: { d: Detail }) {
                 </span>
               </TableHead>
               <TableHead>Calib</TableHead>
+              {caughtLabels.map((l) => (
+                <TableHead key={l}>Catches {l}</TableHead>
+              ))}
               <TableHead>Params</TableHead>
               <TableHead>CPU per input</TableHead>
             </TableRow>
@@ -115,6 +119,11 @@ function Board({ d }: { d: Detail }) {
                     )}
                   </TableCell>
                   <TableCell className="text-foreground/70 tabular-nums">{score(r.calib)}</TableCell>
+                  {caughtLabels.map((l) => (
+                    <TableCell key={l} className="text-foreground/70 tabular-nums">
+                      {res.caught?.[l] != null ? `${((res.caught[l] as number) * 100).toFixed(1)}%` : "-"}
+                    </TableCell>
+                  ))}
                   <TableCell className="text-foreground/70 tabular-nums">{params(res.params)}</TableCell>
                   <TableCell className="text-foreground/70 tabular-nums">{ms(res.latency_ms)}</TableCell>
                 </TableRow>

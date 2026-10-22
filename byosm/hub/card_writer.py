@@ -60,11 +60,19 @@ def _export(f: CardFacts) -> dict[str, Any]:
     }
 
 
+def _caught(r: dict) -> dict[str, float | None]:
+    return {k: v.get("recall") for k, v in r.get("metrics", {}).get("per_label", {}).items()}
+
+
 def facts(f: CardFacts) -> dict[str, Any]:
     r = f.results.get(f.prim, {})
     m = r.get("metrics", {})
     rivals = [
-        {**model_ref(f.p, pid, by.get(f.prim)), "score": by.get(f.prim, {}).get("objective")}
+        {
+            **model_ref(f.p, pid, by.get(f.prim)),
+            "score": by.get(f.prim, {}).get("objective"),
+            "caught_per_label": _caught(by.get(f.prim, {})),
+        }
         for pid, by in f.board.items()
         if by.get(f.prim, {}).get("kind") == "baseline"
     ]
@@ -82,6 +90,7 @@ def facts(f: CardFacts) -> dict[str, Any]:
             "score": r.get("objective"),
             "ci95": m.get("ci95"),
             "precision": m.get("precision"),
+            "caught_per_label": _caught(r),
             "recall": m.get("recall"),
             "test_rows": r.get("n_test"),
             "params_millions": round(f.manifest.get("params", 0) / 1e6, 1),

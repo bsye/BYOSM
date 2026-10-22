@@ -64,6 +64,7 @@ export type Result = {
   n_test: number | null
   ci: { lo: number; hi: number } | null
   unreached: number | null
+  caught: Record<string, number | null> | null
 }
 
 export type Summary = {
