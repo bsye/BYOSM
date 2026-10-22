@@ -29,7 +29,7 @@
   <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-green">
 </p>
 
-<p align="center"><img src="docs/screenshots/hero.gif" alt="The specialists, then one specialist with its health, board, experiments, data and test sets" width="100%"></p>
+<p align="center"><img src="docs/screenshots/hero.gif" alt="Home: your models against their rivals, their health and next actions, trending models and this machine, then one specialist with its board, experiments, data and test sets" width="100%"></p>
 
 ## Features
 
