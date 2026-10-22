@@ -1021,3 +1021,14 @@ in `byosm.yaml`, which the app can change while jobs run:
 The waiting call re-reads the mode every minute, so switching to local or pressing Retry now reaches jobs already
 waiting. A failed job also offers Retry and Retry with local LLM. A job's chosen LLM now replaces every role, not only
 the default one, so "run this with X" means every part of the job uses X.
+
+## What a specialist cost, and when it pays off
+
+The Costs page prices what BYOSM measured, not estimates. Each LLM call event carries its job and token counts; a job
+names its specialist (from its arguments, or the `target` event an autopilot emits). Calls are priced from LiteLLM's
+public price table, cached for a day under `~/.cache/byosm`, and split into building (data, labels, analysis) and
+evaluating (rival answers, test sets). Training power is measured training time times `costs.watts` at
+`costs.usd_per_kwh`, both settings in `byosm.yaml`. The LLM's cost per item is its measured tokens on the rival runs
+divided by the items those runs scored; ours is the measured CPU time per input at the same power price. Break-even is
+the build cost over the saving per item. Calls made through Claude Code include its own prompt, which inflates build
+and per-item cost alike, so the break-even is steadier than either dollar figure.
