@@ -9,6 +9,7 @@ from .base import LLMError, _parse_json, _retry, report_usage
 
 CLAUDE_BINARY = "claude"
 CLAUDE_MODEL = "claude-haiku-5-5"
+CLAUDE_MODELS = (CLAUDE_MODEL, "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1")
 CLAUDE_TIMEOUT_S = 600
 INPUT_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
 ISOLATION_FLAGS = ("--strict-mcp-config", "--setting-sources", "project", "--disable-slash-commands", "--tools", "")

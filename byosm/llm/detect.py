@@ -9,7 +9,7 @@ from typing import Any
 
 from ..config import DEFAULT_CONFIG, secret
 from . import pmap
-from .claude_code_provider import CLAUDE_BINARY, CLAUDE_MODEL
+from .claude_code_provider import CLAUDE_BINARY, CLAUDE_MODELS
 from .codex_provider import CODEX_BINARY
 
 OLLAMA_URL = "http://localhost:11434"
@@ -72,7 +72,7 @@ def _cli(binary: str) -> dict[str, str] | None:
 
 def _claude_code() -> Found:
     cli = _cli(CLAUDE_BINARY)
-    return cli and {**cli, **_found([CLAUDE_MODEL], provider="claude-code")}
+    return cli and {**cli, **_found(list(CLAUDE_MODELS), provider="claude-code")}
 
 
 def _codex() -> Found:
