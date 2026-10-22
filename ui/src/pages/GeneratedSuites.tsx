@@ -10,6 +10,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Input } from "@/components/ui/input"
 import { metricName, rivalName } from "@/format"
 import { go } from "@/route"
+import { WrittenInputs } from "./WrittenInputs"
 
 const SUITE_BASE = "llm-written"
 const DEFAULT_TOTAL = 100
@@ -120,6 +121,7 @@ export function GeneratedSuites({ d }: { d: Detail }) {
   return (
     <div className="flex flex-col gap-4">
       {d.task_type === "classify" && <GenerateCard d={d} />}
+      <WrittenInputs name={d.name} />
       <div className="grid auto-rows-fr gap-4 @3xl/main:grid-cols-2">
         {d.suites
           .filter((s) => s.kind === GENERATED)
