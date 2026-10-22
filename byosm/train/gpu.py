@@ -8,15 +8,29 @@ from pathlib import Path
 
 GPU_DEVICES = ("mps", "cuda")
 SLOTS_KEY = "gpu_jobs"
-DEFAULT_SLOTS = 1
+MAX_AUTO_SLOTS = 2
+CORES_PER_TRAINING = 8
+GB_PER_TRAINING = 16
 LOCK_DIR = Path(".byosm") / "gpu"
 WAIT_S = 5
+
+
+def auto_slots() -> int:
+    import os
+
+    import psutil
+
+    from ..machine import UNIFIED_MEMORY_SHARE
+
+    usable_gb = psutil.virtual_memory().total * UNIFIED_MEMORY_SHARE / 1024**3
+    fits = min((os.cpu_count() or 1) // CORES_PER_TRAINING, int(usable_gb // GB_PER_TRAINING))
+    return max(1, min(MAX_AUTO_SLOTS, fits))
 
 
 def _slots() -> int:
     from ..config import load_config
 
-    return max(1, int(load_config().get(SLOTS_KEY) or DEFAULT_SLOTS))
+    return max(1, int(load_config().get(SLOTS_KEY) or auto_slots()))
 
 
 def _try(path: Path):
