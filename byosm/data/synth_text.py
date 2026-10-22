@@ -103,21 +103,19 @@ def judge(
     if spec.task_type == "frame" or not rows:
         return rows
     llm = get_llm("judge", cfg)
+    verdict = {"n": {"type": "integer"}, "label": {"type": "string", "enum": [*spec.label_names, "__drop__"]}}
     schema = {
         "type": "object",
-        "properties": {
-            "labels": {"type": "array", "items": {"type": "string", "enum": [*spec.label_names, "__drop__"]}}
-        },
+        "properties": {"labels": {"type": "array", "items": {"type": "object", "properties": verdict}}},
     }
     chunks = [rows[i : i + 40] for i in range(0, len(rows), 40)]
 
     def run(chunk: list[dict]) -> list[dict]:
         listing = "\n".join(f"{i + 1}. {r['input']}" for i, r in enumerate(chunk))
-        out = llm.json(JUDGE_SYSTEM, f"{_context(spec)}\n\nInputs:\n{listing}\n\nReturn {len(chunk)} labels.", schema)
-        labs = out.get("labels", [])
-        if len(labs) != len(chunk):
-            return []
-        return [r for r, lab in zip(chunk, labs, strict=True) if lab == r["label"]]
+        ask = f"Return {len(chunk)} labels, each with its input's number n."
+        out = llm.json(JUDGE_SYSTEM, f"{_context(spec)}\n\nInputs:\n{listing}\n\n{ask}", schema)
+        labs = {v.get("n"): v.get("label") for v in out.get("labels", []) if isinstance(v, dict)}
+        return [r for i, r in enumerate(chunk, 1) if labs.get(i) == r["label"]]
 
     kept = [
         r for part in pmap(run, chunks, concurrency, on_error=lambda e: log(f"  judge batch failed: {e}")) for r in part

@@ -96,7 +96,7 @@ class FakeLLM:
     def label(self, prompt):
         items = numbered_items(prompt)
         if items:
-            return {"labels": [kind(s) for s in items]}
+            return {"labels": [{"n": i, "label": kind(s)} for i, s in enumerate(items, 1)]}
         truth = [kind(s) for s in item_blocks(prompt)]
         flip = {"question": "statement", "statement": "question"}
         return {"labels": [t if self.rng.random() < 0.75 else flip[t] for t in truth]}
