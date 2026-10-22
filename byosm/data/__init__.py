@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from ..spec import HFSource, TaskSpec
-from . import audio_mix, hf_source, panel, segments, synth_text
+from . import audio_mix, budget, hf_source, panel, segments
 from .store import DEV_SHARE, TEST_SHARE, Dataset, dedupe, record, write
 from .table import is_table, table_rows
 
@@ -134,19 +134,11 @@ def _add_hf(
     return pools
 
 
-def _add_synthetic(spec: TaskSpec, splits: dict[str, list[dict]], cfg: dict | None, log: Log) -> None:
-    need = max(0, spec.data.train_size - len(splits["train"]))
-    if need:
-        splits["train"] += synth_text.generate(spec, need, "train", cfg, against=splits["train"], log=log)
-    for s, size in (("dev", spec.data.dev_size), ("test", spec.data.test_size)):
-        need = max(0, size - len(splits[s]))
-        if need:
-            prior = splits["train"] + splits["dev"] + splits["test"]
-            splits[s] += synth_text.generate(spec, need, s, cfg, against=prior, log=log)
-
-
-def _collect(spec: TaskSpec, data_dir: Path, cfg: dict | None, log: Log) -> tuple[dict[str, list[dict]], list[dict]]:
+def _collect(
+    spec: TaskSpec, data_dir: Path, cfg: dict | None, seconds: float, log: Log
+) -> tuple[dict[str, list[dict]], list[dict], dict | None]:
     rng = random.Random(spec.name)
+    fit = None
     splits: dict[str, list[dict]] = {"train": [], "dev": [], "test": []}
     unlabeled: list[dict] = []
     if spec.data.local_dir:
@@ -162,11 +154,11 @@ def _collect(spec: TaskSpec, data_dir: Path, cfg: dict | None, log: Log) -> tupl
         for s, rows in audio_mix.build(spec, data_dir, pools["positive"], pools["negative"], sizes, log).items():
             splits[s] += rows
     if spec.data.synthetic and spec.modality == "text":
-        _add_synthetic(spec, splits, cfg, log)
+        fit = budget.add_synthetic(spec, splits, cfg, seconds, log)
     if spec.modality == "text":
         splits["test"] = dedupe(splits["test"], against=splits["train"] + splits["dev"])
         splits["dev"] = dedupe(splits["dev"], against=splits["train"])
-    return splits, unlabeled
+    return splits, unlabeled, fit
 
 
 def build(
@@ -175,9 +167,11 @@ def build(
     cfg: dict | None = None,
     log: Callable[[str], None] = print,
     reviewed: dict[str, str] | None = None,
+    seconds: float | None = None,
 ) -> dict[str, Any]:
     ds = Dataset(data_dir)
-    splits, unlabeled = _collect(spec, data_dir, cfg, log)
+    allowed = spec.data.max_minutes * 60 if seconds is None else seconds
+    splits, unlabeled, fit = _collect(spec, data_dir, cfg, allowed, log)
     if not splits["train"]:
         raise RuntimeError(
             "data stage produced no training examples - check the data plan in spec.yaml (sources, synthetic, local_dir), "
@@ -189,4 +183,6 @@ def build(
         ds.save(s, rows)
     unlabeled += [record(r["input"], None, "train-inputs") for r in splits["train"]]
     write(data_dir / "unlabeled.jsonl", unlabeled)
+    if fit:
+        budget.record_fit(data_dir, fit, splits)
     return ds.summary()

@@ -72,6 +72,7 @@ class DataPlan(BaseModel):
     dev_size: int = 400
     test_size: int = 600
     per_call: int = 25
+    max_minutes: float = 120.0
     judge: bool = True
     hf_queries: list[str] = Field(default_factory=list)
     hf_sources: list[HFSource] = Field(default_factory=list)

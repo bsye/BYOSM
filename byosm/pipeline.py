@@ -27,12 +27,19 @@ def exp_spec(p: Project, exp: str) -> TaskSpec:
     return TaskSpec.load(f if f.exists() else p.spec_path)
 
 
-def ensure_data(p: Project, spec: TaskSpec, cfg: dict, log: Callable[[str], None], force: bool = False) -> Path:
+def ensure_data(
+    p: Project,
+    spec: TaskSpec,
+    cfg: dict,
+    log: Callable[[str], None],
+    force: bool = False,
+    seconds: float | None = None,
+) -> Path:
     dd = p.data_dir_for(spec)
     if force or not (dd / "train.jsonl").exists():
         log(f"[data] {spec.name} -> data/{spec.data_key()}")
         dd.mkdir(parents=True, exist_ok=True)
-        summary = data_stage.build(spec, dd, cfg, log, reviewed_labels(p.reviewed_path))
+        summary = data_stage.build(spec, dd, cfg, log, reviewed_labels(p.reviewed_path), seconds)
         for s, v in summary.items():
             log(f"  {s}: {v['n']} examples {v['labels'] if spec.task_type == 'classify' else ''}")
     else:
@@ -58,7 +65,11 @@ def refine(p: Project, spec: TaskSpec, cfg: dict, exp_dir: Path, data_dir: Path,
 
 
 def build(
-    name: str, exp: str | None = None, log: Callable[[str], None] = print, force_data: bool = False
+    name: str,
+    exp: str | None = None,
+    log: Callable[[str], None] = print,
+    force_data: bool = False,
+    data_seconds: float | None = None,
 ) -> dict[str, Any]:
     p = Project(name).ensure()
     cfg = load_config(p.ws)
@@ -68,7 +79,7 @@ def build(
     ed.mkdir(parents=True, exist_ok=True)
     log(f"[experiment] {name}/{exp}")
 
-    dd = ensure_data(p, spec, cfg, log, force_data)
+    dd = ensure_data(p, spec, cfg, log, force_data, data_seconds)
     can_refine = spec.modality == "text" and spec.data.synthetic
     rounds = []
     for r in range(spec.train.refine_rounds + 1):

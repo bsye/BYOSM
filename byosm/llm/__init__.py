@@ -75,25 +75,31 @@ def get_llm(role: str = "default", cfg: dict | None = None) -> LLM:
         provider = conf.pop("provider", "anthropic")
         if provider not in PROVIDERS:
             raise LLMError(f"unknown provider {provider!r}; known: {sorted(PROVIDERS)}")
-        gate = _gate(conf)
-        _cache[key] = Observed(PROVIDERS[provider](**conf), role, gate)
+        limit = _limit(conf)
+        _cache[key] = Observed(PROVIDERS[provider](**conf), role, _gate(conf, limit), limit)
     return _cache[key]
 
 
-def _gate(conf: dict) -> threading.BoundedSemaphore | None:
-    url = str(conf.get("base_url") or "")
-    local = any(host in url for host in LOCAL_HOSTS)
+def _limit(conf: dict) -> int | None:
+    local = any(host in str(conf.get("base_url") or "") for host in LOCAL_HOSTS)
     limit = conf.pop("max_parallel", LOCAL_MAX_PARALLEL if local else None)
+    return int(limit) if limit else None
+
+
+def _gate(conf: dict, limit: int | None) -> threading.BoundedSemaphore | None:
     if not limit:
         return None
-    endpoint = f"{url}|{conf.get('model')}"
-    return _gates.setdefault(endpoint, threading.BoundedSemaphore(int(limit)))
+    endpoint = f"{conf.get('base_url') or ''}|{conf.get('model')}"
+    return _gates.setdefault(endpoint, threading.BoundedSemaphore(limit))
 
 
 class Observed:
-    def __init__(self, llm: LLM, role: str, gate: threading.BoundedSemaphore | None = None):
-        self.llm, self.role, self.gate = llm, role, gate
+    def __init__(self, llm: LLM, role: str, gate: threading.BoundedSemaphore | None = None, limit: int | None = None):
+        self.llm, self.role, self.gate, self.limit = llm, role, gate, limit
         self.name = getattr(llm, "name", type(llm).__name__)
+
+    def parallel(self, concurrency: int) -> int:
+        return max(1, min(concurrency, self.limit or concurrency))
 
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.llm, attr)

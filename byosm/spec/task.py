@@ -22,6 +22,7 @@ from .sections import (
 )
 
 SYNTH_FIELDS = ("name", "summary", "input_description", "languages", "diversity_axes", "hard_cases")
+DATA_RUN_SETTINGS = {"max_minutes"}
 
 
 class TaskSpec(BaseModel):
@@ -68,7 +69,7 @@ class TaskSpec(BaseModel):
             "t": self.task_type,
             "l": self.label_names,
             "hop": self.frame_hop_ms,
-            "d": self.data.model_dump(mode="json", exclude_defaults=True),
+            "d": self.data.model_dump(mode="json", exclude_defaults=True, exclude=DATA_RUN_SETTINGS),
             "desc": "",
         }
         if self.data.synthetic:

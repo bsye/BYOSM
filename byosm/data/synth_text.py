@@ -9,6 +9,20 @@ from ..spec import TaskSpec
 from .prompts import ANALYZE_SYSTEM, EVAL_SYSTEM, GEN_SYSTEM, JUDGE_SYSTEM, REFINE_SCHEMA
 from .store import dedupe, record
 
+DEFAULT_CONCURRENCY = 8
+
+
+def concurrency(cfg: dict | None) -> int:
+    return (cfg or {}).get("concurrency", DEFAULT_CONCURRENCY)
+
+
+def role(split: str) -> str:
+    return "eval" if split in ("dev", "test") else "generate"
+
+
+def calls(n: int, per_call: int) -> int:
+    return max(1, -(-n // per_call))
+
 
 def _label_block(spec: TaskSpec, names: list[str] | None = None) -> str:
     return "\n".join(f'- "{lab.name}": {lab.definition}' for lab in spec.labels if names is None or lab.name in names)
@@ -57,7 +71,7 @@ def _jobs(spec: TaskSpec, n: int, rng: random.Random, adversarial: bool, labels:
     k = spec.data.per_call
     labels = labels or spec.label_names
     jobs = []
-    for i in range(max(1, -(-n // k))):
+    for i in range(calls(n, k)):
         label = labels[i % len(labels)]
         combo = {a.name: rng.choice(a.values) for a in spec.diversity_axes if a.values}
         hard = rng.sample(spec.hard_cases, min(len(spec.hard_cases), 4 if adversarial else 2))
@@ -120,9 +134,9 @@ def generate(
     log: Callable[[str], None] = print,
     labels: list[str] | None = None,
 ) -> list[dict]:
-    concurrency = (cfg or {}).get("concurrency", 8)
-    adversarial = split in ("dev", "test")
-    llm = get_llm("eval" if adversarial else "generate", cfg)
+    workers = concurrency(cfg)
+    adversarial = role(split) == "eval"
+    llm = get_llm(role(split), cfg)
     rng = random.Random(f"{spec.name}-{split}-{len(against or [])}")
     jobs = jobs or _jobs(spec, n, rng, adversarial, labels)
     pool = [r["input"] for r in (against or [])]
@@ -138,13 +152,11 @@ def generate(
         )
 
     rows = [
-        r
-        for part in pmap(run, jobs, concurrency, on_error=lambda e: log(f"  generation call failed: {e}"))
-        for r in part
+        r for part in pmap(run, jobs, workers, on_error=lambda e: log(f"  generation call failed: {e}")) for r in part
     ]
     rows = dedupe(rows, against=against)
     if spec.data.judge:
-        rows = judge(spec, rows, cfg, concurrency, log)
+        rows = judge(spec, rows, cfg, workers, log)
     return rows
 
 
