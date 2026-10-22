@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { rivalName } from "@/format"
 import { openJob } from "@/job-sheet"
+import { AddLlmRival } from "./AddLlmRival"
 import { NewTestSet } from "./NewTestSet"
 import { accuracy, useWorkbench, type TestSet } from "./workbench-api"
 
@@ -155,6 +156,7 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
+          <AddLlmRival name={name} onAdded={wb.loadModels} />
           <Button size="sm" className="ml-auto" disabled={!set?.rows.length || !unscored} onClick={() => start(["inputs", "run", name, "--set", setName, ...parallelArgs])}>
             <Play />
             {fixed ? "Scored on the board" : unscored ? `Score ${unscored} rows` : "All scored"}

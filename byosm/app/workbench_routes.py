@@ -13,6 +13,10 @@ class Models(BaseModel):
     models: list[str]
 
 
+class LlmRival(BaseModel):
+    config: dict[str, Any]
+
+
 def _project(ws: Path, name: str) -> tuple[Any, Any]:
     from ..project import Project
 
@@ -60,6 +64,13 @@ def workbench_router(ws: Path) -> APIRouter:
         return Response(
             body, media_type=XLSX_TYPE, headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )
+
+    @router.post("/api/specialists/{name}/llm-rivals")
+    def add_rival(name: str, body: LlmRival) -> dict:
+        from ..llm_rivals import add_llm_rival
+
+        p, _ = missing(_project, ws, name)
+        return {"rival": missing(add_llm_rival, p, body.config)}
 
     @router.get("/api/specialists/{name}/test-models")
     def models(name: str) -> dict:

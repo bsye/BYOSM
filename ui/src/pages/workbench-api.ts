@@ -25,13 +25,16 @@ export function useWorkbench(name: string) {
   useEffect(() => {
     load()
   }, [load, ended, scored])
-  useEffect(() => {
+  const loadModels = useCallback(() => {
     api<ModelChoice>(`/specialists/${name}/test-models`)
       .then(setModels)
       .catch(() => setModels(null))
   }, [name])
+  useEffect(() => {
+    loadModels()
+  }, [loadModels])
   const choose = (chosen: string[]) => put<ModelChoice>(`/specialists/${name}/test-models`, { models: chosen }).then(setModels)
-  return { sets, models, choose, running: running.length }
+  return { sets, models, choose, loadModels, running: running.length }
 }
 
 export function accuracy(set: TestSet, model: string): { right: number; scored: number } {

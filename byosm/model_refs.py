@@ -36,14 +36,16 @@ def _json(f: Path) -> Any:
     return json.loads(f.read_text()) if f.exists() else None
 
 
-def _llm(identity: str | None) -> dict[str, Any]:
-    conf = json.loads(identity) if identity else {}
+def _llm(pid: str, identity: str | None) -> dict[str, Any]:
+    from .evals.identity import baseline_identity
+
+    conf = json.loads(identity or baseline_identity(pid) or "{}")
     model, provider = conf.get("model", "?"), conf.get("provider", "?")
     local = any(h in str(conf.get("base_url", "")) for h in LOCAL_LLM_HOSTS)
     url = f"{OLLAMA_LIBRARY}{model.partition(':')[0]}" if local else LLM_PAGES.get(provider)
     effort = conf.get("effort") or conf.get("reasoning_effort")
     detail = f"{model} via {'Ollama' if local else provider}" + (f", effort {effort}" if effort else "")
-    return {"name": "the LLM", "detail": detail, "url": url}
+    return {"name": "the LLM" if pid == LLM_PREFIX else model, "detail": detail, "url": url}
 
 
 def _baseline(pid: str) -> dict[str, Any]:
@@ -60,7 +62,7 @@ def _baseline(pid: str) -> dict[str, Any]:
 
 def model_ref(p: Project, pid: str, result: dict | None = None) -> dict[str, Any]:
     if pid == LLM_PREFIX or pid.startswith(f"{LLM_PREFIX}:"):
-        return {"id": pid, **_llm((result or {}).get("identity"))}
+        return {"id": pid, **_llm(pid, (result or {}).get("identity"))}
     if pid in p.experiments():
         repos = [repo for repo, exp in published(p).items() if exp == pid]
         mine = "this model" if pid == p.promoted else "an experiment"
@@ -70,4 +72,5 @@ def model_ref(p: Project, pid: str, result: dict | None = None) -> dict[str, Any
 
 
 def model_refs(p: Project, board: dict[str, dict[str, dict]]) -> dict[str, dict[str, Any]]:
-    return {pid: model_ref(p, pid, next(iter(by.values()), None)) for pid, by in board.items()}
+    scored = {pid: model_ref(p, pid, next(iter(by.values()), None)) for pid, by in board.items()}
+    return {**{b: model_ref(p, b) for b in p.spec().baselines}, **scored}

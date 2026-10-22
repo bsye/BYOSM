@@ -23,9 +23,12 @@ export function took(a: number | null, b: number | null): string {
 
 const RIVAL_NAMES: Record<string, string> = { llm: "the LLM", jev: "Jev", panel: "the teacher panel", silero: "Silero", energy: "an energy threshold" }
 
+const LLM_RIVAL = "llm:rival-"
+
 export function rivalName(id: string | null | undefined): string {
   if (!id) return "-"
   if (RIVAL_NAMES[id]) return RIVAL_NAMES[id]
+  if (id.startsWith(LLM_RIVAL)) return id.slice(LLM_RIVAL.length)
   const repo = (id.startsWith("hf:") ? id.slice(3) : id).split("#")[0]
   return repo.slice(repo.lastIndexOf("/") + 1)
 }
