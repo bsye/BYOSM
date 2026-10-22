@@ -119,6 +119,7 @@ public fine-tuned checkpoints.
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
 | Classify the primary emotion expressed in a short English text (single sentence, tweet-style or short social media string) into one of six named emotions (sadness, joy, love, anger, fear, surprise). Any text that does not clearly express one of these dominates falls into a catch-all neutral-other class (including neutral statements, irony/sarcasm without a dominant named emotion, ambiguity, or non-English). | dair-ai/emotion (accuracy) | v1 (22.72M) | 0.898 [0.883, 0.913] | hf:j-hartmann/emotion-english-distilroberta-base (82.12M) | 0.838 [0.819, 0.856] | +0.060, P(better) = 1.00 | 0.904 vs 0.813 (ahead) |
 | 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | jev (-) | 0.808 [0.792, 0.822] | +0.129, P(better) = 1.00 | 0.948 vs 0.784 (ahead) |
+| Token-tag every token in a lease-agreement text to identify spans of DATE, AMOUNT, and PARTY (landlord, tenant, guarantor, or other named signatory) using BIO tagging. | lease-entities-builtin (span_f1) | v1 (70.69M) | 0.514 [0.389, 0.651] | hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 (183.92M) | 0.301 [0.178, 0.432] | +0.213, P(better) = 1.00 | 0.632 vs 0.370 (ahead) |
 | Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
@@ -353,6 +354,23 @@ Suite `massive` (AmazonScience/massive): 2379 test and 595 calib items. Selectio
 
 Suite `massive` (AmazonScience/massive): 2379 test and 595 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:assistant-args -->
+
+### Dates, amounts and parties in a lease: one sentence, LLM-written data
+
+`byosm "find the dates, amounts and parties in a lease agreement"`, end to end with local Qwen. No public dataset
+fits, so Qwen wrote both the training rows and the test set: this is **not a public benchmark**, the test set is small
+and the interval is wide. The two rivals are public PII taggers that cover 5 of the 7 labels. The autopilot stopped
+short of its own 0.93 target when the time budget ran out.
+
+<!-- report:lease-entities -->
+| model | built from | train rows | params | CPU | test span_f1 [95% CI] | calib span_f1 |
+|---|---|---|---|---|---|---|
+| **v1** (promoted) | no recorded parent | 287 | 70.69M | 17.60ms | 0.514 [0.389, 0.651] | 0.632 |
+| hf:h2oai/deberta_finetuned_pii | outside baseline | - | 138.69M | 47.54ms | 0.356 [0.226, 0.500] | 0.308 |
+| hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 | outside baseline | - | 183.92M | 61.79ms | 0.301 [0.178, 0.432] | 0.370 |
+
+Suite `builtin` (lease-entities-builtin): 50 test and 10 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+<!-- /report:lease-entities -->
 
 ## How it works
 
