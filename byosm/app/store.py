@@ -1,24 +1,14 @@
 from __future__ import annotations
 
-import json
-import sqlite3
-import threading
 from pathlib import Path
 from typing import Any
 
-DB_PATH = Path(".byosm") / "app.sqlite"
+from sqlalchemy import func, select
+
+from ..db import session
+from ..db.models import Job, JobEvent, JobLine
+
 JOB_FIELDS = ("id", "args", "status", "created", "started", "ended", "code", "pid")
-SCHEMA = """
-create table if not exists jobs (
-    id text primary key, args text, status text, created real, started real, ended real, code integer, pid integer
-);
-create table if not exists lines (job text, line text);
-create index if not exists lines_job on lines (job);
-create table if not exists events (job text, data text);
-create index if not exists events_job on events (job);
-"""
-
-
 USAGE_COLUMNS = (
     "job",
     "role",
@@ -32,70 +22,71 @@ USAGE_COLUMNS = (
     "counted",
     "counted_seconds",
 )
-USAGE_SQL = """
-select job, json_extract(data, '$.role'), json_extract(data, '$.model'),
-  sum(json_extract(data, '$.state') = 'done'), sum(json_extract(data, '$.state') = 'failed'),
-  coalesce(sum(json_extract(data, '$.tokens_in')), 0), coalesce(sum(json_extract(data, '$.tokens_out')), 0),
-  round(coalesce(sum(json_extract(data, '$.seconds')), 0), 1), max(json_extract(data, '$.at')),
-  sum(json_extract(data, '$.tokens_out') is not null),
-  round(coalesce(sum(case when json_extract(data, '$.tokens_out') is not null then json_extract(data, '$.seconds') end), 0), 1)
-from events
-where json_extract(data, '$.kind') = 'llm' and json_extract(data, '$.state') in ('done', 'failed')
-group by 1, 2, 3
-order by 9 desc
-"""
+LLM_KIND = "llm"
+ENDED_STATES = ("done", "failed")
+
+
+def _usage_row(job: str, role: str | None, model: str | None) -> dict[str, Any]:
+    return {**dict.fromkeys(USAGE_COLUMNS, 0), "job": job, "role": role, "model": model, "last": None}
+
+
+def _tally(u: dict[str, Any], d: dict[str, Any]) -> None:
+    u["calls" if d["state"] == "done" else "failed"] += 1
+    u["tokens_in"] += d.get("tokens_in") or 0
+    u["tokens_out"] += d.get("tokens_out") or 0
+    u["seconds"] += d.get("seconds") or 0
+    u["last"] = max(u["last"] or 0, d.get("at") or 0)
+    if d.get("tokens_out") is not None:
+        u["counted"] += 1
+        u["counted_seconds"] += d.get("seconds") or 0
 
 
 class JobStore:
     def __init__(self, ws: Path) -> None:
-        path = ws / DB_PATH
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(path, check_same_thread=False)
-        self.lock = threading.Lock()
-        with self.lock, self.db:
-            self.db.executescript(SCHEMA)
-            columns = [r[1] for r in self.db.execute("pragma table_info(jobs)")]
-            if "pid" not in columns:
-                self.db.execute("alter table jobs add column pid integer")
-
-    def _write(self, sql: str, params: tuple) -> None:
-        with self.lock, self.db:
-            self.db.execute(sql, params)
-
-    def _read(self, sql: str, params: tuple = ()) -> list[tuple]:
-        with self.lock:
-            return self.db.execute(sql, params).fetchall()
+        self.ws = ws
 
     def save(self, job: dict[str, Any]) -> None:
-        row = {**job, "args": json.dumps(job["args"])}
-        marks = ", ".join("?" for _ in JOB_FIELDS)
-        self._write(f"insert or replace into jobs values ({marks})", tuple(row[k] for k in JOB_FIELDS))
+        with session(self.ws) as s:
+            s.merge(Job(**{k: job[k] for k in JOB_FIELDS}))
 
     def line(self, job_id: str, line: str) -> None:
-        self._write("insert into lines values (?, ?)", (job_id, line))
+        with session(self.ws) as s:
+            s.add(JobLine(job=job_id, line=line))
 
     def event(self, job_id: str, data: dict[str, Any]) -> None:
-        self._write("insert into events values (?, ?)", (job_id, json.dumps(data)))
+        with session(self.ws) as s:
+            s.add(JobEvent(job=job_id, kind=data.get("kind"), model=data.get("model"), data=data))
 
     def jobs(self) -> list[dict[str, Any]]:
-        rows = self._read(f"select {', '.join(JOB_FIELDS)} from jobs order by created")
-        return [{**dict(zip(JOB_FIELDS, r, strict=True)), "args": json.loads(r[1])} for r in rows]
+        with session(self.ws) as s:
+            return [{k: getattr(j, k) for k in JOB_FIELDS} for j in s.scalars(select(Job).order_by(Job.created))]
 
     def lines(self, job_id: str) -> list[str]:
-        return [r[0] for r in self._read("select line from lines where job = ? order by rowid", (job_id,))]
+        with session(self.ws) as s:
+            return list(s.scalars(select(JobLine.line).where(JobLine.job == job_id).order_by(JobLine.id)))
 
     def seen(self, job_id: str) -> int:
-        counts = [self._read(f"select count(*) from {t} where job = ?", (job_id,))[0][0] for t in ("lines", "events")]
-        return sum(counts)
+        with session(self.ws) as s:
+            n = [s.scalar(select(func.count()).select_from(t).where(t.job == job_id)) for t in (JobLine, JobEvent)]
+        return sum(n)
 
     def events(self, job_id: str) -> list[dict[str, Any]]:
-        rows = self._read("select data from events where job = ? order by rowid", (job_id,))
-        return [json.loads(r[0]) for r in rows]
+        with session(self.ws) as s:
+            return list(s.scalars(select(JobEvent.data).where(JobEvent.job == job_id).order_by(JobEvent.id)))
 
     def llm_usage(self) -> list[dict[str, Any]]:
-        rows = self._read(USAGE_SQL)
-        return [dict(zip(USAGE_COLUMNS, r, strict=True)) for r in rows]
+        with session(self.ws) as s:
+            rows = s.execute(select(JobEvent.job, JobEvent.data).where(JobEvent.kind == LLM_KIND)).all()
+        out: dict[tuple, dict[str, Any]] = {}
+        for job, d in rows:
+            if d.get("state") in ENDED_STATES:
+                key = (job, d.get("role"), d.get("model"))
+                _tally(out.setdefault(key, _usage_row(*key)), d)
+        for u in out.values():
+            u["seconds"], u["counted_seconds"] = round(u["seconds"], 1), round(u["counted_seconds"], 1)
+        return sorted(out.values(), key=lambda u: -(u["last"] or 0))
 
     def jobs_using(self, model: str) -> set[str]:
-        sql = "select distinct job from events where json_extract(data, '$.kind') = 'llm' and json_extract(data, '$.model') = ?"
-        return {r[0] for r in self._read(sql, (model,))}
+        with session(self.ws) as s:
+            q = select(JobEvent.job).where(JobEvent.kind == LLM_KIND, JobEvent.model == model).distinct()
+            return set(s.scalars(q))

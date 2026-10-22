@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from ..app.store import JOB_FIELDS, JobStore
 from ..auto.report import SUMMARY
 from ..auto.state import AUTOPILOT
 from ..data.store import read_file
@@ -31,6 +33,7 @@ STALE_EXPERIMENT_FILES = ("test_errors.json", "report.json")
 WORKBENCH_RESULTS = ".results.json"
 ROW_DIRS = ("specialists", "systems")
 ROW_SKIP = {"export", "hub"}
+OLD_JOB_DB = Path(".byosm") / "app.sqlite"
 
 
 def _json(f: Path) -> Any:
@@ -99,10 +102,27 @@ def import_rows(ws: Path, log: Callable[[str], None]) -> list[Path]:
     return files
 
 
+def import_jobs(ws: Path, log: Callable[[str], None]) -> list[Path]:
+    old = ws / OLD_JOB_DB
+    if not old.exists():
+        return []
+    db = sqlite3.connect(old)
+    store = JobStore(ws)
+    for row in db.execute(f"select {', '.join(JOB_FIELDS)} from jobs"):
+        store.save({**dict(zip(JOB_FIELDS, row, strict=True)), "args": json.loads(row[1])})
+    for job, line in db.execute("select job, line from lines order by rowid"):
+        store.line(job, line)
+    for job, data in db.execute("select job, data from events order by rowid"):
+        store.event(job, json.loads(data))
+    db.close()
+    log(f"  {len(store.jobs())} jobs imported")
+    return [old]
+
+
 def import_workspace(ws: Path, log: Callable[[str], None]) -> list[Path]:
     done: list[Path] = []
     for spec in sorted((ws / "specialists").glob("*/spec.yaml")):
         files = import_specialist(spec.parent, ws)
         log(f"  {spec.parent.name}: {len(files)} files imported")
         done += files
-    return done + import_rows(ws, log)
+    return done + import_rows(ws, log) + import_jobs(ws, log)

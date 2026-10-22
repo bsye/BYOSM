@@ -77,7 +77,7 @@ def test_job_history_survives_a_restart(client, ws):
         assert again.get(f"/api/jobs/{job['id']}", headers=AUTH).json()["lines"] == done["lines"]
         stale = again.get("/api/jobs/stale", headers=AUTH).json()
     assert stale["status"] == "failed" and stale["lines"] == [LOST_LINE]
-    assert (ws / ".byosm" / "app.sqlite").exists()
+    assert {job["id"], "stale"} <= {j["id"] for j in JobStore(ws).jobs()}
 
 
 def test_the_app_command_takes_a_fixed_token_and_extra_hosts(ws, monkeypatch):

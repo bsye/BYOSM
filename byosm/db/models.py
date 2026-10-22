@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -77,4 +77,32 @@ class Row(Base):
     collection: Mapped[str] = mapped_column(String(200))
     split: Mapped[str] = mapped_column(String(50))
     position: Mapped[int] = mapped_column(Integer)
+    data: Mapped[dict[str, Any]]
+
+
+class Job(Base):
+    __tablename__ = "jobs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    args: Mapped[list[Any]]
+    status: Mapped[str] = mapped_column(String(20))
+    created: Mapped[float | None] = mapped_column(Float)
+    started: Mapped[float | None] = mapped_column(Float)
+    ended: Mapped[float | None] = mapped_column(Float)
+    code: Mapped[int | None] = mapped_column(Integer)
+    pid: Mapped[int | None] = mapped_column(Integer)
+
+
+class JobLine(Base):
+    __tablename__ = "job_lines"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job: Mapped[str] = mapped_column(String(40), index=True)
+    line: Mapped[str] = mapped_column(Text)
+
+
+class JobEvent(Base):
+    __tablename__ = "job_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job: Mapped[str] = mapped_column(String(40), index=True)
+    kind: Mapped[str | None] = mapped_column(String(40), index=True)
+    model: Mapped[str | None] = mapped_column(String(200))
     data: Mapped[dict[str, Any]]
