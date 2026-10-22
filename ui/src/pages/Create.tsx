@@ -48,9 +48,9 @@ export function Create() {
       {error && <p className="text-destructive text-sm">{error}</p>}
       <div className="flex flex-wrap justify-center gap-2">
         {EXAMPLES.map((x) => (
-          <Button key={x} variant="outline" size="sm" className="text-muted-foreground" onClick={() => setPrompt(x)}>
+          <Button key={x} variant="outline" size="sm" className="text-muted-foreground max-w-full" onClick={() => setPrompt(x)}>
             <Lightbulb />
-            {x}
+            <span className="truncate">{x}</span>
           </Button>
         ))}
       </div>

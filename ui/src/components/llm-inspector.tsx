@@ -16,7 +16,7 @@ type Call = {
   command: string
   role: string
   model: string
-  state: "waiting" | "done" | "failed"
+  state: "waiting" | "done" | "failed" | "stopped"
   started: number
   seconds?: number
   prompt?: string
@@ -24,7 +24,8 @@ type Call = {
   error?: string
 }
 
-const STATE_VARIANT = { waiting: "default", done: "secondary", failed: "destructive" } as const
+const STATE_VARIANT = { waiting: "default", done: "secondary", failed: "destructive", stopped: "outline" } as const
+const ACTIVE = new Set(["running", "queued"])
 
 function useCalls(): Call[] {
   const live = useLive()
@@ -44,7 +45,10 @@ function useCalls(): Call[] {
       } as Call)
     }
   }
-  return [...calls.values()].reverse().slice(0, SHOWN)
+  const out = [...calls.values()].map((c) =>
+    c.state === "waiting" && !ACTIVE.has(live.jobs[c.job]?.status ?? "") ? { ...c, state: "stopped" as const } : c,
+  )
+  return out.reverse().slice(0, SHOWN)
 }
 
 function useNow(active: boolean): number {
@@ -97,7 +101,7 @@ export function LlmInspector() {
               <TableBody>
                 {calls.map((c) => {
                   const expanded = open === c.call
-                  const secs = c.seconds ?? Math.max(0, now - c.started)
+                  const secs = c.seconds ?? (c.state === "waiting" ? Math.max(0, now - c.started) : null)
                   return (
                     <Fragment key={c.call}>
                       <TableRow className="cursor-pointer" onClick={() => setOpen(expanded ? null : c.call)}>
@@ -108,7 +112,7 @@ export function LlmInspector() {
                         <TableCell>
                           <Badge variant={STATE_VARIANT[c.state]}>{c.state}</Badge>
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{secs.toFixed(1)} s</TableCell>
+                        <TableCell className="text-right tabular-nums">{secs == null ? "-" : `${secs.toFixed(1)} s`}</TableCell>
                       </TableRow>
                       {expanded && (
                         <TableRow>
