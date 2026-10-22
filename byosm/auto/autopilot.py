@@ -27,6 +27,8 @@ def _compile(name: str | None, prompt: str | None, modality: str | None, cfg: An
 def _define(p: Project, log: Log, spec: Any, cfg: Any, echo: Callable) -> None:
     from ..discover import discover
 
+    p.ensure()
+    p.save_spec(spec)
     log(
         "define",
         f"{spec.modality}/{spec.task_type}, {len(spec.labels)} labels, backbone {spec.backbone}",

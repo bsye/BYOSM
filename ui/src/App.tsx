@@ -84,11 +84,11 @@ export default function App() {
     <LiveProvider>
       <TooltipProvider>
         <Shell />
+        <Palette />
+        <LlmInspector />
+        <JobSheet />
+        <Toaster />
       </TooltipProvider>
-      <Palette />
-      <LlmInspector />
-      <JobSheet />
-      <Toaster />
     </LiveProvider>
   )
 }
