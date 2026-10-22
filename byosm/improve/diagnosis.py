@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections import Counter
 from typing import Any
 
@@ -85,4 +86,30 @@ def diagnose(name: str) -> dict[str, Any]:
         "rows_by_source": Counter(r.get("source") for r in read(p.data_dir_for(spec) / "train.jsonl")),
         "read_by_source": Counter(r.get("source") for s in SPLITS for r in read(p.data_dir_for(spec) / f"{s}.jsonl")),
     }
-    return {**head, **training_summary(meta, spec), "board": board, "primary": base.primary_suite()}
+    history = tried(p, board, base.primary_suite())
+    return {**head, **training_summary(meta, spec), "board": board, "primary": base.primary_suite(), "history": history}
+
+
+VALUE_CHARS = 80
+
+
+def _change(op: dict) -> str:
+    return f"{op['path']}={json.dumps(op.get('value'), default=str)[:VALUE_CHARS]}"
+
+
+def tried(p: Project, board: dict, prim: str) -> list[dict]:
+    out = []
+    for exp in p.experiments():
+        pr = p.proposal(exp) or {}
+        r = board.get(exp, {}).get(prim, {})
+        out.append(
+            {
+                "experiment": exp,
+                "parent": pr.get("parent"),
+                "changes": [_change(o) for a in pr.get("applied", []) for o in a.get("ops", [])],
+                "calib": r.get("calib_objective"),
+                "test": r.get("objective"),
+                "promoted": exp == p.promoted,
+            }
+        )
+    return out

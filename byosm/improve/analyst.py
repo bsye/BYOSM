@@ -47,6 +47,9 @@ def _prompt(dg: dict[str, Any]) -> str:
         f"Spec:\n{dg['spec'].model_dump_json(indent=1)}\n\nBoard:\n{json.dumps(board, indent=1)}\n\n"
         f"Training curve (dev objective per epoch): {dg['curve']}\n"
         f"Diagnosis per suite: {json.dumps(diag)}\n\n"
+        f"Experiments tried so far, what each changed from its parent and how it scored on the primary suite "
+        f"(calib picks, test is only reported). Do not repeat a change that did not help; combine and build on "
+        f"what helped:\n{json.dumps(dg.get('history', []), indent=1)}\n\n"
         f"Allowed paths (dotted; | separates alternatives for one segment, * is a list index): {ALLOWED}"
     )
 
