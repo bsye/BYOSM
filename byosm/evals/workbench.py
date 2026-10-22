@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import Project, load_config
-from ..data.store import Dataset, append, read
+from ..data.store import Dataset, append, read, write
 from ..events import emit, stage
 from ..spec import TaskSpec
 from .testset import WRITTEN_SPLIT, existing_rows, written_path
@@ -16,6 +16,7 @@ RESULTS_SUFFIX = ".results.json"
 MODELS_FILE = "test-models.json"
 OURS = "ours"
 SAMPLE_SEED = 7
+SCORE_CHUNK = 16
 
 
 def results_path(p: Project, name: str) -> Path:
@@ -46,10 +47,22 @@ def _add(p: Project, name: str, rows: list[dict]) -> int:
 def write_more(p: Project, spec: TaskSpec, name: str, per_label: int, log: Callable[[str], None]) -> int:
     from ..data.synth_text import generate
 
-    against = existing_rows(p, spec) + read(written_path(p, name))
+    path = written_path(p, name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    shown: list[dict] = []
+
+    def show(rows: list[dict]) -> None:
+        shown.extend(rows)
+        append(path, rows)
+
+    against = existing_rows(p, spec) + read(path)
     n = per_label * len(spec.labels)
-    rows = generate(spec, n, WRITTEN_SPLIT, load_config(p.ws), against, log=log, labels=spec.label_names)
-    return _add(p, name, rows)
+    kept = generate(spec, n, WRITTEN_SPLIT, load_config(p.ws), against, log=log, labels=spec.label_names, on_rows=show)
+    dropped = {r["id"] for r in shown} - {r["id"] for r in kept}
+    if dropped:
+        write(path, [r for r in read(path) if r["id"] not in dropped])
+        log(f"  removed {len(dropped)} inputs the label check rejected")
+    return len(kept)
 
 
 def sample_benchmark(p: Project, spec: TaskSpec, name: str, n: int) -> int:
@@ -65,6 +78,20 @@ def _predictor(p: Project, spec: TaskSpec, model: str) -> Any:
     return experiment_predictor(p, spec, p.promoted or "") if model == OURS else get_baseline(model, spec)
 
 
+def _keep(out: dict, model: str, rows: list[dict], probs: Any, spec: TaskSpec) -> None:
+    got = out.setdefault(model, {})
+    for r, pr in zip(rows, probs, strict=True):
+        best = int(pr.argmax())
+        got[r["id"]] = {"label": spec.label_names[best], "confidence": round(float(pr[best]), 4)}
+
+
+def _save(p: Project, name: str, model: str, answers: dict) -> dict:
+    merged = results(p, name)
+    merged.setdefault(model, {}).update(answers)
+    results_path(p, name).write_text(json.dumps(merged))
+    return merged
+
+
 def run(p: Project, spec: TaskSpec, name: str, models: list[str], log: Callable[[str], None]) -> dict:
     from ..modalities import get_modality
     from .scoring import row_probs
@@ -77,12 +104,13 @@ def run(p: Project, spec: TaskSpec, name: str, models: list[str], log: Callable[
         if not todo:
             continue
         with stage(f"Score {p.promoted if m == OURS else m}"):
-            probs = row_probs(_predictor(p, spec, m), todo, mod)
-        got = out.setdefault(m, {})
-        for r, pr in zip(todo, probs, strict=True):
-            best = int(pr.argmax())
-            got[r["id"]] = {"label": spec.label_names[best], "confidence": round(float(pr[best]), 4)}
-        results_path(p, name).write_text(json.dumps(out))
+            pred = _predictor(p, spec, m)
+            for i in range(0, len(todo), SCORE_CHUNK):
+                chunk = todo[i : i + SCORE_CHUNK]
+                _keep(out, m, chunk, row_probs(pred, chunk, mod), spec)
+                out = _save(p, name, m, out[m])
+                emit("writing", split=name, done=min(i + SCORE_CHUNK, len(todo)), total=len(todo), specialist=p.name)
+        got = out[m]
         right = sum(got[r["id"]]["label"] == r["label"] for r in rows if r["id"] in got)
         emit("scored", predictor=m, suite=name, objective=round(right / max(1, len(got)), 4))
         log(f"  {m}: {right}/{len(got)} right on {name}")

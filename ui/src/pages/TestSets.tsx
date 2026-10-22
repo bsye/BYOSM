@@ -85,7 +85,12 @@ export function TestSets({ name, labels }: { name: string; labels: number }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Test sets
-          {wb.busy && <Loader2 className="text-muted-foreground size-4 animate-spin" />}
+          {wb.running > 0 && (
+            <span className="text-muted-foreground flex items-center gap-1 text-xs font-normal">
+              <Loader2 className="size-3.5 animate-spin" />
+              {wb.running === 1 ? "1 job" : `${wb.running} jobs`}
+            </span>
+          )}
         </CardTitle>
         <CardAction>
           <Select value={setName} onValueChange={setPicked}>
@@ -106,12 +111,12 @@ export function TestSets({ name, labels }: { name: string; labels: number }) {
         <div className="flex flex-wrap items-center gap-2">
           <Input type="number" min={1} className="h-8 w-20 tabular-nums" aria-label="Inputs per label" value={perLabel} onChange={(e) => setPerLabel(Math.max(1, Number(e.target.value) || 1))} />
           <LlmPicker llm={llm} label="LLM that writes the inputs" />
-          <Button size="sm" variant="outline" disabled={!llm.choice || wb.busy} onClick={() => start(["inputs", "write", name, "--per-label", String(perLabel), "--set", setName], llm.config())}>
+          <Button size="sm" variant="outline" disabled={!llm.choice} onClick={() => start(["inputs", "write", name, "--per-label", String(perLabel), "--set", setName], llm.config())}>
             <Sparkles />
             Write {perLabel * labels}
           </Button>
           <Input type="number" min={1} className="ml-2 h-8 w-20 tabular-nums" aria-label="Rows from the benchmark" value={sample} onChange={(e) => setSample(Math.max(1, Number(e.target.value) || 1))} />
-          <Button size="sm" variant="outline" disabled={wb.busy} onClick={() => start(["inputs", "sample", name, "--n", String(sample), "--set", setName])}>
+          <Button size="sm" variant="outline" onClick={() => start(["inputs", "sample", name, "--n", String(sample), "--set", setName])}>
             <Database />
             Add from benchmark
           </Button>
@@ -124,7 +129,7 @@ export function TestSets({ name, labels }: { name: string; labels: number }) {
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
-          <Button size="sm" className="ml-auto" disabled={!set?.rows.length || !unscored || wb.busy} onClick={() => start(["inputs", "run", name, "--set", setName])}>
+          <Button size="sm" className="ml-auto" disabled={!set?.rows.length || !unscored} onClick={() => start(["inputs", "run", name, "--set", setName])}>
             <Play />
             {unscored ? `Score ${unscored} rows` : "All scored"}
           </Button>

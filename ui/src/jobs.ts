@@ -25,6 +25,7 @@ const VERBS: Record<string, string> = {
   testset: "Write test set",
 }
 
+const INPUT_VERBS: Record<string, string> = { write: "Write inputs", sample: "Sample inputs", run: "Score inputs" }
 const NAMED_FLAGS = new Set(["--apply", "--suite"])
 export const EVENT_PREFIX = "@event "
 
@@ -32,6 +33,7 @@ export type Described = { title: string; target: string | null; subject: string 
 
 export function describe(job: Pick<Job, "args">): Described {
   const [cmd, ...rest] = job.args
+  if (cmd === "inputs") return { title: INPUT_VERBS[rest[0]] ?? "Test inputs", target: rest[1] ?? null, subject: rest[rest.indexOf("--set") + 1] ?? null }
   if (cmd === "system") return { title: `${rest[0] === "eval" ? "Score" : "Build"} team`, target: rest[1] ?? null, subject: null }
   const verb = cmd === "improve" && rest.includes("--apply") ? "Run proposal" : (VERBS[cmd] ?? cmd)
   const plain = rest.filter((a, i) => !a.startsWith("--") && !(rest[i - 1]?.startsWith("--") && !NAMED_FLAGS.has(rest[i - 1])))

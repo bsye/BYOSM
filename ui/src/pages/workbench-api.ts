@@ -12,9 +12,9 @@ const UNFINISHED = new Set(["running", "queued"])
 export function useWorkbench(name: string) {
   const live = useLive()
   const jobs = Object.values(live.jobs).filter((j) => (j.args[0] === "inputs" || j.args[0] === "testset") && j.args.includes(name))
-  const running = jobs.find((j) => UNFINISHED.has(j.status))
-  const ended = jobs.filter((j) => !UNFINISHED.has(j.status)).length
-  const scored = running ? (live.metrics[running.id] ?? []).filter((m) => m.kind === "scored" || m.kind === "writing").length : 0
+  const running = jobs.filter((j) => UNFINISHED.has(j.status))
+  const ended = jobs.length - running.length
+  const scored = running.reduce((n, j) => n + (live.metrics[j.id] ?? []).filter((m) => m.kind === "scored" || m.kind === "writing").length, 0)
   const [sets, setSets] = useState<TestSet[]>([])
   const [models, setModels] = useState<ModelChoice | null>(null)
   const load = useCallback(() => {
@@ -31,7 +31,7 @@ export function useWorkbench(name: string) {
       .catch(() => setModels(null))
   }, [name])
   const choose = (chosen: string[]) => put<ModelChoice>(`/specialists/${name}/test-models`, { models: chosen }).then(setModels)
-  return { sets, models, choose, busy: running != null }
+  return { sets, models, choose, running: running.length }
 }
 
 export function accuracy(set: TestSet, model: string): { right: number; scored: number } {
