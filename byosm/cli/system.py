@@ -31,7 +31,14 @@ def _show(board: dict) -> None:
         for r, v in b["rivals"].items():
             ci = f"{_fmt(v['test'])} [{v['ci']['lo']:.3f}, {v['ci']['hi']:.3f}]"
             ms = f"{v['latency_ms']:.1f}" if v["latency_ms"] else "-"
-            t.add_row(r, ci, _fmt(v["calib"]), f"{v['test']['action_accuracy']:.3f}", f"{v['test']['arg_f1']:.3f}", ms)
+            t.add_row(
+                r,
+                ci,
+                _fmt(v["calib"]),
+                f"{v['test']['action_accuracy']:.3f}",
+                "-" if v["test"]["arg_f1"] is None else f"{v['test']['arg_f1']:.3f}",
+                ms,
+            )
         console.print(t)
         if b.get("stream"):
             log(stream_line(b["stream"]))

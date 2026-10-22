@@ -86,11 +86,12 @@ def units(pred: list[dict], gold: list[dict]) -> dict[str, list]:
     return out
 
 
-def summary(u: dict[str, list]) -> dict[str, float]:
+def summary(u: dict[str, list]) -> dict[str, float | None]:
+    counts = np.asarray(u["args"]).sum(0)
     return {
         "exact_frame": float(np.mean(u["exact"])),
         "action_accuracy": float(np.mean(u["action"])),
-        "arg_f1": float(f1_of_counts(np.asarray(u["args"]).sum(0))),
+        "arg_f1": float(f1_of_counts(counts)) if counts.any() else None,
         "n": len(u["exact"]),
     }
 
