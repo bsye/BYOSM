@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from ..config import free_name
 from ..llm import get_llm
 from ..text import slug
@@ -68,7 +70,7 @@ def train_cfg(mod: str, backbone: str) -> TrainCfg:
 
 
 def _task_fields(out: dict) -> dict:
-    present = ["task_type", "summary", "input_description", "hard_cases"]
+    present = ["title", "task_type", "summary", "input_description", "hard_cases"]
     given = ["positive_label", "languages", "latency_budget_ms"]
     return {**_present(out, {k: k for k in present}), **_given(out, {k: k for k in given})}
 
@@ -79,6 +81,7 @@ def compile_spec(name: str | None, description: str, modality: str | None = None
     backbone = _backbone(mod, out)
     spec = TaskSpec(
         name=name or free_name(slug(out.get("name") or out.get("summary") or description)),
+        created=datetime.now().astimezone(),
         description=description,
         modality=mod,
         labels=[Label(**label) for label in out["labels"]],

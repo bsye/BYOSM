@@ -38,6 +38,8 @@ def team_summary(ws: Path, name: str) -> dict[str, Any]:
     return {
         "name": name,
         "kind": "team",
+        "title": t["spec"]["title"],
+        "created": t["spec"]["created"],
         "description": t["spec"]["description"],
         "modality": "text",
         "task_type": "team",

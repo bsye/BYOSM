@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -27,6 +28,8 @@ DATA_RUN_SETTINGS = {"max_minutes"}
 
 class TaskSpec(BaseModel):
     name: str
+    title: str = ""
+    created: datetime | None = None
     description: str
     modality: Modality
     task_type: TaskType = "classify"

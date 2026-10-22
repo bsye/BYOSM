@@ -47,6 +47,8 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
     rival = best_baseline(board, prim)
     return {
         "name": name,
+        "title": s.title,
+        "created": s.created.isoformat() if s.created else None,
         "description": s.description,
         "modality": s.modality,
         "task_type": s.task_type,

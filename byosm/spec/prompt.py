@@ -10,6 +10,7 @@ _SPEC_SCHEMA = {
     "type": "object",
     "properties": {
         "name": {"type": "string"},
+        "title": {"type": "string"},
         "modality": {"type": "string", "enum": ["text", "audio", "image", "document"]},
         "task_type": {"type": "string", "enum": ["classify", "frame"]},
         "summary": {"type": "string"},
@@ -48,6 +49,7 @@ into a precise, unambiguous task specification.
 
 Rules:
 - name: a short lowercase name for the task, one to three words (e.g. "doctype", "banking-intent", "names").
+- title: the same name for people, two to four words in sentence case (e.g. "Document type", "Banking intent").
 - modality: what the model reads. "document" for PDFs or scanned pages, "image" for photos, "audio" for sound, \
 "text" otherwise.
 - If the request names its classes, keep every named class as its own label, named in the user's words; never merge \

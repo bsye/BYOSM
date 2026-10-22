@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
@@ -40,6 +41,8 @@ class SystemSuite(BaseModel):
 
 class SystemSpec(BaseModel):
     name: str
+    title: str = ""
+    created: datetime | None = None
     description: str
     nodes: dict[str, Node]
     tools: dict[str, Tool] = Field(default_factory=dict)

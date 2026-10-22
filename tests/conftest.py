@@ -13,6 +13,7 @@ SEED = 0
 
 SPEC_REPLY = {
     "name": "Question detector",
+    "title": "Question detector",
     "modality": "text",
     "task_type": "classify",
     "summary": "is it a question",
