@@ -11,7 +11,7 @@ import { go, href } from "@/route"
 import { SystemDiagram } from "./SystemDiagram"
 import { TypeDemo } from "./TypeDemo"
 
-type Split = { exact_frame: number; action_accuracy: number; arg_f1: number }
+type Split = { exact_frame: number; action_accuracy: number; arg_f1: number | null }
 type Stream = {
   gate: { min_confidence: number; stable_for: number } | null
   test: { typed_share: number; early_share: number; wrong_per_100: number }

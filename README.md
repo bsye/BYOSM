@@ -180,6 +180,18 @@ Suite `builtin` (card-spend-builtin): 5436 test and 3641 calib items. Selection 
   near-duplicate removal, and the overfitting check finds no overlap. Treat the scores as an upper bound; real tickets
   and card feeds are messier, and the first job on real data is a labelled sample of it.
 - Jev is the rival here; the local LLM is scored once the shared Ollama server is free.
+- `benefits-desk` wires the support router to actions and fires while the request is typed. It is scored on the
+  router's held-out rows, so it has no argument column and no LLM rival yet.
+
+<!-- report:system:benefits-desk -->
+| team | exact frame [95% CI] | calib exact frame | action accuracy | argument F1 | CPU per request |
+|---|---|---|---|---|---|
+| benefits-desk | 0.996 [0.993, 0.999] | 1.000 | 0.996 | - | 8.4ms |
+
+Suite `heldout`: 1600 test and 400 calib requests. Exact frame = the action and every argument right. CPU is the whole team per request (every node), from the exported bundle. Paired bootstrap on exact frame: .
+
+While typing (gate tuned on calib: confidence 0.9, 2 agreeing keystrokes): the action fires after 41% of the request on average, 99% of requests before the last keystroke, with 2.6 wrong actions per 100 against 0.4 when waiting for the end; 9.1ms per keystroke. The LLM needs the whole request.
+<!-- /report:system:benefits-desk -->
 
 ### Emotion: one sentence, end to end
 
