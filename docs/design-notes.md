@@ -967,3 +967,12 @@ said nothing about them). Now `pipeline.refine` writes to `refine-<exp>`, `fit` 
 each experiment records them as `train_splits` in its meta; the overfitting check, the diagnosis and the model card read
 exactly those splits. The mixed turn-completion rows were split back by position, which the recorded round sizes and
 row sources confirm.
+
+## Model cards: facts by code, prose by an LLM, numbers checked
+
+`byosm/hub/card_writer.py` builds a facts object (task, labels, results with intervals, rivals with links, the splits
+the model trained on, refinement rounds, export size and dependencies, limitations) and asks the `card` role for prose
+in the structure of livekit/turn-detector's card. Results tables, test-set tables, usage and reproduce blocks stay
+exact: the LLM places them through `{{RESULTS}}`-style placeholders. Every number in the prose must match a number in
+the facts or the exact blocks (rounding, percent and millions allowed); otherwise the LLM gets one retry with the
+offending numbers, and after that the template card is used.

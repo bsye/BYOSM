@@ -129,8 +129,28 @@ def summary_table(f: CardFacts) -> str:
     return "\n".join(rows) + "\n"
 
 
+def blocks(f: CardFacts) -> dict[str, str]:
+    spec = f.spec
+    usage = USAGE.format(
+        pip=sections.pip_packages(f),
+        repo_id=f.repo_id,
+        example=sections.example(f),
+        stream=sections.stream(f),
+        name=spec.name,
+    )
+    return {
+        "headline": provenance.headline(f),
+        "results": RESULTS.format(comparison=comparison_table(f), detail=detail_table(f), summary=summary_table(f)),
+        "test_sets": test_sets.section(f),
+        "usage": usage,
+        "llm": provenance.llm_section(f),
+        "reproduce": TAIL.format(caveats=sections.caveats(f), name=spec.name).partition("## Reproduce")[2],
+    }
+
+
 def _body(f: CardFacts) -> str:
     spec = f.spec
+    b = blocks(f)
     intro = INTRO.format(
         title=f.base.title or f.repo_name,
         name=spec.name,
@@ -139,15 +159,7 @@ def _body(f: CardFacts) -> str:
         labels=len(spec.labels),
         mparams=f.manifest["params"] / 1e6,
         description=spec.description,
-        headline=provenance.headline(f),
-    )
-    results = RESULTS.format(comparison=comparison_table(f), detail=detail_table(f), summary=summary_table(f))
-    usage = USAGE.format(
-        pip=sections.pip_packages(f),
-        repo_id=f.repo_id,
-        example=sections.example(f),
-        stream=sections.stream(f),
-        name=spec.name,
+        headline=b["headline"],
     )
     built = BUILT.format(
         n_train=f.meta["n_train"],
@@ -159,10 +171,15 @@ def _body(f: CardFacts) -> str:
         notes=sections.notes(f),
     )
     tail = TAIL.format(caveats=sections.caveats(f), name=spec.name)
-    written = test_sets.section(f)
-    return intro + results + written + usage + built + "\n" + provenance.llm_section(f) + tail
+    return intro + b["results"] + b["test_sets"] + b["usage"] + built + "\n" + b["llm"] + tail
+
+
+def front(f: CardFacts) -> str:
+    return "---\n" + yaml.safe_dump(front_matter(f), sort_keys=False, allow_unicode=True) + "---\n"
 
 
 def model_card(name: str, repo_id: str, license: str) -> str:
+    from .card_writer import written_body
+
     f = load_facts(name, repo_id, license)
-    return "---\n" + yaml.safe_dump(front_matter(f), sort_keys=False, allow_unicode=True) + "---\n" + _body(f)
+    return front(f) + (written_body(f, blocks(f)) or _body(f))

@@ -62,6 +62,7 @@ const ROLE_TASKS: Record<string, string> = {
   judge: "check labels",
   analyze: "study the errors",
   baseline: "answer as a rival",
+  card: "write the model card",
 }
 
 export const roleTask = (role: unknown) => ROLE_TASKS[String(role)] ?? String(role)
