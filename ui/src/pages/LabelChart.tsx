@@ -3,6 +3,9 @@ import type { SplitSummary } from "@/api"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 
+const CHAR_PX = 7
+const AXIS_PAD_PX = 12
+const MAX_AXIS_PX = 280
 const SPLITS = ["train", "dev", "test"] as const
 const MAX_LABELS = 40
 const ROW_PX = 18
@@ -19,6 +22,7 @@ export function LabelChart({ data }: { data: Record<string, SplitSummary> }) {
     .slice(0, MAX_LABELS)
     .map(([label]) => label)
   const rows = labels.map((label) => ({ label, ...Object.fromEntries(SPLITS.map((s) => [s, data[s]?.labels[label] ?? 0])) }))
+  const axisWidth = Math.min(MAX_AXIS_PX, Math.max(...labels.map((l) => l.length)) * CHAR_PX + AXIS_PAD_PX)
   const counts = SPLITS.map((s) => `${data[s]?.n ?? 0} ${s}`).join(", ")
   return (
     <Card>
@@ -31,7 +35,7 @@ export function LabelChart({ data }: { data: Record<string, SplitSummary> }) {
           <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 8 }}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" tickLine={false} axisLine={false} />
-            <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={160} interval={0} />
+            <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={axisWidth} interval={0} />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
             {SPLITS.map((s) => (

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { params, score, seconds } from "@/format"
+import { metricName, params, score, seconds } from "@/format"
 
 const COLORS = 5
 const DEFAULT_SHOWN = 4
@@ -40,7 +40,7 @@ export function Runs({ d }: { d: Detail }) {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Training curves</CardTitle>
+          <CardTitle>Dev {metricName(d.metric)} per epoch</CardTitle>
         </CardHeader>
         <CardContent>
           {runs.length ? (

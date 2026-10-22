@@ -51,16 +51,16 @@ export function DataRows({ name }: { name: string }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>input</TableHead>
-              <TableHead>label</TableHead>
-              <TableHead>source</TableHead>
+              <TableHead>Input</TableHead>
+              <TableHead>Label</TableHead>
+              <TableHead>Source</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {page.rows.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="max-w-xl truncate">{String(r.input)}</TableCell>
-                <TableCell className="max-w-xs truncate font-mono text-xs">{JSON.stringify(r.label)}</TableCell>
+                <TableCell className="text-foreground/70 max-w-xs truncate">{typeof r.label === "string" ? r.label : JSON.stringify(r.label)}</TableCell>
                 <TableCell className="text-muted-foreground text-xs">{r.source}</TableCell>
               </TableRow>
             ))}
