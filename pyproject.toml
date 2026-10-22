@@ -35,6 +35,7 @@ dependencies = [
 app = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart"]
 dev = ["pytest", "ruff", "httpx", "fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart"]
 silero = ["livekit-plugins-silero"]
+live = ["livekit>=1.1", "livekit-api>=1.2", "livekit-plugins-silero"]
 
 [project.scripts]
 byosm = "byosm.cli:app"

@@ -21,6 +21,14 @@ def binary_frames(spec: TaskSpec, p: np.ndarray) -> np.ndarray:
     return out
 
 
+def silero_model() -> Any:
+    try:
+        from livekit.plugins.silero.onnx_model import OnnxModel, new_inference_session
+    except ImportError as e:
+        raise ImportError("pip install livekit-plugins-silero onnxruntime") from e
+    return OnnxModel(onnx_session=new_inference_session(force_cpu=True), sample_rate=SAMPLE_RATE)
+
+
 @register_baseline("silero", "Silero VAD, the exact ONNX bundled with livekit-plugins-silero (LiveKit's VAD).")
 class SileroVAD(Predictor):
     modalities, task_types = ("audio",), ("frame",)
@@ -29,11 +37,7 @@ class SileroVAD(Predictor):
 
     def __init__(self, spec: TaskSpec):
         super().__init__(spec)
-        try:
-            from livekit.plugins.silero.onnx_model import OnnxModel, new_inference_session
-        except ImportError as e:
-            raise ImportError("pip install livekit-plugins-silero onnxruntime") from e
-        self.m = OnnxModel(onnx_session=new_inference_session(force_cpu=True), sample_rate=SAMPLE_RATE)
+        self.m = silero_model()
         self.params = SILERO_PARAMS
 
     def frame_probs(self, raw: Any) -> np.ndarray:

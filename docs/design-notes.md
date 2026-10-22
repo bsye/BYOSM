@@ -872,3 +872,23 @@ machine, one server per workspace (`byosm/app/lock.py`), and SQLite plus two fil
 token dependency, so `server.py` stays small. The panel endpoint reshapes each review row so teacher votes sit under
 `votes` and cannot collide with `input`, `panel` or `sure`; a review is validated against the spec's labels before it is
 written.
+
+## Live microphone tests through LiveKit
+
+**The listener is a job, not part of the app server.**
+`POST /api/specialists/{name}/live` starts `byosm listen <name> --room <room>` as an ordinary app job and returns a
+browser token for the same room. The listener joins as `byosm-listener`, takes the first audio track, resamples it to
+16 kHz in 32 ms chunks with `rtc.AudioStream`, and sends one data packet per chunk on topic `vad`. Running it as a job
+gives it the jobs page, its log, Cancel and a separate process for free. It leaves when the browser leaves, after
+20 s if nobody joins, and after 15 minutes at most.
+
+**Both models see the same frames.**
+Each chunk goes to the exported bundle's `stream().step` and to Silero's ONNX model (512-sample windows, the model
+`livekit-plugins-silero` ships), so the browser plots the two probabilities on one clock. Ours speaks through its
+own hysteresis from the manifest; Silero's state is its probability against LiveKit's default 0.5 activation. Timing
+is CPU time per 32 ms chunk inside the listener.
+
+**Configuration.** `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` in the workspace `.env`, falling back to
+`livekit-server --dev` (`ws://localhost:7880`, `devkey` / `secret`). `LIVEKIT_PUBLIC_URL` is the address the browser
+uses when it differs from the one the listener uses (a container, a reverse proxy). The endpoint answers 503 with
+the command to run when no server listens there.

@@ -54,6 +54,13 @@ def is_exported(out: Path) -> bool:
     return (out / "manifest.json").exists() and not (out / BUNDLE_MARKER).exists()
 
 
+def exported_bundle(root: Path, name: str) -> Path:
+    out = root / "export"
+    if not is_exported(out):
+        raise ValueError(f"export first: byosm export {name}")
+    return out
+
+
 def check_out_dir(out: Path) -> None:
     if out.exists() and not (out.is_dir() and (_is_bundle(out) or not any(out.iterdir()))):
         raise FileExistsError(f"{out} exists and is not a byosm bundle or an empty directory; refusing to overwrite it")

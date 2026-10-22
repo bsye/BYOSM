@@ -14,12 +14,13 @@ MODEL_PORT = 8800
 
 
 def _bundle(name: str) -> Path:
-    from ..export.bundle import is_exported
+    from ..export.bundle import exported_bundle
 
     p, _ = _spec(name)
-    if not is_exported(p.root / "export"):
-        raise typer.BadParameter(f"export first: byosm export {name}")
-    return p.root / "export"
+    try:
+        return exported_bundle(p.root, name)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
 
 
 @app.command()
@@ -138,3 +139,15 @@ def bench(names: list[str], generalist_backbone: str | None = None) -> None:
         f"all tasks for one input (cpu): specialists in parallel {lat['specialists_parallel_p50']:.2f}ms "
         f"vs generalist {lat['generalist_p50']:.2f}ms"
     )
+
+
+@app.command()
+def listen(name: str, room: Annotated[str, typer.Option(help="LiveKit room to join")]) -> None:
+    """Join a LiveKit room, run an exported audio specialist and Silero on every microphone frame, and send both
+    speech probabilities back to the room."""
+    import asyncio
+
+    from ..live import listen as run
+
+    _bundle(name)
+    asyncio.run(run(name, room, log=log))

@@ -14,7 +14,7 @@ WORKDIR /opt/byosm
 COPY pyproject.toml LICENSE ./
 COPY byosm/ byosm/
 COPY --from=ui /src/byosm/app/static/ byosm/app/static/
-RUN pip install ".[app]" && rm -rf /opt/byosm
+RUN pip install ".[app,live]" && rm -rf /opt/byosm
 RUN useradd --create-home --uid 1000 byosm && mkdir -p /workspace /cache && chown byosm:byosm /workspace /cache
 USER byosm
 WORKDIR /workspace

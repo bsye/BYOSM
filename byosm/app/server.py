@@ -18,6 +18,7 @@ from .data_routes import data_router
 from .errors import missing
 from .hub import Hub
 from .jobs import Runner
+from .live_routes import live_router
 from .lock import claim, release
 from .systems_routes import systems_router
 from .try_routes import try_router
@@ -158,6 +159,7 @@ def create_app(
     app.include_router(systems_router(ws, Depends(check)))
     app.include_router(config_router(ws, Depends(check)))
     app.include_router(try_router(ws), dependencies=[Depends(check)])
+    app.include_router(live_router(ws, runner), dependencies=[Depends(check)])
     app.include_router(data_router(ws), dependencies=[Depends(check)])
     app.include_router(panel_routes.router(ws), dependencies=[Depends(check)])
     if STATIC_DIR.exists():

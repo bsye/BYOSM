@@ -32,6 +32,7 @@ ALLOWED_COMMANDS = (
     "distill",
     "export",
     "publish",
+    "listen",
     "report",
     "request-data",
     "check-data",
