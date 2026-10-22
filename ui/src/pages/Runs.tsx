@@ -10,9 +10,17 @@ import { params, score, seconds } from "@/format"
 const COLORS = 5
 const DEFAULT_SHOWN = 4
 
+const calib = (d: Detail, run: string) => d.board[run]?.[d.primary_suite]?.calib_objective ?? null
+
+function byCalib(d: Detail): Detail["runs"] {
+  const key = (name: string) => (name === d.promoted ? Infinity : (calib(d, name) ?? -Infinity))
+  return [...d.runs].sort((a, b) => key(b.name) - key(a.name))
+}
+
 function defaults(d: Detail): string[] {
-  const latest = [...d.runs].reverse().map((r) => r.name)
-  return [...new Set([d.promoted, ...latest].filter((x): x is string => !!x))].slice(0, DEFAULT_SHOWN)
+  return byCalib(d)
+    .map((r) => r.name)
+    .slice(0, DEFAULT_SHOWN)
 }
 
 export function Runs({ d }: { d: Detail }) {
@@ -61,16 +69,17 @@ export function Runs({ d }: { d: Detail }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>run</TableHead>
-                <TableHead>built from</TableHead>
-                <TableHead>test</TableHead>
-                <TableHead>params</TableHead>
-                <TableHead>train rows</TableHead>
-                <TableHead>train time</TableHead>
+                <TableHead>Run</TableHead>
+                <TableHead>Built from</TableHead>
+                <TableHead>Calib</TableHead>
+                <TableHead>Test</TableHead>
+                <TableHead>Params</TableHead>
+                <TableHead>Train rows</TableHead>
+                <TableHead>Train time</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...d.runs].reverse().map((r) => (
+              {byCalib(d).map((r) => (
                 <TableRow
                   key={r.name}
                   className="cursor-pointer"
@@ -78,10 +87,11 @@ export function Runs({ d }: { d: Detail }) {
                   onClick={() => toggle(r.name)}
                 >
                   <TableCell className="font-medium">
-                    {r.name} {r.name === d.promoted && <Badge className="ml-2">promoted</Badge>}
+                    {r.name} {r.name === d.promoted && <Badge className="ml-2">Promoted</Badge>}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{r.parent ?? "-"}</TableCell>
-                  <TableCell className="tabular-nums">{score(d.board[r.name]?.[d.primary_suite]?.objective)}</TableCell>
+                  <TableCell className="font-medium tabular-nums">{score(calib(d, r.name))}</TableCell>
+                  <TableCell className="text-foreground/70 tabular-nums">{score(d.board[r.name]?.[d.primary_suite]?.objective)}</TableCell>
                   <TableCell>{params(r.params)}</TableCell>
                   <TableCell>{r.n_train ?? "-"}</TableCell>
                   <TableCell>{r.train_seconds == null ? "-" : seconds(r.train_seconds)}</TableCell>
