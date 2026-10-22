@@ -9,8 +9,8 @@ from byosm.app.catalog import detail
 from byosm.cli import app
 from byosm.config import Project
 from byosm.data.store import Dataset, normalize, read, record
-from byosm.evals import board
-from byosm.evals.testset import write_testset
+from byosm.evals import board, testset
+from byosm.evals.testset import write_testset, written_logs, written_path
 from byosm.spec import Label, TaskSpec
 from byosm.spec.sections import Axis, DataPlan, EvalSuite
 
@@ -104,3 +104,28 @@ def test_the_command_scores_the_baselines_on_the_new_suite_only(qa, monkeypatch)
     assert out.exit_code == 0, out.output
     assert scored == [("llm", 2 * PER_LABEL - 4)]
     assert set(Project("qa").board()["llm"]) == {"llm-written"}
+
+
+def test_every_written_input_is_logged_as_it_arrives_and_kept_after_the_suite_is_frozen(qa, monkeypatch):
+    p, spec = qa
+    sizes = []
+    real = testset.append
+    monkeypatch.setattr(testset, "append", lambda path, rows: (sizes.append(len(rows)), real(path, rows)))
+    write_testset(p, spec, PER_LABEL, "llm-written")
+    logged = written_logs(p)["llm-written"]
+    assert len(sizes) > 1 and sum(sizes) == len(logged)
+    frozen = read(p.evals_dir / "llm-written" / "calib.jsonl") + read(p.evals_dir / "llm-written" / "test.jsonl")
+    assert {r["input"] for r in frozen} <= {r["input"] for r in logged}
+
+
+def test_a_stopped_run_resumes_from_the_inputs_it_already_wrote(qa, monkeypatch):
+    p, spec = qa
+    done = [record(f"what about stop {i}?", "question", "llm:fake") for i in range(PER_LABEL)]
+    written_path(p, "llm-written").parent.mkdir(parents=True, exist_ok=True)
+    testset.append(written_path(p, "llm-written"), done)
+    asked = []
+    real = testset.generate
+    monkeypatch.setattr(testset, "generate", lambda *a, **k: (asked.append(k["labels"]), real(*a, **k))[1])
+    monkeypatch.setattr(testset, "judge", lambda spec, rows, cfg, log: rows)
+    write_testset(p, spec, PER_LABEL, "llm-written")
+    assert asked[0] == ["statement"]

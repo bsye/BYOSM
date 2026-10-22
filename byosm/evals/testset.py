@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import threading
 from collections.abc import Callable
+from pathlib import Path
 
 from ..config import TESTSET_PER_LABEL, TESTSET_SUITE, Project, load_config
-from ..data.store import SPLITS, Dataset, label_counts
-from ..data.synth_text import generate
+from ..data.store import SPLITS, Dataset, append, dedupe, label_counts, read
+from ..data.synth_text import generate, judge
 from ..llm import role_model
 from ..spec import EvalSuite, TaskSpec
 from .suites import CALIB_EVERY_NTH_ITEM, freeze, suite_dir
@@ -14,6 +16,34 @@ JUDGE_ROLE = "judge"
 WRITTEN_SPLIT = "test"
 OVERSAMPLE = 2
 MAX_ROUNDS = 4
+WRITTEN_SUFFIX = ".written.jsonl"
+
+
+def written_path(p: Project, suite: str) -> Path:
+    return p.evals_dir / f"{suite}{WRITTEN_SUFFIX}"
+
+
+def written_logs(p: Project) -> dict[str, list[dict]]:
+    logs = sorted(p.evals_dir.glob(f"*{WRITTEN_SUFFIX}"), key=lambda f: f.stat().st_mtime, reverse=True)
+    return {f.name.removesuffix(WRITTEN_SUFFIX): read(f) for f in logs}
+
+
+def _logger(path: Path) -> Callable[[list[dict]], None]:
+    lock = threading.Lock()
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    def add(rows: list[dict]) -> None:
+        with lock:
+            append(path, rows)
+
+    return add
+
+
+def _resumed(spec: TaskSpec, path: Path, against: list[dict], cfg: dict, log: Callable[[str], None]) -> list[dict]:
+    rows = dedupe(read(path), against=against) if path.exists() else []
+    if rows:
+        log(f"  resuming from {len(rows)} inputs already written to {path.name}")
+    return judge(spec, rows, cfg, log=log) if rows and spec.data.judge else rows
 
 
 def _existing(p: Project, spec: TaskSpec) -> list[dict]:
@@ -26,14 +56,17 @@ def _short(spec: TaskSpec, rows: list[dict], per_label: int) -> dict[str, int]:
     return {lab: per_label - counts.get(lab, 0) for lab in spec.label_names if counts.get(lab, 0) < per_label}
 
 
-def _collect(spec: TaskSpec, per_label: int, against: list[dict], cfg: dict, log: Callable[[str], None]) -> list[dict]:
-    kept: list[dict] = []
+def _collect(
+    spec: TaskSpec, per_label: int, against: list[dict], cfg: dict, log: Callable[[str], None], path: Path
+) -> list[dict]:
+    kept = _resumed(spec, path, against, cfg, log)
+    on_rows = _logger(path)
     for _ in range(MAX_ROUNDS):
         short = _short(spec, kept, per_label)
         if not short:
             break
         n = sum(short.values()) * OVERSAMPLE
-        kept += generate(spec, n, WRITTEN_SPLIT, cfg, against=[*against, *kept], log=log, labels=list(short))
+        kept += generate(spec, n, WRITTEN_SPLIT, cfg, [*against, *kept], log=log, labels=list(short), on_rows=on_rows)
     return kept
 
 
@@ -62,7 +95,7 @@ def write_testset(
 ) -> EvalSuite:
     _check(spec, suite)
     cfg = cfg or load_config()
-    rows = _collect(spec, per_label, _existing(p, spec), cfg, log)
+    rows = _collect(spec, per_label, _existing(p, spec), cfg, log, written_path(p, suite))
     calib, test = _calib_test(spec, rows, per_label)
     if not test:
         raise ValueError(f"the LLM wrote no usable examples for {spec.name}")

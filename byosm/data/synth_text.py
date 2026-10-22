@@ -135,6 +135,7 @@ def generate(
     jobs: list[dict] | None = None,
     log: Callable[[str], None] = print,
     labels: list[str] | None = None,
+    on_rows: Callable[[list[dict]], None] | None = None,
 ) -> list[dict]:
     workers = concurrency(cfg)
     adversarial = role(split) == "eval"
@@ -143,17 +144,17 @@ def generate(
     jobs = jobs or _jobs(spec, n, rng, adversarial, labels)
     pool = [r["input"] for r in (against or [])]
     system = EVAL_SYSTEM if adversarial else GEN_SYSTEM
-    schema = _schema(spec)
     log(f"  generating {split}: {len(jobs)} calls x {spec.data.per_call} with {llm.name}")
-
     done = itertools.count(1)
 
     def run(job: dict) -> list[dict]:
         avoid = random.Random(job["seed"]).sample(pool, min(8, len(pool)))
         prompt = job.get("prompt") or _gen_prompt(spec, job, adversarial, avoid)
         out = _to_records(
-            spec, llm.json(system, prompt, schema), f"llm:{llm.name}", split=split, combo=job.get("combo")
+            spec, llm.json(system, prompt, _schema(spec)), f"llm:{llm.name}", split=split, combo=job.get("combo")
         )
+        if on_rows:
+            on_rows(out)
         emit("writing", split=split, done=next(done), total=len(jobs), specialist=spec.name)
         return out
 
