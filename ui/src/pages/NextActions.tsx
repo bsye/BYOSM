@@ -12,7 +12,7 @@ import { href } from "@/route"
 import type { Healths } from "./HealthList"
 import type { NextStep } from "./NextSteps"
 
-const best = (found: NextStep[]) => [...found].sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0))[0] ?? null
+export const best = (found: NextStep[]) => [...found].sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0))[0] ?? null
 
 function useSteps(items: Summary[]): Record<string, NextStep | null> {
   const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length

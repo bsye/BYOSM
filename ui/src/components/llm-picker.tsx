@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { choiceKey, DEFAULT_MODEL, roleConfig, useProviders, type Provider } from "@/providers"
 
 const CHOICE_KEY = "byosm-llm-choice"
+export const STANDARD = "standard"
 const PREFERRED = "ollama"
 
 function remembered(): string {
@@ -40,13 +41,16 @@ export function useLlmChoice(): LlmChoice {
   return { providers, choice, pick, config: () => roleConfig(available, choice) }
 }
 
-export function LlmSelect({ providers, value, onChange, label }: { providers: Provider[] | null; value: string; onChange: (v: string) => void; label: string }) {
+type SelectProps = { providers: Provider[] | null; value: string; onChange: (v: string) => void; label: string; standard?: boolean; className?: string }
+
+export function LlmSelect({ providers, value, onChange, label, standard, className }: SelectProps) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm" className="max-w-72" aria-label={label}>
+      <SelectTrigger size="sm" className={className ?? "max-w-72"} aria-label={label}>
         <SelectValue placeholder={providers == null ? "Looking for LLMs..." : "No LLM found"} />
       </SelectTrigger>
       <SelectContent>
+        {standard && <SelectItem value={STANDARD}>Standard</SelectItem>}
         {(providers ?? []).map((p) => (
           <SelectGroup key={p.id}>
             <SelectLabel>
@@ -66,4 +70,11 @@ export function LlmSelect({ providers, value, onChange, label }: { providers: Pr
 
 export function LlmPicker({ llm, label }: { llm: LlmChoice; label: string }) {
   return <LlmSelect providers={llm.providers} value={llm.choice} onChange={llm.pick} label={label} />
+}
+
+export function useStandardChoice(): { providers: Provider[] | null; value: string; pick: (v: string) => void; config: () => Record<string, unknown> | null } {
+  const providers = useProviders()
+  const [value, pick] = useState(STANDARD)
+  const available = (providers ?? []).filter((p) => p.available)
+  return { providers, value, pick, config: () => (value === STANDARD ? null : roleConfig(available, value)) }
 }

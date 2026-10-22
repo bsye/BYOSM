@@ -59,10 +59,15 @@ export function Opportunities({ onPick }: { onPick: (prompt: string) => void }) 
               {shown.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell>
-                    <a className="block max-w-56 truncate font-medium hover:underline" href={`https://huggingface.co/${t.id}`} target="_blank" rel="noreferrer">
+                    <a
+                      className="block max-w-56 truncate font-medium hover:underline"
+                      href={`https://huggingface.co/${t.id}`}
+                      title={`${t.id}, ${t.task}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       {t.id}
                     </a>
-                    <span className="text-muted-foreground text-xs">{t.task}</span>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-right tabular-nums">{t.params ? params(t.params) : "-"}</TableCell>
                   <TableCell className="text-muted-foreground text-right tabular-nums">{compact(t.downloads)}</TableCell>
