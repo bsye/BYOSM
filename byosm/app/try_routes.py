@@ -20,6 +20,7 @@ COMPARE_WORKERS = 4
 
 class CompareRequest(BaseModel):
     input: str
+    rival: str | None = None
 
 
 def _examples(ws: Path, name: str) -> dict[str, Any]:
@@ -112,7 +113,8 @@ def try_router(ws: Path) -> APIRouter:
         spec = TaskSpec.load(p.spec_path)
         if spec.modality != "text" or spec.task_type != "classify":
             raise HTTPException(422, "comparing on one input works for text classification for now")
-        jobs = {rid: (lambda rid=rid: rival(name, rid, spec, body.input)) for rid in spec.baselines}
+        asked = [body.rival] if body.rival in spec.baselines else spec.baselines
+        jobs = {rid: (lambda rid=rid: rival(name, rid, spec, body.input)) for rid in asked}
         with ThreadPoolExecutor(COMPARE_WORKERS) as pool:
             futures = {rid: pool.submit(_timed, fn) for rid, fn in jobs.items()}
             return {"rivals": {rid: f.result() for rid, f in futures.items()}}

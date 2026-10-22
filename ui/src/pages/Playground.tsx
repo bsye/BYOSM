@@ -55,7 +55,7 @@ function ExamplePicker({ ex, onPick }: { ex: Examples; onPick: (text: string) =>
   )
 }
 
-function Rivals({ ours, rivals }: { ours?: string; rivals: Record<string, Rival> | "loading" }) {
+function Rivals({ ours, rivals }: { ours?: string; rivals: Record<string, Rival | null> }) {
   return (
     <Table>
       <TableHeader>
@@ -67,36 +67,30 @@ function Rivals({ ours, rivals }: { ours?: string; rivals: Record<string, Rival>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rivals === "loading" ? (
-          <TableRow>
-            <TableCell colSpan={4} className="text-muted-foreground">
-              <span className="flex items-center gap-2">
-                <Loader2 className="size-4 animate-spin" />
-                Asking every rival; the LLM can take a minute
-              </span>
+        {Object.entries(rivals).map(([id, r]) => (
+          <TableRow key={id}>
+            <TableCell className="font-medium">{rivalName(id)}</TableCell>
+            <TableCell>
+              {r == null ? (
+                <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  asking
+                </span>
+              ) : r.error ? (
+                <span className="text-destructive text-xs">{r.error}</span>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  {r.label === ours ? <CircleCheck className="size-4" /> : <CircleX className="text-muted-foreground size-4" />}
+                  {r.label}
+                </span>
+              )}
+            </TableCell>
+            <TableCell className="text-foreground/70 tabular-nums">{r?.confidence == null ? "-" : r.confidence.toFixed(3)}</TableCell>
+            <TableCell className="text-foreground/70 text-right tabular-nums">
+              {r == null ? "-" : r.ms >= 1000 ? `${(r.ms / 1000).toFixed(1)} s` : `${Math.round(r.ms)} ms`}
             </TableCell>
           </TableRow>
-        ) : (
-          Object.entries(rivals).map(([id, r]) => (
-            <TableRow key={id}>
-              <TableCell className="font-medium">{rivalName(id)}</TableCell>
-              <TableCell>
-                {r.error ? (
-                  <span className="text-destructive text-xs">{r.error}</span>
-                ) : (
-                  <span className="flex items-center gap-1.5">
-                    {r.label === ours ? <CircleCheck className="size-4" /> : <CircleX className="text-muted-foreground size-4" />}
-                    {r.label}
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="text-foreground/70 tabular-nums">{r.confidence == null ? "-" : r.confidence.toFixed(3)}</TableCell>
-              <TableCell className="text-foreground/70 text-right tabular-nums">
-                {r.ms >= 1000 ? `${(r.ms / 1000).toFixed(1)} s` : `${Math.round(r.ms)} ms`}
-              </TableCell>
-            </TableRow>
-          ))
-        )}
+        ))}
       </TableBody>
     </Table>
   )
@@ -107,7 +101,7 @@ function TryIt({ d }: { d: Detail }) {
   const [text, setText] = useState("")
   const [out, setOut] = useState<Prediction | null>(null)
   const [ms, setMs] = useState<number | null>(null)
-  const [rivals, setRivals] = useState<Record<string, Rival> | "loading" | null>(null)
+  const [rivals, setRivals] = useState<Record<string, Rival | null> | null>(null)
   const [error, setError] = useState("")
   if (!d.exported) return <p className="text-muted-foreground text-sm">Export {d.name} first.</p>
   if (d.modality !== "text") return <p className="text-muted-foreground text-sm">Text only for now.</p>
@@ -123,10 +117,12 @@ function TryIt({ d }: { d: Detail }) {
       .catch((e) => setError(String(e)))
   }
   const compare = () => {
-    setRivals("loading")
-    post<{ rivals: Record<string, Rival> }>(`/specialists/${d.name}/compare`, { input: text })
-      .then((r) => setRivals(r.rivals))
-      .catch((e) => setError(String(e)))
+    const ids = ex?.rivals ?? []
+    setRivals(Object.fromEntries(ids.map((id) => [id, null])))
+    for (const id of ids)
+      post<{ rivals: Record<string, Rival> }>(`/specialists/${d.name}/compare`, { input: text, rival: id })
+        .then((r) => setRivals((old) => ({ ...(old ?? {}), [id]: r.rivals[id] ?? { ms: 0, error: "no answer" } })))
+        .catch((e) => setRivals((old) => ({ ...(old ?? {}), [id]: { ms: 0, error: String(e) } })))
   }
   const top = Object.entries(out?.probs ?? {})
     .sort((a, b) => b[1] - a[1])
@@ -181,7 +177,7 @@ function TryIt({ d }: { d: Detail }) {
             <CardHeader>
               <CardTitle>Rivals</CardTitle>
               <CardAction>
-                <Button variant="outline" size="sm" disabled={rivals === "loading"} onClick={compare}>
+                <Button variant="outline" size="sm" disabled={rivals != null && Object.values(rivals).some((r) => r == null)} onClick={compare}>
                   <Swords />
                   Compare
                 </Button>
