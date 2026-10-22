@@ -51,7 +51,8 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 
 ## Docs
 
-- README order: goal, then assumptions (the thesis), then results, then methodology and benchmarks, then details.
+- README order: name and one-line pitch, a full-width app screenshot, how to run it, a screenshot tour, then the goal,
+  assumptions (the thesis), results, methodology and benchmarks, then details. Retake the screenshots when the UI changes.
 - Short and visual. Fewer words, more tables and diagrams.
 - No em dashes.
 
