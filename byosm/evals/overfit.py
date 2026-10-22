@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import metrics
-from ..data.store import Dataset, ShingleIndex
+from ..data.store import BASE_TRAIN, Dataset, ShingleIndex
 from ..events import stage
 from ..improve.diagnosis import scored_experiment, training_summary
 from ..project import Project
@@ -47,9 +47,10 @@ def _fingerprints(p: Project, base: TaskSpec, exp: str) -> tuple[str, str]:
     return _hash(train_fp, json.dumps(p.board(), sort_keys=True)), train_fp
 
 
-def _train_rows(p: Project, spec: TaskSpec) -> tuple[list[dict], Path]:
+def _train_rows(p: Project, spec: TaskSpec, exp: str) -> tuple[list[dict], Path]:
     dd = p.data_dir_for(spec)
-    rows, _, _ = split_rows(spec, Dataset(dd), random.Random(spec.train.seed), lambda _: None)
+    splits = p.meta(exp).get("train_splits") or BASE_TRAIN
+    rows, _, _ = split_rows(spec, Dataset(dd), random.Random(spec.train.seed), lambda _: None, splits)
     return rows, dd
 
 
@@ -146,7 +147,7 @@ def check(
     if old.get("fingerprint") == fp:
         return old
     spec = p.exp_spec(exp)
-    rows = _train_rows(p, spec)
+    rows = _train_rows(p, spec, exp)
     train = old["train"] if old.get("train_fingerprint") == train_fp else _train_score(p, base, exp, spec, rows, log)
     report = {"fingerprint": fp, "train_fingerprint": train_fp, **_report(p, base, exp, train, rows[0])}
     p.save_report(OVERFIT, json.loads(_dumps(report)))

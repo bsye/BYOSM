@@ -83,7 +83,11 @@ def diagnose(name: str) -> dict[str, Any]:
         "suites": suites,
         "dev": meta["dev"].get("objective"),
         "binary": binary,
-        "rows_by_source": Counter(r.get("source") for r in read(p.data_dir_for(spec) / "train.jsonl")),
+        "rows_by_source": Counter(
+            r.get("source")
+            for s in meta.get("train_splits") or ["train"]
+            for r in read(p.data_dir_for(spec) / f"{s}.jsonl")
+        ),
         "read_by_source": Counter(r.get("source") for s in SPLITS for r in read(p.data_dir_for(spec) / f"{s}.jsonl")),
     }
     history = tried(p, board, base.primary_suite())

@@ -12,7 +12,7 @@ import torch
 
 from .. import jepa
 from ..config import device as pick_device
-from ..data.store import Dataset
+from ..data.store import BASE_TRAIN, Dataset
 from ..events import emit, stage
 from ..modalities import Modality, get_modality
 from ..model import SpecialistModel, count_params
@@ -27,9 +27,13 @@ PATIENCE = 4
 
 
 def split_rows(
-    spec: TaskSpec, ds: Dataset, rng: random.Random, log: Callable[[str], None]
+    spec: TaskSpec,
+    ds: Dataset,
+    rng: random.Random,
+    log: Callable[[str], None],
+    splits: tuple[str, ...] | list[str] = BASE_TRAIN,
 ) -> tuple[list[dict], list[dict], int]:
-    train_rows, dev_rows = ds.load("train"), ds.load("dev")
+    train_rows, dev_rows = [r for s in splits for r in ds.load(s)], ds.load("dev")
     n_folded = 0
     if spec.trains_on_test_split():
         extra = ds.load("test")
@@ -130,7 +134,12 @@ def _build(spec: TaskSpec, mod: Modality, dev: str, log: Callable[[str], None]) 
 
 @stage("Train")
 def fit(
-    spec: TaskSpec, data_dir: Path, run_dir: Path, log: Callable[[str], None] = print, seed: int | None = None
+    spec: TaskSpec,
+    data_dir: Path,
+    run_dir: Path,
+    log: Callable[[str], None] = print,
+    seed: int | None = None,
+    splits: tuple[str, ...] | list[str] = BASE_TRAIN,
 ) -> tuple[dict[str, Any], list[Any]]:
     seed = spec.train.seed if seed is None else seed
     torch.manual_seed(seed)
@@ -138,7 +147,7 @@ def fit(
     dev = pick_device()
     ds = Dataset(data_dir)
     mod = get_modality(spec, str(data_dir))
-    train_rows, dev_rows, n_folded = split_rows(spec, ds, rng, log)
+    train_rows, dev_rows, n_folded = split_rows(spec, ds, rng, log, splits)
     log(f"  loading {len(train_rows)} train / {len(dev_rows)} dev examples")
     train_raw = mod.load_many(train_rows)
     dev_raw = mod.load_many(dev_rows)
@@ -166,5 +175,6 @@ def fit(
         "n_test_folded": n_folded,
     }
     meta = build_meta(spec, best, history, jepa_hist, n_params, dev, round(time.time() - t0, 1), counts)
+    meta["train_splits"] = list(splits)
     save_run(run_dir, best)
     return meta, json.loads(json.dumps(best["dev"]["errors"], default=str))

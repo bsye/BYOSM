@@ -958,3 +958,12 @@ same base experiment, identical except for the change, and compares the pair wit
 test. The verdict is "better" only if every seed's calib lead holds in 95% of resamples and the test score agrees,
 "worse" if every seed is surely behind, and "not sure" otherwise. Each verdict is saved as an `ablation:<change>` report.
 Run it on at least two public benchmarks before switching a default.
+
+## Refinement rows belong to their experiment
+
+Refinement used to append its targeted examples to the shared `train` split of a data key, so every later experiment on
+that key trained on them silently (turn-completion's v20 trained on v15's, v17's and v18's examples while its spec
+said nothing about them). Now `pipeline.refine` writes to `refine-<exp>`, `fit` trains on the splits it is given, and
+each experiment records them as `train_splits` in its meta; the overfitting check, the diagnosis and the model card read
+exactly those splits. The mixed turn-completion rows were split back by position, which the recorded round sizes and
+row sources confirm.

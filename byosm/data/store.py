@@ -14,6 +14,14 @@ TEST_SHARE = 0.15
 
 SPLITS = ("train", "dev", "test")
 TRAIN_INPUTS = "train-inputs"
+REFINE_PREFIX = "refine-"
+BASE_TRAIN = ("train",)
+
+
+def refine_split(exp: str) -> str:
+    return f"{REFINE_PREFIX}{exp}"
+
+
 NEAR_DUPLICATE = 0.7
 NEAR_CANDIDATES = 3
 

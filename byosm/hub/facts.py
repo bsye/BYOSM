@@ -84,16 +84,17 @@ class CardFacts:
 
 
 HUB_SOURCE = "hf:"
-USED_SPLITS = ("train", "unlabeled")
 
 
-def used_sources(p: Project, spec: TaskSpec) -> dict[str, dict[str, int]]:
+def used_sources(p: Project, spec: TaskSpec, exp: str) -> dict[str, dict[str, int]]:
     from collections import Counter
 
-    from ..data.store import Dataset
+    from ..data.store import BASE_TRAIN, Dataset
 
     ds = Dataset(p.data_dir_for(spec))
-    return {split: dict(Counter(str(r.get("source", "?")) for r in ds.load(split))) for split in USED_SPLITS}
+    trained = p.meta(exp).get("train_splits") or BASE_TRAIN
+    rows = {"train": [r for s in trained for r in ds.load(s)], "unlabeled": ds.load("unlabeled")}
+    return {split: dict(Counter(str(r.get("source", "?")) for r in found)) for split, found in rows.items()}
 
 
 def load_facts(name: str, repo_id: str, license: str) -> CardFacts:
@@ -102,7 +103,7 @@ def load_facts(name: str, repo_id: str, license: str) -> CardFacts:
     m = json.loads((p.root / "export" / "manifest.json").read_text())
     exp = m["experiment"]
     spec = p.exp_spec(exp)
-    used = used_sources(p, spec)
+    used = used_sources(p, spec, exp)
     hub = {k.removeprefix(HUB_SOURCE) for split in used.values() for k in split if k.startswith(HUB_SOURCE)}
     datasets = sorted(hub | {e.source.dataset for e in base.evals if e.source})
     return CardFacts(
