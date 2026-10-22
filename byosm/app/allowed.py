@@ -26,6 +26,7 @@ ALLOWED_COMMANDS = (
     "testset",
     "adopt-data",
     "rivals",
+    "ablate",
     "next",
     "inputs",
     "datasets",

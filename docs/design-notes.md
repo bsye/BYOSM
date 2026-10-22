@@ -949,3 +949,12 @@ benchmark or the labelled training source, checks each id exists on the Hub, the
 trained on that dataset. It skips models above 1B parameters, keeps up to two whose labels name ours, or whose
 `LABEL_n` outputs map onto ours on at least 80% of our dev rows, and scores them with the same code. Next steps offers
 it once per specialist with a public benchmark.
+
+## Ablations decide what becomes a default
+
+A training idea (LeJEPA pretraining, active data, a label model over several LLM teachers) becomes a default only after
+`byosm ablate NAME --set path=value --seeds 0,1` (`byosm/ablation.py`). For each seed it builds a matched pair from the
+same base experiment, identical except for the change, and compares the pair with a paired bootstrap on calib and on
+test. The verdict is "better" only if every seed's calib lead holds in 95% of resamples and the test score agrees,
+"worse" if every seed is surely behind, and "not sure" otherwise. Each verdict is saved as an `ablation:<change>` report.
+Run it on at least two public benchmarks before switching a default.
