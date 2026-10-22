@@ -106,6 +106,7 @@ export type Suite = {
 }
 
 export type Detail = Summary & {
+  next: { id: string; title: string; why: string; args: string[] }[]
   spec: Record<string, unknown>
   board: Record<string, Record<string, Result>>
   suites: Suite[]
