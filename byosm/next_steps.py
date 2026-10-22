@@ -45,19 +45,21 @@ def tried_proposals(p: Project) -> set[str]:
     return out
 
 
-def _proposals(p: Project) -> list[dict[str, Any]]:
+def _experiments(p: Project) -> dict[str, Any]:
     f = p.root / PROPOSALS_FILE
     saved = json.loads(f.read_text()) if f.exists() else {}
-    fresh = [pr for pr in saved.get("proposals", []) if pr["id"] not in tried_proposals(p)]
+    fresh = [pr["id"] for pr in saved.get("proposals", []) if pr["id"] not in tried_proposals(p)]
     if saved.get("from") != p.promoted or not fresh:
-        why = "No untried proposal for the current model."
-        return [_step("propose", "Find what to try next", why, ["improve", p.name])]
-    return [
-        _step(
-            f"try-{pr['id']}", f"Try {pr['id']}", pr.get("why", ""), ["improve", p.name, "--apply", pr["id"], "--run"]
-        )
-        for pr in fresh
-    ]
+        why = "Every lined-up experiment has run. The LLM reads the board and the errors and lines up new ones."
+        return _step("propose", "Find more experiments", why, ["improve", p.name])
+    why = "Each one builds a new model, scores it against the rivals and is promoted only if it wins on calib."
+    step = _step(
+        "experiments",
+        f"Run {len(fresh)} experiments",
+        why,
+        ["improve", p.name, "--apply", ",".join(fresh), "--each", "--run"],
+    )
+    return {**step, "experiments": fresh}
 
 
 def _overfit(p: Project) -> dict[str, Any] | None:
@@ -86,5 +88,5 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         return [_step("build", "Build the first model", "Nothing has been trained yet.", ["build", name])]
     prim = spec.primary_suite()
     held = _held_out(p, prim) if spec.task_type == "classify" else None
-    steps = [held, _rivals(p, spec, prim), _overfit(p), *_proposals(p), _export(p)]
+    steps = [held, _rivals(p, spec, prim), _experiments(p), _overfit(p), _export(p)]
     return [s for s in steps if s]

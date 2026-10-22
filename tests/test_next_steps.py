@@ -28,18 +28,19 @@ def test_a_tiny_held_out_set_comes_first(ws):
     assert first["args"] == ["build", "qa", "--force-data"] and "5 rows" in first["why"] and rest
 
 
-def test_every_untried_proposal_is_its_own_step(ws):
+def test_the_untried_proposals_form_one_experiments_step(ws):
     p = _specialist(ws, n_test=500, n_calib=200, rivals=())
     proposals = [{"id": "more-data", "why": "a"}, {"id": "regularize", "why": "b"}]
     (p.root / "proposals.json").write_text(json.dumps({"from": "v1", "proposals": proposals}))
     (p.exp_dir("v1") / "proposal.json").write_text(json.dumps({"applied": [{"id": "regularize"}]}))
-    assert [s["id"] for s in suggestions("qa") if s["id"].startswith("try-")] == ["try-more-data"]
+    step = next(s for s in suggestions("qa") if s["id"] == "experiments")
+    assert step["experiments"] == ["more-data"] and "--each" in step["args"]
 
 
 def test_unscored_rivals_a_missing_overfit_check_and_a_stale_export_are_suggested_in_order(ws):
     _specialist(ws, n_test=500, n_calib=200)
     ids = [s["id"] for s in suggestions("qa")]
-    assert ids == ["score-rivals", "overfit", "propose", "export"]
+    assert ids == ["score-rivals", "propose", "overfit", "export"]
 
 
 def test_a_specialist_with_no_model_is_built_first(ws):

@@ -18,7 +18,6 @@ import { LabelChart } from "./LabelChart"
 import { Overfit } from "./Overfit"
 import { hasTeachers, Panel } from "./Panel"
 import { Playground, useExamples } from "./Playground"
-import { Proposals } from "./Proposals"
 import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
 import { PageSkeleton } from "@/components/page-skeleton"
@@ -222,7 +221,7 @@ function Model({ name }: { name: string }) {
           </Button>
         </div>
       </div>
-      <NextSteps name={name} steps={d.next} />
+      <NextSteps d={d} />
       <ModelStats d={d} />
       <Tabs defaultValue="board">
         <TabsList>
@@ -237,7 +236,6 @@ function Model({ name }: { name: string }) {
         <TabsContent value="board" className="space-y-4">
           <Board d={d} />
           <Overfit d={d} />
-          <Proposals d={d} />
         </TabsContent>
         <TabsContent value="runs">
           <Runs d={d} />
