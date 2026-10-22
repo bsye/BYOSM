@@ -21,7 +21,16 @@ def load_model(repo: str, visual: bool) -> tuple[Any, Any]:
         return AutoImageProcessor.from_pretrained(repo), AutoModelForImageClassification.from_pretrained(repo).eval()
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-    return AutoTokenizer.from_pretrained(repo), AutoModelForSequenceClassification.from_pretrained(repo).eval()
+    from .hf_onnx import OnnxClassifier, onnx_file
+
+    tok = AutoTokenizer.from_pretrained(repo)
+    try:
+        return tok, AutoModelForSequenceClassification.from_pretrained(repo).eval()
+    except OSError:
+        onnx = onnx_file(repo)
+        if not onnx:
+            raise
+        return tok, OnnxClassifier(repo, onnx)
 
 
 class HFClassifier(Predictor):

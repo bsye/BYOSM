@@ -20,6 +20,16 @@ class CompareRequest(BaseModel):
     rival: str | None = None
 
 
+def _suggest_map(ws: Path, name: str, repo: str) -> dict[str, Any]:
+    from ..data.store import Dataset
+    from ..predictors.label_map import suggest_label_map
+    from ..project import Project
+
+    p = Project(name, ws)
+    spec = p.spec()
+    return suggest_label_map(spec, Dataset(p.data_dir_for(spec)).load("dev"), repo)
+
+
 def _examples(ws: Path, name: str) -> dict[str, Any]:
     from ..data.store import Dataset
     from ..project import Project
@@ -93,6 +103,10 @@ def try_router(ws: Path) -> APIRouter:
     @router.get("/api/specialists/{name}/rivals/search")
     def rival_search(name: str, q: str = "") -> list:
         return missing(_rival_search, ws, name, q)
+
+    @router.get("/api/specialists/{name}/rivals/suggest-map")
+    def suggest_map(name: str, repo: str) -> dict:
+        return missing(_suggest_map, ws, name, repo)
 
     @router.post("/api/specialists/{name}/compare")
     def compare(name: str, body: CompareRequest) -> dict:

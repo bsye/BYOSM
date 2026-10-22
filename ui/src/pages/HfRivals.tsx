@@ -100,7 +100,7 @@ export function HfRivals({ name, ours }: { name: string; ours: string[] }) {
                         Rival
                       </Badge>
                     ) : mappable(c) ? (
-                      <MapLabels repo={c.repo} theirs={c.labels ?? []} ours={ours} onAdd={add} />
+                      <MapLabels name={name} repo={c.repo} theirs={c.labels ?? []} ours={ours} onAdd={add} />
                     ) : (
                       <Button size="sm" variant="outline" disabled={!scorable(c)} onClick={() => add(c.baseline)}>
                         <Plus />
