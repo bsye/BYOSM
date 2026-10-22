@@ -100,3 +100,24 @@ export function steps(metrics: Metric[], running: boolean): Step[] {
   if (running && out.length && out.at(-1)?.state === "done" && metrics.at(-1)?.kind !== "scored") out[out.length - 1] = { ...(out.at(-1) as Step), state: "running" }
   return out
 }
+
+const PROGRESS_KINDS: Record<string, { done: string; total: string }> = {
+  writing: { done: "done", total: "total" },
+  teacher: { done: "done", total: "total" },
+  epoch: { done: "epoch", total: "epochs" },
+}
+
+export function timeLeft(metrics: Metric[]): string | null {
+  const last = metrics.at(-1)
+  const keys = last && PROGRESS_KINDS[last.kind]
+  if (!last || !keys) return null
+  const same = metrics.filter((m) => m.kind === last.kind && m.at != null && Object.keys(m).every((k) => k === keys.done || k === "at" || m[k] === last[k] || !(k in last)))
+  const first = same[0]
+  const done = Number(last[keys.done]) - Number(first?.[keys.done] ?? 0)
+  const total = Number(last[keys.total])
+  if (!first || done <= 0 || first === last) return null
+  const perStep = (Number(last.at) - Number(first.at)) / done
+  const seconds = perStep * (total - Number(last[keys.done]))
+  if (!(seconds > 0)) return null
+  return seconds < 90 ? `${Math.round(seconds)} s left` : seconds < 5400 ? `${Math.round(seconds / 60)} min left` : `${(seconds / 3600).toFixed(1)} h left`
+}

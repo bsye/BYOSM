@@ -71,9 +71,15 @@ def test_event_lines_become_metric_events_and_are_stored(ws, monkeypatch):
     job = runner.submit(["report"])
     wait_for(lambda: job.status == "done")
     metric = {"type": "metric", "job": job.id, "data": {"kind": "epoch", "epoch": 1, "loss": 0.5}}
-    assert metric in hub.seen and {"type": "log", "job": job.id, "line": "@event not json"} in hub.seen
+    seen = [
+        {**e, "data": {k: v for k, v in e["data"].items() if k != "at"}} if e["type"] == "metric" else e
+        for e in hub.seen
+    ]
+    assert metric in seen and {"type": "log", "job": job.id, "line": "@event not json"} in seen
     detail = Runner(ws, Hub()).detail(job.id)
-    assert detail["events"] == [metric["data"]] and detail["lines"] == ["@event not json"]
+    assert [{k: v for k, v in e.items() if k != "at"} for e in detail["events"]] == [metric["data"]] and detail[
+        "lines"
+    ] == ["@event not json"]
 
 
 def test_a_job_survives_a_new_runner_without_duplicate_lines(ws, monkeypatch):

@@ -52,7 +52,7 @@ def test_unlabeled_inputs_get_soft_labels_and_a_panel_summary(tmp_path, monkeypa
     assert [r["label"] for r in rows] and all(abs(sum(r["meta"]["soft"]) - 1) < 1e-3 for r in rows)
     by_input = {r["input"]: r["label"] for r in rows}
     assert by_input["a flight"] == "travel" and by_input["more pasta"] == "food"
-    events = [e for e in map(parse, capsys.readouterr().out.splitlines()) if e]
+    events = [{k: v for k, v in e.items() if k != "at"} for e in map(parse, capsys.readouterr().out.splitlines()) if e]
     assert {"kind": "teacher", "teacher": "test-coin", "done": 4, "total": 4, "specialist": "t"} in events
     summary = json.loads((tmp_path / PANEL_FILE).read_text())
     assert summary["teachers"] == {"test-keyword": 1.0, "test-coin": 0.5} and summary["n_pool"] == 4
