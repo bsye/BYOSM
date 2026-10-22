@@ -106,6 +106,8 @@ export type Suite = {
 }
 
 export type Detail = Summary & {
+  data_check: unknown
+  data_suggestions: unknown
   next: { id: string; title: string; why: string; args: string[]; experiments?: string[] }[]
   spec: Record<string, unknown>
   board: Record<string, Record<string, Result>>

@@ -10,6 +10,7 @@ from .store import Dataset
 MIN_TEST_ITEMS = 100
 MIN_CALIB_ITEMS = 50
 TOO_SMALL, THIN, ENOUGH = "too small", "thin", "enough"
+SHORT_SHARE = 0.25
 
 
 def _trained_on(p: Project, spec: TaskSpec) -> TaskSpec:
@@ -34,7 +35,8 @@ def data_check(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
     short = [n for n, x in labels.items() if x["rows"] < x["min"]]
     thin = [n for n, x in labels.items() if x["rows"] < x["recommended"]]
     small_held = bool(held) and (n_test < MIN_TEST_ITEMS or n_calib < MIN_CALIB_ITEMS)
-    verdict = TOO_SMALL if short or small_held else THIN if thin else ENOUGH
+    mostly_short = len(short) >= SHORT_SHARE * max(1, len(labels)) and bool(short)
+    verdict = TOO_SMALL if mostly_short or small_held else THIN if thin else ENOUGH
     return {
         "verdict": verdict,
         "train": sum(x["rows"] for x in labels.values()),
