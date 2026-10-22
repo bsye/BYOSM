@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { compact } from "@/format"
+import { OnLimitSelect } from "@/components/limit-banner"
 import { roleTask } from "@/jobs"
 import { matchChoice, roleConfig, useProviders, type Provider } from "@/providers"
 import type { Role, Roles } from "./models-api"
@@ -123,6 +124,7 @@ export function LimitsCard({ roles, biggest, onSaved }: { roles: Roles; biggest:
           <Label htmlFor="budget">Tokens per job</Label>
           <Input id="budget" className="h-8 w-40 tabular-nums" type="number" min={0} placeholder="no limit" value={budget} onChange={(e) => setBudget(e.target.value)} />
         </div>
+        <OnLimitSelect />
         <div className="space-y-2">
           <Label htmlFor="parallel">Parallel calls</Label>
           <Input id="parallel" className="h-8 w-28 tabular-nums" type="number" min={1} placeholder="auto" value={parallel} onChange={(e) => setParallel(e.target.value)} />

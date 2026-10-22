@@ -21,6 +21,7 @@ import { Settings } from "@/pages/Settings"
 import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
 import { useRoute } from "@/route"
+import { LimitBanner } from "@/components/limit-banner"
 
 function Page({ route }: { route: string[] }) {
   const [section = "home", id] = route
@@ -68,6 +69,7 @@ function Shell() {
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
               {live.unauthorized && <TokenPrompt />}
+              <LimitBanner />
               <ErrorBoundary resetKey={route.join("/")}>
                 <Page route={route} />
               </ErrorBoundary>

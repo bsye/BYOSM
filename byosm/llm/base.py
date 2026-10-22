@@ -7,6 +7,8 @@ import time
 from collections.abc import Callable
 from typing import Protocol, TypeVar
 
+from .limits import is_limit
+
 T = TypeVar("T")
 
 TRANSIENT_MARKERS = ("rate", "overload", "timeout", "connect")
@@ -84,8 +86,8 @@ def _retry(fn: Callable[[], T], tries: int = 4) -> T:
     for i in range(tries):
         try:
             return fn()
-        except (json.JSONDecodeError, LLMError):
-            if i == tries - 1:
+        except (json.JSONDecodeError, LLMError) as e:
+            if i == tries - 1 or is_limit(e):
                 raise
         except Exception as e:
             if i == tries - 1 or not _is_transient(e):

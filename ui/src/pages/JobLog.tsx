@@ -1,6 +1,7 @@
-import { CircleX, Loader2, Square } from "lucide-react"
+import { CircleX, Laptop, Loader2, RotateCw, Square } from "lucide-react"
 import { useEffect, useRef } from "react"
-import { post } from "@/api"
+import { api, post, runJob } from "@/api"
+import { openJob } from "@/job-sheet"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +27,25 @@ function Now({ text, since, left, now }: { text: string; since: number | null; l
         {since != null && `last update ${seconds(Math.max(0, now - since))} ago`}
         {left && ` · ${left}`}
       </span>
+    </div>
+  )
+}
+
+function RetryButtons({ args }: { args: string[] }) {
+  const retry = async (local: boolean) => {
+    const llm = local ? (await api<{ local: Record<string, unknown> }>("/llm/on-limit")).local : null
+    openJob((await runJob(args, llm)).id)
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button size="sm" variant="outline" onClick={() => retry(false)}>
+        <RotateCw />
+        Retry
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => retry(true)}>
+        <Laptop />
+        Retry with local LLM
+      </Button>
     </div>
   )
 }
@@ -103,7 +123,10 @@ export function JobDetail({ id }: { id: string }) {
         <Alert variant="destructive">
           <CircleX />
           <AlertTitle>Failed</AlertTitle>
-          <AlertDescription className="font-mono text-xs break-all">{failure(lines) ?? "The job ended without output."}</AlertDescription>
+          <AlertDescription className="space-y-3">
+            <p className="font-mono text-xs break-all">{failure(lines) ?? "The job ended without output."}</p>
+            <RetryButtons args={job.args} />
+          </AlertDescription>
         </Alert>
       )}
       {active && <Now text={currentStep(metrics, lines)} since={last == null ? job.started : Number(last)} left={timeLeft(metrics)} now={now} />}

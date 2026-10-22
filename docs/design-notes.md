@@ -1006,3 +1006,18 @@ the assistant's reply. When the mapper finds no label column, the LLM may give `
 contains, our label]` checked in order, with an optional `label_default`. Columns are paths into nested values
 (`conversations.1.value`), so the input can be the user turn while the rules read the reply. The prompt forbids an input
 that contains the text the rules look for, since the model would learn the answer from the input.
+
+## When the LLM hits its limit
+
+A subscription or API limit should pause a job, not kill it. Every LLM call goes through `llm.recover.through_limits`.
+A limit error (recognised by its message, never retried by the provider's fast retry loop) follows the `on_limit` mode
+in `byosm.yaml`, which the app can change while jobs run:
+
+- `wait` (default): sleep until the reset time the message gives, or with backoff when it gives none, then retry. A
+  `limit` event carries the time, so the app shows a banner with **Retry now** and **Switch to local**.
+- `local`: send this and the following calls to the local model (`on_limit.local`, Qwen through Ollama by default).
+- `fail`: raise as before.
+
+The waiting call re-reads the mode every minute, so switching to local or pressing Retry now reaches jobs already
+waiting. A failed job also offers Retry and Retry with local LLM. A job's chosen LLM now replaces every role, not only
+the default one, so "run this with X" means every part of the job uses X.

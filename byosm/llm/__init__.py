@@ -12,6 +12,7 @@ from .base import LLM, LLMError, T, take_usage
 from .claude_code_provider import ClaudeCodeLLM
 from .codex_provider import CodexLLM
 from .openai_provider import OpenAICompatLLM
+from .recover import through_limits
 
 __all__ = [
     "LLM",
@@ -128,9 +129,7 @@ class Observed:
         emit("llm", **base, state="waiting", prompt=prompt[:PREVIEW_CHARS], images=len(images or []))
         t1 = t0
         try:
-            with self.gate or contextlib.nullcontext():
-                t1 = time.time()
-                out = self.llm.json(system, prompt, schema, **({"images": images} if images else {}))
+            out, t1 = through_limits(lambda llm: self._once(llm, system, prompt, schema, images), self.llm, base)
         except Exception as e:
             timing = {"seconds": round(time.time() - t1, 1), "waited": round(t1 - t0, 1)}
             emit("llm", **base, state="failed", **timing, error=str(e)[:PREVIEW_CHARS])
@@ -141,6 +140,13 @@ class Observed:
         timing = {"seconds": round(time.time() - t1, 1), "waited": round(t1 - t0, 1)}
         emit("llm", **base, state="done", **timing, answer=answer, **used)
         return out
+
+    def _once(self, llm: LLM, system: str, prompt: str, schema: dict, images: list[bytes] | None) -> tuple[dict, float]:
+        import time
+
+        with self.gate or contextlib.nullcontext():
+            t1 = time.time()
+            return llm.json(system, prompt, schema, **({"images": images} if images else {})), t1
 
 
 def parallel_calls(cfg: dict | None = None) -> int:

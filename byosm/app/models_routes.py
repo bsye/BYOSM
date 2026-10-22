@@ -39,6 +39,10 @@ class Stop(BaseModel):
     model: str
 
 
+class OnLimit(BaseModel):
+    mode: str
+
+
 def _effort_key(conf: dict) -> str:
     return EFFORT_KEYS.get(str(conf.get("provider", "anthropic")), "effort")
 
@@ -95,6 +99,15 @@ def set_budget(ws: Path, tokens: int | None) -> dict[str, Any]:
     return roles(ws)
 
 
+def _write_limit(ws: Path, **values: Any) -> dict[str, Any]:
+    from ..llm.limits import SECTION
+
+    cfg = stored_config(ws)
+    cfg[SECTION] = {**(cfg.get(SECTION) or {}), **values}
+    save_config(ws, cfg)
+    return cfg[SECTION]
+
+
 def models_router(ws: Path, runner: Any) -> APIRouter:
     from ..llm import local
 
@@ -132,6 +145,26 @@ def models_router(ws: Path, runner: Any) -> APIRouter:
     @router.put("/api/llm/roles/{role}")
     def write_role(role: str, body: RoleSettings) -> dict:
         return set_role(ws, role, body.settings)
+
+    @router.get("/api/llm/on-limit")
+    def read_on_limit() -> dict:
+        from ..llm.limits import LOCAL, MODES, local_llm_config, settings
+
+        return {**settings(), "modes": list(MODES), LOCAL: local_llm_config()}
+
+    @router.put("/api/llm/on-limit")
+    def write_on_limit(body: OnLimit) -> dict:
+        from ..llm.limits import MODES
+
+        if body.mode not in MODES:
+            raise HTTPException(422, f"mode must be one of {', '.join(MODES)}")
+        return _write_limit(ws, mode=body.mode)
+
+    @router.post("/api/llm/on-limit/retry")
+    def retry_now() -> dict:
+        import time
+
+        return _write_limit(ws, retry_now=time.time())
 
     @router.put("/api/llm/budget")
     def write_budget(body: Budget) -> dict:
