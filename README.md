@@ -2,13 +2,31 @@
 
 <h1 align="center">BYOSM</h1>
 
-<p align="center"><b>Build Your Own Specialist Model.</b><br>One sentence in, a small model out that beats the big ones at its job, on a public benchmark, on any CPU.</p>
+<p align="center">
+  <b>Build Your Own Specialist Model.</b><br>
+  One sentence in, a small model out that beats the big ones at its job, on a public benchmark, on any CPU.
+  <br><br>
+  <a href="#run-it"><strong>Run it »</strong></a>
+  &nbsp;·&nbsp;
+  <a href="docs/results.md"><strong>Results »</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://huggingface.co/bsye"><strong>Models on Hugging Face »</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://www.anthropic.com/claude-code"><img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-D97757?style=for-the-badge&logo=claude&logoColor=white"></a>
+  <a href="https://openai.com/codex"><img alt="Codex" src="https://img.shields.io/badge/Codex-000000?style=for-the-badge"></a>
+  <a href="https://ollama.com"><img alt="Ollama" src="https://img.shields.io/badge/Ollama-000000?style=for-the-badge&logo=ollama&logoColor=white"></a>
+  <a href="https://huggingface.co"><img alt="Hugging Face" src="https://img.shields.io/badge/Hugging%20Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black"></a>
+  <a href="https://onnx.ai"><img alt="ONNX" src="https://img.shields.io/badge/ONNX-005CED?style=for-the-badge&logo=onnx&logoColor=white"></a>
+  <a href="https://www.docker.com"><img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white"></a>
+  <a href="https://www.postgresql.org"><img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white"></a>
+</p>
 
 <p align="center">
   <a href="LICENSE"><img alt="Licence CC BY-NC 4.0" src="https://img.shields.io/badge/licence-CC%20BY--NC%204.0-lightgrey"></a>
-  <a href="https://huggingface.co/bsye"><img alt="Models on Hugging Face" src="https://img.shields.io/badge/models-Hugging%20Face-yellow"></a>
   <img alt="Python 3.11" src="https://img.shields.io/badge/python-3.11-blue">
-  <img alt="Runs on CPU with ONNX" src="https://img.shields.io/badge/runs%20on-CPU%20%C2%B7%20ONNX-green">
+  <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-green">
 </p>
 
 <p align="center"><img src="docs/screenshots/hero.gif" alt="The specialists, then one specialist with its health, board, experiments, data and test sets" width="100%"></p>
@@ -19,9 +37,9 @@
 |---|---|---|---|
 | ✅ Claude Code or Codex | ✅ Same scorer for all rivals | ✅ Every job live | ✅ int8 ONNX on any CPU |
 | ✅ Ollama, LM Studio, API keys | ✅ No leaks between splits | ✅ LLM decisions as a tree | ✅ HTTP server and Docker |
-| ✅ Hub datasets and benchmarks | ✅ Overfitting check | ✅ Tokens per task and model | ✅ Publish to the Hub |
+| ✅ Hugging Face datasets | ✅ Overfitting check | ✅ Tokens per task and model | ✅ Publish to Hugging Face |
 | ✅ LLM data, judge-checked | ✅ Health score | ✅ Test sets, Excel export | ✅ Teams that act as you type |
-| ✅ Experiments and autopilot | ✅ Hub models as rivals | ✅ Paged tables, live counts | ✅ SQLite or Postgres |
+| ✅ Experiments and autopilot | ✅ Hugging Face rivals | ✅ Paged tables, live counts | ✅ SQLite or Postgres |
 
 ## Run it
 
@@ -41,10 +59,10 @@ State lives in one database: SQLite by default, Postgres with `DATABASE_URL` (`p
 | [2. Watch it build](#2-watch-it-build) | Follow each job live |
 | [3. Check its health](#3-check-its-health) | See what fails and what to try next |
 | [4. Compare with rivals](#4-compare-with-rivals) | Every model on the same splits |
-| [5. Test it on new inputs](#5-test-it-on-new-inputs) | Your test sets and Hub rivals |
+| [5. Test it on new inputs](#5-test-it-on-new-inputs) | Your test sets and Hugging Face rivals |
 | [6. Act while the user types](#6-act-while-the-user-types) | A team fires before the sentence ends |
 | [7. Choose the LLMs](#7-choose-the-llms) | What each task uses and costs |
-| [8. Ship it](#8-ship-it) | Python, HTTP, Docker or the Hub |
+| [8. Ship it](#8-ship-it) | Python, HTTP, Docker or Hugging Face |
 
 ### 1. Describe the task
 
@@ -72,7 +90,7 @@ Test and calib scores with 95% intervals for every experiment and rival, scored 
 
 ### 5. Test it on new inputs
 
-Hub models for the same task, ready to add as rivals, and test sets with every model's score.
+Hugging Face models for the same task, ready to add as rivals, and test sets with every model's score.
 
 <img src="docs/screenshots/test.gif" alt="Hugging Face rivals and a test set with each model's score" width="100%">
 
@@ -105,7 +123,7 @@ A small model "beating GPT" is easy to fake. Each of these guards runs in code o
 
 | Risk | Guard |
 |---|---|
-| Grading on your own homework | Rivals (LLMs, Hub models, LiveKit, Silero) go through the same scorer, on the same frozen splits, with thresholds calibrated on the same calib split. |
+| Grading on your own homework | Rivals (LLMs, Hugging Face models, LiveKit, Silero) go through the same scorer, on the same frozen splits, with thresholds calibrated on the same calib split. |
 | Picking the lucky run | Promotion and the autopilot decide on calib only. Test is reported once, with a 95% bootstrap interval. |
 | A lead that is noise | Every "ours vs theirs" is a paired bootstrap over the same rows; the health check counts a lead only when 95% of resamples keep it. |
 | Memorising the training data | The overfitting check compares train, dev, calib and test, flags a dev curve that peaks and falls, and flags calib over-use. |
