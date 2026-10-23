@@ -15,6 +15,7 @@ META = "meta.json"
 CHUNK = 1 << 20
 LOG_EVERY = 0.1
 TIMEOUT_S = 60
+HEAD_TIMEOUT_S = 10
 TABLE_SUFFIXES = (".csv", ".tsv", ".xlsx", ".xls", ".json", ".parquet")
 
 
@@ -49,6 +50,16 @@ def _download(url: str, out: Path, log: Callable[[str], None], max_mb: float | N
                     shown = done / total
                     log(f"  downloaded {done / 1e6:.0f} of {total / 1e6:.0f} MB")
     return path
+
+
+def remote_mb(url: str) -> float | None:
+    request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "byosm"})
+    try:
+        with urllib.request.urlopen(request, timeout=HEAD_TIMEOUT_S) as r:
+            length = r.headers.get("Content-Length")
+    except (OSError, ValueError):
+        return None
+    return int(length) / 1e6 if length else None
 
 
 def tables(out: Path) -> list[Path]:

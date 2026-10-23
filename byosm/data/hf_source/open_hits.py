@@ -11,26 +11,15 @@ READABLE = ("CSV", "TSV", "XLSX", "XLS", "JSON", "ZIP")
 ABOUT_CHARS = 280
 OPEN_SHOWN = 8
 AUTO_MAX_MB = 100
-HEAD_TIMEOUT_S = 10
-
-
-def size_mb(url: str) -> float | None:
-    import urllib.request
-
-    request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "byosm"})
-    try:
-        with urllib.request.urlopen(request, timeout=HEAD_TIMEOUT_S) as r:
-            length = r.headers.get("Content-Length")
-    except (OSError, ValueError):
-        return None
-    return int(length) / 1e6 if length else None
 
 
 def _small(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
     from concurrent.futures import ThreadPoolExecutor
 
+    from ...opendata.cache import remote_mb
+
     with ThreadPoolExecutor(len(hits) or 1) as pool:
-        sizes = list(pool.map(lambda h: size_mb(h["id"].removeprefix(OPEN_PREFIX)), hits))
+        sizes = list(pool.map(lambda h: remote_mb(h["id"].removeprefix(OPEN_PREFIX)), hits))
     out = []
     for h, mb in zip(hits, sizes, strict=True):
         if mb is None or mb <= AUTO_MAX_MB:

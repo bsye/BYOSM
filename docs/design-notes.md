@@ -1143,3 +1143,7 @@ When a specialist's data plan searches for datasets, the open data portals are s
 ## Recovering from a diverged training
 
 A model whose outputs turn into NaN raises `DivergedError` at the next dev evaluation instead of failing deep inside a metric. Recovery climbs one step of a precision ladder (auto, which is float16 on Apple GPUs, then bfloat16, then float32), remembers the step for that modality and backbone next to the remembered batch sizes, and restarts the job like an out-of-memory failure. The default stays float16: bfloat16 has float32's range, so it cannot overflow where float16 does, but its shorter mantissa cost a small test model its win over the baseline, and on this Mac a 4096 matrix product takes 2.4 ms in float16, 2.8 ms in bfloat16 and 31 ms in float32.
+
+## Forecast questions on the Home prompt
+
+`byosm auto "<prompt>"` for a new task first asks the LLM whether the request is a forecast (will entities in a register end within some years) or a specialist. A forecast gets a horizon and a few portal searches; the first four readable tables under 100 MB are downloaded and profiled, and the LLM picks the table, its start and end columns, the features known at the start, and the columns that identify an entity. Every name it gives is checked against the table, the test year is the latest whose outcome is known, five backtest years follow, and the forecast is saved and run like one made by hand. The leakage check still runs, so a careless pick is caught there rather than trusted.

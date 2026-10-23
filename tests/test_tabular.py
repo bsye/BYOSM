@@ -1,3 +1,5 @@
+from datetime import date
+
 import numpy as np
 import pandas as pd
 
@@ -186,3 +188,30 @@ def test_a_cutoff_before_any_event_gives_never():
         0,
         0,
     ]
+
+
+def test_a_forecast_question_is_designed_on_a_table_with_real_columns_only(monkeypatch):
+    import byosm.llm as llm_module
+    from byosm.tabular.compose import design
+
+    class Fake:
+        def json(self, system, prompt, schema):
+            return {
+                "table": 0,
+                "start": "opened",
+                "event": "closed",
+                "features": ["kind", "invented"],
+                "shown": ["name"],
+                "title": "Will it close?",
+            }
+
+    monkeypatch.setattr(llm_module, "get_llm", lambda role, cfg=None: Fake())
+    tables = [
+        {
+            "dataset": {"title": "Register"},
+            "file": {"url": "u"},
+            "columns": [{"name": n, "missing": 0.0, "examples": []} for n in ("opened", "closed", "kind", "name")],
+        }
+    ]
+    spec = design("will it close within 2 years", {"horizon_years": 2}, tables, None)
+    assert spec["features"] == ["kind"] and spec["source"] == "u" and spec["test_year"] + 2 <= date.today().year

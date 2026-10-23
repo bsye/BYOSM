@@ -45,9 +45,9 @@ def test_portal_tables_are_offered_with_the_hub_results_and_downloaded_when_pick
         }
     ]
     monkeypatch.setattr(catalog, "search", lambda term: found)
-    import byosm.data.hf_source.open_hits as oh
+    import byosm.opendata.cache as cache
 
-    monkeypatch.setattr(oh, "size_mb", lambda url: 2.0)
+    monkeypatch.setattr(cache, "remote_mb", lambda url: 2.0)
     monkeypatch.setattr(mapping, "search", lambda queries: [])
     seen = {}
     monkeypatch.setattr(mapping, "pick_sources", lambda spec, hits, cfg: seen.setdefault("hits", hits) and [])
