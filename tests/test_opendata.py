@@ -73,3 +73,15 @@ def test_kept_datasets_are_stored_once_per_file_and_can_be_removed(ws):
     kept = library.add(ws, dataset, file)
     assert [k["title"] for k in kept] == ["Company Records"] and kept[0]["cached"] is None
     assert library.remove(ws, file["url"]) == []
+
+
+def test_a_shared_key_is_suggested_with_its_measured_match_and_joins(tmp_path):
+    from byosm.opendata.join import joined, suggest
+
+    left, right = tmp_path / "filings.csv", tmp_path / "companies.csv"
+    left.write_text("﻿file,company_num\na.pdf,1\nb.pdf,2\nc.pdf,9\n")
+    right.write_text("company_num;status\n1;Normal\n2;Dissolved\n3;Normal\n")
+    [pair] = [p for p in suggest(left, right) if p["left"] == "company_num"]
+    assert pair == {"left": "company_num", "right": "company_num", "match": round(2 / 3, 4)}
+    out = joined(left, right, "company_num", "company_num")
+    assert out["match"] == round(2 / 3, 4) and [r["status"] for r in out["rows"]] == ["Normal", "Dissolved", None]

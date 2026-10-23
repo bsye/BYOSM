@@ -6,22 +6,35 @@ from typing import Any
 SAMPLE = 5000
 SHOWN = 50
 EXAMPLES = 3
-ENCODINGS = ("utf-8", "latin-1")
+ENCODINGS = ("utf-8-sig", "latin-1")
+SNIFF_BYTES = 65536
+DELIMITERS = ",;\t|"
 
 
-def read(path: Path, rows: int = SAMPLE):
+def _separator(path: Path, encoding: str) -> str:
+    import csv
+
+    head = path.open(encoding=encoding, errors="replace").read(SNIFF_BYTES)
+    try:
+        return csv.Sniffer().sniff(head, delimiters=DELIMITERS).delimiter
+    except csv.Error:
+        return ","
+
+
+def read(path: Path, rows: int | None = SAMPLE, columns: list[str] | None = None):
     import pandas as pd
 
     suffix = path.suffix.lower()
     if suffix in (".xlsx", ".xls"):
-        return pd.read_excel(path, nrows=rows)
+        return pd.read_excel(path, nrows=rows, usecols=columns)
     if suffix == ".parquet":
-        return pd.read_parquet(path).head(rows)
+        return pd.read_parquet(path, columns=columns).head(rows)
     if suffix == ".json":
         return pd.read_json(path).head(rows)
     for encoding in ENCODINGS:
         try:
-            return pd.read_csv(path, nrows=rows, sep=None, engine="python", encoding=encoding)
+            sep = _separator(path, encoding)
+            return pd.read_csv(path, nrows=rows, sep=sep, encoding=encoding, usecols=columns, low_memory=False)
         except UnicodeDecodeError:
             continue
     raise ValueError(f"{path.name}: not readable as UTF-8 or Latin-1")

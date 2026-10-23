@@ -7,20 +7,26 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { Preview } from "./opendata-api"
 
-export function DataPreview({ url, title, onClose }: { url: string | null; title: string; onClose: () => void }) {
+export const filePreview = (url: string) => `/opendata/preview?url=${encodeURIComponent(url)}`
+
+export function DataPreview({ path, title, onClose }: { path: string | null; title: string; onClose: () => void }) {
   const [data, setData] = useState<Preview | null>(null)
   const [error, setError] = useState("")
   useEffect(() => {
     setData(null)
     setError("")
-    if (url) api<Preview>(`/opendata/preview?url=${encodeURIComponent(url)}`).then(setData, (e) => setError(String(e)))
-  }, [url])
+    if (path) api<Preview>(path).then(setData, (e) => setError(String(e)))
+  }, [path])
   return (
-    <Sheet open={url != null} onOpenChange={(open) => !open && onClose()}>
+    <Sheet open={path != null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto data-[side=right]:sm:max-w-4xl">
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>{data ? `${data.file}, first ${data.sampled.toLocaleString()} rows profiled` : "Reading the file"}</SheetDescription>
+          <SheetDescription>
+            {!data && "Reading the file"}
+            {data && data.match != null && `${Math.round(data.match * 100)}% of the first ${data.sampled.toLocaleString()} left rows found a match`}
+            {data && data.match == null && `${data.file}, first ${data.sampled.toLocaleString()} rows profiled`}
+          </SheetDescription>
         </SheetHeader>
         <div className="space-y-6 px-4 pb-6">
           {error && <p className="text-destructive text-sm">{error}</p>}

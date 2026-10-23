@@ -74,3 +74,10 @@ def fetch(url: str, log: Callable[[str], None] = print) -> dict[str, Any]:
 def cached(url: str) -> dict[str, Any] | None:
     meta = folder(url) / META
     return json.loads(meta.read_text()) if meta.exists() else None
+
+
+def table(url: str, file: str | None = None) -> Path:
+    info = cached(url)
+    if not info or not info["files"]:
+        raise KeyError("not downloaded yet: download it first")
+    return folder(url) / (file if file in info["files"] else info["files"][0])

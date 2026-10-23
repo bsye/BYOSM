@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { DataPreview } from "./DataPreview"
+import { DataPreview, filePreview } from "./DataPreview"
 import { download, keep, useLibrary, type OpenDataset } from "./opendata-api"
 
 const ALL = "all"
@@ -98,7 +98,7 @@ export function OpenSearch() {
             </CardContent>
           </Card>
         ))}
-      <DataPreview url={shown?.url ?? null} title={shown?.title ?? ""} onClose={() => setShown(null)} />
+      <DataPreview path={shown ? filePreview(shown.url) : null} title={shown?.title ?? ""} onClose={() => setShown(null)} />
     </div>
   )
 }

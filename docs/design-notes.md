@@ -1087,5 +1087,9 @@ in one shape (title, publisher, licence, date, tabular files only). A file is do
 `~/.cache/byosm/opendata/<hash of its URL>`, zip archives unpacked, and previewed with a profile of each column from the
 first 5,000 rows, so a 47 MB register previews in a second. Downloads run as jobs (`byosm opendata fetch URL`) so they
 show progress. The datasets a user keeps live in the database. The Datasets page shows them next to every train, dev
-and test set built for a specialist. Joining open tables and training on them is the next step; the web-research agent
-is for sources no portal lists.
+and test set built for a specialist. Two kept tables can be joined: keys are suggested by
+matching column names (and key-like names such as `*_num`, `*_id`), then measured as the share of left keys found
+anywhere in the full right column, so a suggestion comes with the evidence for it. The joined preview reports the match
+rate on the left sample. CSVs are read with the separator sniffed once and the fast parser, which reads the 827,790-row
+CRO register's key column in under a second. Training on a joined table is the next step; the web-research agent is for
+sources no portal lists.

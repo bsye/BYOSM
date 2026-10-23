@@ -16,6 +16,15 @@ class Url(BaseModel):
     url: str
 
 
+def _table(url: str, file: str | None = None) -> Path:
+    from ..opendata.cache import table
+
+    try:
+        return table(url, file)
+    except KeyError as e:
+        raise HTTPException(404, str(e).strip("'\"")) from e
+
+
 def opendata_router(ws: Path) -> APIRouter:
     router = APIRouter()
 
@@ -45,14 +54,22 @@ def opendata_router(ws: Path) -> APIRouter:
 
     @router.get("/api/opendata/preview")
     def preview(url: str, file: str | None = None) -> dict[str, Any]:
-        from ..opendata.cache import cached, folder
+        from ..opendata.cache import cached
         from ..opendata.preview import preview as look
 
-        info = cached(url)
-        if not info or not info["files"]:
-            raise HTTPException(404, "not downloaded yet: download it first")
-        name = file if file in info["files"] else info["files"][0]
-        return {**look(folder(url) / name), "files": info["files"]}
+        return {**look(_table(url, file)), "files": (cached(url) or {}).get("files", [])}
+
+    @router.get("/api/opendata/join/suggest")
+    def suggest(left: str, right: str) -> list[dict[str, Any]]:
+        from ..opendata.join import suggest as keys
+
+        return keys(_table(left), _table(right))
+
+    @router.get("/api/opendata/join/preview")
+    def joined(left: str, right: str, left_key: str, right_key: str) -> dict[str, Any]:
+        from ..opendata.join import joined as join
+
+        return join(_table(left), _table(right), left_key, right_key)
 
     @router.get("/api/datasets/training")
     def training() -> list[dict[str, Any]]:

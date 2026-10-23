@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DataPreview } from "./DataPreview"
+import { DataPreview, filePreview } from "./DataPreview"
+import { JoinBuilder } from "./JoinBuilder"
 import { download, forget, useLibrary } from "./opendata-api"
 
 export function OpenLibrary() {
@@ -25,6 +26,8 @@ export function OpenLibrary() {
       </Empty>
     )
   return (
+    <div className="space-y-4">
+    <JoinBuilder kept={kept} />
     <Card>
       <CardHeader>
         <CardTitle>Kept open data</CardTitle>
@@ -79,7 +82,8 @@ export function OpenLibrary() {
         </Table>
       </CardContent>
       {footer}
-      <DataPreview url={shown?.url ?? null} title={shown?.title ?? ""} onClose={() => setShown(null)} />
+      <DataPreview path={shown ? filePreview(shown.url) : null} title={shown?.title ?? ""} onClose={() => setShown(null)} />
     </Card>
+    </div>
   )
 }
