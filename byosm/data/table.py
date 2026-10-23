@@ -10,7 +10,7 @@ from ..text import markup_tags
 
 TABLE_SUFFIXES = (".csv", ".xlsx")
 TEMPLATE_STEM = "template"
-SPLIT_CHOICES = ["train", "test"]
+SPLIT_CHOICES = ["train", "dev", "test"]
 LABEL_COL, SPLIT_COL = "label", "split"
 DATA_SHEET, GUIDE_SHEET = "data", "labels"
 MAX_DROPDOWN_ROWS = 100000

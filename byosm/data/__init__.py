@@ -7,7 +7,7 @@ from typing import Any
 
 from ..spec import HFSource, TaskSpec
 from . import audio_mix, budget, hf_source, panel, segments
-from .splits import _group_split3, _hold_out, _split3
+from .splits import HELD, _group_split3, _hold_out, _split3
 from .store import TEST_SHARE, TRAIN_INPUTS, Dataset, dedupe, record, write
 from .table import is_table, table_rows
 
@@ -84,13 +84,14 @@ def _split_by_recording(real: list[dict], rng: random.Random) -> dict[str, list[
 
 def _add_local(spec: TaskSpec, splits: dict[str, list[dict]], rng: random.Random, log: Log) -> None:
     local = _local(spec)
-    held = [record(x, y, "local") for x, y, s in local if s == "test"]
-    rows = [record(x, y, "local") for x, y, s in local if s != "test"]
-    parts = _split3(rows, rng, test=0.0 if held else TEST_SHARE)
-    parts["test"] += held
+    marked = {m: [record(x, y, "local") for x, y, s in local if s == m] for m in HELD}
+    rows = [record(x, y, "local") for x, y, s in local if s not in HELD]
+    shares = {m: 0.0 for m in HELD if marked[m]}
+    parts = _split3(rows, rng, **shares) if shares else _split3(rows, rng, test=TEST_SHARE)
     for s, part in parts.items():
-        splits[s] += part
-    log(f"  local: {len(local)} examples from {spec.data.local_dir} ({len(held)} marked test)")
+        splits[s] += part + marked.get(s, [])
+    counts = ", ".join(f"{len(v)} marked {m}" for m, v in marked.items() if v)
+    log(f"  local: {len(local)} examples from {spec.data.local_dir} ({counts or 'none marked'})")
 
 
 def _resolve_sources(spec: TaskSpec, data_dir: Path, cfg: dict | None, log: Log) -> tuple[list, list]:

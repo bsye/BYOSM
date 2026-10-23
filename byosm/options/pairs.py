@@ -11,6 +11,7 @@ from typing import Any
 FITS, NO_FIT = "fits", "no_fit"
 NONE_SHARE = 0.15
 TEST_SHARE = 0.15
+DEV_SHARE = 0.1
 DESCRIPTION_CHARS = 300
 OPTION_MARK = "\n\nOption: "
 OTHERS_MARK = "\nOther options: "
@@ -55,7 +56,8 @@ def with_unrelated(situations: list[Situation], rng: random.Random) -> list[Situ
 
 def rows(situations: Iterable[Situation], rng: random.Random) -> Iterator[dict[str, str]]:
     for i, s in enumerate(situations):
-        split = "test" if rng.random() < TEST_SHARE else "train"
+        draw = rng.random()
+        split = "test" if draw < TEST_SHARE else "dev" if draw < TEST_SHARE + DEV_SHARE else "train"
         for o in s.options:
             yield {
                 "text": pair_text(s.text, o, s.options),

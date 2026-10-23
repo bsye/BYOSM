@@ -66,3 +66,32 @@ def test_scores_and_comparisons_are_kept_side_by_side(ws):
     save(ws, "t", own={"exact": 1})
     save(ws, "t", compare={"sample": 3})
     assert {k: v for k, v in report(ws, "t").items() if k != "at"} == {"own": {"exact": 1}, "compare": {"sample": 3}}
+
+
+def test_whole_requests_go_to_dev_so_no_request_sits_in_both_train_and_dev():
+    pool = [xlam({**ROW, "query": f"weather {i}?"}) for i in range(300)]
+    out = list(rows(pool, random.Random(0)))
+    by_group = {}
+    for r in out:
+        by_group.setdefault(r["group"], set()).add(r["split"])
+    assert all(len(s) == 1 for s in by_group.values())
+    assert {"train", "dev", "test"} == {s for g in by_group.values() for s in g}
+
+
+def test_a_table_marking_dev_rows_keeps_them_in_dev(ws, tmp_path):
+    import csv
+
+    from byosm.data import _add_local
+    from byosm.spec import Label, TaskSpec
+
+    table = tmp_path / "t.csv"
+    with table.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["text", "label", "split"])
+        w.writerows([[f"t{i}", "a", "train"] for i in range(20)] + [["d", "a", "dev"], ["x", "a", "test"]])
+    spec = TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
+    spec.data.local_dir = str(table)
+    splits = {"train": [], "dev": [], "test": []}
+    _add_local(spec, splits, random.Random(0), log=lambda m: None)
+    assert [r["input"] for r in splits["dev"]] == ["d"] and [r["input"] for r in splits["test"]] == ["x"]
+    assert len(splits["train"]) == 20
