@@ -47,10 +47,12 @@ State lives in one database: SQLite by default, Postgres with `DATABASE_URL` (`p
 | [6. Act while the user types](#6-act-while-the-user-types) | A team fires before the sentence ends |
 | [7. Choose the LLMs](#7-choose-the-llms) | What each task uses and costs |
 | [8. Ship it](#8-ship-it) | Python, HTTP, Docker or Hugging Face |
+| [9. Run it in a container](#9-run-it-in-a-container) | Each model or team isolated, live |
+| [10. Know what it costs](#10-know-what-it-costs) | Build cost against an LLM, and when it pays off |
 
 ### 1. Describe the task
 
-One sentence and the LLM you have; the autopilot does the rest.
+One sentence and the LLM you have; the autopilot does the rest. Home shows every model's health, its next action and what this machine can train.
 
 <img src="docs/screenshots/create.gif" alt="Typing a task and picking an LLM" width="100%">
 
@@ -62,7 +64,7 @@ Every job live: its stages, the LLM calls behind each, progress and the log.
 
 ### 3. Check its health
 
-A health score with every check behind it, and the experiments the LLM proposes to fix what fails.
+A health score with every check behind it, and the next step for each failing check, such as a lower learning rate when it overfits.
 
 <img src="docs/screenshots/health.gif" alt="Health checks and the proposed experiments" width="100%">
 
@@ -95,6 +97,18 @@ Tokens and calls per task and model, and the model and effort each task uses.
 One ONNX bundle to call from Python, the command line, HTTP or a Docker image.
 
 <img src="docs/screenshots/ship.gif" alt="How to use an exported specialist" width="100%">
+
+### 9. Run it in a container
+
+Deploy a specialist or a team into its own read-only container with CPU and memory limits, watch it live and send it inputs.
+
+<img src="docs/screenshots/deploy.gif" alt="A team running in a container answering a request" width="100%">
+
+### 10. Know what it costs
+
+What each model cost to build, the LLM's cost per item measured on its rival runs, and after how many items the fine-tune pays off.
+
+<img src="docs/screenshots/costs.gif" alt="Build cost, cost per item and the break-even curve against an LLM" width="100%">
 
 Models on Hugging Face: [bsye](https://huggingface.co/bsye) ·
 [byosm-doctype](https://huggingface.co/bsye/byosm-doctype) ·
