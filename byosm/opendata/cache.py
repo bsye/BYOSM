@@ -34,10 +34,12 @@ def _name(url: str, headers: Any) -> str:
     return given.strip('"; ') or Path(urllib.parse.urlparse(url).path).name or "data"
 
 
-def _download(url: str, out: Path, log: Callable[[str], None]) -> Path:
+def _download(url: str, out: Path, log: Callable[[str], None], max_mb: float | None) -> Path:
     request = urllib.request.Request(url, headers={"User-Agent": "byosm"})
     with urllib.request.urlopen(request, timeout=TIMEOUT_S) as r:
         total, done, shown = int(r.headers.get("Content-Length") or 0), 0, 0.0
+        if max_mb and total > max_mb * 1e6:
+            raise ValueError(f"{total / 1e6:.0f} MB is over the {max_mb:g} MB limit for automatic downloads")
         path = out / _name(url, r.headers)
         with path.open("wb") as f:
             while chunk := r.read(CHUNK):
@@ -53,14 +55,18 @@ def tables(out: Path) -> list[Path]:
     return sorted(p for p in out.rglob("*") if p.suffix.lower() in TABLE_SUFFIXES and p.name != META)
 
 
-def fetch(url: str, log: Callable[[str], None] = print) -> dict[str, Any]:
+def fetch(url: str, log: Callable[[str], None] = print, max_mb: float | None = None) -> dict[str, Any]:
     out = folder(url)
     meta = out / META
     if meta.exists():
         log(f"  cached: {out}")
         return json.loads(meta.read_text())
     out.mkdir(parents=True, exist_ok=True)
-    path = _download(url, out, log)
+    try:
+        path = _download(url, out, log, max_mb)
+    except ValueError:
+        out.rmdir()
+        raise
     if zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as z:
             z.extractall(out / "unzipped")

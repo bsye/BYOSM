@@ -12,6 +12,8 @@ CLOSEST_HITS = 10
 PHRASE_WEIGHT = 3
 MIN_NAME_LETTERS = 5
 NAME_COVER = 0.6
+OPEN_PREFIX = "opendata:"
+FILE_MARK = "#"
 
 
 def hub_call(fn: Any, dataset: str, config: str | None, **kw: Any) -> Any:
@@ -23,9 +25,19 @@ def hub_call(fn: Any, dataset: str, config: str | None, **kw: Any) -> Any:
         return fn(dataset, data_dir=config, revision=PARQUET_BRANCH, **kw)
 
 
-def open_split(dataset: str, config: str | None, split: str) -> Any:
-    from datasets import load_dataset
+def open_table(dataset: str) -> Any:
+    from ...opendata.cache import table
+    from ...opendata.preview import read
 
+    url, _, file = dataset.removeprefix(OPEN_PREFIX).partition(FILE_MARK)
+    return read(table(url, file or None), rows=None).fillna("").astype(str)
+
+
+def open_split(dataset: str, config: str | None, split: str) -> Any:
+    from datasets import Dataset, load_dataset
+
+    if dataset.startswith(OPEN_PREFIX):
+        return Dataset.from_pandas(open_table(dataset), preserve_index=False).to_iterable_dataset()
     return hub_call(load_dataset, dataset, config, split=split, streaming=True)
 
 
@@ -132,6 +144,11 @@ def search(queries: list[str], limit: int = 8) -> list[dict]:
 
 def exists(dataset: str) -> bool:
     from huggingface_hub import HfApi
+
+    if dataset.startswith(OPEN_PREFIX):
+        from ...opendata.cache import cached
+
+        return cached(dataset.removeprefix(OPEN_PREFIX).partition(FILE_MARK)[0]) is not None
     from huggingface_hub.errors import HFValidationError, RepositoryNotFoundError
 
     try:
@@ -144,6 +161,8 @@ def exists(dataset: str) -> bool:
 
 
 def split_sizes(dataset: str, config: str | None = None) -> dict[str, int]:
+    if dataset.startswith(OPEN_PREFIX):
+        return {"train": len(open_table(dataset))}
     try:
         from datasets import load_dataset_builder
 
@@ -160,7 +179,7 @@ def _letters(s: str) -> str:
 def closest(dataset: str) -> str | None:
     from huggingface_hub import HfApi
 
-    if exists(dataset):
+    if exists(dataset) or dataset.startswith(OPEN_PREFIX):
         return dataset
     name = dataset.split("/")[-1]
     key = _letters(name)

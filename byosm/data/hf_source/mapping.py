@@ -4,8 +4,9 @@ from collections.abc import Callable
 
 from ...llm import get_llm, parallel_calls, pmap, role_model
 from ...spec import HFSource, TaskSpec
-from .cards import describe, listing
-from .hub import _features, closest, search
+from .cards import DESCRIBED, describe, listing
+from .hub import OPEN_PREFIX, _features, closest, search
+from .open_hits import OPEN_SHOWN, fetched, open_hits
 
 MAP_SYSTEM = """You map a Hugging Face dataset onto a classifier's label space. Pick the config/split, the input column \
 (the raw text/audio/image), and for role=labeled the label column plus an explicit mapping from source label values to \
@@ -15,8 +16,11 @@ If no column holds labels for role=labeled, investigate whether our labels follo
 
 PICK_ROLE, MAP_ROLE = "pick", "map"
 RULE_PARTS = 3
-PICK_SYSTEM = """You choose Hugging Face datasets to build a training set. Given search results, select the datasets \
-(by exact id) that best provide data in each role. Prefer widely-used, permissively licensed, parquet-backed datasets."""
+PICK_SYSTEM = """You choose datasets to build a training set. Given search results from the Hugging Face Hub and from \
+government open data portals (ids starting with opendata:), select the datasets (by exact id) that best provide data in \
+each role. An open data table fits when it has a free-text column and a column that gives one of our labels; pick up \
+to three of them when they fit, since some portal files cannot be read. Prefer widely-used, permissively licensed \
+datasets."""
 
 
 def _pick_schema() -> dict:
@@ -56,7 +60,9 @@ def pick_sources(spec: TaskSpec, hits: list[dict], cfg: dict | None) -> list[tup
 
 
 def _pick_sources(spec: TaskSpec, cfg: dict | None) -> list[HFSource]:
-    return [src for src, _ in pick_sources(spec, search(spec.data.hf_queries), cfg)]
+    portal = open_hits(spec.data.hf_queries, spec.modality)[:OPEN_SHOWN]
+    hits = search(spec.data.hf_queries)[: DESCRIBED - len(portal)] + portal
+    return [src for src, _ in pick_sources(spec, hits, cfg)]
 
 
 def _map_prompt(
@@ -100,6 +106,8 @@ def _apply_mapping(
 
 
 def _map_source(src: HFSource, spec: TaskSpec, cfg: dict | None, log: Callable[[str], None]) -> HFSource | None:
+    if src.dataset.startswith(OPEN_PREFIX) and not fetched(src.dataset, log):
+        return None
     real = closest(src.dataset)
     if real is None:
         log(f"  skip {src.dataset}: not on the Hub, and no dataset there has that name")

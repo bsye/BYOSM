@@ -12,6 +12,11 @@ CARD_FIELDS = ("task_categories", "license", "size_categories", "language")
 def card(hit: dict) -> dict[str, Any]:
     from huggingface_hub import HfApi
 
+    from .hub import OPEN_PREFIX
+
+    if hit["id"].startswith(OPEN_PREFIX):
+        return hit
+
     try:
         info = HfApi().dataset_info(hit["id"])
     except Exception:
