@@ -29,6 +29,7 @@ import { Health } from "./Health"
 import { titleOf } from "./specialist-groups"
 import { NextSteps } from "./NextSteps"
 import { PublishDialog } from "@/components/publish-dialog"
+import { ContinueDialog } from "./ContinueDialog"
 import { Team, useTeam } from "./Team"
 import { UseIt } from "./UseIt"
 import { YourData } from "./YourData"
@@ -250,6 +251,7 @@ function Model({ name }: { name: string }) {
               {a.label}
             </Button>
           ))}
+          <ContinueDialog d={d} />
           <PublishDialog name={name} exported={d.exported} published={repo} />
           <Button onClick={() => runJob(["auto", name]).then((j) => openJob(j.id))}>
             <Wand2 />

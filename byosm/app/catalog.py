@@ -90,6 +90,7 @@ def _run(p: Project, exp: str) -> dict[str, Any]:
     return {
         "name": exp,
         "parent": (e.get("proposal") or {}).get("parent"),
+        "continued": ((e.get("spec") or {}).get("train") or {}).get("init_from"),
         "created": e["created"].timestamp() if e.get("created") else None,
         "ablation_arm": is_arm(exp),
         "params": m.get("params"),

@@ -7,6 +7,7 @@ import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartToo
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { params, score, seconds } from "@/format"
 import { Ablations } from "./Ablations"
+import { Lineage } from "./Lineage"
 import { Progress } from "./Progress"
 
 const COLORS = 5
@@ -40,6 +41,7 @@ export function Runs({ d }: { d: Detail }) {
     setShown(shown.includes(name) ? shown.filter((x) => x !== name) : [...shown, name].slice(-COLORS))
   return (
     <div className="space-y-4">
+      <Lineage d={d} />
       <Progress d={d} />
       <Card>
         <CardHeader>
