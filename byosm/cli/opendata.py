@@ -60,3 +60,20 @@ def forecast_run(name: str) -> None:
     from ..tabular.task import run
 
     run(find_workspace(), name, log)
+
+
+@forecast_app.command("publish")
+def forecast_publish(
+    name: str,
+    repo: str = typer.Option(..., help="Hugging Face repo id, e.g. you/irish-company-closure"),
+    public: bool = typer.Option(False, "--public", help="create the repo public (default: private)"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="stage the files and card locally, upload nothing"),
+) -> None:
+    """Push a forecast's model, spec and results card to the Hugging Face Hub; the scored entities are never uploaded."""
+    from ..config import find_workspace
+    from ..tabular.publish import publish, stage
+
+    if dry_run:
+        log(f"staged {stage(find_workspace(), name)}")
+        return
+    publish(find_workspace(), name, repo, not public, log)

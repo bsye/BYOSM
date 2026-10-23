@@ -23,7 +23,18 @@ function useHubUser(open: boolean): string | null {
   return user
 }
 
-export function PublishDialog({ name, exported, published }: { name: string; exported: boolean; published?: string }) {
+type Props = {
+  name: string
+  exported: boolean
+  published?: string
+  label?: string
+  size?: "sm" | "default"
+  command?: (repo: string, pub: boolean) => string[]
+}
+
+const publishModel = (name: string) => (repo: string, pub: boolean) => ["publish", name, "--repo", repo, ...(pub ? ["--public"] : [])]
+
+export function PublishDialog({ name, exported, published, label = "Publish", size = "default", command }: Props) {
   const [open, setOpen] = useState(false)
   const user = useHubUser(open)
   const [repo, setRepo] = useState("")
@@ -32,15 +43,15 @@ export function PublishDialog({ name, exported, published }: { name: string; exp
   const suggested = published ?? (user ? `${user}/${REPO_PREFIX}${name}` : "")
   const target = repo || suggested
   const publish = () =>
-    runJob(["publish", name, "--repo", target, ...(visibility === PUBLIC ? ["--public"] : [])])
+    runJob((command ?? publishModel(name))(target, visibility === PUBLIC))
       .then((j) => openJob(j.id))
       .catch((e) => setError(String(e)))
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" disabled={!exported} title={exported ? undefined : "Export first"}>
+        <Button variant="outline" size={size} disabled={!exported} title={exported ? undefined : "Export first"}>
           <Upload />
-          Publish
+          {label}
         </Button>
       </DialogTrigger>
       <DialogContent>

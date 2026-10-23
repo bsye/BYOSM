@@ -41,6 +41,7 @@ def remove(ws: Path, url: str) -> list[dict[str, Any]]:
 
 def training(ws: Path) -> list[dict[str, Any]]:
     from ..data.store import Dataset
+    from ..export.bundle import is_exported
     from ..project import Project, list_projects
 
     out = []
@@ -59,6 +60,7 @@ def training(ws: Path) -> list[dict[str, Any]]:
                 "labels": len(spec.labels),
                 "splits": {s: v["n"] for s, v in summary.items()},
                 "sources": sorted({s.dataset for s in spec.data.hf_sources}),
+                "exported": is_exported(p.root / "export"),
             }
         )
     return out

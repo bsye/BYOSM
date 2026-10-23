@@ -28,10 +28,26 @@ def _stage(p: Project, repo_id: str, license: str, experiment: str) -> Path:
     (stage / "README.md").write_text(model_card(p.name, repo_id, license))
     f = load_facts(p.name, repo_id, license)
     if releasable(f):
-        data_stage = p.root / HUB_DIR / data_repo(repo_id).replace("/", HUB_SEPARATOR)
-        shutil.rmtree(data_stage, ignore_errors=True)
-        stage_data(f, data_stage)
+        _stage_dataset(p, f, repo_id)
     return stage
+
+
+def _stage_dataset(p: Project, f: object, repo_id: str) -> Path:
+    data_stage = p.root / HUB_DIR / data_repo(repo_id).replace("/", HUB_SEPARATOR)
+    shutil.rmtree(data_stage, ignore_errors=True)
+    return stage_data(f, data_stage)
+
+
+def publish_dataset(
+    name: str, repo_id: str, license: str = PUBLISH_LICENSE, private: bool = True, log: Callable[[str], None] = print
+) -> str:
+    p = Project(name)
+    if not is_exported(p.root / "export"):
+        raise RuntimeError(f"export first: byosm export {name}")
+    f = load_facts(name, repo_id, license)
+    if not releasable(f):
+        raise RuntimeError(f"only text datasets can be published; {name} is {f.spec.modality}")
+    return publish_data(f, _stage_dataset(p, f, repo_id), private, log)
 
 
 def publish(

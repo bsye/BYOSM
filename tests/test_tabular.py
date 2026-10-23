@@ -244,3 +244,32 @@ def test_one_entity_typed_in_the_register_format_gets_the_same_chance_as_in_the_
     out = predict(ws, "f", alive, log=lambda m: None)
     assert out["state"] == "alive" and 0 <= out["chance"] <= 1
     assert predict(ws, "f", {**alive, "end": "2020-01-01"}, log=lambda m: None)["state"] == "ended"
+
+
+def test_a_published_forecast_has_its_numbers_and_leaks_but_never_the_scored_entities(ws):
+    import joblib
+
+    import byosm.tabular.task as task
+    from byosm.tabular.publish import stage
+
+    spec = {
+        "title": "Will it close?",
+        "source": "s",
+        "start": "a",
+        "event": "b",
+        "horizon_years": 1,
+        "features": ["x"],
+        "cutoffs": {"train": [2010], "test": [2015]},
+        "excluded": {"status": "the answer"},
+    }
+    task.create(ws, "f", spec)
+    score = {"auc": 0.7, "auc_ci": [0.6, 0.8], "ap": 0.2}
+    today = {"top": [{"shown": {"name": "SOME COMPANY LIMITED"}}]}
+    result = {"scores": {"gradient boosting": score}, "dropped": {"nard": "leaks"}, "today": today, "splits": {}}
+    task._write(ws, "f", {"name": "f", "spec": task.load(ws, "f").model_dump(), "result": result})
+    task.model_path(ws, "f").parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump({"model": None}, task.model_path(ws, "f"))
+    out = stage(ws, "f")
+    card = (out / "README.md").read_text()
+    assert "0.700 | 0.600 to 0.800" in card and "`nard`: leaks" in card and "`status`: the answer" in card
+    assert "SOME COMPANY" not in card + (out / "results.json").read_text()

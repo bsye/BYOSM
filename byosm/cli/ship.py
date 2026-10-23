@@ -59,6 +59,19 @@ def publish(
     log(f"model card: {stage / 'README.md'}")
 
 
+@app.command("publish-data")
+def publish_data(
+    name: str,
+    repo: Annotated[str, typer.Option(help="the model's Hugging Face repo id; the dataset goes to its -data twin")],
+    license: str = PUBLISH_LICENSE,
+    public: Annotated[bool, typer.Option("--public", help="create the repo public (default: private)")] = False,
+) -> None:
+    """Push a specialist's train, dev and test sets (with the answer for every row) to the Hugging Face Hub."""
+    from ..hub.upload import publish_dataset
+
+    publish_dataset(name, repo, license, not public, log)
+
+
 @app.command()
 def predict(name: str, input: str) -> None:
     """Run the exported (or promoted) specialist on one input: text, or a path to an audio/image file."""

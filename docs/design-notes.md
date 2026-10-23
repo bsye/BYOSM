@@ -1151,3 +1151,7 @@ A model whose outputs turn into NaN raises `DivergedError` at the next dev evalu
 ## Predicting one entity
 
 Each forecast run keeps the model it scored today with (`.byosm/forecasts/<name>.joblib`), its categories, the features it left out and the typical values used for reasons. A single entity, looked up by its key in the source table or typed in the table's own columns, goes through the same derive, snapshot and history steps as training, so its chance matches the bulk run exactly. Steps that depend on the whole table (`frequent`, which keeps values seen at least 200 times) are skipped for one row; values the model never saw fall into the "other" category or count as missing, as they did in training. An entity that already ended before 1 January is reported as ended rather than scored.
+
+## Publishing datasets and forecasts
+
+`byosm publish-data <name> --repo <model repo>` pushes a specialist's train, dev and test sets on their own, to the same `-data` twin repo the model publish uses, and the Datasets page offers it per specialist once it is exported. `byosm forecast publish <name> --repo <id>` stages the scoring model, the spec, `results.json` and a card generated from the stored results (test AUC with CIs, accuracy by test year, the columns left out and why, the source and its licence) and uploads that folder. The list of scored entities is never staged: it names real companies with a chance of closing, which is not something to publish. Both default to a private repo.

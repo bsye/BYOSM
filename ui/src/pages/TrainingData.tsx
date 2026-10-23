@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { api } from "@/api"
+import { PublishDialog } from "@/components/publish-dialog"
 import { useShowMore } from "@/components/show-more"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { href } from "@/route"
 import { DataRows } from "./DataRows"
 
-type Built = { name: string; title: string; modality: string; labels: number; splits: Record<string, number>; sources: string[] }
+type Built = { name: string; title: string; modality: string; labels: number; splits: Record<string, number>; sources: string[]; exported: boolean }
 const SPLITS = ["train", "dev", "test"]
 
 export function TrainingData() {
@@ -39,6 +40,7 @@ export function TrainingData() {
                   </TableHead>
                 ))}
                 <TableHead>Sources</TableHead>
+                <TableHead className="text-right">Hugging Face</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -59,6 +61,9 @@ export function TrainingData() {
                     </TableCell>
                   ))}
                   <TableCell className="text-muted-foreground max-w-56 truncate text-xs">{r.sources.join(", ") || "written by an LLM"}</TableCell>
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <PublishDialog name={r.name} exported={r.exported && r.modality === "text"} size="sm" command={(repo, pub) => ["publish-data", r.name, "--repo", repo, ...(pub ? ["--public"] : [])]} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

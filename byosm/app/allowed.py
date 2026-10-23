@@ -17,6 +17,7 @@ ALLOWED_COMMANDS = (
     "distill",
     "export",
     "publish",
+    "publish-data",
     "listen",
     "report",
     "request-data",

@@ -1,5 +1,6 @@
 import { Download, Loader2, Play, Trash2 } from "lucide-react"
 import { del, download } from "@/api"
+import { PublishDialog } from "@/components/publish-dialog"
 import { go } from "@/route"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -83,6 +84,7 @@ export function ForecastPage({ name }: { name: string }) {
             <Download />
             CSV
           </Button>
+          <PublishDialog name={name} exported={Boolean(f.result?.today)} size="sm" command={(repo, pub) => ["forecast", "publish", name, "--repo", repo, ...(pub ? ["--public"] : [])]} />
           <Button size="sm" disabled={busy} onClick={() => void runForecast(name)}>
             {busy ? <Loader2 className="animate-spin" /> : <Play />}
             {busy ? "Running" : "Run"}
