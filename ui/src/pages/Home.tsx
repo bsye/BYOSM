@@ -14,13 +14,14 @@ import { Opportunities } from "./Opportunities"
 import { Overview } from "./Overview"
 import { NextActions } from "./NextActions"
 import { SectionCards } from "./SectionCards"
+import { HomeForecasts } from "./HomeForecasts"
 import { Section } from "./Section"
 
 const EXAMPLES = [
   "classify support emails into billing, shipping, technical or other",
   "find the dates, amounts and parties in a lease agreement",
   "detect when someone starts and stops speaking in microphone audio",
-  "sort scanned documents into invoice, receipt, contract and other",
+  "will an Irish company close within 3 years?",
 ]
 
 const STAT_CARDS = 4
@@ -45,7 +46,7 @@ function Prompt({ prompt, setPrompt }: { prompt: string; setPrompt: (p: string) 
       .catch((e) => setError(String(e)))
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 pt-6 pb-2 md:pt-10">
-      <h1 className="text-center text-3xl font-semibold tracking-tight">What should your specialist do?</h1>
+      <h1 className="text-center text-3xl font-semibold tracking-tight">What should we build?</h1>
       <InputGroup>
         <InputGroupTextarea
           id={PROMPT_ID}
@@ -127,6 +128,7 @@ export function Home() {
     <div className="flex flex-col gap-8 pb-8">
       <Prompt prompt={prompt} setPrompt={setPrompt} />
       <Models items={items} onPick={pick} />
+      <HomeForecasts />
       <Machine />
     </div>
   )
