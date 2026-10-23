@@ -46,14 +46,31 @@ def _share(hits: list[bool]) -> dict[str, Any]:
     }
 
 
-def score(table: Path, chance: Callable[[list[str]], list[float]], threshold: float = THRESHOLD) -> dict[str, Any]:
+def sampled(table: Path, sample: int | None = None) -> dict[str, list[dict[str, str]]]:
+    found = groups(table)
+    keys = sorted(found)
+    if sample and sample < len(keys):
+        keys = sorted(np.random.default_rng(SEED).choice(keys, sample, replace=False).tolist())
+    return {k: found[k] for k in keys}
+
+
+def evaluate(
+    found: dict[str, list[dict[str, str]]], choose: Callable[[str, list[dict[str, str]]], set[int]]
+) -> dict[str, Any]:
     exact, none, some = [], [], []
-    for rows in groups(table).values():
+    for key, rows in found.items():
         truth = {i for i, r in enumerate(rows) if r["label"] == FITS}
-        hit = decide(chance([r["text"] for r in rows]), threshold) == truth
+        hit = choose(key, rows) == truth
         exact.append(hit)
         (some if truth else none).append(hit)
-    return {"threshold": threshold, "exact": _share(exact), "tool_needed": _share(some), "no_tool": _share(none)}
+    return {"exact": _share(exact), "tool_needed": _share(some), "no_tool": _share(none)}
+
+
+def score(
+    table: Path, chance: Callable[[list[str]], list[float]], threshold: float = THRESHOLD, sample: int | None = None
+) -> dict[str, Any]:
+    result = evaluate(sampled(table, sample), lambda _, rows: decide(chance([r["text"] for r in rows]), threshold))
+    return {"threshold": threshold, **result}
 
 
 def score_export(ws: Path, name: str, threshold: float = THRESHOLD) -> dict[str, Any]:

@@ -30,3 +30,20 @@ def test_the_decision_is_right_only_when_exactly_the_called_tools_are_chosen(tmp
     greedy = score(table, lambda texts: [0.9] * len(texts))
     assert perfect["tool_needed"]["accuracy"] == 1.0 and greedy["tool_needed"]["accuracy"] == 0.0
     assert pair_text("q", {"name": "x"}) == "q\n\nOption: x:  ()"
+
+
+def test_a_rival_is_scored_on_the_same_requests_as_the_model(tmp_path, monkeypatch):
+    import byosm.llm as llm_module
+    from byosm.options import rivals
+
+    class Picks:
+        def json(self, system, prompt, schema):
+            return {"tools": ["get_weather"]}
+
+    monkeypatch.setattr(llm_module, "get_llm", lambda role, cfg=None: Picks())
+    monkeypatch.setattr(llm_module, "role_model", lambda role, cfg=None: "fake:llm")
+    table = tmp_path / "t.csv"
+    write(table, [xlam(ROW)] * 200)
+    out = rivals.rival_scores(table, {"concurrency": 2}, lambda texts: [0.1] * len(texts), sample=10)
+    assert out["sample"] == 10 and out["rivals"]["fake:llm"]["tool_needed"]["accuracy"] == 1.0
+    assert out["model"]["tool_needed"]["accuracy"] == 0.0

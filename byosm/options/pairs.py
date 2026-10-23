@@ -12,6 +12,7 @@ FITS, NO_FIT = "fits", "no_fit"
 NONE_SHARE = 0.15
 TEST_SHARE = 0.15
 DESCRIPTION_CHARS = 300
+OPTION_MARK = "\n\nOption: "
 
 
 @dataclass
@@ -27,7 +28,7 @@ def option_text(option: dict[str, Any]) -> str:
 
 
 def pair_text(situation: str, option: dict[str, Any]) -> str:
-    return f"{situation}\n\nOption: {option_text(option)}"
+    return f"{situation}{OPTION_MARK}{option_text(option)}"
 
 
 def xlam(row: dict[str, Any]) -> Situation:

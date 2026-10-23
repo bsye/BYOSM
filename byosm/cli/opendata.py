@@ -114,3 +114,24 @@ def options_score(
     for part in ("exact", "tool_needed", "no_tool"):
         s = out[part]
         log(f"  {part}: {s['accuracy']} ({s['ci'][0]} to {s['ci'][1]}) on {s['n']} requests")
+
+
+@options_app.command("rival")
+def options_rival(
+    name: str,
+    role: str = typer.Option("baseline", help="the LLM role in byosm.yaml to compare against"),
+    sample: int = typer.Option(200, help="how many held-out requests to compare on"),
+) -> None:
+    """Compare the exported specialist with an LLM choosing tools for the same held-out requests."""
+    from ..config import find_workspace, load_config
+    from ..options.create import table_path
+    from ..options.rivals import rival_scores
+    from ..options.select import exported_chance, save
+
+    ws = find_workspace()
+    out = rival_scores(table_path(ws, name), load_config(ws), exported_chance(name), sample, role)
+    save(ws, name, compare=out)
+    for who, s in [("this model", out["model"]), *out["rivals"].items()]:
+        log(
+            f"  {who}: exact {s['exact']['accuracy']} ({s['exact']['ci'][0]} to {s['exact']['ci'][1]}) on {out['sample']} requests"
+        )
