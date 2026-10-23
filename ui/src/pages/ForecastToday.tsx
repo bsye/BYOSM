@@ -99,8 +99,7 @@ function Riskiest({ top }: { top: Scored[] }) {
 export function ForecastToday({ today, horizon, check, testYear }: { today: Today; horizon: number; check?: Check; testYear: number }) {
   const note = check?.predicted_rate != null ? `In ${testYear} it predicted ${(check.predicted_rate * 100).toFixed(1)}%, ${(check.base_rate * 100).toFixed(1)}% ended` : undefined
   return (
-    <div className="grid gap-4 @3xl/main:col-span-2">
-      <h3 className="text-sm font-medium">Alive on 1 Jan {today.year}</h3>
+    <div className="grid gap-4">
       <div className="grid gap-4 @xl/main:grid-cols-3">
         <Stat label="Scored" value={today.scored.toLocaleString()} />
         <Stat label={`Expected to end within ${horizon === 1 ? "a year" : `${horizon} years`}`} value={today.expected.toLocaleString()} note={note} />

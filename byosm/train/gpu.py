@@ -8,6 +8,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
+from ..config import STATE_DIR
 from ..spec import TaskSpec
 
 GPU_DEVICES = ("mps", "cuda")
@@ -18,7 +19,7 @@ GB_PER_TRAINING = 16
 MPS_SHARE = 0.9
 OOM_RETRIES = 3
 MIN_BATCH = 4
-LOCK_DIR = Path(".byosm") / "gpu"
+LOCK_DIR = STATE_DIR / "gpu"
 WAIT_S = 5
 HEARTBEAT_S = 300
 

@@ -17,7 +17,7 @@ EVERYONE = 10**9
 
 def today(
     df: Any, r: Recipe, categorical: list[str], dropped: list[str], shown: list[str], log: Callable[[str], None]
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], Any]:
     import pandas as pd
 
     from .fit import _xy, models
@@ -48,6 +48,7 @@ def today(
     ]
     edges = np.linspace(0, 1, BANDS + 1)
     counts = np.histogram(p, bins=edges)[0]
+    everyone = df.loc[now.index, shown].assign(chance=p.round(4)).sort_values("chance", ascending=False)
     return {
         "year": year,
         "trained_on": trained_on,
@@ -57,7 +58,7 @@ def today(
             {"from": float(a), "to": float(b), "n": int(n)} for a, b, n in zip(edges, edges[1:], counts, strict=False)
         ],
         "top": top,
-    }
+    }, everyone
 
 
 def _plain(v: Any) -> Any:

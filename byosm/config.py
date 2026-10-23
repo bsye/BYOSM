@@ -10,6 +10,7 @@ import yaml
 if TYPE_CHECKING:
     pass
 
+STATE_DIR = Path(".byosm")
 CONFIG_NAME = "byosm.yaml"
 ENV_FILE = ".env"
 LLM_OVERRIDE_ENV = "BYOSM_LLM"

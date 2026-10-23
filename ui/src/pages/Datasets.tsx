@@ -1,6 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DataFinder } from "./DataFinder"
-import { Forecasts } from "./Forecasts"
 import { OpenLibrary } from "./OpenLibrary"
 import { Sources } from "./Sources"
 import { TrainingData } from "./TrainingData"
@@ -15,7 +14,6 @@ export function Datasets() {
           <TabsTrigger value="library">Library</TabsTrigger>
           <TabsTrigger value="sources">Sources</TabsTrigger>
           <TabsTrigger value="training">Training data</TabsTrigger>
-          <TabsTrigger value="forecasts">Forecasts</TabsTrigger>
         </TabsList>
         <TabsContent value="find">
           <DataFinder />
@@ -28,9 +26,6 @@ export function Datasets() {
         </TabsContent>
         <TabsContent value="training">
           <TrainingData />
-        </TabsContent>
-        <TabsContent value="forecasts">
-          <Forecasts />
         </TabsContent>
       </Tabs>
     </div>

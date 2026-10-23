@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 
+from ..config import STATE_DIR
 from ..db import get_or_add, session
 from ..db.models import WorkspaceReport
 from .backtest import windows
@@ -16,6 +17,7 @@ from .history import History
 from .snapshots import Recipe
 
 PREFIX = "forecast:"
+FOLDER = "forecasts"
 
 
 class HistorySpec(BaseModel):
@@ -137,7 +139,9 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
 
     recipe = spec.recipe(histories)
     over_time = backtest(df, recipe, spec.backtest, kept, list(dropped), log)
-    now = today(df, recipe, kept, list(dropped), spec.shown or [spec.key or spec.start], log)
+    now, everyone = today(df, recipe, kept, list(dropped), spec.shown or [spec.key or spec.start], log)
+    scored_path(ws, name).parent.mkdir(parents=True, exist_ok=True)
+    everyone.to_csv(scored_path(ws, name), index=False)
     result = {
         "at": time.time(),
         "splits": sizes,
@@ -149,6 +153,10 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
     }
     _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": result})
     return result
+
+
+def scored_path(ws: Path, name: str) -> Path:
+    return ws / STATE_DIR / FOLDER / f"{name}.csv"
 
 
 def forecasts(ws: Path) -> list[dict[str, Any]]:

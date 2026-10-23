@@ -8,7 +8,9 @@ import sys
 import threading
 from pathlib import Path
 
-JOBS_DIR = Path(".byosm") / "jobs"
+from ..config import STATE_DIR
+
+JOBS_DIR = STATE_DIR / "jobs"
 LOG_SUFFIX = ".log"
 EXIT_SUFFIX = ".exit"
 KILL_GRACE_S = 10

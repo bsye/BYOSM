@@ -153,7 +153,8 @@ def test_today_scores_everyone_alive_now_with_training_years_moved_forward():
 
     df = _register(4000)
     r = Recipe("start", "end", 2, {"train": [2012], "test": [2016]}, ["kind", "noise"], per_cutoff=1500)
-    now = today(df, r, ["kind"], [], ["kind"], log=lambda m: None)
+    now, everyone = today(df, r, ["kind"], [], ["kind"], log=lambda m: None)
+    assert len(everyone) == now["scored"] and everyone["chance"].is_monotonic_decreasing
     assert now["trained_on"] == [2012 + date.today().year - 2016]
     chances = [t["p"] for t in now["top"]]
     assert now["scored"] == sum(b["n"] for b in now["bands"]) and chances == sorted(chances, reverse=True)

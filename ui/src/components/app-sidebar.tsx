@@ -1,4 +1,4 @@
-import { Activity, Boxes, CircleDollarSign, Container, Database, Cpu, Github, House, Settings, Smile } from "lucide-react"
+import { Activity, Boxes, CircleDollarSign, Container, Database, Cpu, Github, House, Settings, Smile, TrendingUp } from "lucide-react"
 import type { ComponentProps } from "react"
 import {
   Sidebar,
@@ -20,6 +20,7 @@ const MAIN = [
   { key: "jobs", label: "Jobs", icon: Activity },
   { key: "models", label: "Models", icon: Cpu },
   { key: "datasets", label: "Datasets", icon: Database },
+  { key: "forecasts", label: "Forecasts", icon: TrendingUp },
   { key: "deployments", label: "Deployments", icon: Container },
   { key: "costs", label: "Costs", icon: CircleDollarSign },
 ]

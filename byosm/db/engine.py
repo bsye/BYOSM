@@ -12,8 +12,10 @@ from typing import Any
 from sqlalchemy import Engine, create_engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from ..config import STATE_DIR
+
 URL_ENV = "DATABASE_URL"
-LOCAL_DB = Path(".byosm") / "byosm.sqlite"
+LOCAL_DB = STATE_DIR / "byosm.sqlite"
 SQLITE_TIMEOUT_S = 30
 
 

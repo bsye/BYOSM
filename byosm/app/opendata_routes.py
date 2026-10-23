@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 
@@ -133,6 +134,15 @@ def opendata_router(ws: Path) -> APIRouter:
         except (ValueError, ValidationError) as e:
             raise HTTPException(422, str(e)) from e
         return forecasts(ws)
+
+    @router.get("/api/forecasts/{name}/scored.csv")
+    def scored(name: str) -> FileResponse:
+        from ..tabular.task import scored_path
+
+        path = scored_path(ws, name)
+        if not path.exists():
+            raise HTTPException(404, "run the forecast first")
+        return FileResponse(path, filename=f"{name}-scored.csv")
 
     @router.get("/api/datasets/training")
     def training() -> list[dict[str, Any]]:
