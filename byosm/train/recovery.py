@@ -108,6 +108,10 @@ def _next(spec: TaskSpec, e: RuntimeError, ws: Path, key: str) -> tuple[TaskSpec
             spec, precision=precision
         ), f"diverged at precision {spec.train.precision}; using {precision}"
     size = spec.train.batch_size // 2
+    if out_of_memory(e) and size < MIN_BATCH and spec.train.pretrain_steps > 0:
+        return _train_with(
+            spec, pretrain_steps=0
+        ), "out of GPU memory even at the smallest batch; training without pretraining"
     if out_of_memory(e) and size >= MIN_BATCH:
         remember(ws, BATCHES, key, size)
         return _train_with(

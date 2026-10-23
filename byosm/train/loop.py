@@ -10,7 +10,6 @@ from typing import Any
 import numpy as np
 import torch
 
-from .. import jepa
 from ..config import device as pick_device
 from ..data.store import BASE_TRAIN, Dataset
 from ..events import emit, stage
@@ -21,6 +20,7 @@ from .common import build_model, cpu_state, targets_of
 from .evaluate import evaluate_rows
 from .gpu import gpu_slot
 from .outputs import build_meta, save_run
+from .pretraining import pretrain_backbone
 from .recovery import recover
 from .teacher import _teacher_targets, row_soft_targets
 from .trainer import Trainer, class_weight
@@ -47,26 +47,6 @@ def split_rows(
         k = max(1, len(train_rows) // 10)
         dev_rows, train_rows = train_rows[:k], train_rows[k:]
     return train_rows, dev_rows, n_folded
-
-
-def _pretrain(
-    spec: TaskSpec,
-    model: SpecialistModel,
-    mod: Modality,
-    ds: Dataset,
-    train_raw: list[Any],
-    dev: str,
-    log: Callable[[str], None],
-    seed: int,
-) -> list[dict]:
-    tc = spec.train
-    if tc.pretrain_steps <= 0:
-        return []
-    unl = mod.load_many(ds.unlabeled()) or train_raw
-    log(f"  LeJEPA: {tc.pretrain_steps} steps on {len(unl)} unlabeled inputs (lambda={tc.pretrain_lambda})")
-    return jepa.pretrain(
-        model, mod, unl, tc.pretrain_steps, tc.batch_size, tc.lr_backbone, tc.pretrain_lambda, dev, log, seed
-    )
 
 
 def _dev_epoch(
@@ -170,7 +150,7 @@ def _fit(
     model, n_params = _build(spec, mod, dev, log)
     tc = spec.train
     t0 = time.time()
-    jepa_hist = _pretrain(spec, model, mod, ds, train_raw, dev, log, seed)
+    jepa_hist = pretrain_backbone(spec, model, mod, ds, train_raw, dev, log, seed)
     soft: list[Any] | None = row_soft_targets(spec, train_rows)
     n_labeled = len(train_raw)
     if tc.distill_from:

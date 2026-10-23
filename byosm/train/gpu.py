@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import os
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -14,14 +15,14 @@ MAX_AUTO_SLOTS = 2
 CORES_PER_TRAINING = 8
 GB_PER_TRAINING = 16
 MPS_SHARE = 0.9
+MIN_SHARE = 0.25
+SHARE_ENV = "BYOSM_GPU_SHARE"
 LOCK_DIR = STATE_DIR / "gpu"
 WAIT_S = 5
 HEARTBEAT_S = 300
 
 
 def auto_slots() -> int:
-    import os
-
     import psutil
 
     from ..machine import UNIFIED_MEMORY_SHARE
@@ -70,13 +71,30 @@ def _try(path: Path):
     return handle
 
 
-def _cap_memory(device: str, log: Callable[[str], None]) -> None:
+def held_share(ws: Path) -> float:
+    held = 0.0
+    for i in range(slots()):
+        lock, share = ws / LOCK_DIR / f"slot-{i}.lock", ws / LOCK_DIR / f"slot-{i}.share"
+        handle = _try(lock) if lock.exists() else None
+        if handle is not None:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+            handle.close()
+        elif lock.exists():
+            held += float(share.read_text() or 0) if share.exists() else MPS_SHARE / slots()
+    return held
+
+
+def _share_left(device: str, ws: Path) -> float:
+    return MPS_SHARE - held_share(ws) if device == "mps" else MPS_SHARE
+
+
+def _cap_memory(device: str, log: Callable[[str], None], share: float | None = None) -> None:
     import torch
 
     if device != "mps" or not torch.backends.mps.is_available():
         return
 
-    share = MPS_SHARE / slots()
+    share = share or float(os.environ.get(SHARE_ENV) or MPS_SHARE / slots())
     torch.mps.set_per_process_memory_fraction(share)
     log(f"  this training may use {share:.0%} of the GPU's {torch.mps.recommended_max_memory() / 1024**3:.0f} GB")
 
@@ -92,13 +110,15 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
     ws, waited = find_workspace(), 0.0
     base = ws / LOCK_DIR
     while True:
-        roomy = _may_start(device, ws)
-        handle = next((h for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if roomy else None
-        if handle:
+        share = _share_left(device, ws)
+        roomy = share >= MIN_SHARE and _may_start(device, ws)
+        taken = next(((i, h) for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if roomy else None
+        if taken:
+            index, handle = taken
             break
         if not waited:
             log(
-                f"  waiting for the {device} GPU: another job is training on it, or less than {needed_gb():.0f} GB is free"
+                f"  waiting for the {device} GPU: other trainings hold {held_share(ws):.0%} of it, or less than {needed_gb():.0f} GB is free"
             )
         if waited % HEARTBEAT_S < WAIT_S:
             emit("gpu", state="waiting", waited=round(waited))
@@ -106,10 +126,13 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
         waited += WAIT_S
     if waited:
         log(f"  got the GPU after {waited:.0f} s")
-    _cap_memory(device, log)
+    (base / f"slot-{index}.share").write_text(f"{share:.3f}")
+    os.environ[SHARE_ENV] = f"{share:.3f}"
+    _cap_memory(device, log, share)
     try:
         yield
     finally:
+        (base / f"slot-{index}.share").unlink(missing_ok=True)
         fcntl.flock(handle, fcntl.LOCK_UN)
         handle.close()
 

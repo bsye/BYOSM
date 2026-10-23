@@ -1179,3 +1179,11 @@ Tool calling has no fixed label set: each request comes with its own tools, and 
 ## Models that embed an encoder
 
 Some decision models ship an encoder inside a custom architecture (laya: a ModernBERT-large encoder plus its own decision heads in one safetensors file). `byosm/encoders.py` extracts the encoder once into the cache as a plain Hugging Face folder (its config, tokenizer and the prefix-stripped weights), and the text modality resolves the backbone name to that folder, so such a model can be fine-tuned like any other.
+
+## GPU share follows what is free
+
+The Apple GPU used to be split into fixed shares (90% divided by the slot count, 45% with two slots) so two trainings could always run side by side; a training alone then used half the GPU. Now each slot records the share its training took (`slot-N.share` next to the lock, because opening a lock file empties it), and a new training takes whatever is left of the 90% ceiling, waiting while less than a quarter is free. A training alone gets the full 90%, about 47 GB on a 64 GB Mac, and a second one waits until it gives the share back. Shares are reserved at start rather than measured, because GPU memory is allocated lazily and two trainings that each started small could otherwise grow past the machine together. The share reaches the child process that runs each attempt through an environment variable.
+
+## Pretraining reads shorter text
+
+LeJEPA pretraining passes six views of every input through the encoder with gradients (two masked copies at full length and four crops), so its memory is six times that of a fine-tuning batch and grows with the square of the length. When fine-tuning reads more than 256 tokens, pretraining now reads at most 256: it only adapts the encoder to the domain's language and does not need the whole input. If memory still runs out at the smallest batch, the retry trains without pretraining instead of failing the job.
