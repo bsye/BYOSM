@@ -15,6 +15,7 @@ from .held_out import adopt_data, bigger_held_out
 from .project import Project
 from .spec import TaskSpec
 from .train import fit
+from .train.input_length import fitted_max_len
 
 
 def next_exp(p: Project) -> str:
@@ -78,6 +79,7 @@ def build(
     log(f"[experiment] {name}/{exp}")
 
     dd = ensure_data(p, spec, cfg, log, force_data, data_seconds)
+    spec = fitted_max_len(spec, dd, log)
     can_refine = spec.modality == "text" and spec.task_type == "classify"
     rounds, analyses = [], []
     for r in range(spec.train.refine_rounds + 1):
