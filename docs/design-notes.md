@@ -1159,3 +1159,7 @@ Each forecast run keeps the model it scored today with (`.byosm/forecasts/<name>
 ## Deploying to AWS
 
 `byosm cloud <name>` sizes a container from the exported bundle and writes a CloudFormation template, the sizing and the commands to run, without deploying anything. Memory is the ONNX files times two plus 300 MB for the runtime; CPU is the target requests per second times the measured CPU latency at 60% utilisation; both round up to the smallest valid Fargate pair. The stack is one Fargate service behind a load balancer: the task's file system is read-only, only the load balancer can reach it, it scales on CPU, and its execution role may read exactly one Secrets Manager secret, the bearer token the runtime now checks on every request except `/health`. No credential is written to any file: the AWS CLI uses the person's own sign-in, and the token is created straight into Secrets Manager. The template passes `cfn-lint`. The listener is HTTP; an HTTPS listener with a certificate is left to the person, because it needs their domain.
+
+## A test set is never empty
+
+A data build can end with every row in train: LLM-written rows that stopped early, or a source read only as positives. Nothing could then be scored, and every later stage failed in its own way. Now, when dev or test is empty and train has at least 50 rows, a share is held out per label with near-duplicates kept on the same side (the same split used for Hub datasets), and the log says how many rows moved. If a build still cannot be scored, the autopilot stops with that reason.

@@ -64,6 +64,8 @@ def _build_v1(s: Session) -> None:
     build(s.name, "v1", s.echo, data_seconds=s.data_seconds())
     s.durations.append(time.time() - ts)
     st = standing(s.name, s.margin)
+    if st["ours"] is None:
+        raise RuntimeError(f"{s.name} trained but could not be scored: its {st['suite']} test set is empty")
     s.log("build", "v1", f"{st['suite']} {st['metric']} {st['ours']:.4f}; best baseline {st['best_baseline']}")
 
 

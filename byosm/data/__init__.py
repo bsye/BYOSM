@@ -7,28 +7,14 @@ from typing import Any
 
 from ..spec import HFSource, TaskSpec
 from . import audio_mix, budget, hf_source, panel, segments
-from .store import DEV_SHARE, TEST_SHARE, TRAIN_INPUTS, Dataset, dedupe, near_groups, record, write
+from .splits import _group_split3, _hold_out, _split3
+from .store import TEST_SHARE, TRAIN_INPUTS, Dataset, dedupe, record, write
 from .table import is_table, table_rows
 
 MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
 UNLABELED_PER_SOURCE = 2000
 
 Log = Callable[[str], None]
-
-
-def _split3(items: list, rng: random.Random, dev: float = DEV_SHARE, test: float = TEST_SHARE) -> dict[str, list]:
-    items = items[:]
-    rng.shuffle(items)
-    n = len(items)
-    a, b = int(n * (1 - dev - test)), int(n * (1 - test))
-    return {"train": items[:a], "dev": items[a:b], "test": items[b:]}
-
-
-def _group_split3(items: list[tuple], rng: random.Random) -> dict[str, list]:
-    groups: dict[int, list] = {}
-    for g, item in zip(near_groups([x for x, _ in items]), items, strict=True):
-        groups.setdefault(g, []).append(item)
-    return {s: [item for group in part for item in group] for s, part in _split3(list(groups.values()), rng).items()}
 
 
 def _save_media(spec: TaskSpec, data_dir: Path, split: str, x: Any) -> str:
@@ -162,6 +148,7 @@ def _collect(
             splits[s] += rows
     if spec.data.synthetic and spec.modality == "text":
         fit = budget.add_synthetic(spec, splits, cfg, seconds, log)
+    _hold_out(splits, rng, log)
     if spec.modality == "text":
         splits["test"] = dedupe(splits["test"], against=splits["train"] + splits["dev"])
         splits["dev"] = dedupe(splits["dev"], against=splits["train"])
