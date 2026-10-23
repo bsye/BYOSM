@@ -92,6 +92,7 @@ export type Summary = {
 export type Run = {
   name: string
   parent: string | null
+  created: number | null
   params: number | null
   n_train: number | null
   train_seconds: number | null

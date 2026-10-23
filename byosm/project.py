@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from .spec import TaskSpec
 
-EXPERIMENT_FIELDS = ("spec", "meta", "proposal", "errors")
+EXPERIMENT_FIELDS = ("spec", "meta", "proposal", "errors", "created")
 
 
 class Project:

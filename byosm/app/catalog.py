@@ -84,15 +84,13 @@ def specialists(ws: Path) -> list[dict[str, Any]]:
     return singles + [team_summary(ws, t) for t in team_names(ws)]
 
 
-def _parent(p: Project, exp: str) -> str | None:
-    return (p.proposal(exp) or {}).get("parent")
-
-
 def _run(p: Project, exp: str) -> dict[str, Any]:
-    m = p.meta(exp)
+    e = p.experiment(exp) or {}
+    m = e.get("meta") or {}
     return {
         "name": exp,
-        "parent": _parent(p, exp),
+        "parent": (e.get("proposal") or {}).get("parent"),
+        "created": e["created"].timestamp() if e.get("created") else None,
         "ablation_arm": is_arm(exp),
         "params": m.get("params"),
         "n_train": m.get("n_train"),
