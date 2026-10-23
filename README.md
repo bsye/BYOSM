@@ -49,6 +49,8 @@ State lives in one database: SQLite by default, Postgres with `DATABASE_URL` (`p
 | [8. Ship it](#8-ship-it) | Python, HTTP, Docker or Hugging Face |
 | [9. Run it in a container](#9-run-it-in-a-container) | Each model or team isolated, live |
 | [10. Know what it costs](#10-know-what-it-costs) | Build cost against an LLM, and when it pays off |
+| [11. Find open data](#11-find-open-data) | Ask, and the LLM searches the web and the portals |
+| [12. Forecast who ends](#12-forecast-who-ends) | Register snapshots, leaks left out, everyone alive scored |
 
 ### 1. Describe the task
 
@@ -109,6 +111,18 @@ Deploy a specialist or a team into its own read-only container with CPU and memo
 What each model cost to build, the LLM's cost per item measured on its rival runs, and after how many items the fine-tune pays off.
 
 <img src="docs/screenshots/costs.gif" alt="Build cost, cost per item and the break-even curve against an LLM" width="100%">
+
+### 11. Find open data
+
+Describe the data you need. The LLM searches the web, checks every file link, adds the portals it finds to your sources and searches them; keep, preview and join what fits.
+
+<img src="docs/screenshots/data.gif" alt="A data request with the tables found, then the saved sources and the kept library" width="100%">
+
+### 12. Forecast who ends
+
+Turn a register into yearly snapshots, leave out the fields that leak the answer, score each test year, and rank everyone alive today with the reasons.
+
+<img src="docs/screenshots/forecast.gif" alt="A forecast's accuracy, accuracy by test year and the entities alive today by chance of ending" width="100%">
 
 Models on Hugging Face: [bsye](https://huggingface.co/bsye) ·
 [byosm-doctype](https://huggingface.co/bsye/byosm-doctype) ·
