@@ -32,6 +32,7 @@ ALLOWED_COMMANDS = (
     "next",
     "ready",
     "ideas",
+    "opendata",
     "inputs",
     "datasets",
     "system",

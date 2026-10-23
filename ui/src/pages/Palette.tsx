@@ -15,7 +15,7 @@ import { go } from "@/route"
 import { newestFirst, titleOf } from "./specialist-groups"
 import { openJob } from "@/job-sheet"
 
-const PAGES = ["home", "specialists", "jobs", "deployments", "costs", "settings"]
+const PAGES = ["home", "specialists", "jobs", "datasets", "deployments", "costs", "settings"]
 const JOBS: { verb: string; args: (n: string) => string[] }[] = [
   { verb: "Build", args: (n) => ["build", n] },
   { verb: "Score", args: (n) => ["eval", n] },

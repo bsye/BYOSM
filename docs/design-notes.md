@@ -1077,3 +1077,15 @@ A job whose process vanishes without an exit code, or that receives a SIGTERM th
 reboot, the app stopping), ends as `interrupted`, not `failed`: it did nothing wrong. The stall watchdog's kill stays
 `failed`. The Jobs page lists interrupted jobs that have not been retried since and retries them all at once, an
 autopilot resuming its specialist by name.
+
+## Open data as a source
+
+Useful training data often lives on government portals, not on Hugging Face. `byosm.opendata` searches them through
+their APIs, not by scraping: one CKAN client covers data.gov.ie and data.gov.uk (and any other CKAN portal by adding its
+URL), and the EU data portal, which aggregates most national portals, has its own search API. Every result comes back
+in one shape (title, publisher, licence, date, tabular files only). A file is downloaded once into
+`~/.cache/byosm/opendata/<hash of its URL>`, zip archives unpacked, and previewed with a profile of each column from the
+first 5,000 rows, so a 47 MB register previews in a second. Downloads run as jobs (`byosm opendata fetch URL`) so they
+show progress. The datasets a user keeps live in the database. The Datasets page shows them next to every train, dev
+and test set built for a specialist. Joining open tables and training on them is the next step; the web-research agent
+is for sources no portal lists.

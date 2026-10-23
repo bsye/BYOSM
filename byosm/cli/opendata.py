@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+import typer
+
+from .base import app, log
+
+opendata_app = typer.Typer(no_args_is_help=True, help="Open data: search portals, download and cache files.")
+app.add_typer(opendata_app, name="opendata")
+
+
+@opendata_app.command("fetch")
+def fetch(url: str) -> None:
+    """Download an open-data file once into the cache (zip archives are unpacked) and list its tables."""
+    from ..opendata.cache import fetch as get
+
+    for name in get(url, log)["files"]:
+        log(f"- {name}")
+
+
+@opendata_app.command("search")
+def search(query: str) -> None:
+    """Search the open-data portals (data.gov.ie, data.gov.uk, data.europa.eu) for tables."""
+    from ..opendata.catalog import search as find
+
+    for d in find(query):
+        log(f"- [{d['source']}] {d['title']} ({d['licence']}): {', '.join(f['format'] for f in d['files'])}")
