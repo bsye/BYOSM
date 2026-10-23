@@ -87,7 +87,7 @@ function UsageTable({ rows }: { rows: Usage[] }) {
   )
 }
 
-export function Models() {
+export function Trainers() {
   const m = useModels()
   const total = sum(m.usage, (u) => u.tokens_in + u.tokens_out)
   const perJob = new Map<string, number>()
@@ -96,7 +96,7 @@ export function Models() {
   const budget = m.roles?.budget.tokens_per_job
   return (
     <div className="flex flex-col gap-4 md:gap-6">
-      <h1 className="text-2xl font-semibold">Models</h1>
+      <h1 className="text-2xl font-semibold">Trainers</h1>
       <div className={STAT_GRID}>
         <StatCard label="Tokens" value={compact(total)} detail={`${compact(sum(m.usage, (u) => u.tokens_out))} output`} />
         <StatCard label="LLM calls" value={String(sum(m.usage, (u) => u.calls))} detail={`${perJob.size} jobs, ${compact(Math.round(total / Math.max(1, sum(m.usage, (u) => u.counted))))} tokens per call`} />

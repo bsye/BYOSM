@@ -6,6 +6,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuBadge,
@@ -14,15 +15,30 @@ import {
 } from "@/components/ui/sidebar"
 import { href } from "@/route"
 
-const MAIN = [
-  { key: "home", label: "Home", icon: House },
-  { key: "specialists", label: "Specialists", icon: Boxes },
-  { key: "jobs", label: "Jobs", icon: Activity },
-  { key: "models", label: "Models", icon: Cpu },
-  { key: "datasets", label: "Datasets", icon: Database },
-  { key: "forecasts", label: "Forecasts", icon: TrendingUp },
-  { key: "deployments", label: "Deployments", icon: Container },
-  { key: "costs", label: "Costs", icon: CircleDollarSign },
+const HOME = [{ key: "home", label: "Home", icon: House }]
+const GROUPS = [
+  {
+    label: "Build",
+    items: [
+      { key: "specialists", label: "Specialists", icon: Boxes },
+      { key: "forecasts", label: "Forecasts", icon: TrendingUp },
+      { key: "datasets", label: "Datasets", icon: Database },
+    ],
+  },
+  {
+    label: "Run",
+    items: [
+      { key: "jobs", label: "Jobs", icon: Activity },
+      { key: "deployments", label: "Deployments", icon: Container },
+    ],
+  },
+  {
+    label: "Spend",
+    items: [
+      { key: "trainers", label: "Trainers", icon: Cpu },
+      { key: "costs", label: "Costs", icon: CircleDollarSign },
+    ],
+  },
 ]
 const SECONDARY = [
   { key: "settings", label: "Settings", icon: Settings },
@@ -36,7 +52,7 @@ const LINKS = [
 type Props = ComponentProps<typeof Sidebar> & { section: string; running: number }
 
 export function AppSidebar({ section, running, ...props }: Props) {
-  const item = (n: (typeof MAIN)[number]) => (
+  const item = (n: (typeof HOME)[number]) => (
     <SidebarMenuItem key={n.key}>
       <SidebarMenuButton asChild isActive={section === n.key} tooltip={n.label}>
         <a href={href(n.key)}>
@@ -63,9 +79,17 @@ export function AppSidebar({ section, running, ...props }: Props) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>{MAIN.map(item)}</SidebarMenu>
+            <SidebarMenu>{HOME.map(item)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {GROUPS.map((g) => (
+          <SidebarGroup key={g.label}>
+            <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>{g.items.map(item)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>{SECONDARY.map(item)}</SidebarMenu>
