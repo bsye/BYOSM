@@ -1,0 +1,103 @@
+from __future__ import annotations
+
+import time
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+
+from ..db import get_or_add, session
+from ..db.models import WorkspaceReport
+from .snapshots import Recipe
+
+PREFIX = "forecast:"
+
+
+class ForecastSpec(BaseModel):
+    title: str
+    source: str
+    file: str | None = None
+    start: str
+    event: str
+    horizon_years: int
+    cutoffs: dict[str, list[int]]
+    features: list[str]
+    categorical: list[str] = Field(default_factory=list)
+    derived: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    excluded: dict[str, str] = Field(default_factory=dict)
+    per_cutoff: int = 50_000
+
+    def recipe(self) -> Recipe:
+        return Recipe(self.start, self.event, self.horizon_years, self.cutoffs, self.features, self.per_cutoff)
+
+
+def _row(ws: Path, name: str) -> dict[str, Any] | None:
+    with session(ws) as s:
+        return s.scalar(select(WorkspaceReport.data).where(WorkspaceReport.kind == PREFIX + name))
+
+
+def _write(ws: Path, name: str, data: dict[str, Any]) -> None:
+    with session(ws) as s:
+        get_or_add(s, WorkspaceReport, kind=PREFIX + name).data = data
+
+
+def create(ws: Path, name: str, text: str) -> ForecastSpec:
+    spec = ForecastSpec.model_validate(yaml.safe_load(text))
+    _check_windows(spec)
+    _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": None})
+    return spec
+
+
+def load(ws: Path, name: str) -> ForecastSpec:
+    row = _row(ws, name)
+    if not row:
+        raise KeyError(f"no forecast named {name}")
+    return ForecastSpec.model_validate(row["spec"])
+
+
+def _check_windows(spec: ForecastSpec) -> None:
+    last_train = max(spec.cutoffs["train"]) + spec.horizon_years
+    if last_train > min(spec.cutoffs["test"]):
+        raise ValueError(f"train labels reach {last_train}, after the first test cutoff {min(spec.cutoffs['test'])}")
+
+
+def _read(spec: ForecastSpec, log: Callable[[str], None]) -> Any:
+    import pandas as pd
+
+    from ..opendata.cache import fetch, table
+    from .derive import derive
+
+    fetch(spec.source, log)
+    path = table(spec.source, spec.file)
+    log(f"  reading {path.name}")
+    return derive(pd.read_csv(path, low_memory=False, dtype=str), spec.derived)
+
+
+def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, Any]:
+    from .fit import evaluate
+    from .leakage import check
+    from .snapshots import LABEL, build
+
+    spec = load(ws, name)
+    _check_windows(spec)
+    splits = build(_read(spec, log), spec.recipe())
+    sizes = {k: {"n": len(v), "positive": round(float(v[LABEL].mean()), 4)} for k, v in splits.items()}
+    log(f"  snapshots: {sizes}")
+    leaks = check(splits["train"], spec.categorical)
+    for leak in (x for x in leaks if x["suspect"]):
+        log(f"  suspect feature {leak['feature']}: {leak['why']}")
+    scores = evaluate(splits, spec.categorical)
+    for model, s in scores.items():
+        log(f"  {model}: AUC {s['auc']:.3f} ({s['auc_ci'][0]:.3f} to {s['auc_ci'][1]:.3f}), AP {s['ap']:.3f}")
+    result = {"at": time.time(), "splits": sizes, "leakage": leaks, "scores": scores}
+    _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": result})
+    return result
+
+
+def forecasts(ws: Path) -> list[dict[str, Any]]:
+    with session(ws) as s:
+        rows = s.scalars(select(WorkspaceReport.data).where(WorkspaceReport.kind.startswith(PREFIX))).all()
+    return sorted((r for r in rows if r), key=lambda r: r["name"])

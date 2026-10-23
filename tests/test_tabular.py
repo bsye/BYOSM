@@ -47,3 +47,40 @@ def test_the_model_beats_the_base_rate_on_a_later_cohort():
     assert out["gradient boosting"]["auc"] > out["base rate"]["auc"] + 0.1
     low, high = out["gradient boosting"]["auc_ci"]
     assert low <= out["gradient boosting"]["auc"] <= high
+
+
+def test_derived_columns_follow_their_steps():
+    from byosm.tabular.derive import derive
+
+    df = pd.DataFrame(
+        {
+            "addr": ["1 Main St, Cork", "2 Quay, cork", None],
+            "code": ["45.21", "45.1", None],
+            "kind": ["LTD guarantee", "LTD", "x"],
+        }
+    )
+    out = derive(
+        df,
+        {
+            "county": {"from": "addr", "steps": ["part", {"frequent": {"min_count": 2}}]},
+            "major": {"from": "code", "steps": [{"part": {"sep": ".", "index": 0}}]},
+            "family": {
+                "from": "kind",
+                "steps": [{"keywords": {"groups": {"GUARANTEE": "guarantee"}, "other": "shares"}}],
+            },
+        },
+    )
+    assert out["county"].tolist()[:2] == ["CORK", "CORK"] and out["county"].isna().iloc[2]
+    assert out["major"].tolist()[:2] == ["45", "45"] and out["family"].tolist() == ["guarantee", "shares", "shares"]
+
+
+def test_a_forecast_whose_train_labels_reach_the_test_years_is_refused(ws):
+    import pytest
+
+    from byosm.tabular.task import create, forecasts
+
+    spec = "title: t\nsource: s\nstart: a\nevent: b\nhorizon_years: 5\ncutoffs: {train: [2010], test: [2012]}\nfeatures: [x]\n"
+    with pytest.raises(ValueError, match="after the first test cutoff"):
+        create(ws, "late", spec)
+    create(ws, "ok", spec.replace("[2012]", "[2015]"))
+    assert [f["name"] for f in forecasts(ws)] == ["ok"]

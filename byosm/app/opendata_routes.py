@@ -111,6 +111,12 @@ def opendata_router(ws: Path) -> APIRouter:
 
         return join(_table(left), _table(right), left_key, right_key)
 
+    @router.get("/api/forecasts")
+    def forecasts() -> list[dict[str, Any]]:
+        from ..tabular.task import forecasts as saved
+
+        return saved(ws)
+
     @router.get("/api/datasets/training")
     def training() -> list[dict[str, Any]]:
         from ..opendata.library import training as built

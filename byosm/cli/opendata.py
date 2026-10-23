@@ -34,3 +34,27 @@ def find(request: str) -> None:
 
     for d in look(find_workspace(), request, log)["datasets"]:
         log(f"- [{d['source']}] {d['title']}: {', '.join(f['format'] for f in d['files'])}")
+
+
+forecast_app = typer.Typer(no_args_is_help=True, help="Forecasts: will an entity in a register end within N years.")
+app.add_typer(forecast_app, name="forecast")
+
+
+@forecast_app.command("new")
+def forecast_new(name: str, spec: str) -> None:
+    """Save a forecast from a YAML spec (source table, start and end columns, horizon, cutoffs, features)."""
+    from pathlib import Path
+
+    from ..config import find_workspace
+    from ..tabular.task import create
+
+    log(f"saved {create(find_workspace(), name, Path(spec).read_text()).title}")
+
+
+@forecast_app.command("run")
+def forecast_run(name: str) -> None:
+    """Build yearly snapshots, check every feature for leakage, and score gradient boosting against its rivals."""
+    from ..config import find_workspace
+    from ..tabular.task import run
+
+    run(find_workspace(), name, log)

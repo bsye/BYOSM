@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-CUTOFF, LABEL, AGE = "_cutoff", "_label", "_age_years"
+CUTOFF, LABEL, AGE = "_cutoff", "_label", "age_years"
 DAYS_PER_YEAR = 365.25
 
 

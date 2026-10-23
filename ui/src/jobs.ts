@@ -36,6 +36,8 @@ const SUB_VERBS: Record<string, Record<string, string>> = {
   baseline: { add: "Add rival" },
   suite: { add: "Add suite" },
   exp: { create: "Create experiment" },
+  forecast: { run: "Run forecast", new: "Save forecast" },
+  opendata: { find: "Find open data", fetch: "Download open data", search: "Search open data" },
 }
 const NAMED_FLAGS = new Set(["--apply", "--suite"])
 export const EVENT_PREFIX = "@event "
@@ -50,6 +52,7 @@ export function describe(job: Pick<Job, "args" | "target">): Described {
 function fromArgs(args: string[]): Described {
   const [cmd, ...rest] = args
   const sub = SUB_VERBS[cmd]?.[rest[0]]
+  if (sub && cmd === "opendata") return { title: sub, target: null, subject: rest[1] ?? null }
   if (sub) return { title: sub, target: rest[1] ?? null, subject: rest[2] ?? null }
   if (cmd === "inputs") return { title: INPUT_VERBS[rest[0]] ?? "Test inputs", target: rest[1] ?? null, subject: rest[rest.indexOf("--set") + 1] ?? null }
   if (cmd === "system") return { title: `${rest[0] === "eval" ? "Score" : "Build"} team`, target: rest[1] ?? null, subject: null }
