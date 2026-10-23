@@ -1111,3 +1111,7 @@ A forecast is saved in the database like a specialist, from a YAML spec: the sou
 ## History features
 
 A spec can name event tables (filings, inspections, payments) by key and date. For each snapshot, every entity gets the number of its events in the year before the cutoff and the days since its last event, using only rows dated before the cutoff. Check how far back an event table really goes before choosing cutoffs: the Irish filing files start in late 2022, so a 2023 cutoff saw a nearly empty year of filings while its test year saw a full one, and the features looked useless. Moving both cutoffs into fully covered years made days since the last filing the strongest single feature.
+
+## Forecasts made from the page
+
+The New forecast dialog reads the kept table's preview: the start date is the date column most often filled, the end date the one most often empty (only ended entities have it), and identifier-like columns (nearly all values distinct) start unticked. Train cutoffs are placed so their labels end on the test year. Text columns that hold numbers become numbers; every other column is a category capped at its 250 most common values, which gradient boosting needs. Features the leakage check flags are left out before scoring and shown in red, so a careless pick cannot produce a headline number. The threshold only catches blatant leaks: on the company register a dialog-made forecast flagged the status columns and `nard` but not the post-Act company type, which still scores 0.65 alone, so review the per-feature table before trusting a result.

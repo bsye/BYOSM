@@ -12,25 +12,27 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useLive } from "@/events"
 import { openJob } from "@/job-sheet"
+import { NewForecast } from "./NewForecast"
 
 type Score = { auc: number; auc_ci: [number, number]; ap: number; brier: number; base_rate: number }
 type Leak = { feature: string; auc: number; suspect: boolean; why: string }
 type Spec = { title: string; horizon_years: number; cutoffs: Record<string, number[]>; excluded: Record<string, string> }
-type Result = { at: number; splits: Record<string, { n: number; positive: number }>; leakage: Leak[]; scores: Record<string, Score> }
+type Result = { at: number; dropped?: Record<string, string>; splits: Record<string, { n: number; positive: number }>; leakage: Leak[]; scores: Record<string, Score> }
 type Forecast = { name: string; spec: Spec; result: Result | null }
 
 const config = { auc: { label: "AUC", color: "var(--chart-1)" } } satisfies ChartConfig
 const LEAKS_SHOWN = 5
 
-function useForecasts(): [Forecast[] | null, Set<string>] {
+function useForecasts(): [Forecast[] | null, Set<string>, () => void] {
   const jobs = Object.values(useLive().jobs).filter((j) => j.args[0] === "forecast")
   const running = new Set(jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => j.args[2]))
   const done = jobs.filter((j) => j.status === "done").length
   const [rows, setRows] = useState<Forecast[] | null>(null)
+  const [saved, setSaved] = useState(0)
   useEffect(() => {
     api<Forecast[]>("/forecasts").then(setRows, () => setRows([]))
-  }, [done])
-  return [rows, running]
+  }, [done, saved])
+  return [rows, running, () => setSaved((n) => n + 1)]
 }
 
 function ScoreChart({ scores }: { scores: Record<string, Score> }) {
@@ -53,7 +55,7 @@ function ScoreChart({ scores }: { scores: Record<string, Score> }) {
   )
 }
 
-function Leakage({ leaks, excluded }: { leaks: Leak[]; excluded: Record<string, string> }) {
+function Leakage({ leaks, excluded, dropped }: { leaks: Leak[]; excluded: Record<string, string>; dropped: Record<string, string> }) {
   return (
     <div className="grid gap-3">
       <Table>
@@ -71,7 +73,7 @@ function Leakage({ leaks, excluded }: { leaks: Leak[]; excluded: Record<string, 
                 {l.suspect && (
                   <Badge variant="destructive" className="ml-2" title={l.why}>
                     <ShieldAlert />
-                    Leak
+                    Leak, left out
                   </Badge>
                 )}
               </TableCell>
@@ -81,11 +83,11 @@ function Leakage({ leaks, excluded }: { leaks: Leak[]; excluded: Record<string, 
         </TableBody>
       </Table>
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground text-xs">Left out</span>
-        {Object.entries(excluded).map(([col, why]) => (
+        {(Object.keys(dropped).length > 0 || Object.keys(excluded).length > 0) && <span className="text-muted-foreground text-xs">Left out</span>}
+        {[...Object.entries(dropped), ...Object.entries(excluded)].map(([col, why]) => (
           <Tooltip key={col}>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="font-mono">
+              <Badge variant={col in dropped ? "destructive" : "outline"} className="font-mono">
                 {col}
               </Badge>
             </TooltipTrigger>
@@ -121,7 +123,7 @@ function ForecastCard({ f, running }: { f: Forecast; running: boolean }) {
             </div>
             <div className="grid content-start gap-2">
               <h3 className="text-sm font-medium">Each feature alone</h3>
-              <Leakage leaks={f.result.leakage} excluded={f.spec.excluded} />
+              <Leakage leaks={f.result.leakage} excluded={f.spec.excluded ?? {}} dropped={f.result.dropped ?? {}} />
             </div>
           </div>
         ) : (
@@ -133,19 +135,21 @@ function ForecastCard({ f, running }: { f: Forecast; running: boolean }) {
 }
 
 export function Forecasts() {
-  const [rows, running] = useForecasts()
+  const [rows, running, reload] = useForecasts()
   if (!rows) return <Skeleton className="h-72 rounded-xl" />
-  if (!rows.length)
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>No forecasts yet</EmptyTitle>
-          <EmptyDescription>byosm forecast new NAME spec.yaml</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    )
   return (
     <div className="grid gap-4">
+      <div className="flex justify-end">
+        <NewForecast onSaved={reload} />
+      </div>
+      {!rows.length && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>No forecasts yet</EmptyTitle>
+            <EmptyDescription>Keep a table with start and end dates, then create one.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
       {rows.map((f) => (
         <ForecastCard key={f.name} f={f} running={running.has(f.name)} />
       ))}

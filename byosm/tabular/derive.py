@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 MIN_COUNT = 200
+NUMERIC_SHARE = 0.95
+MAX_CATEGORIES = 250
+OTHER = "other"
 
 
 def _words(col: Any) -> Any:
@@ -51,3 +54,20 @@ def derive(df: Any, columns: dict[str, dict[str, Any]]) -> Any:
             col = STEPS[kind](col, args or {})
         out[name] = col
     return out
+
+
+def typed(df: Any, features: list[str], categorical: list[str]) -> tuple[Any, list[str]]:
+    import pandas as pd
+
+    out, cats = df.copy(), list(categorical)
+    for col in (c for c in features if c not in categorical):
+        present = out[col].dropna()
+        numbers = pd.to_numeric(present, errors="coerce")
+        if len(present) and numbers.notna().mean() >= NUMERIC_SHARE:
+            out[col] = pd.to_numeric(out[col], errors="coerce")
+        else:
+            cats.append(col)
+    for col in cats:
+        top = out[col].value_counts().index[:MAX_CATEGORIES]
+        out[col] = out[col].where(out[col].isin(top) | out[col].isna(), OTHER)
+    return out, cats

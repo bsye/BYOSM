@@ -5,7 +5,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import yaml
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -54,8 +53,8 @@ def _write(ws: Path, name: str, data: dict[str, Any]) -> None:
         get_or_add(s, WorkspaceReport, kind=PREFIX + name).data = data
 
 
-def create(ws: Path, name: str, text: str) -> ForecastSpec:
-    spec = ForecastSpec.model_validate(yaml.safe_load(text))
+def create(ws: Path, name: str, data: dict[str, Any]) -> ForecastSpec:
+    spec = ForecastSpec.model_validate(data)
     _check_windows(spec)
     _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": None})
     return spec
@@ -100,17 +99,22 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
 
     spec = load(ws, name)
     _check_windows(spec)
+    from .derive import typed
+
     df, histories = _read(spec, log)
+    df, categorical = typed(df, spec.features, spec.categorical)
     splits = build(df, spec.recipe(histories))
     sizes = {k: {"n": len(v), "positive": round(float(v[LABEL].mean()), 4)} for k, v in splits.items()}
     log(f"  snapshots: {sizes}")
-    leaks = check(splits["train"], spec.categorical)
-    for leak in (x for x in leaks if x["suspect"]):
-        log(f"  suspect feature {leak['feature']}: {leak['why']}")
-    scores = evaluate(splits, spec.categorical)
+    leaks = check(splits["train"], categorical)
+    dropped = {x["feature"]: x["why"] for x in leaks if x["suspect"]}
+    for feature, why in dropped.items():
+        log(f"  left out {feature}: {why}")
+    kept = [c for c in categorical if c not in dropped]
+    scores = evaluate({k: v.drop(columns=list(dropped)) for k, v in splits.items()}, kept)
     for model, s in scores.items():
         log(f"  {model}: AUC {s['auc']:.3f} ({s['auc_ci'][0]:.3f} to {s['auc_ci'][1]:.3f}), AP {s['ap']:.3f}")
-    result = {"at": time.time(), "splits": sizes, "leakage": leaks, "scores": scores}
+    result = {"at": time.time(), "splits": sizes, "leakage": leaks, "dropped": dropped, "scores": scores}
     _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": result})
     return result
 

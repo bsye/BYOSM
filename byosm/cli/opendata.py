@@ -45,10 +45,12 @@ def forecast_new(name: str, spec: str) -> None:
     """Save a forecast from a YAML spec (source table, start and end columns, horizon, cutoffs, features)."""
     from pathlib import Path
 
+    import yaml
+
     from ..config import find_workspace
     from ..tabular.task import create
 
-    log(f"saved {create(find_workspace(), name, Path(spec).read_text()).title}")
+    log(f"saved {create(find_workspace(), name, yaml.safe_load(Path(spec).read_text())).title}")
 
 
 @forecast_app.command("run")

@@ -79,10 +79,10 @@ def test_a_forecast_whose_train_labels_reach_the_test_years_is_refused(ws):
 
     from byosm.tabular.task import create, forecasts
 
-    spec = "title: t\nsource: s\nstart: a\nevent: b\nhorizon_years: 5\ncutoffs: {train: [2010], test: [2012]}\nfeatures: [x]\n"
+    spec = {"title": "t", "source": "s", "start": "a", "event": "b", "horizon_years": 5, "features": ["x"]}
     with pytest.raises(ValueError, match="after the first test cutoff"):
-        create(ws, "late", spec)
-    create(ws, "ok", spec.replace("[2012]", "[2015]"))
+        create(ws, "late", {**spec, "cutoffs": {"train": [2010], "test": [2012]}})
+    create(ws, "ok", {**spec, "cutoffs": {"train": [2010], "test": [2015]}})
     assert [f["name"] for f in forecasts(ws)] == ["ok"]
 
 
@@ -94,3 +94,14 @@ def test_history_features_only_see_events_before_the_cutoff():
     out = features(History("filings", events, "id", "on"), keys, pd.Timestamp("2024-01-01"))
     assert out["filings_last_year"].tolist() == [1, 1, 0]
     assert out["filings_days_since"].tolist() == [306, 1, NEVER_DAYS]
+
+
+def test_text_columns_that_hold_numbers_become_numbers_and_the_rest_categories():
+    from byosm.tabular.derive import typed
+
+    df = pd.DataFrame({"size": ["3", "4.5", None], "kind": ["a", "b", "a"], "code": ["01", "02", "03"]})
+    out, cats = typed(df, ["size", "kind", "code"], ["code"])
+    assert cats == ["code", "kind"] and out["size"].tolist()[:2] == [3.0, 4.5]
+    many = pd.DataFrame({"street": [f"s{i}" for i in range(400)]})
+    capped, _ = typed(many, ["street"], [])
+    assert capped["street"].nunique() == 251

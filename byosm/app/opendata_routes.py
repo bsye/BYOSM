@@ -21,6 +21,11 @@ class Source(BaseModel):
     name: str = ""
 
 
+class NewForecast(BaseModel):
+    name: str
+    spec: dict[str, Any]
+
+
 class Request(BaseModel):
     request: str
 
@@ -116,6 +121,18 @@ def opendata_router(ws: Path) -> APIRouter:
         from ..tabular.task import forecasts as saved
 
         return saved(ws)
+
+    @router.post("/api/forecasts")
+    def new_forecast(body: NewForecast) -> list[dict[str, Any]]:
+        from pydantic import ValidationError
+
+        from ..tabular.task import create, forecasts
+
+        try:
+            create(ws, body.name, body.spec)
+        except (ValueError, ValidationError) as e:
+            raise HTTPException(422, str(e)) from e
+        return forecasts(ws)
 
     @router.get("/api/datasets/training")
     def training() -> list[dict[str, Any]]:
