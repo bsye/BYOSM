@@ -1,12 +1,12 @@
 import { CircleX, Laptop, Loader2, RotateCw, Square } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { api, post, runJob } from "@/api"
 import { openJob } from "@/job-sheet"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useJob, useLive } from "@/events"
-import { seconds, took } from "@/format"
+import { compact, seconds, took } from "@/format"
 import { decisions, stages } from "@/job-story"
 import { currentStep, describe, EVENT_PREFIX, failure, retryArgs, llmUsed, steps, timeLeft } from "@/jobs"
 import { useNow } from "@/now"
@@ -78,8 +78,25 @@ function Log({ lines }: { lines: string[] }) {
   )
 }
 
+type Cost = { calls: number; tokens_in: number; tokens_out: number; usd: number }
+const COST_REFRESH_MS = 30000
+const usd = (x: number) => (x >= 1 ? `$${x.toFixed(2)}` : `$${x.toFixed(4)}`)
+
+function useCost(id: string, status: string | undefined): Cost | null {
+  const [cost, setCost] = useState<Cost | null>(null)
+  useEffect(() => {
+    const load = () => void api<Cost>(`/jobs/${id}/cost`).then(setCost, () => undefined)
+    load()
+    if (status !== "running") return
+    const timer = setInterval(load, COST_REFRESH_MS)
+    return () => clearInterval(timer)
+  }, [id, status])
+  return cost
+}
+
 export function JobDetail({ id }: { id: string }) {
   const job = useLive().jobs[id]
+  const cost = useCost(id, job?.status)
   const { lines, metrics } = useJob(id)
   const active = job?.status === "running" || job?.status === "queued"
   const now = useNow(active)
@@ -110,6 +127,7 @@ export function JobDetail({ id }: { id: string }) {
           <p className="text-muted-foreground/70 text-xs tabular-nums">
             {job.status}, {active && job.started ? seconds(now - job.started) : took(job.started, job.ended)}
             {llm && `, LLM ${llm}`}
+            {cost && cost.calls > 0 && `, ${compact(cost.tokens_in + cost.tokens_out)} tokens, ${usd(cost.usd)} at list price`}
           </p>
         </div>
         {active && (

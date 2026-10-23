@@ -64,6 +64,12 @@ def resources_router(ws: Path) -> APIRouter:
         halt(name)
         return {"stopped": name}
 
+    @router.get("/api/jobs/{job_id}/cost")
+    def job_cost(job_id: str) -> dict[str, Any]:
+        from ..costs.spend import job_cost as priced
+
+        return priced(ws, job_id)
+
     @router.get("/api/costs")
     def costs() -> dict[str, Any]:
         return _costs(ws, int(time.time() // COSTS_TTL_S))

@@ -66,3 +66,14 @@ def _add(b: dict[str, Any], model: str, t_in: int, t_out: int) -> None:
     b["tokens_out"] += t_out
     b["usd"] += usd or 0.0
     b["unpriced"] += usd is None
+
+
+def job_cost(ws: Path, job: str) -> dict[str, Any]:
+    fields = [JobEvent.data[k] for k in ("state", "tokens_in", "tokens_out")]
+    with session(ws) as s:
+        rows = s.execute(select(JobEvent.model, *fields).where(JobEvent.job == job, JobEvent.kind == "llm")).all()
+    out = _bucket()
+    for model, state, t_in, t_out in rows:
+        if state == DONE:
+            _add(out, str(model), int(t_in or 0), int(t_out or 0))
+    return out
