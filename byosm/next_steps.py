@@ -9,7 +9,7 @@ from .finetuned_rivals import REPORT as FINETUNED
 from .finetuned_rivals import benchmarks
 from .health import CREDIT, FAIL, OK, UNKNOWN, checks
 from .held_out import bigger_held_out
-from .improve.proposals import PROPOSALS
+from .improve.proposals import PROPOSALS, proposal_key
 from .next_fixes import faster, less_overfit
 from .project import Project
 from .spec import TaskSpec
@@ -83,15 +83,13 @@ def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
 
 
 def tried_proposals(p: Project) -> set[str]:
-    out = set()
-    for exp in p.experiments():
-        out |= {a["id"] for a in (p.proposal(exp) or {}).get("applied", [])}
-    return out
+    return {proposal_key(a) for exp in p.experiments() for a in (p.proposal(exp) or {}).get("applied", [])}
 
 
 def _experiments(p: Project) -> dict[str, Any]:
     saved = p.report(PROPOSALS) or {}
-    fresh = [pr["id"] for pr in saved.get("proposals", []) if pr["id"] not in tried_proposals(p)]
+    tried = tried_proposals(p)
+    fresh = [pr["id"] for pr in saved.get("proposals", []) if proposal_key(pr) not in tried]
     if saved.get("from") != p.promoted or not fresh:
         why = "Every lined-up experiment has run. The LLM reads the board and the errors and lines up new ones."
         return _step("propose", "Find more experiments", why, ["improve", p.name])

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 
 from pydantic import ValidationError
@@ -14,6 +15,10 @@ from .paths import apply_ops
 from .registry import rule_proposals, unique
 
 PROPOSALS = "proposals"
+
+
+def proposal_key(pr: dict) -> str:
+    return json.dumps(pr["ops"], sort_keys=True)
 
 
 def _valid(spec: TaskSpec, proposal: dict, log: Callable[[str], None]) -> bool:

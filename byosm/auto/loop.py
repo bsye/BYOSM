@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import json
 import math
 import time
 from typing import Any
 
 from ..evals.selection import sure_lead
+from ..format import fmt
+from ..improve.proposals import proposal_key
 from .standing import standing
 from .state import Session
 
@@ -27,10 +28,6 @@ PLATEAU_ROUNDS = 2
 
 def _prior(pid: str) -> float:
     return next((v for k, v in PRIORS.items() if pid.startswith(k)), 1.0)
-
-
-def _key(pr: dict) -> str:
-    return json.dumps(pr["ops"], sort_keys=True)
 
 
 def _won_reason(st: dict) -> str:
@@ -76,7 +73,7 @@ def _log_result(s: Session, st: dict, exp: str, pick: dict, fresh: list[dict], k
     s.log(
         "experiment",
         exp,
-        f"{pick['id']}: {st['suite']} calib {mine:.4f} vs {before:.4f}{p_better} -> {verdict}. Evidence: {pick['why']}",
+        f"{pick['id']}: {st['suite']} calib {fmt(mine)} vs {fmt(before)}{p_better} -> {verdict}. Evidence: {pick['why']}",
         proposal=pick,
         delta=None if mine is None or before is None else round(mine - before, 4),
         p_better=cmp and cmp["p_better"],
@@ -108,10 +105,10 @@ def _experiment(s: Session, st: dict, pick: dict, fresh: list[dict]) -> bool | N
 def _applicable(s: Session, props: list[dict], tried: set[str]) -> list[dict]:
     fresh = []
     for pr in props:
-        if _key(pr) in tried:
+        if proposal_key(pr) in tried:
             continue
         if math.isnan(pr["cost"]["minutes"]):
-            tried.add(_key(pr))
+            tried.add(proposal_key(pr))
             s.log("skip", pr["id"], "its ops do not apply to the promoted spec", proposal=pr)
         else:
             fresh.append(pr)
@@ -121,7 +118,9 @@ def _applicable(s: Session, props: list[dict], tried: set[str]) -> list[dict]:
 def improve_until_stop(s: Session, max_experiments: int, use_llm: bool) -> str:
     from .. import improve
 
-    tried = {_key(d["proposal"]) for d in s.log.decisions if d["step"] in ("experiment", "skip") and "proposal" in d}
+    tried = {
+        proposal_key(d["proposal"]) for d in s.log.decisions if d["step"] in ("experiment", "skip") and "proposal" in d
+    }
     stale = 0
     while True:
         st = standing(s.name, s.margin)
@@ -135,11 +134,8 @@ def improve_until_stop(s: Session, max_experiments: int, use_llm: bool) -> str:
         pick, reason = _pick(fresh, s.deadline)
         if pick is None:
             return reason
-        tried.add(_key(pick))
+        tried.add(proposal_key(pick))
         real = _experiment(s, st, pick, fresh)
-        if real is None:
-            stale += 1
-            continue
         stale = 0 if real else stale + 1
         if stale >= PLATEAU_ROUNDS:
-            return f"plateau: {PLATEAU_ROUNDS} rounds without a significant gain"
+            return f"plateau: {PLATEAU_ROUNDS} rounds without a significant gain or with a failed build"
