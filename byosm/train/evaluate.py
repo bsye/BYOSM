@@ -11,6 +11,7 @@ from ..modalities import IGNORE, Modality
 from ..model import SpecialistModel, align_targets
 from ..spec import TaskSpec
 from .common import amp_dtype, autocast, batches, targets_of, to_device
+from .recovery import DivergedError
 
 
 def _frame_batch(p: torch.Tensor, mask: torch.Tensor, ft: Any, b: list[int], probs: list, ys: list, per: list) -> None:
@@ -105,9 +106,7 @@ def evaluate_rows(
     tg = targets_of(spec, mod, rows)
     out = infer(model, mod, spec, raws, tg, dev, head)
     if not np.isfinite(np.asarray(out["probs"], dtype=float)).all():
-        raise RuntimeError(
-            f"training diverged: the model outputs NaN on {dev}; try train.precision=fp32 or a lower learning rate"
-        )
+        raise DivergedError(f"training diverged: the model outputs NaN on {dev}")
     thr = metrics.calibrate(spec, out["y"], out["probs"]) if calibrate else threshold
     lengths = [len(p) for p in out["frame_probs"]] if "frame_probs" in out else None
     m = metrics.compute(spec, out["y"], out["probs"], thr, lengths)

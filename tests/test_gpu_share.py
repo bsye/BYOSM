@@ -75,3 +75,23 @@ def test_pretraining_reads_shorter_text_than_fine_tuning():
     spec.train.max_len = 576
     mod = get_modality(spec)
     assert _short_views(spec, mod).spec.train.max_len == PRETRAIN_MAX_LEN and spec.train.max_len == 576
+
+
+def test_a_model_that_outputs_nan_raises_the_error_recovery_climbs_the_precision_ladder_for(monkeypatch):
+    import numpy as np
+    import pytest
+
+    import byosm.train.evaluate as evaluate
+    from byosm.spec import Label, TaskSpec
+    from byosm.train.recovery import DivergedError
+
+    spec = TaskSpec(
+        name="q",
+        description="q",
+        modality="text",
+        labels=[Label(name="a", definition=""), Label(name="b", definition="")],
+    )
+    monkeypatch.setattr(evaluate, "targets_of", lambda spec, mod, rows: [0])
+    monkeypatch.setattr(evaluate, "infer", lambda *a, **k: {"y": np.array([0]), "probs": np.array([[np.nan, np.nan]])})
+    with pytest.raises(DivergedError):
+        evaluate.evaluate_rows(None, None, spec, [{}], ["x"], "mps", None)
