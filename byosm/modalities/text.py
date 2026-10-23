@@ -33,7 +33,9 @@ class Text(Modality):
         bb = self.spec.backbone
         if not bb.startswith("hf:"):
             raise ValueError(f"text backbone must be hf:<repo>, got {bb!r}")
-        return bb[3:]
+        from ..encoders import resolve
+
+        return resolve(bb[3:])
 
     @cached_property
     def tokenizer(self) -> Any:

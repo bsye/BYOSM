@@ -1171,3 +1171,11 @@ A spec's `train.max_len` defaulted to 128 tokens and nothing checked it against 
 ## LLM-written rows are written once
 
 A data folder is keyed by everything in the data plan, including the Hugging Face sources, so adding a source started a new folder and the LLM wrote every row again; rows written for an experiment that never finished were lost to later runs. LLM rows depend only on the labels, the description and the synthesis fields, so they now carry that narrower key (`synth.key` in the folder), and a build takes rows already written under the same key in the specialist's other data folders, per split, before asking the LLM for the rest. Positive and negative sources were only ever mixed into audio; for other modalities they now feed the unlabeled pool (pretraining and teacher labelling) instead of being read and dropped.
+
+## Choosing among options offered with the input
+
+Tool calling has no fixed label set: each request comes with its own tools, and new tools appear after training. `byosm/options` turns such data into (situation, option) pairs labelled fits or no_fit, so a specialist scores one option at a time and any option, seen or not, can be chosen; the decision is every option at or above a threshold, or none. A share of situations is paired with another request's unrelated tools so that choosing none is learned. Whole situations go to test, so no request is trained on and tested. The decision is scored per situation, exactly the right set or not, with separate accuracy for requests that need a tool and those that need none.
+
+## Models that embed an encoder
+
+Some decision models ship an encoder inside a custom architecture (laya: a ModernBERT-large encoder plus its own decision heads in one safetensors file). `byosm/encoders.py` extracts the encoder once into the cache as a plain Hugging Face folder (its config, tokenizer and the prefix-stripped weights), and the text modality resolves the backbone name to that folder, so such a model can be fine-tuned like any other.

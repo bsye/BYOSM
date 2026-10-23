@@ -77,3 +77,26 @@ def forecast_publish(
         log(f"staged {stage(find_workspace(), name)}")
         return
     publish(find_workspace(), name, repo, not public, log)
+
+
+options_app = typer.Typer(no_args_is_help=True, help="Choose among options offered with each input, such as tools.")
+app.add_typer(options_app, name="options")
+
+
+@options_app.command("new")
+def options_new(
+    name: str,
+    source: str = typer.Option(
+        "lockon/xlam-function-calling-60k", help="a supported dataset of requests with offered tools"
+    ),
+    situations: int = typer.Option(6000, help="how many requests to turn into pairs"),
+) -> None:
+    """Create a specialist that scores (request, option) pairs, so options never seen in training can be chosen."""
+    from ..config import find_workspace
+    from ..options.create import build_table, spec_for
+    from ..project import Project
+
+    ws = find_workspace()
+    p = Project(name).ensure()
+    p.save_spec(spec_for(name, build_table(ws, name, source, situations, log)))
+    log(f"saved {name}: run `byosm build {name}` to train it")

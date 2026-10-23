@@ -21,7 +21,9 @@ def fitted_max_len(spec: TaskSpec, data_dir: Path, log: Callable[[str], None]) -
     rows = Dataset(data_dir).load("train")[:SAMPLE]
     if not rows:
         return spec
-    tok = AutoTokenizer.from_pretrained(spec.backbone.removeprefix("hf:"))
+    from ..encoders import resolve
+
+    tok = AutoTokenizer.from_pretrained(resolve(spec.backbone.removeprefix("hf:")))
     lengths = sorted(len(tok(str(r["input"]))["input_ids"]) for r in rows)
     need = lengths[min(len(lengths) - 1, int(len(lengths) * COVER))]
     if need <= spec.train.max_len:
