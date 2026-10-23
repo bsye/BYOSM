@@ -73,6 +73,15 @@ def _segment_clips(spec: TaskSpec, src: HFSource, data_dir: Path, log: Log) -> l
     return rows
 
 
+def _split_by_recording(real: list[dict], rng: random.Random) -> dict[str, list[dict]]:
+    files = sorted({r["meta"]["file"] for r in real})
+    dev_files = set(_split3(files, rng, test=0.0)["dev"]) if len(files) > 1 else set()
+    return {
+        "train": [r for r in real if r["meta"]["file"] not in dev_files],
+        "dev": [r for r in real if r["meta"]["file"] in dev_files],
+    }
+
+
 def _add_local(spec: TaskSpec, splits: dict[str, list[dict]], rng: random.Random, log: Log) -> None:
     local = _local(spec)
     held = [record(x, y, "local") for x, y, s in local if s == "test"]
@@ -139,9 +148,8 @@ def _collect(
     sources, seg_sources = _resolve_sources(spec, data_dir, cfg, log)
     pools = _add_hf(spec, data_dir, sources, splits, unlabeled, rng, log)
     for src in seg_sources:
-        real = _segment_clips(spec, src, data_dir, log)
-        splits["dev"] += real[::10]
-        splits["train"] += [r for i, r in enumerate(real) if i % 10]
+        for s, rows in _split_by_recording(_segment_clips(spec, src, data_dir, log), rng).items():
+            splits[s] += rows
     if spec.modality == "audio" and pools["positive"]["train"]:
         sizes = {"train": spec.data.train_size, "dev": spec.data.dev_size, "test": spec.data.test_size}
         for s, rows in audio_mix.build(spec, data_dir, pools["positive"], pools["negative"], sizes, log).items():
@@ -172,7 +180,9 @@ def build(
             "or run `byosm request-data <name>` for a template to fill"
         )
     if spec.data.teachers:
-        splits["train"] += panel.label_pool(spec, splits, unlabeled, data_dir, log, reviewed)
+        labelled = panel.label_pool(spec, splits, unlabeled, data_dir, log, reviewed)
+        held = splits["dev"] + splits["test"]
+        splits["train"] += dedupe(labelled, against=held) if spec.modality == "text" else labelled
     for s, rows in splits.items():
         ds.save(s, rows)
     unlabeled += [record(r["input"], None, TRAIN_INPUTS) for r in splits["train"]]

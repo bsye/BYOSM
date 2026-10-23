@@ -26,9 +26,10 @@ def _tag_sequence(raw: list, names: list[str] | None, lmap: dict[str, str], spec
     return [lmap.get(t, t if not lmap and t in ours else OUTSIDE) for t in named]
 
 
-def _row_label(raw: Any, names: list[str] | None, lmap: dict[str, str]) -> str | None:
+def _row_label(raw: Any, names: list[str] | None, lmap: dict[str, str], ours: set[str]) -> str | None:
     keys = [str(raw)] + ([names[raw]] if names is not None and isinstance(raw, int) and raw < len(names) else [])
-    return next((lmap[k] for k in keys if k in lmap), None)
+    hit = next((lmap[k] for k in keys if k in lmap), None)
+    return hit if hit or lmap else next((k for k in keys if k in ours), None)
 
 
 def field(row: Any, path: str) -> Any:
@@ -64,7 +65,7 @@ def _stream_rows(src: HFSource, spec: TaskSpec) -> Iterator[tuple[Any, str | Non
         elif src.label_column and isinstance(row[src.label_column], list):
             lab = _tag_sequence(row[src.label_column], names, lmap, spec)
         elif src.label_column:
-            lab = _row_label(row[src.label_column], names, lmap)
+            lab = _row_label(row[src.label_column], names, lmap, set(spec.label_names))
             if lmap and lab is None:
                 continue
         try:

@@ -33,7 +33,8 @@ def _hold_out(splits: dict[str, list[dict]], rng: random.Random, log: Log) -> No
         return
     by_label: dict[str, list[dict]] = {}
     for r in splits["train"]:
-        by_label.setdefault(str(r.get("label")), []).append(r)
+        label = r.get("label")
+        by_label.setdefault(label if isinstance(label, str) else "", []).append(r)
     parts: dict[str, list[dict]] = {"train": [], "dev": [], "test": []}
     for rows in by_label.values():
         for s, part in _group_split3([(r["input"], r) for r in rows], rng).items():
