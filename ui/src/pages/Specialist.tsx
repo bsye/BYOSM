@@ -30,6 +30,7 @@ import { titleOf } from "./specialist-groups"
 import { NextSteps } from "./NextSteps"
 import { PublishDialog } from "@/components/publish-dialog"
 import { ContinueDialog } from "./ContinueDialog"
+import { OptionsCard } from "./OptionsCard"
 import { Team, useTeam } from "./Team"
 import { UseIt } from "./UseIt"
 import { YourData } from "./YourData"
@@ -279,6 +280,7 @@ function Model({ name }: { name: string }) {
           <TabsTrigger value="spec">Spec</TabsTrigger>
         </TabsList>
         <TabsContent value="board" className="space-y-4">
+          <OptionsCard name={d.name} />
           <Board d={d} />
           <DataSize d={d} />
           <Overfit d={d} />

@@ -66,6 +66,13 @@ def workbench_router(ws: Path) -> APIRouter:
         spec, reasons, _ = recipe(p, p.promoted)
         return {"from": p.promoted, "epochs": spec.train.epochs, "reasons": reasons}
 
+    @router.get("/api/specialists/{name}/options")
+    def options_report(name: str) -> dict[str, Any] | None:
+        from ..options.select import report
+
+        missing(_project, ws, name)
+        return report(ws, name)
+
     @router.get("/api/specialists/{name}/written")
     def written(name: str) -> list:
         return missing(_sets, ws, name)

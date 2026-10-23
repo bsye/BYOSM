@@ -90,3 +90,13 @@ def score_export(ws: Path, name: str, threshold: float = THRESHOLD) -> dict[str,
     with session(ws) as s:
         get_or_add(s, WorkspaceReport, kind=REPORT_PREFIX + name).data = result
     return result
+
+
+def report(ws: Path, name: str) -> dict[str, Any] | None:
+    from sqlalchemy import select
+
+    from ..db import session
+    from ..db.models import WorkspaceReport
+
+    with session(ws) as s:
+        return s.scalar(select(WorkspaceReport.data).where(WorkspaceReport.kind == REPORT_PREFIX + name))
