@@ -3,6 +3,8 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import sys
+import threading
 import time
 from collections.abc import Iterator
 from typing import Any
@@ -12,9 +14,16 @@ EVENTS_ENV = "BYOSM_EVENTS"
 EVENT_PREFIX = "@event "
 
 
+_WRITE = threading.Lock()
+
+
 def emit(kind: str, **data: Any) -> None:
-    if os.environ.get(EVENTS_ENV) == "1":
-        print(EVENT_PREFIX + json.dumps({"kind": kind, "at": round(time.time(), 2), **data}, default=str), flush=True)
+    if os.environ.get(EVENTS_ENV) != "1":
+        return
+    line = EVENT_PREFIX + json.dumps({"kind": kind, "at": round(time.time(), 2), **data}, default=str) + "\n"
+    with _WRITE:
+        sys.stdout.write(line)
+        sys.stdout.flush()
 
 
 def parse(line: str) -> dict[str, Any] | None:
