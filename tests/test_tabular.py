@@ -94,6 +94,12 @@ def test_a_forecast_whose_train_labels_reach_the_test_years_is_refused(ws):
         create(ws, "late", {**spec, "cutoffs": {"train": [2010], "test": [2012]}})
     create(ws, "ok", {**spec, "cutoffs": {"train": [2010], "test": [2015]}})
     assert [f["name"] for f in forecasts(ws)] == ["ok"]
+    from byosm.tabular.task import remove
+
+    remove(ws, "ok")
+    assert forecasts(ws) == []
+    with pytest.raises(KeyError):
+        remove(ws, "ok")
 
 
 def test_history_features_only_see_events_before_the_cutoff():

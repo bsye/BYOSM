@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from ..config import STATE_DIR
 from ..db import get_or_add, session
@@ -153,6 +153,14 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
     }
     _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": result})
     return result
+
+
+def remove(ws: Path, name: str) -> None:
+    if not _row(ws, name):
+        raise KeyError(f"no forecast named {name}")
+    with session(ws) as s:
+        s.execute(delete(WorkspaceReport).where(WorkspaceReport.kind == PREFIX + name))
+    scored_path(ws, name).unlink(missing_ok=True)
 
 
 def scored_path(ws: Path, name: str) -> Path:

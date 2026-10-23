@@ -135,6 +135,18 @@ def opendata_router(ws: Path) -> APIRouter:
             raise HTTPException(422, str(e)) from e
         return forecasts(ws)
 
+    @router.delete("/api/forecasts/{name}")
+    def drop_forecast(name: str, confirm: str) -> list[dict[str, Any]]:
+        from ..tabular.task import forecasts, remove
+
+        if confirm != name:
+            raise HTTPException(422, "pass confirm=<name> to delete a forecast")
+        try:
+            remove(ws, name)
+        except KeyError as e:
+            raise HTTPException(404, str(e).strip("'\"")) from e
+        return forecasts(ws)
+
     @router.get("/api/forecasts/{name}/scored.csv")
     def scored(name: str) -> FileResponse:
         from ..tabular.task import scored_path

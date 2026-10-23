@@ -1,5 +1,6 @@
-import { Download, Loader2, Play } from "lucide-react"
-import { download } from "@/api"
+import { Download, Loader2, Play, Trash2 } from "lucide-react"
+import { del, download } from "@/api"
+import { go } from "@/route"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
@@ -62,6 +63,12 @@ export function ForecastPage({ name }: { name: string }) {
   const test = f.result?.splits.test
   const facts = [within(f.spec.horizon_years), `tested on ${f.spec.cutoffs.test.join(", ")}`, test ? `${test.n.toLocaleString()} rows, ${(test.positive * 100).toFixed(1)}% ended` : "not run yet"]
   const busy = running.has(name)
+  const remove = async () => {
+    if (window.prompt(`Type ${name} to delete this forecast`) === name) {
+      await del(`/forecasts/${name}?confirm=${encodeURIComponent(name)}`)
+      go("forecasts")
+    }
+  }
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -77,6 +84,9 @@ export function ForecastPage({ name }: { name: string }) {
           <Button size="sm" disabled={busy} onClick={() => void runForecast(name)}>
             {busy ? <Loader2 className="animate-spin" /> : <Play />}
             {busy ? "Running" : "Run"}
+          </Button>
+          <Button size="icon" variant="destructive" className="size-8" aria-label="Delete this forecast" title="Delete" onClick={() => void remove()}>
+            <Trash2 />
           </Button>
         </div>
       </div>
