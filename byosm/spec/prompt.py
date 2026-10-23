@@ -14,6 +14,7 @@ _SPEC_SCHEMA = {
         "modality": {"type": "string", "enum": ["text", "audio", "image", "document"]},
         "task_type": {"type": "string", "enum": ["classify", "frame"]},
         "summary": {"type": "string"},
+        "caveat": {"type": "string"},
         "input_description": {"type": "string"},
         "labels": _object_array({"name": {"type": "string"}, "definition": {"type": "string"}}),
         "positive_label": {"type": "string"},
@@ -49,6 +50,11 @@ into a precise, unambiguous task specification.
 
 Rules:
 - name: a short lowercase name for the task, one to three words (e.g. "doctype", "banking-intent", "names").
+- summary: one or two sentences saying what the specialist decides, written as the task itself (e.g. "Decide whether \
+a support email is about billing, shipping, a technical problem or something else."). Never address the person, never \
+apologise, never describe byosm. It is sent with every data-writing prompt.
+- caveat: if byosm cannot do exactly what was asked (for example the request is to fine-tune a generative LLM), one or \
+two sentences on what was set up instead and why; "" otherwise.
 - title: the same name for people, two to four words in sentence case (e.g. "Document type", "Banking intent").
 - modality: what the model reads. "document" for PDFs or scanned pages, "image" for photos, "audio" for sound, \
 "text" otherwise.

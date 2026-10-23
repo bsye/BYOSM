@@ -1,9 +1,10 @@
 import { InfoTip } from "@/components/info-tip"
 import { RunningHere } from "./RunningHere"
-import { Gauge, Hammer, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
+import { Gauge, Hammer, Info, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { api, del, put, runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -225,6 +226,13 @@ function Model({ name }: { name: string }) {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">{titleOf(d)}</h1>
           <p className="text-muted-foreground max-w-3xl text-sm">{d.description}</p>
+          {typeof d.spec.caveat === "string" && d.spec.caveat && (
+            <Alert className="max-w-3xl">
+              <Info />
+              <AlertTitle>Built differently from the request</AlertTitle>
+              <AlertDescription>{d.spec.caveat}</AlertDescription>
+            </Alert>
+          )}
           <p className="text-muted-foreground/70 text-xs">
             <span className="font-mono">{d.name}</span>, {d.modality} {d.task_type}, {d.labels} labels, {d.experiments.length} experiments
           </p>

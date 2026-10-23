@@ -34,6 +34,7 @@ class TaskSpec(BaseModel):
     modality: Modality
     task_type: TaskType = "classify"
     summary: str = ""
+    caveat: str = ""
     input_description: str = ""
     labels: list[Label]
     positive_label: str | None = None
