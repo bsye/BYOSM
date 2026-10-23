@@ -175,3 +175,14 @@ def test_the_reason_for_a_high_chance_is_the_feature_that_drives_it():
     model = models(["kind"])["gradient boosting"].fit(x, y)
     risky = x[x["kind"] == "a"].head(5)
     assert all(r and r[0]["feature"] == "kind" for r in reasons(model, risky, typical(x)))
+
+
+def test_a_cutoff_before_any_event_gives_never():
+    from byosm.tabular.history import NEVER_DAYS, History, features
+
+    events = pd.DataFrame({"id": ["a"], "on": ["2023-03-01"]})
+    out = features(History("filings", events, "id", "on"), pd.Series(["a", "b"]), pd.Timestamp("2020-01-01"))
+    assert out["filings_days_since"].tolist() == [NEVER_DAYS, NEVER_DAYS] and out["filings_last_year"].tolist() == [
+        0,
+        0,
+    ]

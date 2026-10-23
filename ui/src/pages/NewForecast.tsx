@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { openJob } from "@/job-sheet"
 import { filePreview } from "./DataPreview"
+import { EventsPick, eventsSpec, guessed, NO_EVENTS, type Events } from "./EventsPick"
 import { useLibrary, type Column, type Preview } from "./opendata-api"
 
 const HORIZONS = [1, 2, 3, 5, 10]
@@ -25,7 +26,7 @@ const isDate = (c: Column) => DATE_HINTS.some((h) => c.name.toLowerCase().includ
 const isId = (c: Column, sampled: number) => c.distinct >= sampled * ID_SHARE
 
 
-function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+export function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
     <div className="grid gap-1.5">
       <Label>{label}</Label>
@@ -45,7 +46,7 @@ function Pick({ label, value, onChange, options }: { label: string; value: strin
   )
 }
 
-function useColumns(url: string): Preview | null {
+export function useColumns(url: string): Preview | null {
   const [preview, setPreview] = useState<Preview | null>(null)
   useEffect(() => {
     setPreview(null)
@@ -65,8 +66,11 @@ export function NewForecast({ onSaved }: { onSaved: () => void }) {
   const thisYear = new Date().getFullYear()
   const [test, setTest] = useState(String(thisYear - 5))
   const [features, setFeatures] = useState<string[]>([])
+  const [picked, setEvents] = useState<Events>(NO_EVENTS)
   const preview = useColumns(url)
+  const eventColumns = useColumns(picked.url)?.columns ?? []
   const columns = preview?.columns ?? []
+  const events = guessed(picked, eventColumns, columns)
   useEffect(() => {
     if (!preview) return
     const dates = [...preview.columns.filter(isDate)].sort((a, b) => a.missing - b.missing)
@@ -80,7 +84,7 @@ export function NewForecast({ onSaved }: { onSaved: () => void }) {
   const ready = url && title && start && end && start !== end && chosen.length && Number(test) <= latest
   const save = () => {
     const name = slug(title)
-    const spec = { title, source: url, start, event: end, horizon_years: Number(horizon), test_year: Number(test), backtest: Array.from({ length: BACKTEST_YEARS }, (_, i) => latest - i * BACKTEST_STEP), features: chosen }
+    const spec = { title, source: url, start, event: end, horizon_years: Number(horizon), test_year: Number(test), backtest: Array.from({ length: BACKTEST_YEARS }, (_, i) => latest - i * BACKTEST_STEP), features: chosen, ...eventsSpec(events, tables.find((k) => k.file.url === events.url)?.title ?? "") }
     post("/forecasts", { name, spec })
       .then(() => runJob(["forecast", "run", name]))
       .then((j) => {
@@ -114,6 +118,7 @@ export function NewForecast({ onSaved }: { onSaved: () => void }) {
             <Pick label="Within" value={horizon} onChange={setHorizon} options={HORIZONS.map((h) => ({ value: String(h), label: h === 1 ? "1 year" : `${h} years` }))} />
             <Pick label="Test on" value={test} onChange={setTest} options={years.map((y) => ({ value: y, label: `alive on 1 Jan ${y}` }))} />
           </div>
+          {columns.length > 0 && <EventsPick tables={tables.filter((k) => k.file.url !== url)} main={columns} columns={eventColumns} value={events} onChange={setEvents} />}
           {columns.length > 0 && (
             <div className="grid gap-1.5">
               <Label>Features</Label>

@@ -24,6 +24,6 @@ def features(h: History, keys: Any, cut: Any) -> Any:
     count = recent.groupby(h.key).size()
     last = before.groupby(h.key)["_when"].max()
     out = pd.DataFrame(index=keys.index)
-    out[f"{h.name}_last_year"] = keys.map(count).fillna(0).astype(int)
-    out[f"{h.name}_days_since"] = (cut - keys.map(last)).dt.days.fillna(NEVER_DAYS)
+    out[f"{h.name}_last_year"] = count.reindex(keys.to_numpy()).fillna(0).astype(int).to_numpy()
+    out[f"{h.name}_days_since"] = (cut - last.reindex(keys.to_numpy())).dt.days.fillna(NEVER_DAYS).to_numpy()
     return out
