@@ -13,6 +13,8 @@ NONE_SHARE = 0.15
 TEST_SHARE = 0.15
 DESCRIPTION_CHARS = 300
 OPTION_MARK = "\n\nOption: "
+OTHERS_MARK = "\nOther options: "
+NO_OTHERS = "none"
 
 
 @dataclass
@@ -27,8 +29,9 @@ def option_text(option: dict[str, Any]) -> str:
     return f"{option['name']}: {str(option.get('description') or '')[:DESCRIPTION_CHARS]} ({params})"
 
 
-def pair_text(situation: str, option: dict[str, Any]) -> str:
-    return f"{situation}{OPTION_MARK}{option_text(option)}"
+def pair_text(situation: str, option: dict[str, Any], others: list[dict[str, Any]] | None = None) -> str:
+    names = ", ".join(o["name"] for o in others or [] if o["name"] != option["name"]) or NO_OTHERS
+    return f"{situation}{OPTION_MARK}{option_text(option)}{OTHERS_MARK}{names}"
 
 
 def xlam(row: dict[str, Any]) -> Situation:
@@ -55,7 +58,7 @@ def rows(situations: Iterable[Situation], rng: random.Random) -> Iterator[dict[s
         split = "test" if rng.random() < TEST_SHARE else "train"
         for o in s.options:
             yield {
-                "text": pair_text(s.text, o),
+                "text": pair_text(s.text, o, s.options),
                 "label": FITS if o["name"] in s.chosen else NO_FIT,
                 "split": split,
                 "group": str(i),

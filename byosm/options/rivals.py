@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from .pairs import OPTION_MARK
+from .pairs import OPTION_MARK, OTHERS_MARK
 
 ROLE = "baseline"
 SAMPLE = 200
@@ -13,7 +13,7 @@ request needs, including the same tool for several items; answer an empty list w
 
 def _split(rows: list[dict[str, str]]) -> tuple[str, list[str]]:
     situation = rows[0]["text"].partition(OPTION_MARK)[0]
-    return situation, [r["text"].partition(OPTION_MARK)[2] for r in rows]
+    return situation, [r["text"].partition(OPTION_MARK)[2].partition(OTHERS_MARK)[0] for r in rows]
 
 
 def llm_chooser(cfg: dict | None, role: str = ROLE) -> Callable[[list[dict[str, str]]], set[int]]:
