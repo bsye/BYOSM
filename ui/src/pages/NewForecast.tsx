@@ -14,8 +14,8 @@ import { filePreview } from "./DataPreview"
 import { useLibrary, type Column, type Preview } from "./opendata-api"
 
 const HORIZONS = [1, 2, 3, 5, 10]
-const TRAIN_YEARS = 3
-const TRAIN_STEP = 2
+const BACKTEST_YEARS = 5
+const BACKTEST_STEP = 2
 const YEARS_OFFERED = 10
 const ID_SHARE = 0.9
 const DATE_HINTS = ["date", "_dt", "since", "until", "start", "end"]
@@ -24,10 +24,6 @@ const slug = (t: string) => t.toLowerCase().split("").map((c) => (c >= "a" && c 
 const isDate = (c: Column) => DATE_HINTS.some((h) => c.name.toLowerCase().includes(h))
 const isId = (c: Column, sampled: number) => c.distinct >= sampled * ID_SHARE
 
-export function cutoffs(test: number, horizon: number) {
-  const last = test - horizon
-  return { train: Array.from({ length: TRAIN_YEARS }, (_, i) => last - (TRAIN_YEARS - 1 - i) * TRAIN_STEP), test: [test] }
-}
 
 function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
@@ -84,7 +80,7 @@ export function NewForecast({ onSaved }: { onSaved: () => void }) {
   const ready = url && title && start && end && start !== end && chosen.length && Number(test) <= latest
   const save = () => {
     const name = slug(title)
-    const spec = { title, source: url, start, event: end, horizon_years: Number(horizon), cutoffs: cutoffs(Number(test), Number(horizon)), features: chosen }
+    const spec = { title, source: url, start, event: end, horizon_years: Number(horizon), test_year: Number(test), backtest: Array.from({ length: BACKTEST_YEARS }, (_, i) => latest - i * BACKTEST_STEP), features: chosen }
     post("/forecasts", { name, spec })
       .then(() => runJob(["forecast", "run", name]))
       .then((j) => {

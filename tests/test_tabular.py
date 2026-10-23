@@ -105,3 +105,32 @@ def test_text_columns_that_hold_numbers_become_numbers_and_the_rest_categories()
     many = pd.DataFrame({"street": [f"s{i}" for i in range(400)]})
     capped, _ = typed(many, ["street"], [])
     assert capped["street"].nunique() == 251
+
+
+def test_a_backtest_scores_each_test_year_on_windows_that_end_before_it():
+    from byosm.tabular.backtest import backtest, windows
+
+    assert windows(2016, 5) == {"train": [2007, 2009, 2011], "test": [2016]}
+    r = Recipe("start", "end", 2, {}, ["kind", "noise"], per_cutoff=800)
+    rows = backtest(_register(), r, [2016, 2014], ["kind"], [], log=lambda m: None)
+    assert [x["year"] for x in rows] == [2014, 2016]
+    assert all(x["scores"]["gradient boosting"]["auc"] > 0.6 for x in rows)
+
+
+def test_a_test_year_whose_outcome_is_not_known_yet_is_refused(ws):
+    import pytest
+
+    from byosm.tabular.task import create
+
+    spec = {
+        "title": "t",
+        "source": "s",
+        "start": "a",
+        "event": "b",
+        "horizon_years": 5,
+        "features": ["x"],
+        "test_year": 2016,
+    }
+    assert create(ws, "fine", spec).cutoffs["train"] == [2007, 2009, 2011]
+    with pytest.raises(ValueError, match="not known yet"):
+        create(ws, "future", {**spec, "backtest": [2025]})

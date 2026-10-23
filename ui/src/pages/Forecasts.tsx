@@ -1,11 +1,11 @@
 import { Loader2, Play, ShieldAlert } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Bar, BarChart, CartesianGrid, ErrorBar, LabelList, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, ErrorBar, LabelList, Line, LineChart, XAxis, YAxis } from "recharts"
 import { api, runJob } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -17,11 +17,36 @@ import { NewForecast } from "./NewForecast"
 type Score = { auc: number; auc_ci: [number, number]; ap: number; brier: number; base_rate: number }
 type Leak = { feature: string; auc: number; suspect: boolean; why: string }
 type Spec = { title: string; horizon_years: number; cutoffs: Record<string, number[]>; excluded: Record<string, string> }
-type Result = { at: number; dropped?: Record<string, string>; splits: Record<string, { n: number; positive: number }>; leakage: Leak[]; scores: Record<string, Score> }
+type Year = { year: number; positive: number; scores: Record<string, Score> }
+type Result = { at: number; over_time?: Year[]; dropped?: Record<string, string>; splits: Record<string, { n: number; positive: number }>; leakage: Leak[]; scores: Record<string, Score> }
 type Forecast = { name: string; spec: Spec; result: Result | null }
 
 const config = { auc: { label: "AUC", color: "var(--chart-1)" } } satisfies ChartConfig
 const LEAKS_SHOWN = 5
+const MODELS = { gbm: "gradient boosting", logistic: "logistic regression", base: "base rate" }
+const overTime = {
+  gbm: { label: MODELS.gbm, color: "var(--chart-1)" },
+  logistic: { label: MODELS.logistic, color: "var(--chart-2)" },
+  base: { label: MODELS.base, color: "var(--chart-4)" },
+} satisfies ChartConfig
+
+function OverTime({ years }: { years: Year[] }) {
+  const rows = years.map((y) => ({ year: String(y.year), ...Object.fromEntries(Object.entries(MODELS).map(([k, m]) => [k, y.scores[m]?.auc])) }))
+  return (
+    <ChartContainer config={overTime} className="h-56 w-full">
+      <LineChart data={rows} margin={{ top: 8, left: 8, right: 8 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis dataKey="year" tickLine={false} axisLine={false} />
+        <YAxis domain={[0.4, 1]} tickLine={false} axisLine={false} width={36} tickFormatter={(v) => Number(v).toFixed(1)} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartLegend content={<ChartLegendContent />} />
+        {Object.keys(MODELS).map((k) => (
+          <Line key={k} dataKey={k} type="monotone" stroke={`var(--color-${k})`} strokeWidth={2} dot={{ r: 3 }} strokeDasharray={k === "base" ? "4 4" : undefined} />
+        ))}
+      </LineChart>
+    </ChartContainer>
+  )
+}
 
 function useForecasts(): [Forecast[] | null, Set<string>, () => void] {
   const jobs = Object.values(useLive().jobs).filter((j) => j.args[0] === "forecast")
@@ -125,6 +150,12 @@ function ForecastCard({ f, running }: { f: Forecast; running: boolean }) {
               <h3 className="text-sm font-medium">Each feature alone</h3>
               <Leakage leaks={f.result.leakage} excluded={f.spec.excluded ?? {}} dropped={f.result.dropped ?? {}} />
             </div>
+            {(f.result.over_time?.length ?? 0) > 1 && (
+              <div className="grid gap-2 @3xl/main:col-span-2">
+                <h3 className="text-sm font-medium">AUC by test year</h3>
+                <OverTime years={f.result.over_time ?? []} />
+              </div>
+            )}
           </div>
         ) : (
           <Skeleton className="h-56 rounded-lg" />

@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 
 from ..db import get_or_add, session
 from ..db.models import WorkspaceReport
+from .backtest import windows
 from .history import History
 from .snapshots import Recipe
 
@@ -29,7 +31,9 @@ class ForecastSpec(BaseModel):
     start: str
     event: str
     horizon_years: int
-    cutoffs: dict[str, list[int]]
+    cutoffs: dict[str, list[int]] = Field(default_factory=dict)
+    test_year: int | None = None
+    backtest: list[int] = Field(default_factory=list)
     features: list[str]
     categorical: list[str] = Field(default_factory=list)
     derived: dict[str, dict[str, Any]] = Field(default_factory=dict)
@@ -37,6 +41,14 @@ class ForecastSpec(BaseModel):
     per_cutoff: int = 50_000
     key: str | None = None
     histories: dict[str, HistorySpec] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _windows(self) -> ForecastSpec:
+        if not self.cutoffs and self.test_year:
+            self.cutoffs = windows(self.test_year, self.horizon_years)
+        if "train" not in self.cutoffs or "test" not in self.cutoffs:
+            raise ValueError("give cutoffs with train and test years, or a test_year")
+        return self
 
     def recipe(self, histories: list[History]) -> Recipe:
         fields = (self.start, self.event, self.horizon_years, self.cutoffs, self.features, self.per_cutoff)
@@ -71,6 +83,11 @@ def _check_windows(spec: ForecastSpec) -> None:
     last_train = max(spec.cutoffs["train"]) + spec.horizon_years
     if last_train > min(spec.cutoffs["test"]):
         raise ValueError(f"train labels reach {last_train}, after the first test cutoff {min(spec.cutoffs['test'])}")
+    unknown = [y for y in [*spec.cutoffs["test"], *spec.backtest] if y + spec.horizon_years > date.today().year]
+    if unknown:
+        raise ValueError(
+            f"the outcome of test years {unknown} is not known yet with a {spec.horizon_years} year horizon"
+        )
 
 
 def _read(spec: ForecastSpec, log: Callable[[str], None]) -> Any:
@@ -114,7 +131,17 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
     scores = evaluate({k: v.drop(columns=list(dropped)) for k, v in splits.items()}, kept)
     for model, s in scores.items():
         log(f"  {model}: AUC {s['auc']:.3f} ({s['auc_ci'][0]:.3f} to {s['auc_ci'][1]:.3f}), AP {s['ap']:.3f}")
-    result = {"at": time.time(), "splits": sizes, "leakage": leaks, "dropped": dropped, "scores": scores}
+    from .backtest import backtest
+
+    over_time = backtest(df, spec.recipe(histories), spec.backtest, kept, list(dropped), log)
+    result = {
+        "at": time.time(),
+        "splits": sizes,
+        "leakage": leaks,
+        "dropped": dropped,
+        "scores": scores,
+        "over_time": over_time,
+    }
     _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": result})
     return result
 

@@ -7,6 +7,7 @@ cutoffs:
   train: [2005, 2007, 2009]
   calib: [2011]
   test: [2016]
+backtest: [2013, 2015, 2017, 2019, 2021]
 features: [company_type, county, nace_section, object, name_words, holding]
 categorical: [company_type, county, nace_section, object]
 derived:
