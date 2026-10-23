@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from ..events import EVENTS_ENV, TARGET, parse
-from ..resources import can_start_job, max_jobs
+from ..resources import can_start_job, max_jobs, stall_seconds
 from .allowed import ALLOWED_COMMANDS
 from .detached import LOG_SUFFIX, Tail, alive, exit_code, forget, job_file, kill_group, spawn
 from .hub import Hub
@@ -160,8 +160,12 @@ class Runner:
         return Tail(job_file(self.ws, job.id, LOG_SUFFIX), self.store.seen(job.id))
 
     def _follow(self, job: Job) -> None:
-        tail = self._tail(job)
-        while not self.stopped and not self._settled(job, tail):
+        tail, heard, limit, killed = self._tail(job), [time.time()], stall_seconds(self.ws), False
+        while not self.stopped and not self._settled(job, tail, heard):
+            if not killed and job.pid and time.time() - heard[0] > limit:
+                self._line(job, f"stopped: no output for {limit // 60} minutes, the job looked stuck")
+                kill_group(job.pid)
+                killed = True
             time.sleep(FOLLOW_SECONDS)
 
     def _running(self, job: Job) -> bool:
@@ -170,8 +174,11 @@ class Runner:
             return proc.poll() is None
         return job.pid is not None and alive(job.pid)
 
-    def _settled(self, job: Job, tail: Tail) -> bool:
-        for line in tail.read():
+    def _settled(self, job: Job, tail: Tail, heard: list[float] | None = None) -> bool:
+        fresh = tail.read()
+        if fresh and heard is not None:
+            heard[0] = time.time()
+        for line in fresh:
             self._output(job, line)
         code = exit_code(self.ws, job.id)
         if code is None and self._running(job):

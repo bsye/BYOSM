@@ -144,7 +144,7 @@ def fit(
 ) -> tuple[dict[str, Any], list[Any]]:
     dev = pick_device()
     with gpu_slot(dev, log):
-        return shrink_on_oom(spec, lambda s: _fit(s, data_dir, run_dir, log, seed, splits, dev), log)
+        return shrink_on_oom(spec, lambda s: _fit(s, data_dir, run_dir, log, seed, splits, dev), log, dev)
 
 
 def _fit(

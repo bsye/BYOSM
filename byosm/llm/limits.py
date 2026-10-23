@@ -64,8 +64,8 @@ def wait_out(error: BaseException, attempt: int, started: float, notify: Callabl
     if now - started > MAX_WAIT_H * 3600:
         return FAIL
     until = reset_at(str(error), now) or now + 60 * BACKOFF_MIN[min(attempt, len(BACKOFF_MIN) - 1)]
-    notify(until)
     while time.time() < until:
+        notify(until)
         current = settings()
         if current["mode"] != WAIT or float(current.get("retry_now") or 0) > now:
             return current["mode"] if current["mode"] != WAIT else WAIT

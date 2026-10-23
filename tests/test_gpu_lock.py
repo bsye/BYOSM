@@ -62,24 +62,43 @@ def test_a_training_waits_while_memory_is_short(ws, monkeypatch):
     assert any("waiting" in line for line in lines) and any("got the GPU" in line for line in lines)
 
 
-def test_running_out_of_gpu_memory_halves_the_batch_until_it_fits():
+def _spec():
     from byosm.spec import Label, TaskSpec
-    from byosm.train.gpu import shrink_on_oom
 
-    spec = TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
-    tried = []
+    return TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
 
+
+def _train(tried, fits_at):
     def train(s):
         tried.append(s.train.batch_size)
-        if s.train.batch_size > 8:
+        if s.train.batch_size > fits_at:
             raise RuntimeError("MPS backend out of memory (MPS allocated: 24.02 GiB)")
         return {"ok": True}, []
 
-    meta, _ = shrink_on_oom(spec, train, log=lambda _: None)
+    return train
+
+
+def test_on_cuda_running_out_of_memory_halves_the_batch_until_it_fits(ws):
+    from byosm.train.gpu import shrink_on_oom
+
+    tried = []
+    meta, _ = shrink_on_oom(_spec(), _train(tried, 8), log=lambda _: None, device="cuda")
     assert tried == [32, 16, 8] and meta == {"ok": True, "batch_size": 8}
 
 
-def test_other_errors_are_not_retried():
+def test_on_apple_gpus_the_job_stops_and_the_next_run_starts_at_half(ws):
+    import pytest
+
+    from byosm.train.gpu import shrink_on_oom
+
+    tried = []
+    with pytest.raises(RuntimeError, match="next run starts at batch 16"):
+        shrink_on_oom(_spec(), _train(tried, 16), log=lambda _: None, device="mps")
+    meta, _ = shrink_on_oom(_spec(), _train(tried, 16), log=lambda _: None, device="mps")
+    assert tried == [32, 16] and meta["batch_size"] == 16
+
+
+def test_other_errors_are_not_retried(ws):
     import pytest
 
     from byosm.spec import Label, TaskSpec
@@ -87,4 +106,6 @@ def test_other_errors_are_not_retried():
 
     spec = TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
     with pytest.raises(RuntimeError, match="shape mismatch"):
-        shrink_on_oom(spec, lambda s: (_ for _ in ()).throw(RuntimeError("shape mismatch")), log=lambda _: None)
+        shrink_on_oom(
+            spec, lambda s: (_ for _ in ()).throw(RuntimeError("shape mismatch")), log=lambda _: None, device="cuda"
+        )

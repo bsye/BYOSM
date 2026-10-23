@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 GB = 1024**3
 LOCAL_CALL_GB = 2.0
@@ -24,3 +25,13 @@ def max_jobs() -> int:
 
 def can_start_job(running: int) -> bool:
     return running == 0 or (running < max_jobs() and free_gb() >= JOB_GB)
+
+
+STALL_KEY = "stall_minutes"
+STALL_MINUTES = 90
+
+
+def stall_seconds(ws: Path) -> int:
+    from .config import load_config
+
+    return int(60 * float(load_config(ws).get(STALL_KEY) or STALL_MINUTES))

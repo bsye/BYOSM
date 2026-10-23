@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import json
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -19,6 +20,7 @@ OOM_RETRIES = 3
 MIN_BATCH = 4
 LOCK_DIR = Path(".byosm") / "gpu"
 WAIT_S = 5
+HEARTBEAT_S = 300
 
 
 def auto_slots() -> int:
@@ -88,7 +90,8 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
             log(
                 f"  waiting for the {device} GPU: another job is training on it, or less than {GB_PER_TRAINING} GB is free"
             )
-            emit("gpu", state="waiting")
+        if waited % HEARTBEAT_S < WAIT_S:
+            emit("gpu", state="waiting", waited=round(waited))
         time.sleep(WAIT_S)
         waited += WAIT_S
     if waited:
@@ -117,23 +120,52 @@ def out_of_memory(e: RuntimeError) -> bool:
     return "out of memory" in str(e).lower()
 
 
-def halved(spec: TaskSpec, log: Callable[[str], None]) -> TaskSpec:
-    import torch
+BATCHES_FILE = "batches.json"
+RETRY_IN_PROCESS = ("cuda",)
 
-    size = spec.train.batch_size // 2
-    log(f"  out of GPU memory at batch {spec.train.batch_size}: retrying at batch {size}")
-    if torch.backends.mps.is_available():
-        torch.mps.empty_cache()
+
+def _batches(ws: Path) -> dict[str, int]:
+    path = ws / LOCK_DIR / BATCHES_FILE
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def _remember(ws: Path, key: str, size: int) -> None:
+    path = ws / LOCK_DIR / BATCHES_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({**_batches(ws), key: size}, indent=1))
+
+
+def _with_batch(spec: TaskSpec, size: int) -> TaskSpec:
     return spec.model_copy(update={"train": spec.train.model_copy(update={"batch_size": size})})
 
 
-def shrink_on_oom(spec: TaskSpec, train: Callable[[TaskSpec], tuple[dict, Any]], log: Callable[[str], None]):
-    for attempt in range(OOM_RETRIES + 1):
+def batch_key(spec: TaskSpec) -> str:
+    return f"{spec.modality}|{spec.backbone}"
+
+
+def shrink_on_oom(
+    spec: TaskSpec, train: Callable[[TaskSpec], tuple[dict, Any]], log: Callable[[str], None], device: str
+):
+    from ..config import find_workspace
+
+    ws, key = find_workspace(), batch_key(spec)
+    known = _batches(ws).get(key)
+    if known and known < spec.train.batch_size:
+        log(f"  batch {known}: {key} ran out of GPU memory at a larger batch before")
+        spec = _with_batch(spec, known)
+    for _ in range(OOM_RETRIES + 1):
         try:
             meta, rest = train(spec)
             return {**meta, "batch_size": spec.train.batch_size}, rest
         except RuntimeError as e:
-            if not out_of_memory(e) or attempt == OOM_RETRIES or spec.train.batch_size < 2 * MIN_BATCH:
+            size = spec.train.batch_size // 2
+            if not out_of_memory(e) or size < MIN_BATCH:
                 raise
-            spec = halved(spec, log)
+            _remember(ws, key, size)
+            if device not in RETRY_IN_PROCESS:
+                raise RuntimeError(
+                    f"out of GPU memory at batch {spec.train.batch_size}; the next run starts at batch {size}"
+                ) from e
+            log(f"  out of GPU memory at batch {spec.train.batch_size}: retrying at batch {size}")
+            spec = _with_batch(spec, size)
     raise RuntimeError("out of GPU memory at every batch size tried")
