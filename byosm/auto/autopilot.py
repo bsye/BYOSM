@@ -173,7 +173,7 @@ def run(
     s = Session(name, p, log, p.spec(), margin, t0 + budget_h * 3600, echo)
     if not p.experiments() and missing_labels(s.base):
         return _request_data(s, cfg, t0)
-    if not p.experiments():
+    if p.promoted is None:
         _build_v1(s)
     reason = improve_until_stop(s, max_experiments, use_llm)
     log("stop", reason, "")

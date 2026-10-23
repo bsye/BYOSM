@@ -109,3 +109,18 @@ def test_student_is_kept_only_if_it_still_wins(ws, monkeypatch, student_wins):
     s = session(p, spec)
     autopilot._distill_student(s, {**LOST, "won": True}, {"params": 50e6})
     assert p.promoted == ("v2" if student_wins else "v1")
+
+
+def test_an_experiment_that_never_finished_is_built_before_improving(ws, monkeypatch):
+    p, spec = make_project(ws)
+    p.save_experiment("v2", spec=spec)
+    p.promote(None)
+    calls = []
+    monkeypatch.setattr(autopilot, "missing_labels", lambda spec: False)
+    monkeypatch.setattr(autopilot, "_build_v1", lambda s: calls.append("build"))
+    monkeypatch.setattr(autopilot, "improve_until_stop", lambda s, n, use_llm: calls.append("improve") or "plateau")
+    monkeypatch.setattr(autopilot, "standing", lambda name, margin: LOST)
+    monkeypatch.setattr(autopilot, "_finish", lambda *a: None)
+    monkeypatch.setattr(autopilot, "_report", lambda p, decisions, final: None)
+    autopilot.run("t", echo=lambda m: None)
+    assert calls == ["build", "improve"]
