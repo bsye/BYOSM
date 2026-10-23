@@ -59,6 +59,28 @@ def publish(
     log(f"model card: {stage / 'README.md'}")
 
 
+@app.command()
+def cloud(
+    name: str,
+    provider: Annotated[str, typer.Option(help="aws (ECS Fargate through CloudFormation)")] = "aws",
+    rps: Annotated[float, typer.Option(help="requests per second to size the container for")] = 10.0,
+) -> None:
+    """Size a container for a specialist or team and write the files to deploy it to a cloud, without deploying."""
+    import json
+
+    from ..cloud.files import write
+    from ..cloud.sizing import size
+    from ..config import STATE_DIR, find_workspace
+    from ..deploy import bundle_of
+
+    if provider != "aws":
+        raise typer.BadParameter("only aws for now")
+    bundle = bundle_of(name)
+    tag = json.loads((bundle / "manifest.json").read_text()).get("experiment", "latest")
+    out = write(find_workspace() / STATE_DIR / "cloud" / name / provider, name, size(bundle, rps), tag)
+    log(f"wrote {out}: template.yaml, sizing.json and DEPLOY.md with the commands to run")
+
+
 @app.command("publish-data")
 def publish_data(
     name: str,

@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import hmac
 import json
+import os
 import sys
 import threading
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+
+TOKEN_ENV = "BYOSM_TOKEN"
+HEALTH_PATH = "/health"
 
 
 def hysteresis(
@@ -539,12 +544,26 @@ def _handler(models: list[Specialist], by_name: dict[str, Specialist], pool: Any
         def log_message(self, *a: Any) -> None:
             pass
 
+        def _allowed(self) -> bool:
+            token = os.environ.get(TOKEN_ENV)
+            given = self.headers.get("authorization", "")
+            if not token or hmac.compare_digest(given, f"Bearer {token}"):
+                return True
+            self._send(401, {"error": f"send Authorization: Bearer <{TOKEN_ENV}>"})
+            return False
+
         def do_GET(self) -> None:
+            if self.path == HEALTH_PATH:
+                return self._send(200, {"ok": True})
+            if not self._allowed():
+                return None
             if self.path == "/v1/models":
                 return self._send(200, _model_cards(models))
             self._send(404, {"error": "not found"})
 
         def do_POST(self) -> None:
+            if not self._allowed():
+                return
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("content-length", 0))) or b"{}")
                 self._send(*_route(by_name, pool, self.path, body))

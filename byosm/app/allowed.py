@@ -4,6 +4,7 @@ ALLOWED_COMMANDS = (
     "ls",
     "containerize",
     "deploy",
+    "cloud",
     "undeploy",
     "show",
     "board",

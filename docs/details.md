@@ -46,6 +46,7 @@ byosm export vad && byosm predict vad clip.wav
 | `byosm bench <a> <b> ...` | specialists vs one generalist (not run yet, see [Goal and bet](assumptions.md)) |
 | `byosm opendata find "<request>"` | the LLM searches the web for tables, adds the portals it discovers to your sources and searches them (CKAN and Socrata) |
 | `byosm forecast new <name> <spec.yaml>` · `byosm forecast run <name>` | will an entity in a register end within N years: yearly snapshots, a leakage check per feature, gradient boosting against logistic regression and the base rate (example in `examples/forecasts/`) |
+| `byosm cloud <name> [--rps 10]` | size a container from the model and write a CloudFormation template (ECS Fargate, read-only, token in Secrets Manager) with the commands to deploy it |
 | `byosm report [--check]` | regenerate the tables in [Results](results.md) |
 
 Self-host with Docker: `BYOSM_APP_TOKEN=$(openssl rand -base64 32) docker compose -f docker/compose.yaml up`, then open
