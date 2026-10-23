@@ -1119,3 +1119,7 @@ The New forecast dialog reads the kept table's preview: the start date is the da
 ## Backtest over test years
 
 One test year can flatter or punish a model by chance of timing. A forecast can list `backtest` years; for each, it is retrained on three cutoffs two years apart whose labels end on that year, and scored on the companies alive on 1 January of it, with the leaks found on the main run left out. Snapshots are built once per year and shared. A spec can also give only `test_year` and the training windows are placed the same way, so the page and the CLI agree. Test years whose outcome cannot be known yet (year plus horizon after this year) are refused. On the company register, the register-only model loses accuracy steadily in later years, which a single 2016 test hid.
+
+## Leaks that predict weakly
+
+A field rewritten for survivors can score a modest AUC alone and still be a leak, because it splits one class cleanly while leaving the rest mixed. The check therefore also measures purity: the share of positives that sit in values of 200 rows or more that are 95% positive, and the share of negatives in values that end at under 2% of the base rate. Above 20% either way the feature is left out. On the company register this catches the raw company type and its code (the old type names are almost all closures, because companies keeping them were the ones about to close) while the pre-Act type families pass.

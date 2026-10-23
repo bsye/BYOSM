@@ -36,6 +36,16 @@ def test_snapshot_keeps_only_the_living_and_labels_the_horizon():
     assert sorted(s[LABEL].tolist()) == [0, 1]
 
 
+def test_a_value_given_only_to_survivors_is_flagged_even_when_it_predicts_weakly():
+    from byosm.tabular.leakage import pure_share
+
+    rng = np.random.default_rng(1)
+    y = pd.Series((rng.random(4000) < 0.25).astype(int))
+    renamed = pd.Series(np.where((y == 0) & (rng.random(4000) < 0.5), "new", rng.choice(["a", "b"], 4000)))
+    honest = pd.Series(rng.choice(["a", "b", "c"], 4000))
+    assert pure_share(renamed, y) > 0.3 and pure_share(honest, y) == 0
+
+
 def test_a_feature_written_after_the_event_is_flagged():
     splits = build(_register(), _recipe(["kind", "noise", "status"]))
     flagged = {r["feature"] for r in check(splits["train"], ["kind", "status"]) if r["suspect"]}
