@@ -23,7 +23,7 @@ def pretrain_backbone(
     seed: int,
 ) -> list[dict]:
     tc = spec.train
-    if tc.pretrain_steps <= 0:
+    if tc.pretrain_steps <= 0 or tc.init_from:
         return []
     unl = mod.load_many(ds.unlabeled()) or train_raw
     log(f"  LeJEPA: {tc.pretrain_steps} steps on {len(unl)} unlabeled inputs (lambda={tc.pretrain_lambda})")

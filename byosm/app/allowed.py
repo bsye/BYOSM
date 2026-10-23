@@ -32,6 +32,7 @@ ALLOWED_COMMANDS = (
     "rivals",
     "ablate",
     "next",
+    "continue",
     "ready",
     "ideas",
     "opendata",

@@ -24,6 +24,7 @@ from .pretraining import pretrain_backbone
 from .recovery import recover
 from .teacher import _teacher_targets, row_soft_targets
 from .trainer import Trainer, class_weight
+from .warm import replay, warm_start
 
 PATIENCE = 4
 
@@ -143,11 +144,15 @@ def _fit(
     ds = Dataset(data_dir)
     mod = get_modality(spec, str(data_dir))
     train_rows, dev_rows, n_folded = split_rows(spec, ds, rng, log, splits)
+    if spec.train.init_from:
+        train_rows += replay(spec, train_rows, dev_rows + ds.load("test"), rng, log)
     log(f"  loading {len(train_rows)} train / {len(dev_rows)} dev examples")
     train_raw = mod.load_many(train_rows)
     dev_raw = mod.load_many(dev_rows)
     train_t = targets_of(spec, mod, train_rows)
     model, n_params = _build(spec, mod, dev, log)
+    if spec.train.init_from:
+        warm_start(model, spec, log)
     tc = spec.train
     t0 = time.time()
     jepa_hist = pretrain_backbone(spec, model, mod, ds, train_raw, dev, log, seed)

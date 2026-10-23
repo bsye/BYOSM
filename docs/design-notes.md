@@ -1187,3 +1187,7 @@ The Apple GPU used to be split into fixed shares (90% divided by the slot count,
 ## Pretraining reads shorter text
 
 LeJEPA pretraining passes six views of every input through the encoder with gradients (two masked copies at full length and four crops), so its memory is six times that of a fine-tuning batch and grows with the square of the length. When fine-tuning reads more than 256 tokens, pretraining now reads at most 256: it only adapts the encoder to the domain's language and does not need the whole input. If memory still runs out at the smallest batch, the retry trains without pretraining instead of failing the job.
+
+## Continuing a trained model
+
+`byosm continue <name> [--from v4] [--data new.csv]` makes an experiment whose `train.init_from` names its parent. Training then loads the parent's weights instead of the raw backbone: every tensor of the same shape is kept, and for a head whose labels changed each label keeps its row and new labels start fresh. Pretraining is skipped because the encoder is already adapted. The recipe is gentler, half the parent's encoder learning rate and at most three epochs, and when the data changed, half as many rows again are replayed from the parent's training set (never rows in the new dev or test), so the model learns the new rows without forgetting the old ones. A new table is checked like `check-data` before anything trains. The continued experiment is selected against its parent on calib like any other.

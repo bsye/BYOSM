@@ -140,6 +140,7 @@ class TrainCfg(BaseModel):
     seed: int = 0
     holdout_test: Literal["auto", "keep", "train"] = "auto"
     precision: Literal["auto", "fp32", "bf16", "fp16"] = "auto"
+    init_from: str | None = None
     distill_from: str | None = None
     distill_alpha: float = 0.3
     distill_temperature: float = 2.0
