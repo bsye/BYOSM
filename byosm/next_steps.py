@@ -10,6 +10,7 @@ from .finetuned_rivals import benchmarks
 from .health import CREDIT, FAIL, OK, UNKNOWN, checks
 from .held_out import bigger_held_out
 from .improve.proposals import PROPOSALS
+from .next_fixes import faster, less_overfit
 from .project import Project
 from .spec import TaskSpec
 
@@ -25,6 +26,8 @@ STEP_CHECKS = {
     "experiments": EXPERIMENT_CHECKS,
     "propose": EXPERIMENT_CHECKS,
     "overfit": ("overfit",),
+    "fix-overfit": ("overfit",),
+    "faster": ("speed",),
     "robust": ("robust",),
     "export": ("export",),
 }
@@ -127,12 +130,14 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         return [{**first, "gain": None, "unblocks": []}]
     prim = spec.primary_suite()
     check = data_check(p, spec)
+    cs = checks(p, spec)
     steps = [
         _held_out(p, check),
         _more_data(p, check),
         _finetuned(p, spec),
         _rivals(p, spec, prim),
+        less_overfit(p, spec, cs),
+        faster(p, spec, cs),
         _experiments(p),
     ]
-    cs = checks(p, spec)
     return [_with_gain(s, cs) for s in [s for s in steps if s] + _from_checks(p, spec)]
