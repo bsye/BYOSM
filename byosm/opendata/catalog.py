@@ -6,6 +6,7 @@ import urllib.request
 from typing import Any
 
 CKAN_PORTALS = {"data.gov.ie": "https://data.gov.ie", "data.gov.uk": "https://ckan.publishing.service.gov.uk"}
+CKAN_PAGES = {"data.gov.uk": "https://data.gov.uk"}
 EU_PORTAL = "data.europa.eu"
 EU_SEARCH = "https://data.europa.eu/api/hub/search/search"
 EU_DATASET = "https://data.europa.eu/data/datasets/"
@@ -31,9 +32,13 @@ def _tabular(fmt: str) -> bool:
     return fmt.upper().strip(".") in TABULAR
 
 
-def _ckan(portal: str, query: str) -> list[dict[str, Any]]:
-    q = urllib.parse.urlencode({"q": query, "rows": PER_SOURCE})
-    found = _get(f"{CKAN_PORTALS[portal]}/api/3/action/package_search?{q}")["result"]["results"]
+def ckan_search(base: str, query: str, rows: int = PER_SOURCE) -> list[dict[str, Any]]:
+    q = urllib.parse.urlencode({"q": query, "rows": rows})
+    return _get(f"{base.rstrip('/')}/api/3/action/package_search?{q}")["result"]["results"]
+
+
+def _ckan(portal: str, query: str, base: str) -> list[dict[str, Any]]:
+    found = ckan_search(base, query)
     return [
         {
             "source": portal,
@@ -42,7 +47,7 @@ def _ckan(portal: str, query: str) -> list[dict[str, Any]]:
             "publisher": (p.get("organization") or {}).get("title", ""),
             "licence": p.get("license_title") or p.get("license_id") or "",
             "modified": p.get("metadata_modified", "")[:10],
-            "url": f"https://{portal}/dataset/{p['name']}",
+            "url": f"{CKAN_PAGES.get(portal, base).rstrip('/')}/dataset/{p['name']}",
             "notes": (p.get("notes") or "")[:400],
             "files": [
                 {
@@ -90,12 +95,23 @@ def _eu(query: str) -> list[dict[str, Any]]:
     ]
 
 
-def search(query: str, sources: list[str] | None = None) -> list[dict[str, Any]]:
-    wanted = sources or [*CKAN_PORTALS, EU_PORTAL]
+CKAN, SOCRATA = "ckan", "socrata"
+
+
+def search(
+    query: str, sources: list[str] | None = None, extra: list[dict[str, str]] | None = None
+) -> list[dict[str, Any]]:
+    from .socrata import socrata
+
+    known = {n: (CKAN, u) for n, u in CKAN_PORTALS.items()} | {s["name"]: (s["kind"], s["url"]) for s in extra or []}
     out: list[dict[str, Any]] = []
-    for source in wanted:
+    for source in sources or [*known, EU_PORTAL]:
         try:
-            out += _eu(query) if source == EU_PORTAL else _ckan(source, query)
+            if source == EU_PORTAL:
+                out += _eu(query)
+            else:
+                kind, base = known[source]
+                out += socrata(source, query, base) if kind == SOCRATA else _ckan(source, query, base)
         except (OSError, ValueError, KeyError):
             continue
     return [d for d in out if d["files"]]

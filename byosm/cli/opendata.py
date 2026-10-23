@@ -24,3 +24,13 @@ def search(query: str) -> None:
 
     for d in find(query):
         log(f"- [{d['source']}] {d['title']} ({d['licence']}): {', '.join(f['format'] for f in d['files'])}")
+
+
+@opendata_app.command("find")
+def find(request: str) -> None:
+    """Find open data for a request: the LLM searches the web and names portal searches, tables and new portals."""
+    from ..config import find_workspace
+    from ..opendata.finder import find as look
+
+    for d in look(find_workspace(), request, log)["datasets"]:
+        log(f"- [{d['source']}] {d['title']}: {', '.join(f['format'] for f in d['files'])}")

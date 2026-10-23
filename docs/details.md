@@ -14,6 +14,7 @@
 | ✅ Auto until ready for production | ✅ Ablations with matched seeds | ✅ Machine, GPU and memory live | ✅ Each model in its own container |
 | ✅ Labels derived from content | ✅ Cost and break-even against LLMs | ✅ Waits for LLM limits, or goes local | ✅ Teams deploy like models |
 | ✅ Ideas researched on the web | ✅ Next step for each failing check | ✅ GPU queue that cannot freeze the machine | ✅ Datasets published with answers |
+| ✅ Open data found by asking | ✅ Leakage check for register snapshots | ✅ Sources the LLM discovers, saved | ✅ Tables cached once per machine |
 
 ## Command line
 
@@ -43,6 +44,7 @@ byosm export vad && byosm predict vad clip.wav
 | `byosm containerize <name> [--tag t]` | a small non-root Docker image that serves one exported bundle |
 | `byosm publish <name> --repo <id>` | push to Hugging Face with a generated model card |
 | `byosm bench <a> <b> ...` | specialists vs one generalist (not run yet, see [Goal and bet](assumptions.md)) |
+| `byosm opendata find "<request>"` | the LLM searches the web for tables, adds the portals it discovers to your sources and searches them (CKAN and Socrata) |
 | `byosm report [--check]` | regenerate the tables in [Results](results.md) |
 
 Self-host with Docker: `BYOSM_APP_TOKEN=$(openssl rand -base64 32) docker compose -f docker/compose.yaml up`, then open

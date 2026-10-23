@@ -16,6 +16,15 @@ class Url(BaseModel):
     url: str
 
 
+class Source(BaseModel):
+    url: str
+    name: str = ""
+
+
+class Request(BaseModel):
+    request: str
+
+
 def _table(url: str, file: str | None = None) -> Path:
     from ..opendata.cache import table
 
@@ -31,8 +40,39 @@ def opendata_router(ws: Path) -> APIRouter:
     @router.get("/api/opendata/search")
     def search(q: str, source: str | None = None) -> list[dict[str, Any]]:
         from ..opendata.catalog import search as find
+        from ..opendata.sources import portals
 
-        return find(q, [source] if source else None)
+        return find(q, [source] if source else None, portals(ws))
+
+    @router.get("/api/opendata/sources")
+    def listed() -> list[dict[str, Any]]:
+        from ..opendata.sources import listed as all_sources
+
+        return all_sources(ws)
+
+    @router.post("/api/opendata/sources")
+    def add_source(body: Source) -> list[dict[str, Any]]:
+        from ..opendata.sources import add
+
+        return add(ws, body.url, body.name)
+
+    @router.post("/api/opendata/sources/remove")
+    def drop_source(body: Url) -> list[dict[str, Any]]:
+        from ..opendata.sources import remove
+
+        return remove(ws, body.url)
+
+    @router.get("/api/opendata/requests")
+    def requests() -> list[dict[str, Any]]:
+        from ..opendata.finder import requests as asked
+
+        return asked(ws)
+
+    @router.post("/api/opendata/requests/remove")
+    def drop_request(body: Request) -> list[dict[str, Any]]:
+        from ..opendata.finder import forget
+
+        return forget(ws, body.request)
 
     @router.get("/api/opendata/library")
     def library() -> list[dict[str, Any]]:

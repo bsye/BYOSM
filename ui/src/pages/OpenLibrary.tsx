@@ -21,69 +21,69 @@ export function OpenLibrary() {
       <Empty>
         <EmptyHeader>
           <EmptyTitle>Nothing kept yet</EmptyTitle>
-          <EmptyDescription>Search open data and keep the tables worth training on.</EmptyDescription>
+          <EmptyDescription>Find data and keep the tables worth training on.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     )
   return (
     <div className="space-y-4">
-    <JoinBuilder kept={kept} />
-    <Card>
-      <CardHeader>
-        <CardTitle>Kept open data</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Dataset</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Licence</TableHead>
-              <TableHead>File</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((k) => (
-              <TableRow key={k.file.url}>
-                <TableCell className="max-w-64 truncate font-medium">
-                  <a className="hover:underline" href={k.url} target="_blank" rel="noreferrer">
-                    {k.title}
-                  </a>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{k.source}</Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground max-w-40 truncate">{k.licence}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  <Badge variant={k.cached ? "secondary" : "outline"}>{k.cached ? "Downloaded" : k.file.format}</Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    {k.cached ? (
-                      <Button size="sm" variant="outline" onClick={() => setShown({ url: k.file.url, title: k.title })}>
-                        <Eye />
-                        Preview
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" onClick={() => void download(k.file.url)}>
-                        <Download />
-                        Download
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" aria-label="Remove from the library" onClick={() => void forget(k.file.url).then(setKept)}>
-                      <Trash2 />
-                    </Button>
-                  </div>
-                </TableCell>
+      <Card>
+        <CardHeader>
+          <CardTitle>Kept tables</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Dataset</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Licence</TableHead>
+                <TableHead>File</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-      {footer}
-      <DataPreview path={shown ? filePreview(shown.url) : null} title={shown?.title ?? ""} onClose={() => setShown(null)} />
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {rows.map((k) => (
+                <TableRow key={k.file.url}>
+                  <TableCell className="max-w-64 truncate font-medium">
+                    <a className="hover:underline" href={k.url} target="_blank" rel="noreferrer">
+                      {k.title}
+                    </a>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{k.source}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground max-w-40 truncate">{k.licence}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <Badge variant={k.cached ? "secondary" : "outline"}>{k.cached ? "Downloaded" : k.file.format}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      {k.cached ? (
+                        <Button size="sm" variant="outline" onClick={() => setShown({ url: k.file.url, title: k.title })}>
+                          <Eye />
+                          Preview
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => void download(k.file.url)}>
+                          <Download />
+                          Download
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" aria-label="Remove from the library" onClick={() => void forget(k.file.url).then(setKept)}>
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+        {footer}
+        <DataPreview path={shown ? filePreview(shown.url) : null} title={shown?.title ?? ""} onClose={() => setShown(null)} />
+      </Card>
+      <JoinBuilder kept={kept} />
     </div>
   )
 }

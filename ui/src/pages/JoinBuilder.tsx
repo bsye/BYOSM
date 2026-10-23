@@ -17,7 +17,7 @@ function TablePick({ kept, value, onChange, label }: { kept: Kept[]; value: stri
       <SelectContent>
         {kept.map((k) => (
           <SelectItem key={k.file.url} value={k.file.url}>
-            {k.title} ({k.file.name})
+            {k.file.name && k.file.name !== k.title ? `${k.title}: ${k.file.name}` : k.title}
           </SelectItem>
         ))}
       </SelectContent>
