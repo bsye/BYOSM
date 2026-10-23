@@ -5,6 +5,7 @@ import secrets
 import threading
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -28,7 +29,7 @@ from .try_routes import try_router
 from .workbench_routes import workbench_router
 
 STATIC_DIR = Path(__file__).parent / "static"
-LOCAL_HOSTS = ["127.0.0.1", "localhost"]
+LOCAL_HOSTS = ["127.0.0.1", "localhost", "::1"]
 BEARER = "Bearer "
 UNAUTHORIZED_CLOSE = 4401
 WARM_MODULE = "byosm.export.bundle"
@@ -45,6 +46,10 @@ class KeyValue(BaseModel):
 
 class PredictRequest(BaseModel):
     input: str
+
+
+def allowed_origin(origin: str, hosts: list[str]) -> bool:
+    return not origin or urlsplit(origin).hostname in [*LOCAL_HOSTS, *hosts]
 
 
 def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None:
@@ -136,10 +141,11 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.websocket("/api/events")
     async def events(sock: WebSocket, token: str = "") -> None:
+        if not allowed_origin(sock.headers.get("origin", ""), app.state.hosts):
+            return await sock.close(code=UNAUTHORIZED_CLOSE)
         await sock.accept()
         if app.state.token and not secrets.compare_digest(token, app.state.token):
-            await sock.close(code=UNAUTHORIZED_CLOSE)
-            return
+            return await sock.close(code=UNAUTHORIZED_CLOSE)
         sub = hub.subscribe()
         try:
             for j in runner.jobs.values():
@@ -160,7 +166,8 @@ def create_app(
     register_on_main_thread()
     app = FastAPI(title="byosm", summary="Local API over the BYOSM pipeline")
     app.state.token = token
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*LOCAL_HOSTS, *(hosts or [])])
+    app.state.hosts = hosts or []
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*LOCAL_HOSTS, *app.state.hosts])
     lock = claim(ws, port)
     hub = Hub()
     runner = Runner(ws, hub, parallel)
@@ -168,7 +175,9 @@ def create_app(
     app.state.runner = runner
     app.router.on_shutdown.append(runner.shutdown)
 
-    def check(authorization: str = Header("")) -> None:
+    def check(authorization: str = Header(""), origin: str = Header("")) -> None:
+        if not allowed_origin(origin, app.state.hosts):
+            raise HTTPException(403, "requests from another site are not allowed")
         given = authorization[len(BEARER) :] if authorization.startswith(BEARER) else ""
         if token and not secrets.compare_digest(given, token):
             raise HTTPException(401, "missing or wrong token: open the link `byosm app` printed")

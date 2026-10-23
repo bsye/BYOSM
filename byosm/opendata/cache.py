@@ -17,6 +17,7 @@ LOG_EVERY = 0.1
 TIMEOUT_S = 60
 HEAD_TIMEOUT_S = 10
 TABLE_SUFFIXES = (".csv", ".tsv", ".xlsx", ".xls", ".json", ".parquet")
+UNSAFE_NAMES = ("", ".", "..")
 
 
 def _root() -> Path:
@@ -32,7 +33,8 @@ def folder(url: str) -> Path:
 def _name(url: str, headers: Any) -> str:
     disposition = headers.get("Content-Disposition") or ""
     _, _, given = disposition.partition("filename=")
-    return given.strip('"; ') or Path(urllib.parse.urlparse(url).path).name or "data"
+    candidates = (given.strip('"; '), urllib.parse.urlparse(url).path)
+    return next((n for n in (Path(c).name for c in candidates) if n not in UNSAFE_NAMES), "data")
 
 
 def _download(url: str, out: Path, log: Callable[[str], None], max_mb: float | None) -> Path:

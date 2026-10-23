@@ -15,6 +15,7 @@ MODEL_PORT = 8800
 DOCKERFILE = Path(__file__).resolve().parents[1] / "docker" / "model.Dockerfile"
 CPUS = "1"
 MEMORY = "1g"
+TMPFS = "/tmp:size=256m"
 PREFIX = "byosm-"
 REQUIREMENTS = "requirements.txt"
 TIMEOUT_S = 30
@@ -84,7 +85,7 @@ def build(name: str, bundle: Path, log: Callable[[str], None] = print, tag: str 
 def deploy(name: str, log: Callable[[str], None] = print) -> dict[str, Any]:
     stop(name)
     port = _free_port()
-    flags = ["--rm", "--read-only", "--cpus", CPUS, "--memory", MEMORY, "--label", f"{LABEL}={name}"]
+    flags = ["--rm", "--read-only", "--tmpfs", TMPFS, "--cpus", CPUS, "--memory", MEMORY, "--label", f"{LABEL}={name}"]
     started = _run(
         "run", "-d", "--name", image_of(name), "-p", f"127.0.0.1:{port}:{MODEL_PORT}", *flags, image_of(name)
     )
