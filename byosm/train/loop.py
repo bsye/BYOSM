@@ -19,7 +19,7 @@ from ..model import SpecialistModel, count_params
 from ..spec import TaskSpec
 from .common import build_model, cpu_state, targets_of
 from .evaluate import evaluate_rows
-from .gpu import gpu_slot
+from .gpu import gpu_slot, shrink_on_oom
 from .outputs import build_meta, save_run
 from .teacher import _teacher_targets, row_soft_targets
 from .trainer import Trainer, class_weight
@@ -144,7 +144,7 @@ def fit(
 ) -> tuple[dict[str, Any], list[Any]]:
     dev = pick_device()
     with gpu_slot(dev, log):
-        return _fit(spec, data_dir, run_dir, log, seed, splits, dev)
+        return shrink_on_oom(spec, lambda s: _fit(s, data_dir, run_dir, log, seed, splits, dev), log)
 
 
 def _fit(

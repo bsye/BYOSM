@@ -60,3 +60,31 @@ def test_a_training_waits_while_memory_is_short(ws, monkeypatch):
     with gpu.gpu_slot("cuda", log=lines.append):
         pass
     assert any("waiting" in line for line in lines) and any("got the GPU" in line for line in lines)
+
+
+def test_running_out_of_gpu_memory_halves_the_batch_until_it_fits():
+    from byosm.spec import Label, TaskSpec
+    from byosm.train.gpu import shrink_on_oom
+
+    spec = TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
+    tried = []
+
+    def train(s):
+        tried.append(s.train.batch_size)
+        if s.train.batch_size > 8:
+            raise RuntimeError("MPS backend out of memory (MPS allocated: 24.02 GiB)")
+        return {"ok": True}, []
+
+    meta, _ = shrink_on_oom(spec, train, log=lambda _: None)
+    assert tried == [32, 16, 8] and meta == {"ok": True, "batch_size": 8}
+
+
+def test_other_errors_are_not_retried():
+    import pytest
+
+    from byosm.spec import Label, TaskSpec
+    from byosm.train.gpu import shrink_on_oom
+
+    spec = TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
+    with pytest.raises(RuntimeError, match="shape mismatch"):
+        shrink_on_oom(spec, lambda s: (_ for _ in ()).throw(RuntimeError("shape mismatch")), log=lambda _: None)

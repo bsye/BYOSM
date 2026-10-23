@@ -1046,7 +1046,9 @@ process showed 0.5 GB. Each training therefore caps PyTorch's MPS allocator at 9
 divided by the slots, so two trainings cannot take more than the GPU has, and one that needs more fails with an
 out-of-memory error instead of freezing the machine. The machine card shows the wired memory. A training also waits for its slot until
 16 GB of RAM is free, so a third heavy job cannot push the machine over, and the app shows a banner while less than 8
-GB is free.
+GB is free. When a training still runs out of its share (ModernBERT-base with LeJEPA's two views at batch 32
+needed 24 GB), `fit` halves the batch and retries, up to three times, and records the batch it trained with in the
+run's metadata.
 
 ## Each model in its own container
 

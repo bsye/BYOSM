@@ -5,6 +5,9 @@ import fcntl
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
+
+from ..spec import TaskSpec
 
 GPU_DEVICES = ("mps", "cuda")
 SLOTS_KEY = "gpu_jobs"
@@ -12,6 +15,8 @@ MAX_AUTO_SLOTS = 2
 CORES_PER_TRAINING = 8
 GB_PER_TRAINING = 16
 MPS_SHARE = 0.9
+OOM_RETRIES = 3
+MIN_BATCH = 4
 LOCK_DIR = Path(".byosm") / "gpu"
 WAIT_S = 5
 
@@ -106,3 +111,29 @@ def busy_slots(ws: Path) -> int:
             fcntl.flock(handle, fcntl.LOCK_UN)
             handle.close()
     return held
+
+
+def out_of_memory(e: RuntimeError) -> bool:
+    return "out of memory" in str(e).lower()
+
+
+def halved(spec: TaskSpec, log: Callable[[str], None]) -> TaskSpec:
+    import torch
+
+    size = spec.train.batch_size // 2
+    log(f"  out of GPU memory at batch {spec.train.batch_size}: retrying at batch {size}")
+    if torch.backends.mps.is_available():
+        torch.mps.empty_cache()
+    return spec.model_copy(update={"train": spec.train.model_copy(update={"batch_size": size})})
+
+
+def shrink_on_oom(spec: TaskSpec, train: Callable[[TaskSpec], tuple[dict, Any]], log: Callable[[str], None]):
+    for attempt in range(OOM_RETRIES + 1):
+        try:
+            meta, rest = train(spec)
+            return {**meta, "batch_size": spec.train.batch_size}, rest
+        except RuntimeError as e:
+            if not out_of_memory(e) or attempt == OOM_RETRIES or spec.train.batch_size < 2 * MIN_BATCH:
+                raise
+            spec = halved(spec, log)
+    raise RuntimeError("out of GPU memory at every batch size tried")
