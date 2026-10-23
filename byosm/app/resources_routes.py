@@ -24,6 +24,12 @@ def resources_router(ws: Path) -> APIRouter:
 
         return probe(ws)
 
+    @router.get("/api/machine/memory")
+    def memory() -> dict[str, Any]:
+        from ..machine import memory as probe
+
+        return probe()
+
     @router.get("/api/opportunities")
     def opportunities() -> list[dict[str, Any]]:
         from ..opportunities import trending

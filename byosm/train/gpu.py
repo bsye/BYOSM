@@ -34,6 +34,16 @@ def slots() -> int:
     return max(1, int(load_config().get(SLOTS_KEY) or auto_slots()))
 
 
+def free_gb() -> float:
+    import psutil
+
+    return psutil.virtual_memory().available / 1024**3
+
+
+def _roomy() -> bool:
+    return free_gb() >= GB_PER_TRAINING
+
+
 def _try(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     handle = path.open("w")
@@ -66,11 +76,13 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
 
     base, waited = find_workspace() / LOCK_DIR, 0.0
     while True:
-        handle = next((h for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None)
+        handle = next((h for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if _roomy() else None
         if handle:
             break
         if not waited:
-            log(f"  waiting for the {device} GPU: another job is training on it")
+            log(
+                f"  waiting for the {device} GPU: another job is training on it, or less than {GB_PER_TRAINING} GB is free"
+            )
             emit("gpu", state="waiting")
         time.sleep(WAIT_S)
         waited += WAIT_S

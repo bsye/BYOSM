@@ -24,6 +24,7 @@ import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
 import { useRoute } from "@/route"
 import { LimitBanner } from "@/components/limit-banner"
+import { MemoryBanner } from "@/components/memory-banner"
 
 function Page({ route }: { route: string[] }) {
   const [section = "home", id] = route
@@ -74,6 +75,7 @@ function Shell() {
             <div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
               {live.unauthorized && <TokenPrompt />}
               <LimitBanner />
+              <MemoryBanner />
               <ErrorBoundary resetKey={route.join("/")}>
                 <Page route={route} />
               </ErrorBoundary>

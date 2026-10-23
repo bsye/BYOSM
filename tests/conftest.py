@@ -147,6 +147,13 @@ def no_web_research(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def gpu_memory_is_free(monkeypatch):
+    from byosm.train import gpu
+
+    monkeypatch.setattr(gpu, "free_gb", lambda: float(gpu.GB_PER_TRAINING))
+
+
+@pytest.fixture(autouse=True)
 def fresh_shared_database():
     import os
 

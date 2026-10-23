@@ -20,6 +20,7 @@ UNIFIED_MEMORY_SHARE = 0.75
 BYOSM_PROCESS = "byosm"
 TYPICAL_ROWS = 10_000
 CPU_SAMPLE_S = 0.2
+LOW_MEMORY_GB = 8
 TYPICAL_EPOCHS = 4
 
 
@@ -92,6 +93,21 @@ def backbones(ws: Path) -> list[dict[str, Any]]:
             }
         )
     return sorted(out, key=lambda b: b["params"])
+
+
+def memory() -> dict[str, Any]:
+    import psutil
+
+    from .train.gpu import GB_PER_TRAINING
+
+    mem = psutil.virtual_memory()
+    return {
+        "available": mem.available,
+        "wired": getattr(mem, "wired", 0),
+        "total": mem.total,
+        "low_gb": LOW_MEMORY_GB,
+        "training_gb": GB_PER_TRAINING,
+    }
 
 
 def machine(ws: Path) -> dict[str, Any]:
