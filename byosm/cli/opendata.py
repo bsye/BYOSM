@@ -100,3 +100,17 @@ def options_new(
     p = Project(name).ensure()
     p.save_spec(spec_for(name, build_table(ws, name, source, situations, log)))
     log(f"saved {name}: run `byosm build {name}` to train it")
+
+
+@options_app.command("score")
+def options_score(
+    name: str, threshold: float = typer.Option(0.5, help="an option is chosen at or above this chance")
+) -> None:
+    """Score the exported specialist per request: exactly the right tools chosen, and no tool when none fits."""
+    from ..config import find_workspace
+    from ..options.select import score_export
+
+    out = score_export(find_workspace(), name, threshold)
+    for part in ("exact", "tool_needed", "no_tool"):
+        s = out[part]
+        log(f"  {part}: {s['accuracy']} ({s['ci'][0]} to {s['ci'][1]}) on {s['n']} requests")

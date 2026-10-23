@@ -12,6 +12,7 @@ from .pairs import FITS
 THRESHOLD = 0.5
 BOOTSTRAP = 1000
 SEED = 0
+REPORT_PREFIX = "options:"
 
 
 def groups(table: Path, split: str = "test") -> dict[str, list[dict[str, str]]]:
@@ -53,3 +54,22 @@ def score(table: Path, chance: Callable[[list[str]], list[float]], threshold: fl
         exact.append(hit)
         (some if truth else none).append(hit)
     return {"threshold": threshold, "exact": _share(exact), "tool_needed": _share(some), "no_tool": _share(none)}
+
+
+def score_export(ws: Path, name: str, threshold: float = THRESHOLD) -> dict[str, Any]:
+    import time
+
+    from ..db import get_or_add, session
+    from ..db.models import WorkspaceReport
+    from ..project import Project
+    from ..rt import load
+    from .create import table_path
+
+    model = load(Project(name).root / "export", threads=4)
+    result = {
+        "at": time.time(),
+        **score(table_path(ws, name), lambda texts: [model.predict(t)["probs"][FITS] for t in texts], threshold),
+    }
+    with session(ws) as s:
+        get_or_add(s, WorkspaceReport, kind=REPORT_PREFIX + name).data = result
+    return result
