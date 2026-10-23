@@ -52,17 +52,23 @@ def continue_training(
     epochs: Annotated[int | None, typer.Option(help="epochs to train for (default: up to 3)")] = None,
     run: Annotated[bool, typer.Option("--run", help="train it right away")] = False,
 ) -> None:
-    """Keep training a model from its weights on more data, gently enough that it keeps what it learned."""
+    """Keep training a model from its weights: without options it reads the model's health and dev errors, writes rows aimed at them and picks the recipe."""
     from ..config import find_workspace, load_config
     from ..data.check import check
     from ..pipeline import build, next_exp
+    from ..train.plan import plan
     from ..train.warm import continued
 
     p, base = _spec(name)
     parent = start or p.promoted
     if not parent:
         raise typer.BadParameter(f"{name} has no trained experiment to continue from yet")
-    spec = continued(p.exp_spec(parent), parent, epochs)
+    exp = next_exp(p)
+    if data or epochs:
+        spec = continued(p.exp_spec(parent), parent, epochs)
+    else:
+        log(f"[plan] reading the health and dev errors of {parent}")
+        spec = plan(p, parent, exp, load_config(p.ws), log)
     if data:
         table = data if data.is_absolute() else find_workspace() / data
         report = check(spec, p, table.resolve(), True, load_config(p.ws), log)
@@ -70,7 +76,6 @@ def continue_training(
             log(report["markdown"])
             raise typer.Exit(1)
         spec.data.local_dir = str(table.resolve())
-    exp = next_exp(p)
     why = f"continue {parent} at learning rate {spec.train.lr_backbone:g} for {spec.train.epochs} epochs"
     p.save_experiment(
         exp, spec=spec, proposal={"parent": parent, "applied": [{"id": "continue", "why": why, "ops": []}]}

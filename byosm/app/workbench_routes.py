@@ -56,6 +56,16 @@ def _choose(ws: Path, name: str, models: list[str]) -> dict[str, Any]:
 def workbench_router(ws: Path) -> APIRouter:
     router = APIRouter()
 
+    @router.get("/api/specialists/{name}/continue-plan")
+    def continue_plan(name: str) -> dict[str, Any]:
+        from ..train.plan import recipe
+
+        p, _ = missing(_project, ws, name)
+        if not p.promoted:
+            return {"from": None, "reasons": []}
+        spec, reasons, _ = recipe(p, p.promoted)
+        return {"from": p.promoted, "epochs": spec.train.epochs, "reasons": reasons}
+
     @router.get("/api/specialists/{name}/written")
     def written(name: str) -> list:
         return missing(_sets, ws, name)

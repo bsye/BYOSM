@@ -39,3 +39,53 @@ def test_a_continued_experiment_starts_from_its_parent_weights(ws, capfd):
     build("isq", exp, log=print)
     assert "continuing from v1" in capfd.readouterr().out
     assert p.board()[exp]["builtin"]["objective"] > 0.8
+
+
+class _Project:
+    promoted = "v2"
+
+    def __init__(self, checks, meta):
+        self._meta = meta
+        self.checks = checks
+
+    def exp_spec(self, exp):
+        return TaskSpec(
+            name="q",
+            description="q",
+            modality="text",
+            labels=[Label(name="a", definition=""), Label(name="b", definition="")],
+        )
+
+    def experiment(self, exp):
+        return {"meta": self._meta, "errors": []}
+
+
+def _recipe(monkeypatch, checks, meta):
+    import byosm.train.plan as plan
+
+    monkeypatch.setattr(plan, "_health", lambda p, parent: {c["id"]: c for c in checks})
+    return plan.recipe(_Project(checks, meta), "v2")
+
+
+def test_an_overfitting_model_is_continued_gently(monkeypatch):
+    spec, reasons, _ = _recipe(monkeypatch, [{"id": "overfit", "status": "warn", "value": "warn"}], {})
+    assert spec.train.epochs == 1 and "overfitting" in reasons[0]
+
+
+def test_a_model_behind_its_target_and_still_improving_gets_more_epochs(monkeypatch):
+    meta = {"history": [{}, {}, {}], "best_epoch": 2}
+    spec, reasons, _ = _recipe(monkeypatch, [{"id": "target", "status": "warn", "value": "0.90 of 0.94"}], meta)
+    assert spec.train.epochs > 3 and "still improving" in reasons[0]
+
+
+def test_problems_training_cannot_fix_are_named_with_what_to_do_instead(monkeypatch):
+    _, reasons, _ = _recipe(monkeypatch, [{"id": "speed", "status": "fail", "value": "30 of 10 ms"}], {})
+    assert any("distill" in r for r in reasons)
+
+
+def test_errors_on_the_weakest_label_come_first():
+    from byosm.train.plan import _aimed
+
+    errors = [{"gold": "x", "pred": "y"}, {"gold": "weak", "pred": "y"}, {"gold": "z", "pred": "weak"}]
+    out = _aimed(errors, {"weakest": {"id": "weakest", "status": "warn", "value": "weak 0.79"}})
+    assert [e["gold"] for e in out] == ["weak", "z", "x"]
