@@ -45,7 +45,10 @@ byosm export vad && byosm predict vad clip.wav
 | `byosm bench <a> <b> ...` | specialists vs one generalist (not run yet, see [Goal and bet](assumptions.md)) |
 | `byosm report [--check]` | regenerate the tables in [Results](results.md) |
 
-Self-host with Docker: `BYOSM_APP_TOKEN=<long random string> docker compose -f docker/compose.yaml up`.
+Self-host with Docker: `BYOSM_APP_TOKEN=$(openssl rand -base64 32) docker compose -f docker/compose.yaml up`, then open
+`http://<host>:8765/#token=<that token>`. The container runs read-only, without capabilities, as a non-root user; the
+API refuses requests without the token. Checked on 2026-10-23: the image builds, the API answers 401 without the token,
+and jobs run inside the read-only container.
 
 ## Modalities
 
