@@ -86,13 +86,18 @@ def test_on_cuda_running_out_of_memory_halves_the_batch_until_it_fits(ws):
     assert tried == [32, 16, 8] and meta == {"ok": True, "batch_size": 8}
 
 
-def test_on_apple_gpus_the_job_stops_and_the_next_run_starts_at_half(ws):
+def test_on_apple_gpus_the_job_restarts_itself_at_half_the_batch(ws, monkeypatch):
     import pytest
 
+    import byosm.train.gpu as gpu
     from byosm.train.gpu import shrink_on_oom
 
+    def restart(log, why):
+        raise SystemExit(why)
+
+    monkeypatch.setattr(gpu, "restart", restart)
     tried = []
-    with pytest.raises(RuntimeError, match="next run starts at batch 16"):
+    with pytest.raises(SystemExit, match="restarting at batch 16"):
         shrink_on_oom(_spec(), _train(tried, 16), log=lambda _: None, device="mps")
     meta, _ = shrink_on_oom(_spec(), _train(tried, 16), log=lambda _: None, device="mps")
     assert tried == [32, 16] and meta["batch_size"] == 16

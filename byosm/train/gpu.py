@@ -140,6 +140,16 @@ def _with_batch(spec: TaskSpec, size: int) -> TaskSpec:
     return spec.model_copy(update={"train": spec.train.model_copy(update={"batch_size": size})})
 
 
+def restart(log: Callable[[str], None], why: str) -> None:
+    import os
+    import sys
+
+    log(f"  {why} in a fresh process")
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os.execv(sys.executable, sys.orig_argv)
+
+
 def batch_key(spec: TaskSpec) -> str:
     return f"{spec.modality}|{spec.backbone}"
 
@@ -164,9 +174,7 @@ def shrink_on_oom(
                 raise
             _remember(ws, key, size)
             if device not in RETRY_IN_PROCESS:
-                raise RuntimeError(
-                    f"out of GPU memory at batch {spec.train.batch_size}; the next run starts at batch {size}"
-                ) from e
+                restart(log, f"out of GPU memory at batch {spec.train.batch_size}; restarting at batch {size}")
             log(f"  out of GPU memory at batch {spec.train.batch_size}: retrying at batch {size}")
             spec = _with_batch(spec, size)
     raise RuntimeError("out of GPU memory at every batch size tried")
