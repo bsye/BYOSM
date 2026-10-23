@@ -1093,3 +1093,9 @@ anywhere in the full right column, so a suggestion comes with the evidence for i
 rate on the left sample. CSVs are read with the separator sniffed once and the fast parser, which reads the 827,790-row
 CRO register's key column in under a second. Training on a joined table is the next step; the web-research agent is for
 sources no portal lists.
+
+## Snapshot datasets from registers
+
+A register (companies, licences, permits) is one row per entity with a start and an optional end date. `byosm/tabular/snapshots.py` turns it into a prediction task: for each cutoff year, keep the entities alive on 1 January, label whether they end within the horizon, and add their age. Train, calib and test are different cutoffs, and the last train cutoff plus the horizon must not pass the test cutoff, so no label is seen before the day the model would be used.
+
+A register is a snapshot of today, so any field rewritten after the cutoff can carry the answer. `byosm/tabular/leakage.py` scores each feature alone (one cutoff only, because the same entity repeats across cutoffs and would sit on both sides of a fold) and flags any with AUC of 0.85 or more, or whose missingness differs by 30 points between classes. On the Irish company register it caught two leaks: masking a field changed after the cutoff (only survivors get changed), and the company type, which the Companies Act 2014 rewrote for every company still alive in 2015 and 2016. Collapsing types to their pre-Act family removes it.
