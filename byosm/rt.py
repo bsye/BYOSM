@@ -409,6 +409,13 @@ class System:
     def _role(self, role: str) -> str | None:
         return next((k for k, n in self.m["nodes"].items() if n["role"] == role), None)
 
+    @property
+    def name(self) -> str:
+        return self.m["name"]
+
+    def predict(self, text: str) -> dict:
+        return self.run(text)
+
     def run(self, text: str, action: str | None = None) -> dict:
         router, tagger = self._role("router"), self._role("tagger")
         if action is None and router:
@@ -484,7 +491,7 @@ def _read_wav(path: str) -> np.ndarray:
 def _prep(m: Specialist, body: dict) -> Any:
     import base64
 
-    mod = m.m["modality"]
+    mod = m.m.get("modality", "text")
     if mod == "document" and "pdf_b64" in body:
         import tempfile
 
@@ -590,7 +597,7 @@ def _main(argv: list[str]) -> None:
     if a.cmd == "predict":
         _predict_cli(a.model, a.input)
     else:
-        serve([load(p) for p in a.models], a.host, a.port)
+        serve([System(p) if is_system(p) else load(p) for p in a.models], a.host, a.port)
 
 
 if __name__ == "__main__":

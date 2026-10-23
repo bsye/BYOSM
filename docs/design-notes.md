@@ -1066,4 +1066,7 @@ models: the image from `docker/model.Dockerfile` (python-slim, the bundle's requ
 filesystem, at most 1 CPU and 1 GB, published only on 127.0.0.1 at a free port, and labelled `byosm.specialist` so the
 app can find it again after a restart. The Deployments page lists them from `docker ps` and `docker stats`, refreshes
 every five seconds, and sends test inputs to the container itself, so the answer and its time are the container's own.
-`byosm undeploy NAME` stops it; a stopped container leaves nothing behind (`--rm`).
+`byosm undeploy NAME` stops it; a stopped container leaves nothing behind (`--rm`). A team deploys the same way: its bundle holds
+each member under `nodes/`, the image installs the union of their requirements, and the runtime answers
+`/v1/<team>/predict` with the team's action and tool call. Every build copies the current `rt.py` into the bundle, so an
+image never runs an older runtime than the app that built it.

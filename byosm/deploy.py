@@ -16,6 +16,7 @@ DOCKERFILE = Path(__file__).resolve().parents[1] / "docker" / "model.Dockerfile"
 CPUS = "1"
 MEMORY = "1g"
 PREFIX = "byosm-"
+REQUIREMENTS = "requirements.txt"
 TIMEOUT_S = 30
 READY_S = 60
 
@@ -41,19 +42,43 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
+def bundle_of(name: str) -> Path:
+    from .export.bundle import exported_bundle
+    from .project import Project
+    from .system import SystemProject
+
+    team = SystemProject(name)
+    if team.exists():
+        if not (team.export_dir / "system.json").exists():
+            raise ValueError(f"team {name} is not exported: run byosm system build {name}")
+        return team.export_dir
+    return exported_bundle(Project(name).root, name)
+
+
+def _requirements(bundle: Path) -> None:
+    own = bundle / REQUIREMENTS
+    if own.exists():
+        return
+    lines = {
+        ln.strip() for f in bundle.glob(f"nodes/*/{REQUIREMENTS}") for ln in f.read_text().splitlines() if ln.strip()
+    }
+    own.write_text("\n".join(sorted(lines)) + "\n")
+
+
 def build(name: str, bundle: Path, log: Callable[[str], None] = print, tag: str | None = None) -> str:
     if not DOCKERFILE.exists():
         raise RuntimeError(f"needs {DOCKERFILE} (a source checkout of byosm)")
+    from .export.bundle import RT_SOURCE
+    from .system.bundle import RT_NAME
+
+    _requirements(bundle)
+    shutil.copy(RT_SOURCE, bundle / RT_NAME)
     image = tag or image_of(name)
     log(f"  building {image} from {bundle}")
     built = subprocess.run([_docker(), "build", "-f", str(DOCKERFILE), "-t", image, str(bundle)])
     if built.returncode:
         raise RuntimeError(f"docker build failed with exit {built.returncode}")
     return image
-
-
-def has_image(name: str) -> bool:
-    return _run("image", "inspect", image_of(name)).returncode == 0
 
 
 def deploy(name: str, log: Callable[[str], None] = print) -> dict[str, Any]:

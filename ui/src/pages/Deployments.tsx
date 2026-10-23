@@ -1,6 +1,8 @@
-import { Container, Send, Square } from "lucide-react"
+import { Container, Rocket, Send, Square } from "lucide-react"
 import { useEffect, useState } from "react"
-import { api, post } from "@/api"
+import { api, post, runJob, type Summary } from "@/api"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { openJob } from "@/job-sheet"
 import { InfoTip } from "@/components/info-tip"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -45,7 +47,7 @@ function TryIt({ name }: { name: string }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex gap-2">
-          <Input value={text} placeholder="an input to classify" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && text && send()} />
+          <Input value={text} placeholder="an input to send" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && text && send()} />
           <Button disabled={!text} onClick={send}>
             <Send />
             Send
@@ -54,7 +56,12 @@ function TryIt({ name }: { name: string }) {
         {error && <p className="text-destructive text-sm">{error}</p>}
         {out && (
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge>{String(out.answer.label ?? JSON.stringify(out.answer).slice(0, 80))}</Badge>
+            <Badge>{String(out.answer.label ?? out.answer.action ?? "answer")}</Badge>
+            {out.answer.call != null && (
+              <span className="text-muted-foreground font-mono text-xs">
+                {String(out.answer.tool)}({JSON.stringify(out.answer.call)})
+              </span>
+            )}
             {Object.entries(out.answer.probs ?? {})
               .sort((a, b) => b[1] - a[1])
               .map(([k, v]) => (
@@ -70,6 +77,46 @@ function TryIt({ name }: { name: string }) {
   )
 }
 
+function DeployPicker({ running }: { running: string[] }) {
+  const [items, setItems] = useState<Summary[]>([])
+  const [pick, setPick] = useState<string>("")
+  useEffect(() => {
+    api<Summary[]>("/specialists").then(setItems, () => setItems([]))
+  }, [])
+  const teams = items.filter((s) => s.kind === "team")
+  const models = items.filter((s) => s.kind !== "team" && s.exported && !s.part_of)
+  const start = () => runJob(["deploy", pick]).then((j) => openJob(j.id))
+  const group = (label: string, rows: Summary[]) =>
+    rows.length > 0 && (
+      <SelectGroup>
+        <SelectLabel>{label}</SelectLabel>
+        {rows.map((s) => (
+          <SelectItem key={s.name} value={s.name}>
+            {s.title || s.name}
+            {running.includes(s.name) ? " (running)" : ""}
+          </SelectItem>
+        ))}
+      </SelectGroup>
+    )
+  return (
+    <div className="flex items-center gap-2">
+      <Select value={pick} onValueChange={setPick}>
+        <SelectTrigger size="sm" className="w-64" aria-label="Specialist or team to deploy">
+          <SelectValue placeholder="Specialist or team" />
+        </SelectTrigger>
+        <SelectContent>
+          {group("Teams", teams)}
+          {group("Specialists", models)}
+        </SelectContent>
+      </Select>
+      <Button size="sm" disabled={!pick} onClick={start}>
+        <Rocket />
+        Deploy
+      </Button>
+    </div>
+  )
+}
+
 export function Deployments() {
   const [rows, reload] = useDeployments()
   const [picked, setPicked] = useState<string | null>(null)
@@ -78,7 +125,10 @@ export function Deployments() {
   const stop = (name: string) => post(`/deployments/${encodeURIComponent(name)}/stop`, {}).then(reload)
   return (
     <div className="flex flex-col gap-4 md:gap-6">
-      <h1 className="text-2xl font-semibold">Deployments</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Deployments</h1>
+        <DeployPicker running={rows.map((r) => r.name)} />
+      </div>
       {rows.length === 0 ? (
         <Empty>
           <EmptyHeader>
@@ -86,7 +136,7 @@ export function Deployments() {
               <Container />
             </EmptyMedia>
             <EmptyTitle>No model runs in a container</EmptyTitle>
-            <EmptyDescription>Open a specialist, then Use it, then Run in container.</EmptyDescription>
+            <EmptyDescription>Pick a specialist or a team above and deploy it.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (

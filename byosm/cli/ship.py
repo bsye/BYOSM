@@ -83,11 +83,10 @@ def containerize(
 
 @app.command()
 def deploy(name: str) -> None:
-    """Run the specialist in its own container: read-only, 1 CPU and 1 GB at most, on a free local port. Builds the image first if needed."""
-    from ..deploy import build, deploy, has_image
+    """Run a specialist or a team in its own container: read-only, 1 CPU and 1 GB at most, on a free local port. Builds the image first; unchanged layers come from Docker's cache."""
+    from ..deploy import build, bundle_of, deploy
 
-    if not has_image(name):
-        build(name, _bundle(name), log)
+    build(name, bundle_of(name), log)
     deploy(name, log)
 
 

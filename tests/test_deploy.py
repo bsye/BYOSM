@@ -35,3 +35,20 @@ def test_a_container_runs_read_only_with_limits_on_a_local_port(monkeypatch):
     run = calls[-1]
     assert "--read-only" in run and "127.0.0.1:5000:8800" in run and run[-1] == "byosm-q"
     assert run[run.index("--memory") + 1] == deploy.MEMORY and run[run.index("--cpus") + 1] == deploy.CPUS
+
+
+def test_a_team_image_gets_the_union_of_its_members_requirements(tmp_path):
+    for node, reqs in {"intent": "numpy\nonnxruntime\n", "args": "onnxruntime\ntokenizers\n"}.items():
+        (tmp_path / "nodes" / node).mkdir(parents=True)
+        (tmp_path / "nodes" / node / "requirements.txt").write_text(reqs)
+    deploy._requirements(tmp_path)
+    assert (tmp_path / "requirements.txt").read_text().split() == ["numpy", "onnxruntime", "tokenizers"]
+
+
+def test_the_runtime_serves_a_team_by_name():
+    from byosm.rt import System, _prep
+
+    team = System.__new__(System)
+    team.m = {"name": "assistant"}
+    team.run = lambda text, action=None: {"action": "alarm_set", "text": text}
+    assert team.name == "assistant" and team.predict(_prep(team, {"input": "wake me"}))["action"] == "alarm_set"
