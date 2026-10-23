@@ -19,6 +19,7 @@ from .snapshots import Recipe
 
 PREFIX = "forecast:"
 FOLDER = "forecasts"
+NAME_PUNCTUATION = "-_"
 
 
 class HistorySpec(BaseModel):
@@ -69,9 +70,17 @@ def _write(ws: Path, name: str, data: dict[str, Any]) -> None:
         get_or_add(s, WorkspaceReport, kind=PREFIX + name).data = data
 
 
+def check_name(name: str) -> str:
+    if not name or name.startswith(".") or not all(c.isalnum() or c in NAME_PUNCTUATION for c in name):
+        raise ValueError(f"a forecast name uses only letters, digits and {NAME_PUNCTUATION}, not {name!r}")
+    return name
+
+
 def create(ws: Path, name: str, data: dict[str, Any]) -> ForecastSpec:
+    check_name(name)
     spec = ForecastSpec.model_validate(data)
     _check_windows(spec)
+    _clear(ws, name)
     _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": None})
     return spec
 
@@ -169,16 +178,20 @@ def remove(ws: Path, name: str) -> None:
         raise KeyError(f"no forecast named {name}")
     with session(ws) as s:
         s.execute(delete(WorkspaceReport).where(WorkspaceReport.kind == PREFIX + name))
+    _clear(ws, name)
+
+
+def _clear(ws: Path, name: str) -> None:
     scored_path(ws, name).unlink(missing_ok=True)
     model_path(ws, name).unlink(missing_ok=True)
 
 
 def model_path(ws: Path, name: str) -> Path:
-    return ws / STATE_DIR / FOLDER / f"{name}.joblib"
+    return scored_path(ws, name).with_suffix(".joblib")
 
 
 def scored_path(ws: Path, name: str) -> Path:
-    return ws / STATE_DIR / FOLDER / f"{name}.csv"
+    return ws / STATE_DIR / FOLDER / f"{check_name(name)}.csv"
 
 
 def forecasts(ws: Path) -> list[dict[str, Any]]:

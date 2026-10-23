@@ -89,6 +89,8 @@ def design(prompt: str, plan: dict[str, Any], tables: list[dict[str, Any]], cfg:
     names = {c["name"] for c in chosen["columns"]}
     if out.get("start") not in names or out.get("event") not in names:
         raise ValueError("the LLM named start or end columns the table does not have")
+    if out["start"] == out["event"]:
+        raise ValueError("the LLM named the same column for start and end")
     horizon = max(1, int(plan.get("horizon_years") or 1))
     test = date.today().year - horizon
     return {
