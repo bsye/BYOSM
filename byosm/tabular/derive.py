@@ -45,13 +45,17 @@ STEPS = {
 }
 
 
-def derive(df: Any, columns: dict[str, dict[str, Any]]) -> Any:
+POPULATION_STEPS = ("frequent",)
+
+
+def derive(df: Any, columns: dict[str, dict[str, Any]], one_row: bool = False) -> Any:
     out = df.copy()
     for name, how in columns.items():
         col = out[how.get("from", name)]
         for step in how["steps"]:
             kind, args = (step, {}) if isinstance(step, str) else next(iter(step.items()))
-            col = STEPS[kind](col, args or {})
+            if not (one_row and kind in POPULATION_STEPS):
+                col = STEPS[kind](col, args or {})
         out[name] = col
     return out
 

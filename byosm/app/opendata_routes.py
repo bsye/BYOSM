@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 
@@ -20,11 +19,6 @@ class Url(BaseModel):
 class Source(BaseModel):
     url: str
     name: str = ""
-
-
-class NewForecast(BaseModel):
-    name: str
-    spec: dict[str, Any]
 
 
 class Request(BaseModel):
@@ -116,45 +110,6 @@ def opendata_router(ws: Path) -> APIRouter:
         from ..opendata.join import joined as join
 
         return join(_table(left), _table(right), left_key, right_key)
-
-    @router.get("/api/forecasts")
-    def forecasts() -> list[dict[str, Any]]:
-        from ..tabular.task import forecasts as saved
-
-        return saved(ws)
-
-    @router.post("/api/forecasts")
-    def new_forecast(body: NewForecast) -> list[dict[str, Any]]:
-        from pydantic import ValidationError
-
-        from ..tabular.task import create, forecasts
-
-        try:
-            create(ws, body.name, body.spec)
-        except (ValueError, ValidationError) as e:
-            raise HTTPException(422, str(e)) from e
-        return forecasts(ws)
-
-    @router.delete("/api/forecasts/{name}")
-    def drop_forecast(name: str, confirm: str) -> list[dict[str, Any]]:
-        from ..tabular.task import forecasts, remove
-
-        if confirm != name:
-            raise HTTPException(422, "pass confirm=<name> to delete a forecast")
-        try:
-            remove(ws, name)
-        except KeyError as e:
-            raise HTTPException(404, str(e).strip("'\"")) from e
-        return forecasts(ws)
-
-    @router.get("/api/forecasts/{name}/scored.csv")
-    def scored(name: str) -> FileResponse:
-        from ..tabular.task import scored_path
-
-        path = scored_path(ws, name)
-        if not path.exists():
-            raise HTTPException(404, "run the forecast first")
-        return FileResponse(path, filename=f"{name}-scored.csv")
 
     @router.get("/api/datasets/training")
     def training() -> list[dict[str, Any]]:

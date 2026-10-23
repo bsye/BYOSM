@@ -161,7 +161,7 @@ def test_today_scores_everyone_alive_now_with_training_years_moved_forward():
 
     df = _register(4000)
     r = Recipe("start", "end", 2, {"train": [2012], "test": [2016]}, ["kind", "noise"], per_cutoff=1500)
-    now, everyone = today(df, r, ["kind"], [], ["kind"], log=lambda m: None)
+    now, everyone, fitted = today(df, r, ["kind"], [], ["kind"], log=lambda m: None)
     assert len(everyone) == now["scored"] and everyone["chance"].is_monotonic_decreasing
     assert now["trained_on"] == [2012 + date.today().year - 2016]
     chances = [t["p"] for t in now["top"]]
@@ -215,3 +215,32 @@ def test_a_forecast_question_is_designed_on_a_table_with_real_columns_only(monke
     ]
     spec = design("will it close within 2 years", {"horizon_years": 2}, tables, None)
     assert spec["features"] == ["kind"] and spec["source"] == "u" and spec["test_year"] + 2 <= date.today().year
+
+
+def test_one_entity_typed_in_the_register_format_gets_the_same_chance_as_in_the_bulk_run(ws, monkeypatch):
+    import joblib
+
+    import byosm.tabular.task as task
+    from byosm.tabular.predict import predict
+    from byosm.tabular.score import today
+
+    df = _register(3000)
+    r = Recipe("start", "end", 2, {"train": [2012], "test": [2016]}, ["kind", "noise"], per_cutoff=1500)
+    now, everyone, fitted = today(df, r, ["kind"], [], ["kind"], log=lambda m: None)
+    spec = {
+        "title": "t",
+        "source": "s",
+        "start": "start",
+        "event": "end",
+        "horizon_years": 2,
+        "features": ["kind", "noise"],
+        "cutoffs": {"train": [2012], "test": [2016]},
+    }
+    task.create(ws, "f", spec)
+    task.model_path(ws, "f").parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(fitted, task.model_path(ws, "f"))
+    monkeypatch.setattr(task, "histories", lambda spec, log: [])
+    alive = df[df["end"].isna()].iloc[0].to_dict()
+    out = predict(ws, "f", alive, log=lambda m: None)
+    assert out["state"] == "alive" and 0 <= out["chance"] <= 1
+    assert predict(ws, "f", {**alive, "end": "2020-01-01"}, log=lambda m: None)["state"] == "ended"

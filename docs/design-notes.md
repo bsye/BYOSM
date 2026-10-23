@@ -922,7 +922,7 @@ the overfitting check's overlap finding shows it.
 Every loop that makes more than one LLM call (writing data, the label judge, scoring with an LLM rival, a team's LLM
 rival, the data check's judge, mapping several Hub datasets) runs its calls through `pmap` with
 `parallel_calls(cfg)`. That is unlimited up to `REMOTE_PARALLEL` unless a run sets `--parallel`; the real limit is the
-per-endpoint gate, which the Models page sets ("Parallel calls") and which follows free memory for local models. There
+per-endpoint gate, which the Trainers page sets ("Parallel calls") and which follows free memory for local models. There
 is no second, global `concurrency` cap any more, because it silently throttled remote models to a handful of calls.
 
 ## Artifacts on Hugging Face
@@ -1147,3 +1147,7 @@ A model whose outputs turn into NaN raises `DivergedError` at the next dev evalu
 ## Forecast questions on the Home prompt
 
 `byosm auto "<prompt>"` for a new task first asks the LLM whether the request is a forecast (will entities in a register end within some years) or a specialist. A forecast gets a horizon and a few portal searches; the first four readable tables under 100 MB are downloaded and profiled, and the LLM picks the table, its start and end columns, the features known at the start, and the columns that identify an entity. Every name it gives is checked against the table, the test year is the latest whose outcome is known, five backtest years follow, and the forecast is saved and run like one made by hand. The leakage check still runs, so a careless pick is caught there rather than trusted.
+
+## Predicting one entity
+
+Each forecast run keeps the model it scored today with (`.byosm/forecasts/<name>.joblib`), its categories, the features it left out and the typical values used for reasons. A single entity, looked up by its key in the source table or typed in the table's own columns, goes through the same derive, snapshot and history steps as training, so its chance matches the bulk run exactly. Steps that depend on the whole table (`frequent`, which keeps values seen at least 200 times) are skipped for one row; values the model never saw fall into the "other" category or count as missing, as they did in training. An entity that already ended before 1 January is reported as ended rather than scored.

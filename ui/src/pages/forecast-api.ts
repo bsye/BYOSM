@@ -6,7 +6,7 @@ import type { Today } from "./ForecastToday"
 
 export type Score = { auc: number; auc_ci: [number, number]; ap: number; brier: number; base_rate: number; predicted_rate?: number }
 export type Leak = { feature: string; auc: number; suspect: boolean; why: string }
-export type Spec = { title: string; horizon_years: number; cutoffs: Record<string, number[]>; excluded: Record<string, string> }
+export type Spec = { title: string; shown?: string[]; horizon_years: number; cutoffs: Record<string, number[]>; excluded: Record<string, string> }
 export type Year = { year: number; positive: number; scores: Record<string, Score> }
 export type Result = { at: number; today?: Today; over_time?: Year[]; dropped?: Record<string, string>; splits: Record<string, { n: number; positive: number }>; leakage: Leak[]; scores: Record<string, Score> }
 export type Forecast = { name: string; spec: Spec; result: Result | null }

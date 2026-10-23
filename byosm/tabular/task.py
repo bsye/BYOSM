@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+import joblib
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import delete, select
 
@@ -94,22 +95,29 @@ def _check_windows(spec: ForecastSpec) -> None:
 
 
 def _read(spec: ForecastSpec, log: Callable[[str], None]) -> Any:
+    from .derive import derive
+
+    return derive(read_table(spec.source, log, spec.file), spec.derived), histories(spec, log)
+
+
+def read_table(url: str, log: Callable[[str], None], file: str | None = None, columns: list[str] | None = None) -> Any:
     import pandas as pd
 
     from ..opendata.cache import fetch, table
-    from .derive import derive
 
-    def read(url: str, file: str | None = None, columns: list[str] | None = None) -> Any:
-        fetch(url, log)
-        path = table(url, file)
-        log(f"  reading {path.name}")
-        return pd.read_csv(path, low_memory=False, dtype=str, usecols=columns, encoding="utf-8-sig")
+    fetch(url, log)
+    path = table(url, file)
+    log(f"  reading {path.name}")
+    return pd.read_csv(path, low_memory=False, dtype=str, usecols=columns, encoding="utf-8-sig")
 
-    histories = [
-        History(name, pd.concat([read(u, columns=[h.key, h.date]) for u in h.sources]), h.key, h.date)
+
+def histories(spec: ForecastSpec, log: Callable[[str], None]) -> list[History]:
+    import pandas as pd
+
+    return [
+        History(name, pd.concat([read_table(u, log, columns=[h.key, h.date]) for u in h.sources]), h.key, h.date)
         for name, h in spec.histories.items()
     ]
-    return derive(read(spec.source, spec.file), spec.derived), histories
 
 
 def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, Any]:
@@ -139,9 +147,10 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
 
     recipe = spec.recipe(histories)
     over_time = backtest(df, recipe, spec.backtest, kept, list(dropped), log)
-    now, everyone = today(df, recipe, kept, list(dropped), spec.shown or [spec.key or spec.start], log)
+    now, everyone, fitted = today(df, recipe, kept, list(dropped), spec.shown or [spec.key or spec.start], log)
     scored_path(ws, name).parent.mkdir(parents=True, exist_ok=True)
     everyone.to_csv(scored_path(ws, name), index=False)
+    joblib.dump(fitted, model_path(ws, name))
     result = {
         "at": time.time(),
         "splits": sizes,
@@ -161,6 +170,11 @@ def remove(ws: Path, name: str) -> None:
     with session(ws) as s:
         s.execute(delete(WorkspaceReport).where(WorkspaceReport.kind == PREFIX + name))
     scored_path(ws, name).unlink(missing_ok=True)
+    model_path(ws, name).unlink(missing_ok=True)
+
+
+def model_path(ws: Path, name: str) -> Path:
+    return ws / STATE_DIR / FOLDER / f"{name}.joblib"
 
 
 def scored_path(ws: Path, name: str) -> Path:

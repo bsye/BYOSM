@@ -7,6 +7,7 @@ import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Leakage, OverTime, ScoreChart } from "./ForecastCharts"
 import { ForecastToday } from "./ForecastToday"
+import { ForecastTry } from "./ForecastTry"
 import { runForecast, useForecasts, type Forecast } from "./forecast-api"
 import { within } from "./Forecasts"
 
@@ -39,6 +40,7 @@ function Body({ f }: { f: Forecast }) {
           <OverTime years={r.over_time ?? []} />
         </Section>
       )}
+      {r.today && <ForecastTry name={f.name} shown={f.spec.shown ?? []} />}
       {r.today && (
         <Section title={`Alive on 1 Jan ${r.today.year}`}>
           <ForecastToday today={r.today} horizon={f.spec.horizon_years} check={r.scores["gradient boosting"]} testYear={f.spec.cutoffs.test[0]} />

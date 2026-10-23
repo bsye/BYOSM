@@ -17,7 +17,7 @@ EVERYONE = 10**9
 
 def today(
     df: Any, r: Recipe, categorical: list[str], dropped: list[str], shown: list[str], log: Callable[[str], None]
-) -> tuple[dict[str, Any], Any]:
+) -> tuple[dict[str, Any], Any, dict[str, Any]]:
     import pandas as pd
 
     from .fit import _xy, models
@@ -49,16 +49,29 @@ def today(
     edges = np.linspace(0, 1, BANDS + 1)
     counts = np.histogram(p, bins=edges)[0]
     everyone = df.loc[now.index, shown].assign(chance=p.round(4)).sort_values("chance", ascending=False)
-    return {
-        "year": year,
-        "trained_on": trained_on,
-        "scored": len(now),
-        "expected": round(float(p.sum())),
-        "bands": [
-            {"from": float(a), "to": float(b), "n": int(n)} for a, b, n in zip(edges, edges[1:], counts, strict=False)
-        ],
-        "top": top,
-    }, everyone
+    return (
+        {
+            "year": year,
+            "trained_on": trained_on,
+            "scored": len(now),
+            "expected": round(float(p.sum())),
+            "bands": [
+                {"from": float(a), "to": float(b), "n": int(n)}
+                for a, b, n in zip(edges, edges[1:], counts, strict=False)
+            ],
+            "top": top,
+        },
+        everyone,
+        {
+            "model": model,
+            "year": year,
+            "categorical": categorical,
+            "dropped": dropped,
+            "columns": list(x.columns),
+            "categories": {c: list(x[c].cat.categories) for c in categorical if c in x},
+            "typical": typical(x),
+        },
+    )
 
 
 def _plain(v: Any) -> Any:
