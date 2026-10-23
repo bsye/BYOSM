@@ -12,13 +12,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useLive } from "@/events"
 import { openJob } from "@/job-sheet"
+import { ForecastToday, type Today } from "./ForecastToday"
 import { NewForecast } from "./NewForecast"
 
-type Score = { auc: number; auc_ci: [number, number]; ap: number; brier: number; base_rate: number }
+type Score = { auc: number; auc_ci: [number, number]; ap: number; brier: number; base_rate: number; predicted_rate?: number }
 type Leak = { feature: string; auc: number; suspect: boolean; why: string }
 type Spec = { title: string; horizon_years: number; cutoffs: Record<string, number[]>; excluded: Record<string, string> }
 type Year = { year: number; positive: number; scores: Record<string, Score> }
-type Result = { at: number; over_time?: Year[]; dropped?: Record<string, string>; splits: Record<string, { n: number; positive: number }>; leakage: Leak[]; scores: Record<string, Score> }
+type Result = { at: number; today?: Today; over_time?: Year[]; dropped?: Record<string, string>; splits: Record<string, { n: number; positive: number }>; leakage: Leak[]; scores: Record<string, Score> }
 type Forecast = { name: string; spec: Spec; result: Result | null }
 
 const config = { auc: { label: "AUC", color: "var(--chart-1)" } } satisfies ChartConfig
@@ -156,6 +157,7 @@ function ForecastCard({ f, running }: { f: Forecast; running: boolean }) {
                 <OverTime years={f.result.over_time ?? []} />
               </div>
             )}
+            {f.result.today && <ForecastToday today={f.result.today} horizon={f.spec.horizon_years} check={f.result.scores["gradient boosting"]} testYear={f.spec.cutoffs.test[0]} />}
           </div>
         ) : (
           <Skeleton className="h-56 rounded-lg" />

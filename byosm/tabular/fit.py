@@ -36,6 +36,7 @@ def scores(y: Any, p: Any) -> dict[str, Any]:
         "ap": float(average_precision_score(y, p)),
         "brier": float(brier_score_loss(y, p)),
         "base_rate": float(y.mean()),
+        "predicted_rate": float(p.mean()),
     }
 
 

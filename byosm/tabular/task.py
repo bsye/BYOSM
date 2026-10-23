@@ -40,6 +40,7 @@ class ForecastSpec(BaseModel):
     excluded: dict[str, str] = Field(default_factory=dict)
     per_cutoff: int = 50_000
     key: str | None = None
+    shown: list[str] = Field(default_factory=list)
     histories: dict[str, HistorySpec] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -132,8 +133,11 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
     for model, s in scores.items():
         log(f"  {model}: AUC {s['auc']:.3f} ({s['auc_ci'][0]:.3f} to {s['auc_ci'][1]:.3f}), AP {s['ap']:.3f}")
     from .backtest import backtest
+    from .score import today
 
-    over_time = backtest(df, spec.recipe(histories), spec.backtest, kept, list(dropped), log)
+    recipe = spec.recipe(histories)
+    over_time = backtest(df, recipe, spec.backtest, kept, list(dropped), log)
+    now = today(df, recipe, kept, list(dropped), spec.shown or [spec.key or spec.start], log)
     result = {
         "at": time.time(),
         "splits": sizes,
@@ -141,6 +145,7 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
         "dropped": dropped,
         "scores": scores,
         "over_time": over_time,
+        "today": now,
     }
     _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": result})
     return result

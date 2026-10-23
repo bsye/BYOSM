@@ -144,3 +144,16 @@ def test_a_test_year_whose_outcome_is_not_known_yet_is_refused(ws):
     assert create(ws, "fine", spec).cutoffs["train"] == [2007, 2009, 2011]
     with pytest.raises(ValueError, match="not known yet"):
         create(ws, "future", {**spec, "backtest": [2025]})
+
+
+def test_today_scores_everyone_alive_now_with_training_years_moved_forward():
+    from datetime import date
+
+    from byosm.tabular.score import today
+
+    df = _register(4000)
+    r = Recipe("start", "end", 2, {"train": [2012], "test": [2016]}, ["kind", "noise"], per_cutoff=1500)
+    now = today(df, r, ["kind"], [], ["kind"], log=lambda m: None)
+    assert now["trained_on"] == [2012 + date.today().year - 2016]
+    chances = [t["p"] for t in now["top"]]
+    assert now["scored"] == sum(b["n"] for b in now["bands"]) and chances == sorted(chances, reverse=True)

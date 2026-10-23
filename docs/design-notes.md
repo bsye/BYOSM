@@ -1123,3 +1123,7 @@ One test year can flatter or punish a model by chance of timing. A forecast can 
 ## Leaks that predict weakly
 
 A field rewritten for survivors can score a modest AUC alone and still be a leak, because it splits one class cleanly while leaving the rest mixed. The check therefore also measures purity: the share of positives that sit in values of 200 rows or more that are 95% positive, and the share of negatives in values that end at under 2% of the base rate. Above 20% either way the feature is left out. On the company register this catches the raw company type and its code (the old type names are almost all closures, because companies keeping them were the ones about to close) while the pre-Act type families pass.
+
+## Scoring who is alive today
+
+Every forecast run ends by scoring the entities alive on 1 January of this year. The model is retrained on the spec's own training years moved forward by the gap between this year and the test year, so the pattern that was tested (including where history tables are complete) is the one used, and every label it trains on is already known. The page shows how many were scored, how many are expected to end (the sum of their chances), how they spread across chance bands, and the most likely to end with their features in a tooltip. Next to the expected count it shows the predicted and actual rate on the test year, because a sum of chances is only as good as the model's calibration.

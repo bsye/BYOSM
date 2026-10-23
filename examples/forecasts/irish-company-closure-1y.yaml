@@ -32,4 +32,5 @@ excluded:
   last_ar_date: filed after the cutoff, so it shows the company was still alive
   eircode: issued from 2015, mostly to companies still trading
   company_status: the answer itself
+shown: [company_num, company_name, company_address_4]
 per_cutoff: 100000
