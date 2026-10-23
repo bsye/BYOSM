@@ -1070,3 +1070,10 @@ every five seconds, and sends test inputs to the container itself, so the answer
 each member under `nodes/`, the image installs the union of their requirements, and the runtime answers
 `/v1/<team>/predict` with the team's action and tool call. Every build copies the current `rt.py` into the bundle, so an
 image never runs an older runtime than the app that built it.
+
+## Interrupted is not failed
+
+A job whose process vanishes without an exit code, or that receives a SIGTERM the user did not send (a shutdown, a
+reboot, the app stopping), ends as `interrupted`, not `failed`: it did nothing wrong. The stall watchdog's kill stays
+`failed`. The Jobs page lists interrupted jobs that have not been retried since and retries them all at once, an
+autopilot resuming its specialist by name.

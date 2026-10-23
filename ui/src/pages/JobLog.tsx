@@ -8,7 +8,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { useJob, useLive } from "@/events"
 import { seconds, took } from "@/format"
 import { decisions, stages } from "@/job-story"
-import { currentStep, describe, EVENT_PREFIX, failure, llmUsed, steps, timeLeft } from "@/jobs"
+import { currentStep, describe, EVENT_PREFIX, failure, retryArgs, llmUsed, steps, timeLeft } from "@/jobs"
 import { useNow } from "@/now"
 import { href } from "@/route"
 import { DecisionTree } from "./DecisionTree"
@@ -119,13 +119,13 @@ export function JobDetail({ id }: { id: string }) {
           </Button>
         )}
       </div>
-      {job.status === "failed" && (
+      {(job.status === "failed" || job.status === "interrupted") && (
         <Alert variant="destructive">
           <CircleX />
-          <AlertTitle>Failed</AlertTitle>
+          <AlertTitle>{job.status === "interrupted" ? "Interrupted: the app or the machine stopped while it ran" : "Failed"}</AlertTitle>
           <AlertDescription className="space-y-3">
             <p className="font-mono text-xs break-all">{failure(lines) ?? "The job ended without output."}</p>
-            <RetryButtons args={job.args[0] === "auto" && job.target ? ["auto", job.target] : job.args} />
+            <RetryButtons args={retryArgs(job)} />
           </AlertDescription>
         </Alert>
       )}

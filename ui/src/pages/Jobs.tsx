@@ -1,6 +1,7 @@
-import { CircleCheck, CircleSlash, CircleX, Clock, Loader2 } from "lucide-react"
+import { CircleCheck, CirclePause, CircleSlash, CircleX, Clock, Loader2, RotateCw } from "lucide-react"
 import { useEffect, useState } from "react"
-import { api, type Job, type Summary } from "@/api"
+import { api, runJob, type Job, type Summary } from "@/api"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useShowMore } from "@/components/show-more"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,19 +11,21 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
 import { took } from "@/format"
-import { currentStep, describe, llmUsed, timeLeft } from "@/jobs"
+import { currentStep, describe, llmUsed, retryArgs, timeLeft, unretried } from "@/jobs"
+import { startAll } from "./stat-actions"
 import { openJob } from "@/job-sheet"
 import { go, href } from "@/route"
 import { JobDetail } from "./JobLog"
 import { Timeline } from "./Timeline"
 
-const ICONS = { queued: Clock, running: Loader2, done: CircleCheck, failed: CircleX, cancelled: CircleSlash }
+const ICONS = { queued: Clock, running: Loader2, done: CircleCheck, failed: CircleX, cancelled: CircleSlash, interrupted: CirclePause }
 const TONE = {
   queued: "text-muted-foreground",
   running: "text-foreground animate-spin",
   done: "text-foreground/70",
   failed: "text-destructive",
   cancelled: "text-muted-foreground",
+  interrupted: "text-destructive",
 }
 
 export function StatusIcon({ status }: { status: Job["status"] }) {
@@ -93,14 +96,14 @@ export function Running() {
   )
 }
 
-const STATUS_LABEL: Record<Job["status"], string> = { queued: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Cancelled" }
-const FILTERS = { all: () => true, running: (j: Job) => j.status === "running" || j.status === "queued", failed: (j: Job) => j.status === "failed", done: (j: Job) => j.status === "done" }
+const STATUS_LABEL: Record<Job["status"], string> = { queued: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Cancelled", interrupted: "Interrupted" }
+const FILTERS = { all: () => true, running: (j: Job) => j.status === "running" || j.status === "queued", failed: (j: Job) => j.status === "failed" || j.status === "interrupted", done: (j: Job) => j.status === "done" }
 type Filter = keyof typeof FILTERS
 const FILTER_LABELS: Record<Filter, string> = { all: "All", running: "Running", failed: "Failed", done: "Completed" }
 
 function StatusBadge({ status }: { status: Job["status"] }) {
   return (
-    <Badge variant={status === "failed" ? "destructive" : status === "done" ? "secondary" : "outline"}>
+    <Badge variant={status === "failed" || status === "interrupted" ? "destructive" : status === "done" ? "secondary" : "outline"}>
       <StatusIcon status={status} />
       {STATUS_LABEL[status]}
     </Badge>
@@ -169,6 +172,31 @@ function JobList({ rows, titles }: { rows: ReturnType<typeof useRows>; titles: R
 const started = (t: number | null) =>
   t == null ? "-" : new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
 
+function Interrupted({ jobs }: { jobs: Job[] }) {
+  const lost = unretried(jobs, "interrupted")
+  const [busy, setBusy] = useState(false)
+  if (!lost.length) return null
+  const retry = () => {
+    setBusy(true)
+    void startAll(lost.map((j) => runJob(retryArgs(j)))).finally(() => setBusy(false))
+  }
+  return (
+    <Alert>
+      <CirclePause />
+      <AlertTitle>
+        {lost.length} {lost.length === 1 ? "job was" : "jobs were"} interrupted when the app or the machine stopped
+      </AlertTitle>
+      <AlertDescription className="flex flex-wrap items-center gap-2">
+        <span className="min-w-0 flex-1 truncate">{lost.map((j) => [describe(j).title, describe(j).target].filter(Boolean).join(" ")).join(", ")}</span>
+        <Button size="sm" disabled={busy} onClick={retry}>
+          <RotateCw />
+          Retry all
+        </Button>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
 export function Jobs({ id }: { id?: string }) {
   const rows = useRows()
   const titles = useTitles()
@@ -178,6 +206,7 @@ export function Jobs({ id }: { id?: string }) {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <h1 className="text-2xl font-semibold">Jobs</h1>
+      <Interrupted jobs={rows.map((r) => r.job)} />
       <Timeline jobs={rows.map((r) => r.job)} titles={titles} />
       <Card>
         <CardHeader>

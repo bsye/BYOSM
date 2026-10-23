@@ -14,7 +14,7 @@ from typing import Any
 from ..events import EVENTS_ENV, TARGET, parse
 from ..resources import can_start_job, max_jobs, stall_seconds
 from .allowed import ALLOWED_COMMANDS
-from .detached import LOG_SUFFIX, Tail, alive, exit_code, forget, job_file, kill_group, spawn
+from .detached import LOG_SUFFIX, Tail, alive, ending, exit_code, forget, job_file, kill_group, spawn
 from .hub import Hub
 from .store import JOB_FIELDS, JobStore
 
@@ -38,6 +38,7 @@ class Job:
     cancel: bool = False
     llm: dict[str, Any] | None = None
     target: str | None = None
+    stalled: bool = False
 
     def public(self) -> dict[str, Any]:
         return {k: getattr(self, k) for k in (*JOB_FIELDS, TARGET)}
@@ -165,7 +166,7 @@ class Runner:
             if not killed and job.pid and time.time() - heard[0] > limit:
                 self._line(job, f"stopped: no output for {limit // 60} minutes, the job looked stuck")
                 kill_group(job.pid)
-                killed = True
+                killed = job.stalled = True
             time.sleep(FOLLOW_SECONDS)
 
     def _running(self, job: Job) -> bool:
@@ -193,6 +194,6 @@ class Runner:
             proc = self.procs.pop(job.id, None)
         if proc is not None:
             proc.wait()
-        self._status(job, "cancelled" if job.cancel else "done" if code == 0 else "failed")
+        self._status(job, ending(code, job.cancel, job.stalled))
         forget(self.ws, job.id)
         return True

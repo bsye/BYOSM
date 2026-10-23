@@ -95,6 +95,13 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   return openStage(metrics) ?? (lines.findLast((l) => l.trim() && !l.startsWith(EVENT_PREFIX))?.trim() || "Starting")
 }
 
+export const retryArgs = (j: Pick<Job, "args" | "target">): string[] => (j.args[0] === "auto" && j.target ? ["auto", j.target] : j.args)
+
+export function unretried(jobs: Job[], status: Job["status"]): Job[] {
+  const key = (j: Job) => JSON.stringify(retryArgs(j))
+  return jobs.filter((j) => j.status === status && !jobs.some((o) => o.created > j.created && key(o) === key(j)))
+}
+
 const ERROR_ENDINGS = ["Error:", "Exception:", "Interrupt:", "Exit:"]
 
 export function failure(lines: string[]): string | null {

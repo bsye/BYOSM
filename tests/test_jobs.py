@@ -99,7 +99,7 @@ def test_a_job_survives_a_new_runner_without_duplicate_lines(ws, monkeypatch):
     assert second.detail(job.id)["lines"] == ["started", "finished"] and job.status == "running"
 
 
-def test_a_dead_job_without_an_exit_file_fails_with_its_log(ws):
+def test_a_dead_job_without_an_exit_file_is_interrupted_with_its_log(ws):
     gone = subprocess.Popen([sys.executable, "-c", "pass"])
     gone.wait()
     log = job_file(ws, "lost", LOG_SUFFIX)
@@ -108,7 +108,7 @@ def test_a_dead_job_without_an_exit_file_fails_with_its_log(ws):
     row = {"id": "lost", "args": ["report"], "status": "running", "created": 0.0, "started": 0.0}
     JobStore(ws).save({**row, "ended": None, "code": None, "pid": gone.pid})
     detail = Runner(ws, Hub()).detail("lost")
-    assert detail["status"] == "failed" and detail["lines"] == ["partial", LOST_LINE] and not log.exists()
+    assert detail["status"] == "interrupted" and detail["lines"] == ["partial", LOST_LINE] and not log.exists()
 
 
 @pytest.mark.parametrize(("code", "status"), [(0, "done"), (3, "failed")])

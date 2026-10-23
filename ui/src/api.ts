@@ -49,7 +49,7 @@ export const del = <T>(path: string) => api<T>(path, { method: "DELETE" })
 export type Job = {
   id: string
   args: string[]
-  status: "queued" | "running" | "done" | "failed" | "cancelled"
+  status: "queued" | "running" | "done" | "failed" | "cancelled" | "interrupted"
   created: number
   started: number | null
   ended: number | null

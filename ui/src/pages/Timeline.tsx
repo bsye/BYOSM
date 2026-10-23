@@ -13,6 +13,7 @@ const STATUS_COLOR: Record<Job["status"], string> = {
   done: "var(--chart-2)",
   failed: "var(--destructive)",
   cancelled: "var(--muted-foreground)",
+  interrupted: "var(--destructive)",
 }
 
 const config = { span: { label: "running" } } satisfies ChartConfig

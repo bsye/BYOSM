@@ -76,7 +76,7 @@ def test_job_history_survives_a_restart(client, ws):
     with TestClient(create_app(ws, TOKEN), base_url="http://127.0.0.1") as again:
         assert again.get(f"/api/jobs/{job['id']}", headers=AUTH).json()["lines"] == done["lines"]
         stale = again.get("/api/jobs/stale", headers=AUTH).json()
-    assert stale["status"] == "failed" and stale["lines"] == [LOST_LINE]
+    assert stale["status"] == "interrupted" and stale["lines"] == [LOST_LINE]
     assert {job["id"], "stale"} <= {j["id"] for j in JobStore(ws).jobs()}
 
 

@@ -91,7 +91,7 @@ function unique(metrics: Metric[]): Metric[] {
   })
 }
 
-const ENDED = new Set(["done", "failed", "cancelled"])
+const ENDED = new Set(["done", "failed", "cancelled", "interrupted"])
 
 export function useJobToasts() {
   const { jobs } = useLive()

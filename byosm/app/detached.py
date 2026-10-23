@@ -12,6 +12,7 @@ JOBS_DIR = Path(".byosm") / "jobs"
 LOG_SUFFIX = ".log"
 EXIT_SUFFIX = ".exit"
 KILL_GRACE_S = 10
+INTERRUPTED = "interrupted"
 WRAPPER = """
 import os, signal, sys, traceback
 path, entry, code = sys.argv.pop(1), sys.argv.pop(1), 1
@@ -39,6 +40,15 @@ finally:
         out.write(str(code))
     os.replace(path + ".tmp", path)
 """
+
+
+def ending(code: int | None, cancelled: bool, stalled: bool) -> str:
+    if cancelled:
+        return "cancelled"
+    if code == 0:
+        return "done"
+    stopped_from_outside = code is None or (code == -signal.SIGTERM and not stalled)
+    return INTERRUPTED if stopped_from_outside else "failed"
 
 
 def job_file(ws: Path, job_id: str, suffix: str) -> Path:

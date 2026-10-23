@@ -14,3 +14,15 @@ def test_a_crash_is_logged_before_its_exit_code(tmp_path):
     proc.wait()
     assert exit_code(tmp_path, "j") == 1
     assert "RuntimeError: boom" in log
+
+
+def test_a_job_stopped_from_outside_is_interrupted_not_failed():
+    import signal
+
+    from byosm.app.detached import ending
+
+    assert ending(None, cancelled=False, stalled=False) == "interrupted"
+    assert ending(-signal.SIGTERM, cancelled=False, stalled=False) == "interrupted"
+    assert ending(-signal.SIGTERM, cancelled=False, stalled=True) == "failed"
+    assert ending(-signal.SIGTERM, cancelled=True, stalled=False) == "cancelled"
+    assert ending(1, cancelled=False, stalled=False) == "failed" and ending(0, False, False) == "done"
