@@ -29,6 +29,8 @@ const VERBS: Record<string, string> = {
   next: "Do next steps",
   datasets: "Find datasets",
   ready: "Auto until ready",
+  cloud: "Write AWS stack",
+  "publish-data": "Publish dataset",
 }
 
 const INPUT_VERBS: Record<string, string> = { write: "Write inputs", sample: "Sample inputs", run: "Score inputs" }

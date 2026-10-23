@@ -1,4 +1,4 @@
-import { Container, Rocket, Send, Square } from "lucide-react"
+import { Cloud, Container, Rocket, Send, Square } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, post, runJob, type Summary } from "@/api"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -112,6 +112,10 @@ function DeployPicker({ running }: { running: string[] }) {
       <Button size="sm" disabled={!pick} onClick={start}>
         <Rocket />
         Deploy
+      </Button>
+      <Button size="sm" variant="outline" disabled={!pick} title="Write a CloudFormation stack sized for this model" onClick={() => runJob(["cloud", pick]).then((j) => openJob(j.id))}>
+        <Cloud />
+        AWS
       </Button>
     </div>
   )
