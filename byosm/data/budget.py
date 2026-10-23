@@ -62,10 +62,48 @@ def _remaining_calls(spec: TaskSpec, need: Sizes) -> int:
     return sum(synth_text.calls(n, spec.data.per_call) for n in need.values() if n)
 
 
+SYNTH_KEY_FILE = "synth.key"
+LLM_SOURCE = "llm:"
+
+
+def _written_before(spec: TaskSpec, data_dir: Path) -> dict[str, list[dict]]:
+    from .store import Dataset
+
+    key, out = spec.synth_key(), {s: [] for s in SPLITS}
+    for other in data_dir.parent.iterdir():
+        mark = other / SYNTH_KEY_FILE
+        if other == data_dir or not mark.exists() or mark.read_text().strip() != key:
+            continue
+        for s in SPLITS:
+            out[s] += [r for r in Dataset(other).load(s) if str(r.get("source", "")).startswith(LLM_SOURCE)]
+    return out
+
+
+def reuse_written(spec: TaskSpec, splits: dict[str, list[dict]], data_dir: Path, log: Log) -> None:
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / SYNTH_KEY_FILE).write_text(spec.synth_key())
+    plan, found = planned(spec), _written_before(spec, data_dir)
+    taken = {r["input"] for s in SPLITS for r in splits[s]}
+    for s in SPLITS:
+        fresh = [r for r in found[s] if r["input"] not in taken]
+        room = max(0, plan[s] - len(splits[s]))
+        splits[s] += fresh[:room]
+        taken |= {r["input"] for r in fresh[:room]}
+        if fresh[:room]:
+            log(f"  reused {len(fresh[:room])} {s} rows the LLM wrote for an earlier data plan")
+
+
 def add_synthetic(
-    spec: TaskSpec, splits: dict[str, list[dict]], cfg: dict | None, seconds: float, log: Log
+    spec: TaskSpec,
+    splits: dict[str, list[dict]],
+    cfg: dict | None,
+    seconds: float,
+    log: Log,
+    data_dir: Path | None = None,
 ) -> dict[str, Any]:
     start = time.monotonic()
+    if data_dir is not None:
+        reuse_written(spec, splits, data_dir, log)
     plan = planned(spec)
     have = {s: len(splits[s]) for s in SPLITS}
     need = {s: max(0, plan[s] - have[s]) for s in SPLITS}

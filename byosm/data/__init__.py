@@ -116,7 +116,7 @@ def _add_hf(
                 for x, y in part:
                     inp = x if spec.modality == "text" else _save_media(spec, data_dir, s, x)
                     splits[s].append(record(inp, y, f"hf:{src.dataset}"))
-        elif src.role in pools:
+        elif src.role in pools and spec.modality == "audio":
             for s, part in _split3([x for x, _ in rows], rng).items():
                 pools[src.role][s] += part
         else:
@@ -147,7 +147,7 @@ def _collect(
         for s, rows in audio_mix.build(spec, data_dir, pools["positive"], pools["negative"], sizes, log).items():
             splits[s] += rows
     if spec.data.synthetic and spec.modality == "text":
-        fit = budget.add_synthetic(spec, splits, cfg, seconds, log)
+        fit = budget.add_synthetic(spec, splits, cfg, seconds, log, data_dir)
     _hold_out(splits, rng, log)
     if spec.modality == "text":
         splits["test"] = dedupe(splits["test"], against=splits["train"] + splits["dev"])

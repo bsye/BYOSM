@@ -1163,3 +1163,11 @@ Each forecast run keeps the model it scored today with (`.byosm/forecasts/<name>
 ## A test set is never empty
 
 A data build can end with every row in train: LLM-written rows that stopped early, or a source read only as positives. Nothing could then be scored, and every later stage failed in its own way. Now, when dev or test is empty and train has at least 50 rows, a share is held out per label with near-duplicates kept on the same side (the same split used for Hub datasets), and the log says how many rows moved. If a build still cannot be scored, the autopilot stops with that reason.
+
+## Text inputs are read in full
+
+A spec's `train.max_len` defaulted to 128 tokens and nothing checked it against the data, while tokenisers cut from the right. For inputs that end with what matters (a conversation whose last turn decides the answer) the model never saw the deciding part: tool-call-gate's median input was 145 tokens and its 90th percentile 382. Each build now counts the training rows' tokens with the backbone's tokeniser and, when the 95th percentile is longer, raises `max_len` to cover it (rounded up to 64, at most 1024 or the model's own limit) and saves it in the experiment's spec, so export reads the same length.
+
+## LLM-written rows are written once
+
+A data folder is keyed by everything in the data plan, including the Hugging Face sources, so adding a source started a new folder and the LLM wrote every row again; rows written for an experiment that never finished were lost to later runs. LLM rows depend only on the labels, the description and the synthesis fields, so they now carry that narrower key (`synth.key` in the folder), and a build takes rows already written under the same key in the specialist's other data folders, per split, before asking the LLM for the rest. Positive and negative sources were only ever mixed into audio; for other modalities they now feed the unlabeled pool (pretraining and teacher labelling) instead of being read and dropped.

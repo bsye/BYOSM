@@ -80,6 +80,13 @@ class TaskSpec(BaseModel):
             blob |= {"l": dump["labels"], "desc": self.description, **{k: dump[k] for k in SYNTH_FIELDS}}
         return hashlib.sha1(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:10]
 
+    def synth_key(self) -> str:
+        dump = self.model_dump(mode="json")
+        blob = {"m": self.modality, "t": self.task_type, "l": dump["labels"], "desc": self.description}
+        return hashlib.sha1(json.dumps(blob | {k: dump[k] for k in SYNTH_FIELDS}, sort_keys=True).encode()).hexdigest()[
+            :10
+        ]
+
     def primary_suite(self) -> str:
         public = (e.name for e in self.evals if e.kind != "generated")
         return next((e.name for e in self.evals if e.primary), next(public, "builtin"))
