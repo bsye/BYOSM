@@ -11,9 +11,16 @@ from sqlalchemy import select
 
 from ..db import get_or_add, session
 from ..db.models import WorkspaceReport
+from .history import History
 from .snapshots import Recipe
 
 PREFIX = "forecast:"
+
+
+class HistorySpec(BaseModel):
+    sources: list[str]
+    key: str
+    date: str
 
 
 class ForecastSpec(BaseModel):
@@ -29,9 +36,12 @@ class ForecastSpec(BaseModel):
     derived: dict[str, dict[str, Any]] = Field(default_factory=dict)
     excluded: dict[str, str] = Field(default_factory=dict)
     per_cutoff: int = 50_000
+    key: str | None = None
+    histories: dict[str, HistorySpec] = Field(default_factory=dict)
 
-    def recipe(self) -> Recipe:
-        return Recipe(self.start, self.event, self.horizon_years, self.cutoffs, self.features, self.per_cutoff)
+    def recipe(self, histories: list[History]) -> Recipe:
+        fields = (self.start, self.event, self.horizon_years, self.cutoffs, self.features, self.per_cutoff)
+        return Recipe(*fields, key=self.key, histories=histories)
 
 
 def _row(ws: Path, name: str) -> dict[str, Any] | None:
@@ -70,10 +80,17 @@ def _read(spec: ForecastSpec, log: Callable[[str], None]) -> Any:
     from ..opendata.cache import fetch, table
     from .derive import derive
 
-    fetch(spec.source, log)
-    path = table(spec.source, spec.file)
-    log(f"  reading {path.name}")
-    return derive(pd.read_csv(path, low_memory=False, dtype=str), spec.derived)
+    def read(url: str, file: str | None = None, columns: list[str] | None = None) -> Any:
+        fetch(url, log)
+        path = table(url, file)
+        log(f"  reading {path.name}")
+        return pd.read_csv(path, low_memory=False, dtype=str, usecols=columns, encoding="utf-8-sig")
+
+    histories = [
+        History(name, pd.concat([read(u, columns=[h.key, h.date]) for u in h.sources]), h.key, h.date)
+        for name, h in spec.histories.items()
+    ]
+    return derive(read(spec.source, spec.file), spec.derived), histories
 
 
 def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, Any]:
@@ -83,7 +100,8 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
 
     spec = load(ws, name)
     _check_windows(spec)
-    splits = build(_read(spec, log), spec.recipe())
+    df, histories = _read(spec, log)
+    splits = build(df, spec.recipe(histories))
     sizes = {k: {"n": len(v), "positive": round(float(v[LABEL].mean()), 4)} for k, v in splits.items()}
     log(f"  snapshots: {sizes}")
     leaks = check(splits["train"], spec.categorical)

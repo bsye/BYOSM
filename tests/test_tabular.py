@@ -84,3 +84,13 @@ def test_a_forecast_whose_train_labels_reach_the_test_years_is_refused(ws):
         create(ws, "late", spec)
     create(ws, "ok", spec.replace("[2012]", "[2015]"))
     assert [f["name"] for f in forecasts(ws)] == ["ok"]
+
+
+def test_history_features_only_see_events_before_the_cutoff():
+    from byosm.tabular.history import NEVER_DAYS, History, features
+
+    events = pd.DataFrame({"id": ["a", "a", "b", "a"], "on": ["2023-03-01", "2021-06-01", "2023-12-31", "2024-02-01"]})
+    keys = pd.Series(["a", "b", "c"])
+    out = features(History("filings", events, "id", "on"), keys, pd.Timestamp("2024-01-01"))
+    assert out["filings_last_year"].tolist() == [1, 1, 0]
+    assert out["filings_days_since"].tolist() == [306, 1, NEVER_DAYS]

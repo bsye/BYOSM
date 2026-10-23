@@ -1,0 +1,35 @@
+title: Irish companies closing within a year, from their filings
+source: https://opendata.cro.ie/dataset/bf6f837d-0946-4c14-9a99-82cd6980c121/resource/3fef41bc-b8f4-4b10-8434-ce51c29b1bba/download/companies.csv.zip
+start: company_reg_date
+event: comp_dissolved_date
+horizon_years: 1
+cutoffs:
+  train: [2024]
+  test: [2025]
+key: company_num
+histories:
+  filings:
+    key: company_num
+    date: submission_rec_date
+    sources:
+      - https://opendata.cro.ie/dataset/99e64d94-0a2f-4cd1-b237-7164bec1426e/resource/508d4f8a-74a1-40c7-8b86-cdf0d54a4929/download/financial_statements.csv
+      - https://opendata.cro.ie/dataset/99e64d94-0a2f-4cd1-b237-7164bec1426e/resource/dd413039-f628-4931-9788-dfc38eaf6b99/download/financial_statements_2023.csv
+      - https://opendata.cro.ie/dataset/99e64d94-0a2f-4cd1-b237-7164bec1426e/resource/4dc79788-845b-4373-aaf9-77be6feb049b/download/financial_statements_2024.csv
+features: [company_type, county, nace_section, object, name_words, holding]
+categorical: [company_type, county, nace_section, object]
+derived:
+  county: {from: company_address_4, steps: [part, frequent]}
+  nace_section: {from: nace_v2_code, steps: [{first: {n: 2}}]}
+  object: {from: princ_object_code, steps: [{part: {sep: ".", index: 0}}]}
+  name_words: {from: company_name, steps: [word_count]}
+  holding: {from: company_name, steps: [{contains: {word: HOLDING}}]}
+  company_type:
+    steps:
+      - keywords:
+          groups: {GUARANTEE: guarantee, UNLIMITED: unlimited, EXTERNAL: external, PUBLIC LIMITED: plc}
+          other: shares
+excluded:
+  last_ar_date: filed after the cutoff, so it shows the company was still alive
+  eircode: issued from 2015, mostly to companies still trading
+  company_status: the answer itself
+per_cutoff: 100000

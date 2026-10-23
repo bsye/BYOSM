@@ -45,7 +45,7 @@ def models(categorical: list[str]) -> dict[str, Any]:
     from sklearn.impute import SimpleImputer
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import OneHotEncoder
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
     def numeric(x: Any) -> list[str]:
         return [c for c in x.columns if c not in categorical]
@@ -57,7 +57,7 @@ def models(categorical: list[str]) -> dict[str, Any]:
             ),
             categorical,
         ),
-        (SimpleImputer(), numeric),
+        (make_pipeline(SimpleImputer(), StandardScaler()), numeric),
     )
     return {
         "gradient boosting": HistGradientBoostingClassifier(categorical_features="from_dtype", random_state=SEED),

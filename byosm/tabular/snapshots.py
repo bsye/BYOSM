@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+from .history import History, features
 
 CUTOFF, LABEL, AGE = "_cutoff", "_label", "age_years"
 DAYS_PER_YEAR = 365.25
@@ -16,6 +18,8 @@ class Recipe:
     features: list[str]
     per_cutoff: int = 50_000
     seed: int = 0
+    key: str | None = None
+    histories: list[History] = field(default_factory=list)
 
 
 def _dates(df: Any, col: str) -> Any:
@@ -31,6 +35,8 @@ def snapshot(df: Any, r: Recipe, year: int) -> Any:
     start, event = _dates(df, r.start), _dates(df, r.event)
     alive = (start < cut) & (event.isna() | (event >= cut))
     rows = df.loc[alive, r.features].copy()
+    for h in r.histories:
+        rows = rows.join(features(h, df.loc[alive, r.key], cut))
     rows[AGE] = (cut - start[alive]).dt.days / DAYS_PER_YEAR
     rows[LABEL] = (event[alive] < cut + pd.DateOffset(years=r.horizon_years)).astype(int)
     rows[CUTOFF] = year

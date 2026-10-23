@@ -1107,3 +1107,7 @@ A request on the Datasets page runs `byosm opendata find`. The research LLM (the
 ## Forecast specs
 
 A forecast is saved in the database like a specialist, from a YAML spec: the source file URL (downloaded once into the open-data cache), the start and end columns, the horizon, the cutoff years per split, the features, and derived columns built from a small fixed set of steps (`part`, `first`, `word_count`, `contains`, `keywords`, `frequent`) so a spec never needs code. Saving refuses a spec whose last train labels reach past the first test cutoff. `excluded` names the columns left out and why, and the page shows them next to each feature's AUC alone, so the reasons for leaving data out are visible next to the evidence.
+
+## History features
+
+A spec can name event tables (filings, inspections, payments) by key and date. For each snapshot, every entity gets the number of its events in the year before the cutoff and the days since its last event, using only rows dated before the cutoff. Check how far back an event table really goes before choosing cutoffs: the Irish filing files start in late 2022, so a 2023 cutoff saw a nearly empty year of filings while its test year saw a full one, and the features looked useless. Moving both cutoffs into fully covered years made days since the last filing the strongest single feature.
