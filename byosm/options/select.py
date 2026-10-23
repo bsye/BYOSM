@@ -73,23 +73,31 @@ def score(
     return {"threshold": threshold, **result}
 
 
-def score_export(ws: Path, name: str, threshold: float = THRESHOLD) -> dict[str, Any]:
+def exported_chance(name: str) -> Callable[[list[str]], list[float]]:
+    from ..project import Project
+    from ..rt import load
+
+    model = load(Project(name).root / "export", threads=4)
+    return lambda texts: [model.predict(t)["probs"][FITS] for t in texts]
+
+
+def save(ws: Path, name: str, **parts: Any) -> dict[str, Any]:
     import time
 
     from ..db import get_or_add, session
     from ..db.models import WorkspaceReport
-    from ..project import Project
-    from ..rt import load
+
+    with session(ws) as s:
+        row = get_or_add(s, WorkspaceReport, kind=REPORT_PREFIX + name)
+        kept = {k: v for k, v in (row.data or {}).items() if k in ("own", "compare")}
+        row.data = {**kept, **parts, "at": time.time()}
+        return row.data
+
+
+def score_export(ws: Path, name: str, threshold: float = THRESHOLD) -> dict[str, Any]:
     from .create import table_path
 
-    model = load(Project(name).root / "export", threads=4)
-    result = {
-        "at": time.time(),
-        **score(table_path(ws, name), lambda texts: [model.predict(t)["probs"][FITS] for t in texts], threshold),
-    }
-    with session(ws) as s:
-        get_or_add(s, WorkspaceReport, kind=REPORT_PREFIX + name).data = result
-    return result
+    return save(ws, name, own=score(table_path(ws, name), exported_chance(name), threshold))["own"]
 
 
 def report(ws: Path, name: str) -> dict[str, Any] | None:

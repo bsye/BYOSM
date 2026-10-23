@@ -47,3 +47,20 @@ def test_a_rival_is_scored_on_the_same_requests_as_the_model(tmp_path, monkeypat
     out = rivals.rival_scores(table, {"concurrency": 2}, lambda texts: [0.1] * len(texts), sample=10)
     assert out["sample"] == 10 and out["rivals"]["fake:llm"]["tool_needed"]["accuracy"] == 1.0
     assert out["model"]["tool_needed"]["accuracy"] == 0.0
+
+
+def test_the_options_commands_import_what_they_use():
+    from typer.testing import CliRunner
+
+    from byosm.cli import app
+
+    for command in ("score", "rival"):
+        assert CliRunner().invoke(app, ["options", command, "--help"]).exit_code == 0
+
+
+def test_scores_and_comparisons_are_kept_side_by_side(ws):
+    from byosm.options.select import report, save
+
+    save(ws, "t", own={"exact": 1})
+    save(ws, "t", compare={"sample": 3})
+    assert {k: v for k, v in report(ws, "t").items() if k != "at"} == {"own": {"exact": 1}, "compare": {"sample": 3}}
