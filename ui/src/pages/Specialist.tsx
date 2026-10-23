@@ -174,7 +174,7 @@ export function Specialist({ name }: { name: string }) {
   const team = useTeam(name)
   if (team === undefined) return <PageSkeleton />
   if (team) return <Team view={team} />
-  return <Model name={name} />
+  return <Model key={name} name={name} />
 }
 
 function ModelStats({ d }: { d: Detail }) {
@@ -206,7 +206,13 @@ function Model({ name }: { name: string }) {
   const jobs = Object.values(useLive().jobs)
   const finished = jobs.filter((j) => j.status === "done").length
   const load = useCallback(
-    () => api<Detail>(`/specialists/${name}`).then(setD).catch((e) => setError(String(e))),
+    () =>
+      api<Detail>(`/specialists/${name}`)
+        .then((x) => {
+          setD(x)
+          setError("")
+        })
+        .catch((e) => setError(String(e))),
     [name],
   )
   useEffect(() => {
@@ -291,7 +297,7 @@ function Model({ name }: { name: string }) {
           <UseIt d={d} />
         </TabsContent>
         <TabsContent value="spec">
-          <SpecEditor d={d} onSaved={load} />
+          <SpecEditor key={JSON.stringify(d.spec)} d={d} onSaved={load} />
         </TabsContent>
       </Tabs>
     </div>

@@ -31,20 +31,24 @@ export function HfRivals({ name, ours }: { name: string; ours: string[] }) {
   const [items, setItems] = useState<Candidate[] | null>(null)
   const [error, setError] = useState("")
   const search = (query: string) => {
+    setError("")
     setItems(null)
     api<Candidate[]>(`/specialists/${name}/rivals/search?q=${encodeURIComponent(query)}`)
       .then(setItems)
       .catch((e) => setError(String(e)))
   }
   useEffect(() => {
+    setError("")
     api<Candidate[]>(`/specialists/${name}/rivals/search`)
       .then(setItems)
       .catch((e) => setError(String(e)))
   }, [name])
-  const add = (id: string) =>
-    runJob(["baseline", "add", name, id, "--score"])
+  const add = (id: string) => {
+    setError("")
+    return runJob(["baseline", "add", name, id, "--score"])
       .then((j) => openJob(j.id))
       .catch((e) => setError(String(e)))
+  }
   return (
     <Card>
       <CardHeader>

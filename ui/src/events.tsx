@@ -8,6 +8,7 @@ type Live = {
   jobs: Record<string, Job>
   lines: Record<string, string[]>
   metrics: Record<string, Metric[]>
+  received: Record<string, number>
   connected: boolean
   unauthorized: boolean
 }
@@ -17,13 +18,15 @@ const SEED_LINES = 50
 const UNFINISHED = new Set(["running", "queued"])
 const UNAUTHORIZED = 4401
 const KEPT_LINES = 5000
-const LiveContext = createContext<Live>({ jobs: {}, lines: {}, metrics: {}, connected: false, unauthorized: false })
+const EMPTY: Live = { jobs: {}, lines: {}, metrics: {}, received: {}, connected: false, unauthorized: false }
+const LiveContext = createContext<Live>(EMPTY)
 
 export function LiveProvider({ children }: { children: ReactNode }) {
-  const [live, setLive] = useState<Live>({ jobs: {}, lines: {}, metrics: {}, connected: false, unauthorized: false })
+  const [live, setLive] = useState<Live>(EMPTY)
   useEffect(() => {
     let sock: WebSocket | null = null
     const seeded = new Set<string>()
+    const received: Record<string, number> = {}
     let stop = false
     const open = () => {
       sock = new WebSocket(eventsUrl())
@@ -36,20 +39,29 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         const ev = JSON.parse(m.data)
         if (ev.type === "job" && UNFINISHED.has(ev.job.status) && !seeded.has(ev.job.id)) {
           seeded.add(ev.job.id)
+          const from = received[ev.job.id] ?? 0
           api<{ events?: Metric[]; lines: string[] }>(`/jobs/${ev.job.id}`)
             .then((d) =>
               setLive((l) => ({
                 ...l,
                 metrics: { ...l.metrics, [ev.job.id]: [...(d.events ?? []), ...(l.metrics[ev.job.id] ?? [])] },
-                lines: { ...l.lines, [ev.job.id]: [...d.lines.slice(-SEED_LINES), ...(l.lines[ev.job.id] ?? [])] },
+                lines: {
+                  ...l.lines,
+                  [ev.job.id]: [...d.lines.slice(-SEED_LINES), ...since(l.lines[ev.job.id] ?? [], (received[ev.job.id] ?? 0) - from)],
+                },
               })),
             )
             .catch(() => seeded.delete(ev.job.id))
         }
+        const count = ev.type === "log" ? (received[ev.job] = (received[ev.job] ?? 0) + 1) : 0
         setLive((l) => {
           if (ev.type === "job") return { ...l, jobs: { ...l.jobs, [ev.job.id]: ev.job } }
           if (ev.type === "metric") return { ...l, metrics: { ...l.metrics, [ev.job]: [...(l.metrics[ev.job] ?? []), ev.data] } }
-          return { ...l, lines: { ...l.lines, [ev.job]: [...(l.lines[ev.job] ?? []), ev.line].slice(-KEPT_LINES) } }
+          return {
+            ...l,
+            lines: { ...l.lines, [ev.job]: [...(l.lines[ev.job] ?? []), ev.line].slice(-KEPT_LINES) },
+            received: { ...l.received, [ev.job]: count },
+          }
         })
       }
     }
@@ -68,7 +80,7 @@ export function useJob(id: string): { lines: string[]; metrics: Metric[] } {
   const live = useLive()
   const fresh = { lines: live.lines[id] ?? [], metrics: live.metrics[id] ?? [] }
   const seen = useRef({ lines: 0, metrics: 0 })
-  seen.current = { lines: fresh.lines.length, metrics: fresh.metrics.length }
+  seen.current = { lines: live.received[id] ?? 0, metrics: fresh.metrics.length }
   const [stored, setStored] = useState({ lines: [] as string[], metrics: [] as Metric[], at: { lines: 0, metrics: 0 } })
   useEffect(() => {
     api<{ lines: string[]; events?: Metric[] }>(`/jobs/${id}`)
@@ -76,9 +88,13 @@ export function useJob(id: string): { lines: string[]; metrics: Metric[] } {
       .catch(() => setStored({ lines: [], metrics: [], at: { lines: 0, metrics: 0 } }))
   }, [id])
   return {
-    lines: [...stored.lines, ...fresh.lines.slice(stored.at.lines)],
+    lines: [...stored.lines, ...since(fresh.lines, (live.received[id] ?? 0) - stored.at.lines)],
     metrics: unique([...stored.metrics, ...fresh.metrics.slice(stored.at.metrics)]),
   }
+}
+
+function since(lines: string[], count: number): string[] {
+  return count > 0 ? lines.slice(Math.max(0, lines.length - count)) : []
 }
 
 function unique(metrics: Metric[]): Metric[] {

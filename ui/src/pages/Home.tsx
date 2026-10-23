@@ -40,10 +40,16 @@ const PROMPT_ID = "home-prompt"
 function Prompt({ prompt, setPrompt }: { prompt: string; setPrompt: (p: string) => void }) {
   const llm = useLlmChoice()
   const [error, setError] = useState("")
-  const start = () =>
+  const [busy, setBusy] = useState(false)
+  const start = () => {
+    if (busy) return
+    setBusy(true)
+    setError("")
     runJob(["auto", prompt.trim()], llm.config())
       .then((j) => openJob(j.id))
       .catch((e) => setError(String(e)))
+      .finally(() => setBusy(false))
+  }
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 pt-6 pb-2 md:pt-10">
       <h1 className="text-center text-3xl font-semibold tracking-tight">What should we build?</h1>
@@ -60,7 +66,7 @@ function Prompt({ prompt, setPrompt }: { prompt: string; setPrompt: (p: string) 
         />
         <InputGroupAddon align="block-end" className="justify-between">
           <LlmPicker llm={llm} label="LLM used while building" />
-          <Button size="sm" disabled={!prompt.trim() || !llm.choice} onClick={start}>
+          <Button size="sm" disabled={busy || !prompt.trim() || !llm.choice} onClick={start}>
             <Hammer />
             Build it
           </Button>

@@ -12,17 +12,20 @@ export function useInfinite<T, X>(key: string, fetchPage: (offset: number, limit
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const loaded = useRef(0)
+  const gen = useRef(0)
   const reload = useCallback(
     (limit: number) => {
+      const g = ++gen.current
       setLoading(true)
       fetchPage(0, limit)
         .then((p) => {
+          if (g !== gen.current) return
           setRows(p.rows)
           setExtra(p.extra)
           setTotal(p.total)
           loaded.current = p.rows.length
         })
-        .finally(() => setLoading(false))
+        .finally(() => g === gen.current && setLoading(false))
     },
     [fetchPage],
   )
@@ -35,15 +38,17 @@ export function useInfinite<T, X>(key: string, fetchPage: (offset: number, limit
   }, [refresh, reload])
   const more = () => {
     if (loading || loaded.current >= total) return
+    const g = gen.current
     setLoading(true)
     fetchPage(loaded.current, PAGE_SIZE)
       .then((p) => {
+        if (g !== gen.current) return
         setRows((r) => [...r, ...p.rows])
         setExtra((e) => (e ? merge(e, p.extra) : p.extra))
         setTotal(p.total)
         loaded.current += p.rows.length
       })
-      .finally(() => setLoading(false))
+      .finally(() => g === gen.current && setLoading(false))
   }
   return { rows, extra, total, loading, more, done: rows.length >= total }
 }

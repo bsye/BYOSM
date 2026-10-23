@@ -164,14 +164,15 @@ export function Panel({ name }: { name: string }) {
   }, [name])
   if (error) return <p className="text-destructive">{error}</p>
   if (!view) return null
-  const saved = (row: ReviewRow) => {
-    const fresh = !view.review.find((r) => r.input === row.input)?.reviewed
-    setView({
-      ...view,
-      n_reviewed: view.n_reviewed + (fresh ? 1 : 0),
-      review: view.review.map((r) => (r.input === row.input ? row : r)),
-    })
-  }
+  const saved = (row: ReviewRow) =>
+    setView(
+      (v) =>
+        v && {
+          ...v,
+          n_reviewed: v.n_reviewed + (v.review.find((r) => r.input === row.input)?.reviewed ? 0 : 1),
+          review: v.review.map((r) => (r.input === row.input ? row : r)),
+        },
+    )
   return (
     <div className="space-y-4">
       <Accuracy view={view} />
