@@ -2,14 +2,11 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
-import json
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Any
 
 from ..config import STATE_DIR
-from ..spec import TaskSpec
 
 GPU_DEVICES = ("mps", "cuda")
 SLOTS_KEY = "gpu_jobs"
@@ -17,8 +14,6 @@ MAX_AUTO_SLOTS = 2
 CORES_PER_TRAINING = 8
 GB_PER_TRAINING = 16
 MPS_SHARE = 0.9
-OOM_RETRIES = 3
-MIN_BATCH = 4
 LOCK_DIR = STATE_DIR / "gpu"
 WAIT_S = 5
 HEARTBEAT_S = 300
@@ -115,66 +110,3 @@ def busy_slots(ws: Path) -> int:
             fcntl.flock(handle, fcntl.LOCK_UN)
             handle.close()
     return held
-
-
-def out_of_memory(e: RuntimeError) -> bool:
-    return "out of memory" in str(e).lower()
-
-
-BATCHES_FILE = "batches.json"
-RETRY_IN_PROCESS = ("cuda",)
-
-
-def _batches(ws: Path) -> dict[str, int]:
-    path = ws / LOCK_DIR / BATCHES_FILE
-    return json.loads(path.read_text()) if path.exists() else {}
-
-
-def _remember(ws: Path, key: str, size: int) -> None:
-    path = ws / LOCK_DIR / BATCHES_FILE
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({**_batches(ws), key: size}, indent=1))
-
-
-def _with_batch(spec: TaskSpec, size: int) -> TaskSpec:
-    return spec.model_copy(update={"train": spec.train.model_copy(update={"batch_size": size})})
-
-
-def restart(log: Callable[[str], None], why: str) -> None:
-    import os
-    import sys
-
-    log(f"  {why} in a fresh process")
-    sys.stdout.flush()
-    sys.stderr.flush()
-    os.execv(sys.executable, sys.orig_argv)
-
-
-def batch_key(spec: TaskSpec) -> str:
-    return f"{spec.modality}|{spec.backbone}"
-
-
-def shrink_on_oom(
-    spec: TaskSpec, train: Callable[[TaskSpec], tuple[dict, Any]], log: Callable[[str], None], device: str
-):
-    from ..config import find_workspace
-
-    ws, key = find_workspace(), batch_key(spec)
-    known = _batches(ws).get(key)
-    if known and known < spec.train.batch_size:
-        log(f"  batch {known}: {key} ran out of GPU memory at a larger batch before")
-        spec = _with_batch(spec, known)
-    for _ in range(OOM_RETRIES + 1):
-        try:
-            meta, rest = train(spec)
-            return {**meta, "batch_size": spec.train.batch_size}, rest
-        except RuntimeError as e:
-            size = spec.train.batch_size // 2
-            if not out_of_memory(e) or size < MIN_BATCH:
-                raise
-            _remember(ws, key, size)
-            if device not in RETRY_IN_PROCESS:
-                restart(log, f"out of GPU memory at batch {spec.train.batch_size}; restarting at batch {size}")
-            log(f"  out of GPU memory at batch {spec.train.batch_size}: retrying at batch {size}")
-            spec = _with_batch(spec, size)
-    raise RuntimeError("out of GPU memory at every batch size tried")

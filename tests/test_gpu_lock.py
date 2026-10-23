@@ -79,23 +79,24 @@ def _train(tried, fits_at):
 
 
 def test_on_cuda_running_out_of_memory_halves_the_batch_until_it_fits(ws):
-    from byosm.train.gpu import shrink_on_oom
+    from byosm.train.recovery import recover as shrink_on_oom
 
     tried = []
     meta, _ = shrink_on_oom(_spec(), _train(tried, 8), log=lambda _: None, device="cuda")
-    assert tried == [32, 16, 8] and meta == {"ok": True, "batch_size": 8}
+    assert tried == [32, 16, 8] and meta == {"ok": True, "batch_size": 8, "precision": "auto"}
 
 
 def test_on_apple_gpus_the_job_restarts_itself_at_half_the_batch(ws, monkeypatch):
     import pytest
 
-    import byosm.train.gpu as gpu
-    from byosm.train.gpu import shrink_on_oom
+    from byosm.train.recovery import recover as shrink_on_oom
 
     def restart(log, why):
         raise SystemExit(why)
 
-    monkeypatch.setattr(gpu, "restart", restart)
+    import byosm.train.recovery as recovery
+
+    monkeypatch.setattr(recovery, "restart", restart)
     tried = []
     with pytest.raises(SystemExit, match="restarting at batch 16"):
         shrink_on_oom(_spec(), _train(tried, 16), log=lambda _: None, device="mps")
@@ -107,10 +108,28 @@ def test_other_errors_are_not_retried(ws):
     import pytest
 
     from byosm.spec import Label, TaskSpec
-    from byosm.train.gpu import shrink_on_oom
+    from byosm.train.recovery import recover as shrink_on_oom
 
     spec = TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
     with pytest.raises(RuntimeError, match="shape mismatch"):
         shrink_on_oom(
             spec, lambda s: (_ for _ in ()).throw(RuntimeError("shape mismatch")), log=lambda _: None, device="cuda"
         )
+
+
+def test_a_training_that_diverges_climbs_the_precision_ladder_and_is_remembered(ws):
+    from byosm.train.recovery import DivergedError, recover
+
+    tried = []
+
+    def train(spec):
+        tried.append(spec.train.precision)
+        if spec.train.precision != "fp32":
+            raise DivergedError("NaN")
+        return {"ok": True}, None
+
+    meta, _ = recover(_spec(), train, log=lambda _: None, device="cuda")
+    assert tried == ["auto", "bf16", "fp32"] and meta["precision"] == "fp32"
+    tried.clear()
+    recover(_spec(), train, log=lambda _: None, device="cuda")
+    assert tried == ["fp32"]
