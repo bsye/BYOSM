@@ -11,6 +11,9 @@
 | ✅ Hugging Face datasets | ✅ Overfitting check | ✅ Tokens per task and model | ✅ Publish to Hugging Face |
 | ✅ LLM data, judge-checked | ✅ Health score | ✅ Test sets, Excel export | ✅ Teams that act as you type |
 | ✅ Experiments and autopilot | ✅ Hugging Face rivals | ✅ Paged tables, live counts | ✅ SQLite or Postgres |
+| ✅ Auto until ready for production | ✅ Ablations with matched seeds | ✅ Machine, GPU and memory live | ✅ Each model in its own container |
+| ✅ Labels derived from content | ✅ Cost and break-even against LLMs | ✅ Waits for LLM limits, or goes local | ✅ Teams deploy like models |
+| ✅ Ideas researched on the web | ✅ Next step for each failing check | ✅ GPU queue that cannot freeze the machine | ✅ Datasets published with answers |
 
 ## Command line
 
