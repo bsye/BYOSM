@@ -1127,3 +1127,7 @@ A field rewritten for survivors can score a modest AUC alone and still be a leak
 ## Scoring who is alive today
 
 Every forecast run ends by scoring the entities alive on 1 January of this year. The model is retrained on the spec's own training years moved forward by the gap between this year and the test year, so the pattern that was tested (including where history tables are complete) is the one used, and every label it trains on is already known. The page shows how many were scored, how many are expected to end (the sum of their chances), how they spread across chance bands, and the most likely to end with their features in a tooltip. Next to the expected count it shows the predicted and actual rate on the test year, because a sum of chances is only as good as the model's calibration.
+
+## Reasons for a chance
+
+Each of the most likely to end gets up to three reasons: every feature in turn is set to its typical training value (the median, or the most common category) and the fall in the chance is measured; the largest falls of at least one point are the reasons. It needs only the fitted model, costs one prediction per feature, and reads as "this company would be less at risk if this were ordinary". Features interact, so the falls do not add up to the chance; they rank what matters for that row.

@@ -1,16 +1,20 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { useShowMore } from "@/components/show-more"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 type Band = { from: number; to: number; n: number }
-type Scored = { p: number; shown: Record<string, string | null>; features: Record<string, string | number | null> }
+type Reason = { feature: string; drop: number; value: string | number | null }
+type Scored = { p: number; shown: Record<string, string | null>; features: Record<string, string | number | null>; why?: Reason[] }
 export type Today = { year: number; trained_on: number[]; scored: number; expected: number; bands: Band[]; top: Scored[] }
 
 const config = { n: { label: "entities", color: "var(--chart-1)" } } satisfies ChartConfig
 const pct = (v: number) => `${Math.round(v * 100)}%`
+const NEVER_DAYS = 9999
+const value = (v: string | number | null) => (v == null ? "missing" : v === NEVER_DAYS ? "never" : typeof v === "number" ? String(Math.round(v * 10) / 10) : v)
 
 type Check = { base_rate: number; predicted_rate?: number }
 
@@ -52,6 +56,7 @@ function Riskiest({ top }: { top: Scored[] }) {
             {columns.map((c) => (
               <TableHead key={c}>{c}</TableHead>
             ))}
+            <TableHead>Why</TableHead>
             <TableHead className="text-right">Chance</TableHead>
           </TableRow>
         </TableHeader>
@@ -63,6 +68,15 @@ function Riskiest({ top }: { top: Scored[] }) {
                   {r.shown[c] ?? "—"}
                 </TableCell>
               ))}
+              <TableCell>
+                <div className="flex flex-wrap gap-1">
+                  {(r.why ?? []).slice(0, 2).map((w) => (
+                    <Badge key={w.feature} variant="secondary" className="font-mono" title={`+${pct(w.drop)} because of this`}>
+                      {w.feature} {value(w.value)}
+                    </Badge>
+                  ))}
+                </div>
+              </TableCell>
               <TableCell className="text-right tabular-nums">
                 <Tooltip>
                   <TooltipTrigger>{pct(r.p)}</TooltipTrigger>
@@ -92,15 +106,13 @@ export function ForecastToday({ today, horizon, check, testYear }: { today: Toda
         <Stat label={`Expected to end within ${horizon === 1 ? "a year" : `${horizon} years`}`} value={today.expected.toLocaleString()} note={note} />
         <Stat label="Trained on" value={today.trained_on.join(", ")} />
       </div>
-      <div className="grid gap-6 @3xl/main:grid-cols-2">
-        <div className="grid content-start gap-2">
-          <h4 className="text-muted-foreground text-xs">Entities by chance of ending</h4>
-          <Bands bands={today.bands} />
-        </div>
-        <div className="grid content-start gap-2">
-          <h4 className="text-muted-foreground text-xs">Most likely to end</h4>
-          <Riskiest top={today.top} />
-        </div>
+      <div className="grid gap-2">
+        <h4 className="text-muted-foreground text-xs">Entities by chance of ending</h4>
+        <Bands bands={today.bands} />
+      </div>
+      <div className="grid gap-2">
+        <h4 className="text-muted-foreground text-xs">Most likely to end</h4>
+        <Riskiest top={today.top} />
       </div>
     </div>
   )

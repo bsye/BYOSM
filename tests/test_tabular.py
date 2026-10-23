@@ -157,3 +157,14 @@ def test_today_scores_everyone_alive_now_with_training_years_moved_forward():
     assert now["trained_on"] == [2012 + date.today().year - 2016]
     chances = [t["p"] for t in now["top"]]
     assert now["scored"] == sum(b["n"] for b in now["bands"]) and chances == sorted(chances, reverse=True)
+
+
+def test_the_reason_for_a_high_chance_is_the_feature_that_drives_it():
+    from byosm.tabular.fit import _xy, models
+    from byosm.tabular.reasons import reasons, typical
+
+    splits = build(_register(), _recipe(["kind", "noise"]))
+    x, y = _xy(splits["train"], ["kind"])
+    model = models(["kind"])["gradient boosting"].fit(x, y)
+    risky = x[x["kind"] == "a"].head(5)
+    assert all(r and r[0]["feature"] == "kind" for r in reasons(model, risky, typical(x)))

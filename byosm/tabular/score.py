@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from .reasons import reasons, typical
 from .snapshots import CUTOFF, LABEL, Recipe, snapshot
 
 TOP = 100
@@ -29,14 +30,21 @@ def today(
     model = models(categorical)["gradient boosting"]
     x, y = _xy(train, categorical)
     model.fit(x, y)
-    p = model.predict_proba(_xy(now, categorical)[0])[:, 1]
+    xnow = _xy(now, categorical)[0]
+    p = model.predict_proba(xnow)[:, 1]
     log(f"  scored {len(now):,} alive on 1 Jan {year} with a model trained on {trained_on}")
     order = np.argsort(-p)[:TOP]
     features = [c for c in now.columns if c not in (LABEL, CUTOFF)]
     rows = df.loc[now.index[order], shown].astype(object).where(df.loc[now.index[order], shown].notna(), None)
+    why = reasons(model, xnow.iloc[order], typical(x))
     top = [
-        {"p": round(float(p[i]), 4), "shown": row, "features": {c: _plain(now.iloc[i][c]) for c in features}}
-        for i, row in zip(order, rows.to_dict("records"), strict=True)
+        {
+            "p": round(float(p[i]), 4),
+            "shown": row,
+            "features": {c: _plain(now.iloc[i][c]) for c in features},
+            "why": [{**w, "value": _plain(now.iloc[i][w["feature"]])} for w in because],
+        }
+        for i, row, because in zip(order, rows.to_dict("records"), why, strict=True)
     ]
     edges = np.linspace(0, 1, BANDS + 1)
     counts = np.histogram(p, bins=edges)[0]
