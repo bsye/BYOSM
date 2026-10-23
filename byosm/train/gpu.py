@@ -43,8 +43,20 @@ def free_gb() -> float:
     return psutil.virtual_memory().available / 1024**3
 
 
+def needed_gb() -> float:
+    import psutil
+
+    from ..machine import UNIFIED_MEMORY_SHARE
+
+    return min(GB_PER_TRAINING, psutil.virtual_memory().total * UNIFIED_MEMORY_SHARE / 1024**3)
+
+
 def _roomy() -> bool:
-    return free_gb() >= GB_PER_TRAINING
+    return free_gb() >= needed_gb()
+
+
+def _may_start(device: str, ws: Path) -> bool:
+    return device == "cuda" or busy_slots(ws) == 0 or _roomy()
 
 
 def _try(path: Path):
@@ -77,14 +89,16 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
     from ..config import find_workspace
     from ..events import emit
 
-    base, waited = find_workspace() / LOCK_DIR, 0.0
+    ws, waited = find_workspace(), 0.0
+    base = ws / LOCK_DIR
     while True:
-        handle = next((h for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if _roomy() else None
+        roomy = _may_start(device, ws)
+        handle = next((h for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if roomy else None
         if handle:
             break
         if not waited:
             log(
-                f"  waiting for the {device} GPU: another job is training on it, or less than {GB_PER_TRAINING} GB is free"
+                f"  waiting for the {device} GPU: another job is training on it, or less than {needed_gb():.0f} GB is free"
             )
         if waited % HEARTBEAT_S < WAIT_S:
             emit("gpu", state="waiting", waited=round(waited))

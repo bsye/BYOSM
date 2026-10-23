@@ -1,47 +1,27 @@
 from __future__ import annotations
 
-import json
-import os
+import contextlib
 import queue
 import subprocess
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..events import EVENTS_ENV, TARGET, parse
+from ..events import TARGET, parse
 from ..resources import can_start_job, max_jobs, stall_seconds
 from .allowed import ALLOWED_COMMANDS
-from .detached import LOG_SUFFIX, Tail, alive, ending, exit_code, forget, job_file, kill_group, spawn
+from .detached import LOG_SUFFIX, Tail, ending, exit_code, forget, job_file, kill_group, owned, spawn
 from .hub import Hub
-from .store import JOB_FIELDS, JobStore
+from .job import Job, job_env
+from .store import JobStore
 
-TERMINAL_COLUMNS = "160"
 ADMIT_POLL_S = 2
 ENTRY = "from byosm.cli import app; app()"
 LOST_LINE = "the job process ended without reporting an exit code"
 FOLLOW_SECONDS = 0.1
-
-
-@dataclass
-class Job:
-    id: str
-    args: list[str]
-    status: str = "queued"
-    created: float = field(default_factory=time.time)
-    started: float | None = None
-    ended: float | None = None
-    code: int | None = None
-    pid: int | None = None
-    cancel: bool = False
-    llm: dict[str, Any] | None = None
-    target: str | None = None
-    stalled: bool = False
-
-    def public(self) -> dict[str, Any]:
-        return {k: getattr(self, k) for k in (*JOB_FIELDS, TARGET)}
+FAILED = "failed"
 
 
 class Runner:
@@ -53,13 +33,9 @@ class Runner:
         self.procs: dict[str, subprocess.Popen] = {}
         self.lock = threading.Lock()
         self.stopped = False
-        running = [j for j in self.jobs.values() if j.status == "running"]
-        for job in running:
-            if not self._settled(job, self._tail(job)):
-                self.todo.put(job)
-        for job in self.jobs.values():
-            if job.status == "queued":
-                self.todo.put(job)
+        live = [j for j in self.jobs.values() if j.status == "running" and not self._settled(j, self._tail(j))]
+        for job in live + [j for j in self.jobs.values() if j.status == "queued"]:
+            self.todo.put(job)
         self.cap = parallel or max_jobs()
         for _ in range(max(1, self.cap)):
             threading.Thread(target=self._work, daemon=True).start()
@@ -68,7 +44,8 @@ class Runner:
         if not args or args[0] not in ALLOWED_COMMANDS:
             raise ValueError(f"command must be one of {', '.join(ALLOWED_COMMANDS)}")
         job = Job(id=uuid.uuid4().hex[:10], args=[str(a) for a in args], llm=llm)
-        self.jobs[job.id] = job
+        with self.lock:
+            self.jobs[job.id] = job
         self._status(job, "queued")
         self.todo.put(job)
         return job
@@ -77,12 +54,16 @@ class Runner:
         job = self.jobs[job_id]
         with self.lock:
             job.cancel = True
-            pid = job.pid
-        if job.status == "queued":
+            queued = job.pid is None and job.status == "queued"
+        if queued:
             self._status(job, "cancelled")
-        elif pid is not None:
-            kill_group(pid)
+        else:
+            self._kill(job)
         return job
+
+    def snapshot(self) -> list[Job]:
+        with self.lock:
+            return list(self.jobs.values())
 
     def detail(self, job_id: str) -> dict[str, Any]:
         job = self.jobs[job_id]
@@ -119,35 +100,40 @@ class Runner:
             job = self.todo.get()
             if self.stopped:
                 return
-            if job.status == "queued":
-                self._admit()
-                self._run(job)
-            elif job.status == "running":
-                self._follow(job)
+            try:
+                if job.status == "queued":
+                    self._admit()
+                    if not job.cancel:
+                        self._run(job)
+                elif job.status == "running":
+                    self._follow(job)
+            except Exception as error:
+                self._fail(job, error)
+
+    def _fail(self, job: Job, error: Exception) -> None:
+        with self.lock:
+            self.procs.pop(job.id, None)
+            job.ended = time.time()
+        with contextlib.suppress(Exception):
+            self._kill(job)
+        with contextlib.suppress(Exception):
+            self._status(job, FAILED)
+            self._line(job, f"stopped: the job runner hit an error: {error!r}")
+
+    def _kill(self, job: Job) -> None:
+        if job.pid is not None and self._running(job):
+            kill_group(job.pid)
 
     def _admit(self) -> None:
         while not self.stopped:
-            running = sum(j.status == "running" for j in self.jobs.values())
+            running = sum(j.status == "running" for j in self.snapshot())
             if running < self.cap and can_start_job(running):
                 return
             time.sleep(ADMIT_POLL_S)
 
-    def _env(self, job: Job) -> dict[str, str]:
-        from ..config import LLM_OVERRIDE_ENV, env_file
-
-        return {
-            **os.environ,
-            **env_file(self.ws),
-            "PYTHONUNBUFFERED": "1",
-            "COLUMNS": TERMINAL_COLUMNS,
-            "NO_COLOR": "1",
-            EVENTS_ENV: "1",
-            **({LLM_OVERRIDE_ENV: json.dumps(job.llm)} if job.llm else {}),
-        }
-
     def _run(self, job: Job) -> None:
         forget(self.ws, job.id)
-        proc = spawn(self.ws, job.id, ENTRY, job.args, self._env(job))
+        proc = spawn(self.ws, job.id, ENTRY, job.args, job_env(self.ws, job))
         with self.lock:
             self.procs[job.id] = proc
             job.pid, job.started = proc.pid, time.time()
@@ -165,7 +151,7 @@ class Runner:
         while not self.stopped and not self._settled(job, tail, heard):
             if not killed and job.pid and time.time() - heard[0] > limit:
                 self._line(job, f"stopped: no output for {limit // 60} minutes, the job looked stuck")
-                kill_group(job.pid)
+                self._kill(job)
                 killed = job.stalled = True
             time.sleep(FOLLOW_SECONDS)
 
@@ -173,7 +159,7 @@ class Runner:
         proc = self.procs.get(job.id)
         if proc is not None:
             return proc.poll() is None
-        return job.pid is not None and alive(job.pid)
+        return job.pid is not None and owned(job.pid, job.started or 0)
 
     def _settled(self, job: Job, tail: Tail, heard: list[float] | None = None) -> bool:
         fresh = tail.read()

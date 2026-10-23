@@ -13,7 +13,7 @@ def quiet(_):
 
 
 @pytest.mark.slow
-def test_text_pipeline_end_to_end(ws, load_runtime, monkeypatch, capsys):
+def test_text_pipeline_end_to_end(ws, load_runtime, monkeypatch, capfd):
     monkeypatch.setenv(EVENTS_ENV, "1")
     spec = compile_spec("isq", "detect questions")
     spec.data.dev_size, spec.data.per_call = 40, 20
@@ -25,7 +25,7 @@ def test_text_pipeline_end_to_end(ws, load_runtime, monkeypatch, capsys):
     assert p.promoted == "v1"
     board = p.board()
     assert board["v1"]["builtin"]["objective"] > 0.9 and any(k.startswith("llm") for k in board)
-    events = [e for e in map(parse, capsys.readouterr().out.splitlines()) if e]
+    events = [e for e in map(parse, capfd.readouterr().out.splitlines()) if e]
     epochs = [e for e in events if e["kind"] == "epoch"]
     assert epochs[0]["epoch"] == 1 and epochs[0]["epochs"] == 3 and epochs[0]["experiment"] == "v1"
     scored = [(e["predictor"], e["suite"]) for e in events if e["kind"] == "scored"]

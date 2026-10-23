@@ -1132,9 +1132,9 @@ Every forecast run ends by scoring the entities alive on 1 January of this year.
 
 Each of the most likely to end gets up to three reasons: every feature in turn is set to its typical training value (the median, or the most common category) and the fall in the chance is measured; the largest falls of at least one point are the reasons. It needs only the fitted model, costs one prediction per feature, and reads as "this company would be less at risk if this were ordinary". Features interact, so the falls do not add up to the chance; they rank what matters for that row.
 
-## Restarting after running out of GPU memory
+## Retrying a training after running out of GPU memory
 
-On Apple GPUs a training that ran out of memory cannot safely try again in the same process: Metal can be left in a state where the next command buffer fails or hangs. Failing the job instead was safe but left the user to start it again. Now the job records the halved batch and replaces itself with a fresh copy of the same command (`os.execv` with the original arguments), keeping its job id, log and process id. Files opened by Python are closed on exec, so the GPU slot lock is released and taken again by the new run, which reads the remembered batch. The batch halves each time and stops at the minimum, so this cannot loop.
+On Apple GPUs a training that ran out of memory cannot safely try again in the same process: Metal can be left in a state where the next command buffer fails or hangs. Each training attempt on an Apple GPU therefore runs in a fresh child process (spawned, with the training step pickled), while the job keeps the GPU slot. A failed attempt records the halved batch or the next precision and the next attempt starts clean in a new child. An earlier version restarted the whole job with `os.execv`, which replayed every stage of an `auto` job, LLM calls included; the child process limits the retry to the training step.
 
 ## Open data in a specialist's training set
 

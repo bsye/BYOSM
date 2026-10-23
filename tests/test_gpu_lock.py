@@ -56,8 +56,9 @@ def test_a_training_waits_while_memory_is_short(ws, monkeypatch):
     free = iter([2.0, 2.0, 40.0])
     monkeypatch.setattr(gpu, "free_gb", lambda: next(free))
     monkeypatch.setattr(gpu, "WAIT_S", 0.01)
+    monkeypatch.setattr(gpu, "busy_slots", lambda _: 1)
     lines = []
-    with gpu.gpu_slot("cuda", log=lines.append):
+    with gpu.gpu_slot("mps", log=lines.append):
         pass
     assert any("waiting" in line for line in lines) and any("got the GPU" in line for line in lines)
 
@@ -86,22 +87,15 @@ def test_on_cuda_running_out_of_memory_halves_the_batch_until_it_fits(ws):
     assert tried == [32, 16, 8] and meta == {"ok": True, "batch_size": 8, "precision": "auto"}
 
 
-def test_on_apple_gpus_the_job_restarts_itself_at_half_the_batch(ws, monkeypatch):
-    import pytest
-
+def test_on_apple_gpus_the_job_retries_at_half_the_batch_and_remembers_it(ws):
+    from byosm.train.recovery import BATCHES, known, model_key
     from byosm.train.recovery import recover as shrink_on_oom
 
-    def restart(log, why):
-        raise SystemExit(why)
-
-    import byosm.train.recovery as recovery
-
-    monkeypatch.setattr(recovery, "restart", restart)
+    meta, _ = shrink_on_oom(_spec(), _train([], 16), log=lambda _: None, device="mps")
+    assert meta["batch_size"] == 16 and known(ws, BATCHES)[model_key(_spec())] == 16
     tried = []
-    with pytest.raises(SystemExit, match="restarting at batch 16"):
-        shrink_on_oom(_spec(), _train(tried, 16), log=lambda _: None, device="mps")
-    meta, _ = shrink_on_oom(_spec(), _train(tried, 16), log=lambda _: None, device="mps")
-    assert tried == [32, 16] and meta["batch_size"] == 16
+    meta, _ = shrink_on_oom(_spec(), _train(tried, 16), log=lambda _: None, device="cuda")
+    assert tried == [16] and meta["batch_size"] == 16
 
 
 def test_other_errors_are_not_retried(ws):

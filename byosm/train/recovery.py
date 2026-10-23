@@ -12,7 +12,7 @@ OOM_RETRIES = 3
 MIN_BATCH = 4
 BATCHES, PRECISIONS = "batches", "precisions"
 LADDER = ("auto", "bf16", "fp32")
-RETRY_IN_PROCESS = ("cuda",)
+RETRY_IN_PROCESS = ("cuda", "cpu")
 
 
 class DivergedError(RuntimeError):
@@ -42,14 +42,51 @@ def _train_with(spec: TaskSpec, **changes: Any) -> TaskSpec:
     return spec.model_copy(update={"train": spec.train.model_copy(update=changes)})
 
 
-def restart(log: Callable[[str], None], why: str) -> None:
-    import os
+def _child_step(payload: bytes, spec: TaskSpec, device: str, conn: Any) -> None:
+    import cloudpickle
+
+    from .gpu import _cap_memory
+
+    try:
+        _cap_memory(device, lambda _: None)
+        result: tuple[bool, Any] = (True, cloudpickle.loads(payload)(spec))
+    except Exception as e:
+        result = (False, e)
+    try:
+        conn.send(result)
+    except Exception:
+        conn.send((False, RuntimeError(f"{type(result[1]).__name__}: {result[1]}")))
+
+
+def _in_child(train: Callable[[TaskSpec], tuple[dict, Any]], device: str) -> Callable | None:
+    import multiprocessing as mp
     import sys
 
-    log(f"  {why} in a fresh process")
-    sys.stdout.flush()
-    sys.stderr.flush()
-    os.execv(sys.executable, sys.orig_argv)
+    import cloudpickle
+
+    try:
+        payload = cloudpickle.dumps(train)
+    except Exception:
+        return None
+    ctx = mp.get_context("spawn")
+
+    def attempt(spec: TaskSpec) -> tuple[dict, Any]:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        reader, writer = ctx.Pipe(duplex=False)
+        child = ctx.Process(target=_child_step, args=(payload, spec, device, writer))
+        child.start()
+        writer.close()
+        try:
+            ok, value = reader.recv()
+        except EOFError:
+            ok, value = False, None
+        child.join()
+        if ok:
+            return value
+        raise value or RuntimeError(f"the training process exited with code {child.exitcode}")
+
+    return attempt
 
 
 def _remembered(spec: TaskSpec, ws: Path, key: str, log: Callable[[str], None]) -> TaskSpec:
@@ -84,16 +121,17 @@ def recover(spec: TaskSpec, train: Callable[[TaskSpec], tuple[dict, Any]], log: 
 
     ws, key = find_workspace(), model_key(spec)
     spec = _remembered(spec, ws, key, log)
+    attempt = train if device in RETRY_IN_PROCESS else _in_child(train, device)
     for _ in range(OOM_RETRIES + len(LADDER)):
         try:
-            meta, rest = train(spec)
+            meta, rest = (attempt or train)(spec)
             return {**meta, "batch_size": spec.train.batch_size, "precision": spec.train.precision}, rest
         except RuntimeError as e:
             step = _next(spec, e, ws, key)
             if step is None:
                 raise
             spec, why = step
-            if device not in RETRY_IN_PROCESS:
-                restart(log, why)
+            if attempt is None:
+                raise RuntimeError(f"{why}; the next run starts there") from e
             log(f"  {why}")
     raise RuntimeError("training failed at every batch size and precision tried")

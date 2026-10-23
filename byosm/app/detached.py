@@ -8,6 +8,8 @@ import sys
 import threading
 from pathlib import Path
 
+import psutil
+
 from ..config import STATE_DIR
 
 JOBS_DIR = STATE_DIR / "jobs"
@@ -15,6 +17,7 @@ LOG_SUFFIX = ".log"
 EXIT_SUFFIX = ".exit"
 KILL_GRACE_S = 10
 INTERRUPTED = "interrupted"
+PID_CLOCK_SLACK_S = 1.0
 WRAPPER = """
 import os, signal, sys, traceback
 path, entry, code = sys.argv.pop(1), sys.argv.pop(1), 1
@@ -49,8 +52,9 @@ def ending(code: int | None, cancelled: bool, stalled: bool) -> str:
         return "cancelled"
     if code == 0:
         return "done"
-    stopped_from_outside = code is None or (code == -signal.SIGTERM and not stalled)
-    return INTERRUPTED if stopped_from_outside else "failed"
+    if stalled:
+        return "failed"
+    return INTERRUPTED if code is None or code == -signal.SIGTERM else "failed"
 
 
 def job_file(ws: Path, job_id: str, suffix: str) -> Path:
@@ -71,6 +75,13 @@ def spawn(ws: Path, job_id: str, entry: str, args: list[str], env: dict[str, str
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
+
+
+def owned(pid: int, started: float) -> bool:
+    try:
+        return psutil.Process(pid).create_time() <= started + PID_CLOCK_SLACK_S
+    except psutil.Error:
+        return False
 
 
 def alive(pid: int) -> bool:
