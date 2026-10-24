@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 COSTS_TTL_S = 60
@@ -17,6 +17,20 @@ class TryInput(BaseModel):
 
 def resources_router(ws: Path) -> APIRouter:
     router = APIRouter()
+
+    @router.get("/api/gpu")
+    def gpu(request: Request) -> dict[str, Any]:
+        from ..train.gpu import holders
+
+        runner = request.app.state.runner
+        held = holders(ws)
+        holding = {h.get("job") for h in held}
+        waiting = []
+        for job in runner.snapshot():
+            last = (runner.store.events(job.id) or [{}])[-1] if job.status == "running" else {}
+            if last.get("kind") == "gpu" and job.id not in holding:
+                waiting.append({"job": job.id, "args": job.args, "waited": last.get("waited", 0)})
+        return {"holders": held, "waiting": waiting}
 
     @router.get("/api/machine")
     def machine() -> dict[str, Any]:

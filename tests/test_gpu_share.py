@@ -137,3 +137,12 @@ def test_trainings_starting_together_cannot_both_reserve_most_of_the_gpu(ws, mon
     for t in threads:
         t.join()
     assert len(reserved) == 2 and max(reserved) <= gpu.MPS_SHARE + 1e-6
+
+
+def test_the_gpu_queue_shows_which_job_holds_the_gpu_and_its_share(ws, monkeypatch):
+    _two_slots(ws, monkeypatch)
+    monkeypatch.setenv(gpu.JOB_ENV, "job-1")
+    with gpu.gpu_slot("mps", log=lambda _: None):
+        [held] = gpu.holders(ws)
+        assert held["job"] == "job-1" and round(held["share"], 2) == gpu.MPS_SHARE and held["since"] > 0
+    assert gpu.holders(ws) == []

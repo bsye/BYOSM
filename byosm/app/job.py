@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..events import EVENTS_ENV, TARGET
+from ..train.gpu import JOB_ENV
 from .store import JOB_FIELDS
 
 TERMINAL_COLUMNS = "160"
@@ -42,5 +43,6 @@ def job_env(ws: Path, job: Job) -> dict[str, str]:
         "COLUMNS": TERMINAL_COLUMNS,
         "NO_COLOR": "1",
         EVENTS_ENV: "1",
+        JOB_ENV: job.id,
         **({LLM_OVERRIDE_ENV: json.dumps(job.llm)} if job.llm else {}),
     }

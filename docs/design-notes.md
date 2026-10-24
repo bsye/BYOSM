@@ -1201,3 +1201,9 @@ When the Mac sleeps, a running job freezes; on waking, the stall watchdog used t
 ## Time series against Timestral
 
 `byosm series run <domain>` trains a forecasting specialist on a GIFT-Eval domain (energy, sales, operations, or any single dataset) and scores it with the rivals by the same code. The protocol follows GIFT-Eval's short term: the horizon comes from the frequency, the last windows of each series are the test (up to 20, about a tenth of the shortest series), and specialists train only on values before the first test window. MASE is scaled by each series' seasonal naive error, CRPS comes from nine quantiles, and a domain is summarised by the geometric mean of each dataset's score relative to seasonal naive, as GIFT-Eval does. Every model's training seconds and milliseconds per forecast are recorded. Timestral is scored through its own package when it is installed; the specialists are a gradient-boosted global model (a squared-error median on scaled lags, a seasonal lag, the step and recent level statistics, with quantiles from its own errors on the last tenth of the training origins; an absolute-error loss collapses to zero when half the targets are zero, as solar at night) and a small patch transformer (about 0.6M parameters: 512 steps of context in patches of 16, three layers, all nine quantiles for the whole horizon in one pass, trained with the quantile loss on random windows of the training history).
+
+## GPU queue
+
+Each training writes its share, its job id and when it got the GPU next to the slot lock, so `/api/gpu` can list who
+holds the GPU and how much of it. A running job whose last event is a GPU wait is in the queue. The Jobs page shows
+both above the timeline, so a long wait is visible without opening job logs.

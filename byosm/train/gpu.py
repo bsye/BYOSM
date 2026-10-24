@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import json
 import os
 import time
 from collections.abc import Callable, Iterator
@@ -18,6 +19,7 @@ MPS_SHARE = 0.9
 MIN_SHARE = 0.25
 SHARE_ENV = "BYOSM_GPU_SHARE"
 ADMISSION_LOCK = "admission.lock"
+JOB_ENV = "BYOSM_JOB_ID"
 LOCK_DIR = STATE_DIR / "gpu"
 WAIT_S = 5
 HEARTBEAT_S = 300
@@ -81,8 +83,28 @@ def held_share(ws: Path) -> float:
             fcntl.flock(handle, fcntl.LOCK_UN)
             handle.close()
         elif lock.exists():
-            held += float(share.read_text() or 0) if share.exists() else MPS_SHARE / slots()
+            held += _reserved(share).get("share", MPS_SHARE / slots())
     return held
+
+
+def _reserved(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    text = path.read_text().strip()
+    return json.loads(text) if text.startswith("{") else {"share": float(text or 0)}
+
+
+def holders(ws: Path) -> list[dict]:
+    out = []
+    for i in range(slots()):
+        lock = ws / LOCK_DIR / f"slot-{i}.lock"
+        handle = _try(lock) if lock.exists() else None
+        if handle is not None:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+            handle.close()
+        elif lock.exists():
+            out.append({"slot": i, **_reserved(ws / LOCK_DIR / f"slot-{i}.share")})
+    return out
 
 
 def _share_left(device: str, ws: Path) -> float:
@@ -130,7 +152,8 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
             )
             if taken:
                 index, handle = taken
-                (base / f"slot-{index}.share").write_text(f"{share:.3f}")
+                held = {"share": round(share, 3), "job": os.environ.get(JOB_ENV), "since": time.time()}
+                (base / f"slot-{index}.share").write_text(json.dumps(held))
                 break
         if not waited:
             log(

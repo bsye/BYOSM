@@ -16,6 +16,7 @@ import { startAll } from "./stat-actions"
 import { openJob } from "@/job-sheet"
 import { go, href } from "@/route"
 import { JobDetail } from "./JobLog"
+import { GpuQueue } from "./GpuQueue"
 import { Timeline } from "./Timeline"
 
 const ICONS = { queued: Clock, running: Loader2, done: CircleCheck, failed: CircleX, cancelled: CircleSlash, interrupted: CirclePause }
@@ -207,6 +208,7 @@ export function Jobs({ id }: { id?: string }) {
     <div className="flex flex-col gap-4 md:gap-6">
       <h1 className="text-2xl font-semibold">Jobs</h1>
       <Interrupted jobs={rows.map((r) => r.job)} />
+      <GpuQueue />
       <Timeline jobs={rows.map((r) => r.job)} titles={titles} />
       <Card>
         <CardHeader>
