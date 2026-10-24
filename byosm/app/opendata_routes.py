@@ -117,4 +117,10 @@ def opendata_router(ws: Path) -> APIRouter:
 
         return built(ws)
 
+    @router.get("/api/datasets/gaps")
+    def gaps() -> dict[str, Any]:
+        from ..hub.demand import latest
+
+        return latest(ws)
+
     return router

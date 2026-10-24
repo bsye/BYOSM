@@ -1,53 +1,20 @@
-import { Hammer, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { useEffect, useState } from "react"
-import { api, runJob, type Summary } from "@/api"
+import { api, type Summary } from "@/api"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useLive } from "@/events"
 import { describe } from "@/jobs"
 import type { NextStep } from "./NextSteps"
+import { NewSpecialist } from "./NewSpecialist"
 import { SpecialistCard } from "./SpecialistCard"
 import { byDate, kindKey, kindTabs, type Group } from "./specialist-groups"
-import { openJob } from "@/job-sheet"
 import { useHealths, type Healths } from "./HealthList"
 
 const SKELETONS = 6
-const EXAMPLE = "classify support emails into billing, shipping, technical or other"
-
-function NewSpecialist({ children }: { children: React.ReactNode }) {
-  const [prompt, setPrompt] = useState("")
-  const [error, setError] = useState("")
-  const start = () =>
-    runJob(["auto", prompt])
-      .then((job) => openJob(job.id))
-      .catch((e) => setError(String(e)))
-  return (
-    <Dialog>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New specialist</DialogTitle>
-          <DialogDescription>
-            Describe the task in one sentence. The autopilot infers the labels, finds a benchmark and rivals, and trains until it wins or the budget ends.
-          </DialogDescription>
-        </DialogHeader>
-        <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={EXAMPLE} />
-        {error && <p className="text-destructive text-sm">{error}</p>}
-        <DialogFooter>
-          <Button disabled={!prompt.trim()} onClick={start}>
-            <Hammer />
-            Build it
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 const KIND_KEY = "byosm-specialists-kind"
 const STAGE_KEY = "byosm-specialists-stage"

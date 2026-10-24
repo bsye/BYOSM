@@ -30,6 +30,7 @@ ALLOWED_COMMANDS = (
     "testset",
     "adopt-data",
     "rivals",
+    "dataset-gaps",
     "ablate",
     "next",
     "continue",

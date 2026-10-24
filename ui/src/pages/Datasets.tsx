@@ -3,6 +3,7 @@ import { DataFinder } from "./DataFinder"
 import { OpenLibrary } from "./OpenLibrary"
 import { Sources } from "./Sources"
 import { TrainingData } from "./TrainingData"
+import { DatasetGaps } from "./DatasetGaps"
 
 export function Datasets() {
   return (
@@ -11,12 +12,16 @@ export function Datasets() {
       <Tabs defaultValue="find">
         <TabsList>
           <TabsTrigger value="find">Find</TabsTrigger>
+          <TabsTrigger value="gaps">Gaps</TabsTrigger>
           <TabsTrigger value="library">Library</TabsTrigger>
           <TabsTrigger value="sources">Sources</TabsTrigger>
           <TabsTrigger value="training">Training data</TabsTrigger>
         </TabsList>
         <TabsContent value="find">
           <DataFinder />
+        </TabsContent>
+        <TabsContent value="gaps">
+          <DatasetGaps />
         </TabsContent>
         <TabsContent value="library">
           <OpenLibrary />
