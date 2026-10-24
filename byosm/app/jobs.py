@@ -16,12 +16,12 @@ from .detached import LOG_SUFFIX, Tail, ending, exit_code, forget, job_file, kee
 from .hub import Hub
 from .job import Job, job_env
 from .store import JobStore
+from .watchdog import Watch
 
 ADMIT_POLL_S = 2
 ENTRY = "from byosm.cli import app; app()"
 LOST_LINE = "the job process ended without reporting an exit code"
 FOLLOW_SECONDS = 0.1
-SLEEP_GAP_S = 30
 FAILED = "failed"
 
 
@@ -150,15 +150,11 @@ class Runner:
         return Tail(job_file(self.ws, job.id, LOG_SUFFIX), self.store.seen(job.id))
 
     def _follow(self, job: Job) -> None:
-        tail, heard, limit, killed = self._tail(job), [time.time()], stall_seconds(self.ws), False
-        last = time.time()
-        while not self.stopped and not self._settled(job, tail, heard):
-            now = time.time()
-            if now - last > SLEEP_GAP_S:
-                heard[0] += now - last
-            last = now
-            if not killed and job.pid and time.time() - heard[0] > limit:
-                self._line(job, f"stopped: no output for {limit // 60} minutes, the job looked stuck")
+        tail, watch, killed = self._tail(job), Watch(job.pid, stall_seconds(self.ws)), False
+        while not self.stopped and not self._settled(job, tail, watch.heard):
+            if not killed and watch.stuck():
+                minutes = watch.limit // 60
+                self._line(job, f"stopped: no output and no CPU work for {minutes} minutes, the job looked stuck")
                 self._kill(job)
                 killed = job.stalled = True
             time.sleep(FOLLOW_SECONDS)

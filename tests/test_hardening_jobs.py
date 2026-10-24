@@ -122,3 +122,15 @@ def test_jobs_keep_the_mac_awake_unless_switched_off(ws):
     cfg = yaml.safe_load((ws / "byosm.yaml").read_text())
     (ws / "byosm.yaml").write_text(yaml.safe_dump({**cfg, "keep_awake": False}))
     assert not keeps_awake(ws)
+
+
+def test_a_silent_job_that_keeps_the_cpu_busy_is_not_stopped(monkeypatch):
+    import byosm.app.watchdog as watchdog
+
+    cpu = iter([0.0, 120.0, 120.0])
+    monkeypatch.setattr(watchdog, "cpu_seconds", lambda pid: next(cpu))
+    watch = watchdog.Watch(pid=1, limit=10)
+    watch.heard[0] = watch.last = __import__("time").time() - 20
+    assert not watch.stuck()
+    watch.heard[0] -= 20
+    assert watch.stuck()

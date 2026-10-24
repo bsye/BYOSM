@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .patch import BATCH, LR, SEED, _device, weights_path
+from .patch import BATCH, LR, SEED, _device, reporter, weights_path
 from .patch_net import BASE, MAX_HORIZON, PatchNet, Pick, picker, train
 
 CORPUS_SHARE = 0.8
@@ -61,7 +61,6 @@ def _training_portions(log: Callable[[str], None]) -> list[tuple[np.ndarray, int
 
 
 def pretrain(log: Callable[[str], None], steps: int) -> Path:
-    from ..events import emit
     from ..train.gpu import gpu_slot
     from .corpus import files
 
@@ -73,12 +72,8 @@ def pretrain(log: Callable[[str], None], steps: int) -> Path:
     net, device = PatchNet(BASE), _device()
     log(f"  {sum(p.numel() for p in net.parameters()) / 1e6:.1f}M parameters, {steps} steps on {device}")
 
-    def report(step: int, loss: float) -> None:
-        log(f"  step {step}/{steps} loss {loss:.4f}")
-        emit("training", step=step, steps=steps, loss=round(loss, 4))
-
     with gpu_slot(device, log):
-        train(net, pick, steps, LR, BATCH, device, SEED, report)
+        train(net, pick, steps, LR, BATCH, device, SEED, reporter("pretraining", steps, log))
     path = weights_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(net.state_dict(), path)

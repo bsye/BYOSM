@@ -1346,3 +1346,10 @@ free: the first training reserves up to 90% of the GPU so it can grow alone, and
 Apple silicon a waiting training's share is now the larger of what the reservations leave and the share of memory
 actually free, so it starts when real memory allows. If two trainings later grow into each other, the out-of-memory
 recovery halves the batch.
+
+## A silent job is stuck only when it is also idle
+
+The watchdog stopped three forecasters that were training on the CPU for over 90 minutes without printing. A job
+that is silent past the limit is now stopped only if it also used less than a minute of CPU (itself and its children)
+in that time; a busy job resets the clock. Long trainings also report their step every 500 steps, so they show
+progress and time left instead of going quiet.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +22,16 @@ def weights_path() -> Path:
     from ..config import cache_root
 
     return cache_root() / "series" / WEIGHTS
+
+
+def reporter(label: str, steps: int, log: Callable[[str], None] = print) -> Callable[[int, float], None]:
+    from ..events import emit
+
+    def report(step: int, loss: float) -> None:
+        log(f"  {label}: step {step}/{steps} loss {loss:.4f}")
+        emit("training", step=step, steps=steps, loss=round(loss, 4))
+
+    return report
 
 
 def _device() -> str:
@@ -47,8 +58,9 @@ class PatchModel:
             self.net.load_state_dict(torch.load(weights_path(), map_location="cpu"))
             steps, lr = FINETUNE_STEPS, FINETUNE_LR
         with gpu_slot(_device(), print, fallback="cpu") as device:
-            series = [(h, g.horizon) for g in groups for h in g.histories]
-            train(self.net, picker(series, self.size.patch), steps * 2**self.effort, lr, BATCH, device, SEED)
+            series, total = [(h, g.horizon) for g in groups for h in g.histories], steps * 2**self.effort
+            report = reporter(self.name, total)
+            train(self.net, picker(series, self.size.patch), total, lr, BATCH, device, SEED, report)
 
     def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
         windows = [window(h, self.size.context) for h in histories]

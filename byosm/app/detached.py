@@ -91,6 +91,14 @@ def keep_awake(pid: int) -> None:
         )
 
 
+def cpu_seconds(pid: int) -> float:
+    try:
+        proc = psutil.Process(pid)
+        return sum(sum(p.cpu_times()[:2]) for p in [proc, *proc.children(recursive=True)])
+    except psutil.Error:
+        return 0.0
+
+
 def owned(pid: int, started: float) -> bool:
     try:
         return psutil.Process(pid).create_time() <= started + PID_CLOCK_SLACK_S
