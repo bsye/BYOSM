@@ -1288,3 +1288,13 @@ cache is now released after each epoch's dev evaluation and after each time seri
 With one boosted model per domain, rows were budgeted per series, so electricity's 370 series supplied almost all of
 the 1.5M training rows and the 7-series ETT datasets about 1% each. The row budget is now split equally between the
 domain's datasets, then between each dataset's series.
+
+## Pretrain a base forecaster, then specialise it
+
+Timestral-5M, zero-shot, beats every forecaster we trained from scratch on each domain's own history, so the gap is
+pretraining data, not size. `series corpus` downloads a balanced sample of GIFT-Eval's pretraining corpus (152
+datasets built not to overlap its test sets; 50 GB by default, every dataset capped at an equal share). `series
+pretrain` trains a 6M-parameter base patch transformer (1024-point context in 32-point patches) on windows drawn from
+those memory-mapped files, 80%, and from the training portions of the GIFT-Eval datasets, 20%, reporting progress
+every 500 steps. Each forecaster then fine-tunes that base as its "pretrained" recipe, chosen on calib like the others.
+The small from-scratch model (2.8M parameters, 512-point context) stays as the recipe that trains on a CPU in minutes.

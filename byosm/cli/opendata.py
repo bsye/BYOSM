@@ -139,6 +139,7 @@ def options_rival(
 
 MAX_ROUNDS = 4
 CORPUS_GB = 50.0
+PRETRAIN_STEPS = 50_000
 series_app = typer.Typer(no_args_is_help=True, help="Time series: specialists against Timestral on GIFT-Eval.")
 app.add_typer(series_app, name="series")
 
@@ -173,8 +174,8 @@ def series_corpus(
 
 
 @series_app.command("pretrain")
-def series_pretrain() -> None:
-    """Pretrain the patch transformer on the training portion of every GIFT-Eval dataset, never their test windows."""
-    from ..series.patch import pretrain
+def series_pretrain(steps: int = typer.Option(PRETRAIN_STEPS, help="Training steps on the GPU")) -> None:
+    """Pretrain the base forecaster on GIFT-Eval's pretraining corpus and the training portions of its datasets, never their test windows."""
+    from ..series.pretrain import pretrain
 
-    pretrain(log)
+    pretrain(log, steps)

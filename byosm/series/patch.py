@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
 import torch
 
 from .models import Group
-from .patch_net import MAX_HORIZON, PatchNet, train, window
+from .patch_net import BASE, SMALL, PatchNet, Size, picker, train, window
 
 STEPS = 3000
 FINETUNE_STEPS = 800
-PRETRAIN_STEPS = 20000
 BATCH = 256
 LR = 1e-3
 FINETUNE_LR = 2e-4
 SEED = 0
-WEIGHTS = "patch-pretrained.pt"
+WEIGHTS = "patch-base.pt"
 
 
 def weights_path() -> Path:
@@ -33,6 +31,7 @@ def _device() -> str:
 
 class PatchModel:
     name = "patch transformer"
+    size: Size = SMALL
     pretrained = False
 
     def __init__(self, effort: int = 0) -> None:
@@ -42,17 +41,17 @@ class PatchModel:
         from ..train.gpu import gpu_slot
 
         torch.manual_seed(SEED)
-        self.net = PatchNet()
+        self.net = PatchNet(self.size)
         steps, lr = STEPS, LR
         if self.pretrained:
             self.net.load_state_dict(torch.load(weights_path(), map_location="cpu"))
             steps, lr = FINETUNE_STEPS, FINETUNE_LR
         with gpu_slot(_device(), print, fallback="cpu") as device:
             series = [(h, g.horizon) for g in groups for h in g.histories]
-            train(self.net, series, steps * 2**self.effort, lr, BATCH, device, SEED)
+            train(self.net, picker(series, self.size.patch), steps * 2**self.effort, lr, BATCH, device, SEED)
 
     def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
-        windows = [window(h) for h in histories]
+        windows = [window(h, self.size.context) for h in histories]
         out = []
         with torch.no_grad():
             for start in range(0, len(windows), BATCH):
@@ -66,31 +65,5 @@ class PatchModel:
 
 class PretrainedPatch(PatchModel):
     name = "patch transformer, pretrained"
+    size = BASE
     pretrained = True
-
-
-def pretrain(log: Callable[[str], None]) -> Path:
-    from .gifteval import all_configs, horizon, load, windows
-
-    histories = []
-    for config in all_configs():
-        try:
-            series = load(config)
-        except Exception as e:
-            log(f"  skip {config}: {type(e).__name__}")
-            continue
-        cut = windows(series) * horizon(series[0].freq)
-        histories += [s.values[: len(s.values) - cut] for s in series if len(s.values) > cut]
-        log(f"  {config}: {len(series)} series, training portion only")
-    torch.manual_seed(SEED)
-    net, device = PatchNet(), _device()
-    from ..train.gpu import gpu_slot
-
-    log(f"  pretraining on {len(histories)} series for {PRETRAIN_STEPS} steps on {device}")
-    with gpu_slot(device, log):
-        train(net, [(h, MAX_HORIZON) for h in histories], PRETRAIN_STEPS, LR, BATCH, device, SEED)
-    path = weights_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(net.state_dict(), path)
-    log(f"  saved {path}")
-    return path

@@ -79,7 +79,7 @@ def test_a_pretrained_patch_model_starts_from_the_saved_weights(tmp_path, monkey
     import byosm.series.patch as patch
     from byosm.series.patch_net import PatchNet
 
-    saved = PatchNet()
+    saved = PatchNet(patch.BASE)
     torch.save(saved.state_dict(), tmp_path / "w.pt")
     monkeypatch.setattr(patch, "weights_path", lambda: tmp_path / "w.pt")
     monkeypatch.setattr(patch, "FINETUNE_STEPS", 1)
@@ -226,3 +226,19 @@ def test_the_rival_is_compared_on_the_datasets_both_were_scored_on_and_the_harde
     rival = best_rival(report)
     assert rival["name"] == "Timestral-209M" and rival["datasets"] == 1 and rival["of"] == 2
     assert rival["ours"] == pytest.approx(0.7) and rival["score"] == pytest.approx(0.6)
+
+
+def test_the_pretraining_corpus_draws_windows_from_single_and_multi_variate_series(tmp_path):
+    from datasets import Dataset
+
+    from byosm.series.pretrain import Corpus
+
+    Dataset.from_dict({"target": [list(np.arange(300.0))]}).save_to_disk(tmp_path / "one")
+    Dataset.from_dict({"target": [[list(np.arange(300.0)), list(np.arange(300.0) * 2)]]}).save_to_disk(
+        tmp_path / "many"
+    )
+    paths = [str(next((tmp_path / d).glob("*.arrow"))) for d in ("one", "many")]
+    corpus, rng = Corpus(paths, 120), np.random.default_rng(0)
+    drawn = [corpus.draw(rng) for _ in range(20)]
+    assert all(d is not None and len(d) == 120 for d in drawn)
+    assert any(d[1] - d[0] == 2 for d in drawn) and any(d[1] - d[0] == 1 for d in drawn)

@@ -190,6 +190,7 @@ const PROGRESS_KINDS: Record<string, { done: string; total: string }> = {
   writing: { done: "done", total: "total" },
   teacher: { done: "done", total: "total" },
   epoch: { done: "epoch", total: "epochs" },
+  training: { done: "step", total: "steps" },
 }
 
 export function timeLeft(metrics: Metric[]): string | null {
