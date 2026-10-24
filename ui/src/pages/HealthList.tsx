@@ -59,7 +59,10 @@ export function HealthList({ items, healths }: { items: Summary[]; healths: Heal
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Health
-          <InfoTip>Weighted checks on each promoted model. Ready for production at 80 or more with no failing check. Auto runs each model's next steps until it is ready.</InfoTip>
+          <InfoTip>
+            Weighted checks on each promoted model. Ready for production at 80 or more with no failing check. Auto runs each model's next steps until it is
+            ready.
+          </InfoTip>
         </CardTitle>
         <CardAction>
           <AutoReady names={picked} done={() => setPicked([])} />

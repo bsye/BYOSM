@@ -74,7 +74,9 @@ export function YourData({ name }: { name: string }) {
   const [report, setReport] = useState<Report | null>(null)
   const finished = Object.values(useLive().jobs).filter((j) => j.status === "done" || j.status === "failed").length
   const load = useCallback(() => {
-    api<DataRequest>(`/specialists/${name}/request`).then(setReq).catch(() => setReq(null))
+    api<DataRequest>(`/specialists/${name}/request`)
+      .then(setReq)
+      .catch(() => setReq(null))
     api<{ report: Report | null }>(`/specialists/${name}/check`)
       .then((r) => setReport(r.report))
       .catch(() => setReport(null))
@@ -91,7 +93,12 @@ export function YourData({ name }: { name: string }) {
           <div className="flex flex-wrap gap-2">
             {req.request ? (
               req.templates.map((kind) => (
-                <Button key={kind} variant="outline" size="sm" onClick={() => download(`/specialists/${name}/request/template.${kind}`, `${name}-template.${kind}`)}>
+                <Button
+                  key={kind}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => download(`/specialists/${name}/request/template.${kind}`, `${name}-template.${kind}`)}
+                >
                   <Download />
                   Download template.{kind}
                 </Button>

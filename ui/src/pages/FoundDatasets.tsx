@@ -27,7 +27,9 @@ export function FoundDatasets({ datasets }: { datasets: OpenDataset[] }) {
             <Badge variant="outline" className="shrink-0">
               {d.source}
             </Badge>
-            <span className="text-muted-foreground ml-auto hidden max-w-[40%] shrink-0 truncate text-xs md:block">{[d.publisher, d.licence].filter(Boolean).join(" · ")}</span>
+            <span className="text-muted-foreground ml-auto hidden max-w-[40%] shrink-0 truncate text-xs md:block">
+              {[d.publisher, d.licence].filter(Boolean).join(" · ")}
+            </span>
           </div>
           {d.files.map((f) => (
             <div key={f.url} className="flex min-w-0 items-center gap-2 text-sm">
@@ -41,7 +43,15 @@ export function FoundDatasets({ datasets }: { datasets: OpenDataset[] }) {
                   Preview
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" onClick={() => void keep(d, f).then(setKept).then(() => download(f.url))}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    void keep(d, f)
+                      .then(setKept)
+                      .then(() => download(f.url))
+                  }
+                >
                   <Download />
                   Download
                 </Button>

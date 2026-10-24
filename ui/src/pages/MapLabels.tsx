@@ -39,7 +39,11 @@ export function MapLabels({ name, repo, theirs, ours, onAdd }: { name: string; r
           <DialogTitle className="truncate">{repo}</DialogTitle>
           <DialogDescription className="flex items-center gap-1.5">
             {asking && <Loader2 className="size-3.5 animate-spin" />}
-            {asking ? "Running it on our rows to suggest a mapping" : hint ? `Suggested: agrees on ${Math.round(hint.agreement * 100)}% of ${hint.rows} of our rows` : "Pick which of our labels each of its outputs means."}
+            {asking
+              ? "Running it on our rows to suggest a mapping"
+              : hint
+                ? `Suggested: agrees on ${Math.round(hint.agreement * 100)}% of ${hint.rows} of our rows`
+                : "Pick which of our labels each of its outputs means."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">

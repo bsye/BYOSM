@@ -54,7 +54,7 @@ export function LlmSelect({ providers, value, onChange, label, standard, classNa
         {(providers ?? []).map((p) => (
           <SelectGroup key={p.id}>
             <SelectLabel>
-              {p.label} <span className="text-muted-foreground/70">{p.available ? p.kind : p.hint ?? "not found"}</span>
+              {p.label} <span className="text-muted-foreground/70">{p.available ? p.kind : (p.hint ?? "not found")}</span>
             </SelectLabel>
             {(p.models.length ? p.models : [null]).map((m) => (
               <SelectItem key={m ?? DEFAULT_MODEL} value={choiceKey(p, m)} disabled={!p.available}>

@@ -57,9 +57,7 @@ function Stats({ suite }: { suite: Suite }) {
           lead != null && (
             <span className="flex items-center gap-1">
               {lead >= 0 ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-              <span className="text-foreground font-medium tabular-nums">
-                {signed(lead)}
-              </span>
+              <span className="text-foreground font-medium tabular-nums">{signed(lead)}</span>
               vs {rivalName(llm?.[0])}
             </span>
           )

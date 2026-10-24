@@ -79,7 +79,9 @@ export function CheckReport({ report }: { report: Report }) {
         {report.issues.length > 0 && (
           <div className="space-y-2">
             <h3 className="font-medium">Problems</h3>
-            <p className="text-muted-foreground text-sm">{report.issues.length} issues.{more(report.issues.length)}</p>
+            <p className="text-muted-foreground text-sm">
+              {report.issues.length} issues.{more(report.issues.length)}
+            </p>
             <Listed head={["row", "problem", "detail"]} rows={report.issues} />
           </div>
         )}

@@ -9,7 +9,7 @@ const VERDICT_VARIANT = { better: "default", worse: "destructive", "not sure": "
 
 function shortValue(v: unknown): string {
   const text = String(v)
-  return text.startsWith("hf:") ? text.split("/").at(-1) ?? text : text
+  return text.startsWith("hf:") ? (text.split("/").at(-1) ?? text) : text
 }
 
 function changeLabel(change: Record<string, unknown>): string {
@@ -26,8 +26,7 @@ export function Ablations({ items }: { items: Ablation[] }) {
         <CardTitle className="flex items-center gap-2">
           Ablations
           <InfoTip>
-            Each change trained with and without it on matched seeds. Better or worse only when every seed agrees with a sure calib lead; test is
-            only reported.
+            Each change trained with and without it on matched seeds. Better or worse only when every seed agrees with a sure calib lead; test is only reported.
           </InfoTip>
         </CardTitle>
       </CardHeader>

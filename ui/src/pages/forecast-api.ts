@@ -8,9 +8,16 @@ export type Score = { auc: number; auc_ci: [number, number]; ap: number; brier: 
 export type Leak = { feature: string; auc: number; suspect: boolean; why: string }
 export type Spec = { title: string; shown?: string[]; horizon_years: number; cutoffs: Record<string, number[]>; excluded: Record<string, string> }
 export type Year = { year: number; positive: number; scores: Record<string, Score> }
-export type Result = { at: number; today?: Today; over_time?: Year[]; dropped?: Record<string, string>; splits: Record<string, { n: number; positive: number }>; leakage: Leak[]; scores: Record<string, Score> }
+export type Result = {
+  at: number
+  today?: Today
+  over_time?: Year[]
+  dropped?: Record<string, string>
+  splits: Record<string, { n: number; positive: number }>
+  leakage: Leak[]
+  scores: Record<string, Score>
+}
 export type Forecast = { name: string; spec: Spec; result: Result | null }
-
 
 export const runForecast = (name: string) => runJob(["forecast", "run", name]).then((j) => openJob(j.id))
 export const within = (years: number) => (years === 1 ? "within a year" : `within ${years} years`)
@@ -27,4 +34,3 @@ export function useForecasts(): [Forecast[] | null, Set<string>, () => void] {
   }, [done, saved])
   return [rows, running, () => setSaved((n) => n + 1)]
 }
-

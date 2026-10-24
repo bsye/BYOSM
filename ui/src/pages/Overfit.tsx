@@ -93,7 +93,12 @@ export function Overfit({ d }: { d: Detail }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Overfitting
-          {r && <span className="text-muted-foreground text-sm font-normal">{r.experiment}{stale}</span>}
+          {r && (
+            <span className="text-muted-foreground text-sm font-normal">
+              {r.experiment}
+              {stale}
+            </span>
+          )}
         </CardTitle>
         <CardAction>
           <Button variant="outline" size="sm" onClick={check}>

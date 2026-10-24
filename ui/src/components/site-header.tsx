@@ -1,12 +1,5 @@
 import { Badge } from "@/components/ui/badge"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { href } from "@/route"
@@ -26,11 +19,7 @@ export function SiteHeader({ route, connected }: { route: string[]; connected: b
               <span key={i} className="contents">
                 {i > 0 && <BreadcrumbSeparator />}
                 <BreadcrumbItem>
-                  {i === parts.length - 1 ? (
-                    <BreadcrumbPage>{p}</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink href={href(...parts.slice(0, i + 1))}>{p}</BreadcrumbLink>
-                  )}
+                  {i === parts.length - 1 ? <BreadcrumbPage>{p}</BreadcrumbPage> : <BreadcrumbLink href={href(...parts.slice(0, i + 1))}>{p}</BreadcrumbLink>}
                 </BreadcrumbItem>
               </span>
             ))}

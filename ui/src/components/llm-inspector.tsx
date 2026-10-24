@@ -46,9 +46,7 @@ function useCalls(): Call[] {
       } as Call)
     }
   }
-  const out = [...calls.values()].map((c) =>
-    c.state === "waiting" && !ACTIVE.has(live.jobs[c.job]?.status ?? "") ? { ...c, state: "stopped" as const } : c,
-  )
+  const out = [...calls.values()].map((c) => (c.state === "waiting" && !ACTIVE.has(live.jobs[c.job]?.status ?? "") ? { ...c, state: "stopped" as const } : c))
   return out.reverse().slice(0, SHOWN)
 }
 

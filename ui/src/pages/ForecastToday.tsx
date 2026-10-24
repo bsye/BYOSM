@@ -97,7 +97,10 @@ function Riskiest({ top }: { top: Scored[] }) {
 }
 
 export function ForecastToday({ today, horizon, check, testYear }: { today: Today; horizon: number; check?: Check; testYear: number }) {
-  const note = check?.predicted_rate != null ? `In ${testYear} it predicted ${(check.predicted_rate * 100).toFixed(1)}%, ${(check.base_rate * 100).toFixed(1)}% ended` : undefined
+  const note =
+    check?.predicted_rate != null
+      ? `In ${testYear} it predicted ${(check.predicted_rate * 100).toFixed(1)}%, ${(check.base_rate * 100).toFixed(1)}% ended`
+      : undefined
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 @xl/main:grid-cols-3">

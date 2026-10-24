@@ -2,15 +2,7 @@ import { Hammer, Plus } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, runJob, type Summary } from "@/api"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
@@ -40,8 +32,7 @@ function NewSpecialist({ children }: { children: React.ReactNode }) {
         <DialogHeader>
           <DialogTitle>New specialist</DialogTitle>
           <DialogDescription>
-            Describe the task in one sentence. The autopilot infers the labels, finds a benchmark and rivals, and trains
-            until it wins or the budget ends.
+            Describe the task in one sentence. The autopilot infers the labels, finds a benchmark and rivals, and trains until it wins or the budget ends.
           </DialogDescription>
         </DialogHeader>
         <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={EXAMPLE} />
@@ -113,9 +104,7 @@ export function Specialists() {
   const shown = kind === ALL ? listed : listed.filter((s) => kindKey(s) === kind)
   const jobs = Object.values(useLive().jobs)
   const finished = jobs.filter((j) => j.status === "done").length
-  const busy = new Map(
-    jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => [describe(j).target ?? "", describe(j).title] as const),
-  )
+  const busy = new Map(jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => [describe(j).target ?? "", describe(j).title] as const))
   const [steps, setSteps] = useState<Record<string, NextStep[]>>({})
   useEffect(() => {
     api<Record<string, NextStep[]>>("/next-steps")

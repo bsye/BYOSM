@@ -12,7 +12,14 @@ import { bestSteps, unblock, untilReady, type Progress } from "./stat-actions"
 const PRIMARY = 0
 
 type Llm = Record<string, unknown> | null
-type Stat = { label: string; value: string; badge?: string; line: string; hint?: string; action?: { label: string; run: (llm: Llm, progress: Progress) => Promise<void> } }
+type Stat = {
+  label: string
+  value: string
+  badge?: string
+  line: string
+  hint?: string
+  action?: { label: string; run: (llm: Llm, progress: Progress) => Promise<void> }
+}
 
 function counted<T>(xs: T[]): [T, number][] {
   const c = new Map<T, number>()
@@ -42,7 +49,17 @@ function stats(items: Summary[], healths: Healths): Stat[] {
       value: mean == null ? "-" : String(mean),
       badge: mean == null ? undefined : `goal ${known[0].h.ready_score}+`,
       line: `across ${known.length} models`,
-      action: known.length ? { label: "Run all", run: (llm, progress) => bestSteps(known.map((k) => k.s.name), llm, progress) } : undefined,
+      action: known.length
+        ? {
+            label: "Run all",
+            run: (llm, progress) =>
+              bestSteps(
+                known.map((k) => k.s.name),
+                llm,
+                progress,
+              ),
+          }
+        : undefined,
     },
     {
       label: "Closest to ready",
@@ -86,7 +103,9 @@ export function SectionCards({ items, healths }: { items: Summary[]; healths: He
         <Card key={s.label} className="@container/card h-full">
           <CardHeader>
             <CardDescription className="line-clamp-1">{s.label}</CardDescription>
-            <CardTitle className={i === PRIMARY ? "text-3xl font-semibold tabular-nums @[250px]/card:text-4xl" : "line-clamp-1 text-2xl font-semibold tabular-nums"}>
+            <CardTitle
+              className={i === PRIMARY ? "text-3xl font-semibold tabular-nums @[250px]/card:text-4xl" : "line-clamp-1 text-2xl font-semibold tabular-nums"}
+            >
               {loading && i > PRIMARY ? <Skeleton className="h-8 w-24" /> : s.value}
             </CardTitle>
             {s.badge && (

@@ -97,7 +97,17 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
   const unscored = set && !set.board ? Math.max(0, ...chosen.map((m) => set.total - score(set, m).scored)) : 0
   const fixed = Boolean(set?.board)
   const names = [...new Set([DEFAULT_SET, BENCHMARK_SET, ...created, ...wb.sets.map((s) => s.suite)])]
-  const writeArgs = ["inputs", "write", name, "--per-label", String(perLabel), "--set", setName, ...(instructions.trim() ? ["--instructions", instructions.trim()] : []), ...parallelArgs]
+  const writeArgs = [
+    "inputs",
+    "write",
+    name,
+    "--per-label",
+    String(perLabel),
+    "--set",
+    setName,
+    ...(instructions.trim() ? ["--instructions", instructions.trim()] : []),
+    ...parallelArgs,
+  ]
   return (
     <Card>
       <CardHeader>
@@ -111,7 +121,12 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
           )}
         </CardTitle>
         <CardAction className="flex gap-2">
-          <Button size="sm" variant="outline" disabled={!set?.total} onClick={() => download(`/specialists/${name}/written/${encodeURIComponent(setName)}.xlsx`, `${name}-${setName}-results.xlsx`)}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!set?.total}
+            onClick={() => download(`/specialists/${name}/written/${encodeURIComponent(setName)}.xlsx`, `${name}-${setName}-results.xlsx`)}
+          >
             <FileSpreadsheet />
             Export
           </Button>
@@ -138,21 +153,49 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Input type="number" min={1} className="h-8 w-20 tabular-nums" aria-label="Inputs per label" value={perLabel} onChange={(e) => setPerLabel(Math.max(1, Number(e.target.value) || 1))} />
+          <Input
+            type="number"
+            min={1}
+            className="h-8 w-20 tabular-nums"
+            aria-label="Inputs per label"
+            value={perLabel}
+            onChange={(e) => setPerLabel(Math.max(1, Number(e.target.value) || 1))}
+          />
           <LlmPicker llm={llm} label="LLM that writes the inputs" />
-          <Input type="number" min={1} className="h-8 w-28 tabular-nums" placeholder="Parallel: auto" aria-label="LLM calls at the same time" value={parallel} onChange={(e) => setParallel(e.target.value)} />
+          <Input
+            type="number"
+            min={1}
+            className="h-8 w-28 tabular-nums"
+            placeholder="Parallel: auto"
+            aria-label="LLM calls at the same time"
+            value={parallel}
+            onChange={(e) => setParallel(e.target.value)}
+          />
           <Button size="sm" variant="outline" disabled={!llm.choice || fixed} onClick={() => start(writeArgs, llm.config())}>
             <Sparkles />
             Write {perLabel * labels}
           </Button>
-          <Input type="number" min={1} className="ml-2 h-8 w-20 tabular-nums" aria-label="Rows from the benchmark" value={sample} onChange={(e) => setSample(Math.max(1, Number(e.target.value) || 1))} />
+          <Input
+            type="number"
+            min={1}
+            className="ml-2 h-8 w-20 tabular-nums"
+            aria-label="Rows from the benchmark"
+            value={sample}
+            onChange={(e) => setSample(Math.max(1, Number(e.target.value) || 1))}
+          />
           <Button size="sm" variant="outline" disabled={fixed} onClick={() => start(["inputs", "sample", name, "--n", String(sample), "--set", setName])}>
             <Database />
             Add from benchmark
           </Button>
           {fixed && <InfoTip>This is the benchmark every model is compared on, so it stays as it is. Pick or create another set to add inputs.</InfoTip>}
         </div>
-        <Input placeholder="Extra instructions for the writer, e.g. noisy phone calls with fillers" aria-label="Extra instructions" disabled={fixed} value={instructions} onChange={(e) => setInstructions(e.target.value)} />
+        <Input
+          placeholder="Extra instructions for the writer, e.g. noisy phone calls with fillers"
+          aria-label="Extra instructions"
+          disabled={fixed}
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+        />
         <div className="flex flex-wrap items-center gap-2">
           <ToggleGroup type="multiple" variant="outline" size="sm" value={chosen} onValueChange={(v) => v.length && wb.choose(v)}>
             {(wb.models?.available ?? []).map((m) => (
@@ -162,7 +205,12 @@ export function TestSets({ name, labels, models, promoted }: { name: string; lab
             ))}
           </ToggleGroup>
           <AddLlmRival name={name} onAdded={wb.loadModels} />
-          <Button size="sm" className="ml-auto" disabled={!set?.total || !unscored} onClick={() => start(["inputs", "run", name, "--set", setName, ...parallelArgs])}>
+          <Button
+            size="sm"
+            className="ml-auto"
+            disabled={!set?.total || !unscored}
+            onClick={() => start(["inputs", "run", name, "--set", setName, ...parallelArgs])}
+          >
             <Play />
             {fixed ? "Scored on the board" : unscored ? `Score ${unscored} rows` : "All scored"}
           </Button>

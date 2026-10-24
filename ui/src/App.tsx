@@ -66,9 +66,7 @@ function Shell() {
   useJobToasts()
   const running = Object.values(live.jobs).filter((j) => j.status === "running" || j.status === "queued").length
   return (
-    <SidebarProvider
-      style={{ "--sidebar-width": "calc(var(--spacing) * 64)", "--header-height": "calc(var(--spacing) * 12)" } as CSSProperties}
-    >
+    <SidebarProvider style={{ "--sidebar-width": "calc(var(--spacing) * 64)", "--header-height": "calc(var(--spacing) * 12)" } as CSSProperties}>
       <AppSidebar variant="inset" section={route[0] ?? "home"} running={running} />
       <SidebarInset>
         <SiteHeader route={route} connected={live.connected} />

@@ -144,9 +144,11 @@ function callStep(g: CallGroup): Step {
 }
 
 function progressStep(m: Metric): Step | null {
-  if (m.kind === "epoch") return { label: `Train ${m.experiment}`, detail: `epoch ${m.epoch}/${m.epochs}, dev ${Number(m.dev_objective).toFixed(3)}`, state: "done" }
+  if (m.kind === "epoch")
+    return { label: `Train ${m.experiment}`, detail: `epoch ${m.epoch}/${m.epochs}, dev ${Number(m.dev_objective).toFixed(3)}`, state: "done" }
   if (m.kind === "teacher") return { label: `Label with ${m.teacher}`, detail: `${m.done}/${m.total}`, state: "done" }
-  if (m.kind === "scored") return { label: `Score ${m.predictor}`, detail: `${m.suite}: ${m.objective == null ? "-" : Number(m.objective).toFixed(3)}`, state: "done" }
+  if (m.kind === "scored")
+    return { label: `Score ${m.predictor}`, detail: `${m.suite}: ${m.objective == null ? "-" : Number(m.objective).toFixed(3)}`, state: "done" }
   return null
 }
 
@@ -182,7 +184,8 @@ export function steps(metrics: Metric[], running: boolean): Step[] {
     if (m.kind !== "scored" && out.at(-1)?.label === step.label) out[out.length - 1] = step
     else out.push(step)
   }
-  if (running && out.length && out.at(-1)?.state === "done" && metrics.at(-1)?.kind !== "scored") out[out.length - 1] = { ...(out.at(-1) as Step), state: "running" }
+  if (running && out.length && out.at(-1)?.state === "done" && metrics.at(-1)?.kind !== "scored")
+    out[out.length - 1] = { ...(out.at(-1) as Step), state: "running" }
   return out
 }
 
@@ -197,7 +200,9 @@ export function timeLeft(metrics: Metric[]): string | null {
   const last = metrics.at(-1)
   const keys = last && PROGRESS_KINDS[last.kind]
   if (!last || !keys) return null
-  const same = metrics.filter((m) => m.kind === last.kind && m.at != null && Object.keys(m).every((k) => k === keys.done || k === "at" || m[k] === last[k] || !(k in last)))
+  const same = metrics.filter(
+    (m) => m.kind === last.kind && m.at != null && Object.keys(m).every((k) => k === keys.done || k === "at" || m[k] === last[k] || !(k in last)),
+  )
   const first = same[0]
   const done = Number(last[keys.done]) - Number(first?.[keys.done] ?? 0)
   const total = Number(last[keys.total])

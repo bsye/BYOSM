@@ -18,5 +18,9 @@ export async function announce(j: Job) {
   const action = { label: "Open", onClick: () => openJob(j.id) }
   const time = took(j.started, j.ended)
   if (j.status === "done") toast.success(title, { description: `${await standing(d.target)}Took ${time}.`, action })
-  else toast.error(title, { description: `${j.status === "cancelled" ? "Cancelled" : j.status === "interrupted" ? "Interrupted" : "Failed"} after ${time}.`, action })
+  else
+    toast.error(title, {
+      description: `${j.status === "cancelled" ? "Cancelled" : j.status === "interrupted" ? "Interrupted" : "Failed"} after ${time}.`,
+      action,
+    })
 }

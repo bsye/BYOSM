@@ -113,7 +113,13 @@ function DeployPicker({ running }: { running: string[] }) {
         <Rocket />
         Deploy
       </Button>
-      <Button size="sm" variant="outline" disabled={!pick} title="Write a CloudFormation stack sized for this model" onClick={() => runJob(["cloud", pick]).then((j) => openJob(j.id))}>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={!pick}
+        title="Write a CloudFormation stack sized for this model"
+        onClick={() => runJob(["cloud", pick]).then((j) => openJob(j.id))}
+      >
         <Cloud />
         AWS
       </Button>
@@ -165,7 +171,12 @@ export function Deployments() {
               </TableHeader>
               <TableBody>
                 {rows.map((r) => (
-                  <TableRow key={r.container} className="cursor-pointer" data-state={chosen?.name === r.name ? "selected" : undefined} onClick={() => setPicked(r.name)}>
+                  <TableRow
+                    key={r.container}
+                    className="cursor-pointer"
+                    data-state={chosen?.name === r.name ? "selected" : undefined}
+                    onClick={() => setPicked(r.name)}
+                  >
                     <TableCell className="font-medium">
                       <a className="hover:underline" href={href("specialists", r.name)} onClick={(e) => e.stopPropagation()}>
                         {r.name}

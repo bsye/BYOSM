@@ -38,10 +38,7 @@ function Accuracy({ view }: { view: PanelView }) {
       </Alert>
     )
   }
-  const rows = [
-    ...Object.entries(s.teachers).map(([model, accuracy]) => ({ model, accuracy })),
-    { model: PANEL, accuracy: s.panel_on_labelled },
-  ]
+  const rows = [...Object.entries(s.teachers).map(([model, accuracy]) => ({ model, accuracy })), { model: PANEL, accuracy: s.panel_on_labelled }]
   return (
     <Card>
       <CardHeader>
@@ -160,7 +157,9 @@ export function Panel({ name }: { name: string }) {
   const [view, setView] = useState<PanelView | null>(null)
   const [error, setError] = useState("")
   useEffect(() => {
-    api<PanelView>(`/specialists/${name}/panel`).then(setView).catch((e) => setError(String(e)))
+    api<PanelView>(`/specialists/${name}/panel`)
+      .then(setView)
+      .catch((e) => setError(String(e)))
   }, [name])
   if (error) return <p className="text-destructive">{error}</p>
   if (!view) return null

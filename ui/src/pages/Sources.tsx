@@ -23,11 +23,14 @@ function AddSource({ onAdded }: { onAdded: (s: Source[]) => void }) {
   const add = () => {
     setBusy(true)
     addSource(url, name)
-      .then((s) => {
-        onAdded(s)
-        setUrl("")
-        setName("")
-      }, (e) => toast.error(String(e)))
+      .then(
+        (s) => {
+          onAdded(s)
+          setUrl("")
+          setName("")
+        },
+        (e) => toast.error(String(e)),
+      )
       .finally(() => setBusy(false))
   }
   return (
@@ -57,7 +60,9 @@ export function Sources() {
             <TooltipTrigger asChild>
               <Info className="text-muted-foreground size-4" />
             </TooltipTrigger>
-            <TooltipContent className="max-w-xs">Portals are searched on every request. Pages are given to the LLM as places to look. Searches also add portals they discover.</TooltipContent>
+            <TooltipContent className="max-w-xs">
+              Portals are searched on every request. Pages are given to the LLM as places to look. Searches also add portals they discover.
+            </TooltipContent>
           </Tooltip>
         </CardTitle>
       </CardHeader>
@@ -89,7 +94,13 @@ export function Sources() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{BY[s.by] ?? s.by}</TableCell>
                   <TableCell className="text-right">
-                    <Button size="icon" variant="ghost" disabled={s.by === BUILT_IN} aria-label="Remove source" onClick={() => void dropSource(s.url).then(setRows)}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={s.by === BUILT_IN}
+                      aria-label="Remove source"
+                      onClick={() => void dropSource(s.url).then(setRows)}
+                    >
                       <Trash2 />
                     </Button>
                   </TableCell>

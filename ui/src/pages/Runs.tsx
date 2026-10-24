@@ -34,11 +34,8 @@ export function Runs({ d }: { d: Detail }) {
     epoch: i + 1,
     ...Object.fromEntries(runs.map((r) => [r.name, r.history[i]?.dev])),
   }))
-  const config = Object.fromEntries(
-    runs.map((r, i) => [r.name, { label: r.name, color: `var(--chart-${(i % COLORS) + 1})` }]),
-  ) satisfies ChartConfig
-  const toggle = (name: string) =>
-    setShown(shown.includes(name) ? shown.filter((x) => x !== name) : [...shown, name].slice(-COLORS))
+  const config = Object.fromEntries(runs.map((r, i) => [r.name, { label: r.name, color: `var(--chart-${(i % COLORS) + 1})` }])) satisfies ChartConfig
+  const toggle = (name: string) => setShown(shown.includes(name) ? shown.filter((x) => x !== name) : [...shown, name].slice(-COLORS))
   return (
     <div className="space-y-4">
       <Lineage d={d} />
@@ -85,12 +82,7 @@ export function Runs({ d }: { d: Detail }) {
             </TableHeader>
             <TableBody>
               {byCalib(d).map((r) => (
-                <TableRow
-                  key={r.name}
-                  className="cursor-pointer"
-                  data-state={shown.includes(r.name) ? "selected" : undefined}
-                  onClick={() => toggle(r.name)}
-                >
+                <TableRow key={r.name} className="cursor-pointer" data-state={shown.includes(r.name) ? "selected" : undefined} onClick={() => toggle(r.name)}>
                   <TableCell className="font-medium">
                     {r.name} {r.name === d.promoted && <Badge className="ml-2">Promoted</Badge>}
                   </TableCell>

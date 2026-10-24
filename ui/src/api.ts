@@ -216,8 +216,7 @@ export type PanelView = {
   review: ReviewRow[]
 }
 
-export const runJob = (args: string[], llm?: Record<string, unknown> | null) =>
-  post<Job>("/jobs", llm ? { args, llm } : { args })
+export const runJob = (args: string[], llm?: Record<string, unknown> | null) => post<Job>("/jobs", llm ? { args, llm } : { args })
 
 export function eventsUrl(): string {
   const scheme = window.location.protocol === "https:" ? "wss" : "ws"

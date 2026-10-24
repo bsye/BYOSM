@@ -62,7 +62,12 @@ export function TrainingData() {
                   ))}
                   <TableCell className="text-muted-foreground max-w-56 truncate text-xs">{r.sources.join(", ") || "written by an LLM"}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <PublishDialog name={r.name} exported={r.exported && r.modality === "text"} size="sm" command={(repo, pub) => ["publish-data", r.name, "--repo", repo, ...(pub ? ["--public"] : [])]} />
+                    <PublishDialog
+                      name={r.name}
+                      exported={r.exported && r.modality === "text"}
+                      size="sm"
+                      command={(repo, pub) => ["publish-data", r.name, "--repo", repo, ...(pub ? ["--public"] : [])]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

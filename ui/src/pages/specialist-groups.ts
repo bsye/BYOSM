@@ -33,7 +33,8 @@ export function leadOf(s: Summary): number | null {
   return s.higher_is_better === false ? s.rival.score - ours : ours - s.rival.score
 }
 
-export const rivalScope = (s: Summary) => (s.rival?.datasets && s.rival.of && s.rival.datasets < s.rival.of ? ` on ${s.rival.datasets} of ${s.rival.of} datasets` : "")
+export const rivalScope = (s: Summary) =>
+  s.rival?.datasets && s.rival.of && s.rival.datasets < s.rival.of ? ` on ${s.rival.datasets} of ${s.rival.of} datasets` : ""
 
 export const titleOf = (s: Summary) => s.title || s.name.split("-").join(" ")
 

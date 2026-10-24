@@ -39,9 +39,7 @@ const GROUPS = [
     ],
   },
 ]
-const SECONDARY = [
-  { key: "settings", label: "Settings", icon: Settings },
-]
+const SECONDARY = [{ key: "settings", label: "Settings", icon: Settings }]
 
 const LINKS = [
   { label: "GitHub", handle: "bsye", href: "https://github.com/bsye", icon: Github },

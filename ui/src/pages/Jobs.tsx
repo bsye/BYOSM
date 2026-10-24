@@ -97,8 +97,20 @@ export function Running() {
   )
 }
 
-const STATUS_LABEL: Record<Job["status"], string> = { queued: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Cancelled", interrupted: "Interrupted" }
-const FILTERS = { all: () => true, running: (j: Job) => j.status === "running" || j.status === "queued", failed: (j: Job) => j.status === "failed" || j.status === "interrupted", done: (j: Job) => j.status === "done" }
+const STATUS_LABEL: Record<Job["status"], string> = {
+  queued: "Queued",
+  running: "Running",
+  done: "Completed",
+  failed: "Failed",
+  cancelled: "Cancelled",
+  interrupted: "Interrupted",
+}
+const FILTERS = {
+  all: () => true,
+  running: (j: Job) => j.status === "running" || j.status === "queued",
+  failed: (j: Job) => j.status === "failed" || j.status === "interrupted",
+  done: (j: Job) => j.status === "done",
+}
 type Filter = keyof typeof FILTERS
 const FILTER_LABELS: Record<Filter, string> = { all: "All", running: "Running", failed: "Failed", done: "Completed" }
 
@@ -114,7 +126,10 @@ function StatusBadge({ status }: { status: Job["status"] }) {
 function useTitles(): Record<string, string> {
   const [titles, setTitles] = useState<Record<string, string>>({})
   useEffect(() => {
-    api<Summary[]>("/specialists").then((s) => setTitles(Object.fromEntries(s.map((x) => [x.name, x.title || x.name]))), () => undefined)
+    api<Summary[]>("/specialists").then(
+      (s) => setTitles(Object.fromEntries(s.map((x) => [x.name, x.title || x.name]))),
+      () => undefined,
+    )
   }, [])
   return titles
 }

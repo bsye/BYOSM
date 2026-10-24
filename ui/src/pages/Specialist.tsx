@@ -54,7 +54,10 @@ function Board({ d }: { d: Detail }) {
   const [all, setAll] = useState(false)
   const every = boardRows(d.board, d.primary_suite)
   const keep = new Set([d.promoted, ...d.baselines])
-  const others = every.filter((r) => !keep.has(r.model)).slice(0, FOCUS_OTHERS).map((r) => r.model)
+  const others = every
+    .filter((r) => !keep.has(r.model))
+    .slice(0, FOCUS_OTHERS)
+    .map((r) => r.model)
   const rows = all ? every : every.filter((r) => keep.has(r.model) || others.includes(r.model))
   const caughtLabels = Object.keys(d.board[d.promoted ?? ""]?.[d.primary_suite]?.caught ?? {})
   return (
@@ -87,7 +90,8 @@ function Board({ d }: { d: Detail }) {
                 <span className="inline-flex items-center gap-1">
                   Test [95% CI]
                   <InfoTip>
-                    The range the test score falls in when the test rows are resampled 1,000 times. With a bound like {d.metric}, a resample that misses the bound scores 0, so a lower end of 0 means the model sits at the edge of the bound.
+                    The range the test score falls in when the test rows are resampled 1,000 times. With a bound like {d.metric}, a resample that misses the
+                    bound scores 0, so a lower end of 0 means the model sits at the edge of the bound.
                   </InfoTip>
                 </span>
               </TableHead>
@@ -113,7 +117,11 @@ function Board({ d }: { d: Detail }) {
                   </TableCell>
                   <TableCell className="tabular-nums">
                     {res.unreached != null ? (
-                      <Badge variant="outline" className="text-muted-foreground font-normal" title="Never reaches the required precision on test, so it scores 0">
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground font-normal"
+                        title="Never reaches the required precision on test, so it scores 0"
+                      >
                         precision {(res.unreached * 100).toFixed(1)}%
                       </Badge>
                     ) : (
@@ -197,11 +205,7 @@ function ModelStats({ d }: { d: Detail }) {
         value={score(d.score)}
         detail={best.ci ? `95% CI ${score(best.ci.lo)} to ${score(best.ci.hi)}, ${d.benchmark}` : d.benchmark}
       />
-      <StatCard
-        label="Lead over best rival"
-        value={signed(lead)}
-        detail={d.rival ? `vs ${rivalName(d.rival.name)}` : "no rival scored yet"}
-      />
+      <StatCard label="Lead over best rival" value={signed(lead)} detail={d.rival ? `vs ${rivalName(d.rival.name)}` : "no rival scored yet"} />
       <StatCard label="CPU per input" value={ms(best.latency_ms)} detail={d.promoted ?? ""} />
       <StatCard label="Size" value={params(best.params)} detail="parameters, ONNX on CPU" />
     </div>

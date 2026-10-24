@@ -58,7 +58,10 @@ export function JobStages({ items, started, active, now }: { items: Stage[]; sta
       <CardContent>
         <ol className="divide-y">
           {booting && (
-            <Row stage={{ name: started ? "Starting: loading the model libraries" : "Queued", state: "running", start: started ?? now, seconds: null, steps: [] }} now={now} />
+            <Row
+              stage={{ name: started ? "Starting: loading the model libraries" : "Queued", state: "running", start: started ?? now, seconds: null, steps: [] }}
+              now={now}
+            />
           )}
           {items.map((s, i) => (
             <Row key={i} stage={s} now={now} />

@@ -23,7 +23,9 @@ function Epochs({ items }: { items: Epoch[] }) {
         <CardTitle className="flex items-center gap-2">
           Training {run?.experiment}
           <InfoTip>
-            One point per epoch, a full pass over the training rows. The dev score is the specialist's metric on rows it does not train on: higher is better, and the best epoch is kept. The loss is the error on the training rows: lower is better. Dev falling while the loss keeps dropping is the sign of overfitting.
+            One point per epoch, a full pass over the training rows. The dev score is the specialist's metric on rows it does not train on: higher is better,
+            and the best epoch is kept. The loss is the error on the training rows: lower is better. Dev falling while the loss keeps dropping is the sign of
+            overfitting.
           </InfoTip>
         </CardTitle>
         <CardAction className="text-muted-foreground text-sm tabular-nums">

@@ -15,7 +15,11 @@ import { ask, forgetAsk, useAsks, type DataAsk, type OpenDataset } from "./opend
 
 const ASK = "ask"
 const SEARCH = "search"
-const EXAMPLES = ["Irish companies that closed, with their sector and county", "Food safety inspections of restaurants with their outcome", "Planning applications and whether they were granted"]
+const EXAMPLES = [
+  "Irish companies that closed, with their sector and county",
+  "Food safety inspections of restaurants with their outcome",
+  "Planning applications and whether they were granted",
+]
 const SKELETONS = 3
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 
@@ -23,7 +27,12 @@ function AskCard({ item, onForget }: { item: DataAsk; onForget: () => void }) {
   const running = item.status === "running"
   const { shown, footer } = useShowMore(item.datasets)
   const stage = running ? (item.queries.length ? "Searching portals" : "Searching the web") : ""
-  const facts = [stage, plural(item.datasets.length, "table"), item.portals.length ? plural(item.portals.length, "new portal") : "", item.queries.length ? `searched ${item.queries.length}` : ""]
+  const facts = [
+    stage,
+    plural(item.datasets.length, "table"),
+    item.portals.length ? plural(item.portals.length, "new portal") : "",
+    item.queries.length ? `searched ${item.queries.length}` : "",
+  ]
   return (
     <Card className="min-w-0">
       <CardHeader>
@@ -40,7 +49,13 @@ function AskCard({ item, onForget }: { item: DataAsk; onForget: () => void }) {
         </CardAction>
       </CardHeader>
       <CardContent>
-        {item.datasets.length ? <FoundDatasets datasets={shown} /> : running ? <Skeleton className="h-16 rounded-lg" /> : <p className="text-muted-foreground text-sm">No downloadable table found.</p>}
+        {item.datasets.length ? (
+          <FoundDatasets datasets={shown} />
+        ) : running ? (
+          <Skeleton className="h-16 rounded-lg" />
+        ) : (
+          <p className="text-muted-foreground text-sm">No downloadable table found.</p>
+        )}
       </CardContent>
       {footer}
     </Card>
@@ -69,7 +84,14 @@ function Asks({ asks, onForget }: { asks: DataAsk[] | null; onForget: (a: DataAs
 
 function Results({ found }: { found: OpenDataset[] | null | "busy" }) {
   const { shown, footer } = useShowMore(Array.isArray(found) ? found : [])
-  if (found === "busy") return <>{Array.from({ length: SKELETONS }, (_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</>
+  if (found === "busy")
+    return (
+      <>
+        {Array.from({ length: SKELETONS }, (_, i) => (
+          <Skeleton key={i} className="h-16 rounded-xl" />
+        ))}
+      </>
+    )
   if (!found) return null
   return (
     <Card>
@@ -77,7 +99,9 @@ function Results({ found }: { found: OpenDataset[] | null | "busy" }) {
         <CardTitle>Portal results</CardTitle>
         <CardDescription>{plural(found.length, "table")}</CardDescription>
       </CardHeader>
-      <CardContent>{found.length ? <FoundDatasets datasets={shown} /> : <p className="text-muted-foreground text-sm">No table found for that search.</p>}</CardContent>
+      <CardContent>
+        {found.length ? <FoundDatasets datasets={shown} /> : <p className="text-muted-foreground text-sm">No table found for that search.</p>}
+      </CardContent>
       {footer}
     </Card>
   )

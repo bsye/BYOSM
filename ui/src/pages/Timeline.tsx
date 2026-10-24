@@ -21,7 +21,10 @@ const config = { span: { label: "running" } } satisfies ChartConfig
 const clock = (t: number) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
 export function Timeline({ jobs, titles }: { jobs: Job[]; titles: Record<string, string> }) {
-  const recent = jobs.filter((j) => j.started != null).slice(0, SHOWN).reverse()
+  const recent = jobs
+    .filter((j) => j.started != null)
+    .slice(0, SHOWN)
+    .reverse()
   const now = useNow(recent.some((j) => j.status === "running"))
   if (!recent.length) return null
   const data = recent.map((j) => ({

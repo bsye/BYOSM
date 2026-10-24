@@ -28,7 +28,10 @@ function Lead({ s }: { s: Summary }) {
     <span className="text-muted-foreground flex min-w-0 items-center gap-1">
       <Icon className="size-3.5 shrink-0" />
       <span className="text-foreground font-medium tabular-nums">{tied ? "tied" : signed(d)}</span>
-      <span className="min-w-0 truncate">vs {rivalName(s.rival.name)}{rivalScope(s)}</span>
+      <span className="min-w-0 truncate">
+        vs {rivalName(s.rival.name)}
+        {rivalScope(s)}
+      </span>
     </span>
   )
 }

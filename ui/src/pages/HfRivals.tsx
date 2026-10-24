@@ -96,7 +96,9 @@ export function HfRivals({ name, ours }: { name: string; ours: string[] }) {
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">{c.tag || "-"}</TableCell>
                   <TableCell className="text-foreground/70 text-right tabular-nums">{c.downloads.toLocaleString()}</TableCell>
-                  <TableCell className="text-foreground/70 text-right tabular-nums">{c.baseline.startsWith("hf:") ? `${Math.round(c.coverage * 100)}%` : "adapter"}</TableCell>
+                  <TableCell className="text-foreground/70 text-right tabular-nums">
+                    {c.baseline.startsWith("hf:") ? `${Math.round(c.coverage * 100)}%` : "adapter"}
+                  </TableCell>
                   <TableCell className="text-right">
                     {c.added ? (
                       <Badge variant="outline">

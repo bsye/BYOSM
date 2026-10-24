@@ -26,7 +26,9 @@ export function Progress({ d }: { d: Detail }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Progress
-          <InfoTip>Every experiment in the order it was built. Calib picks the model; test is only reported. The dashed line is the best rival on test.</InfoTip>
+          <InfoTip>
+            Every experiment in the order it was built. Calib picks the model; test is only reported. The dashed line is the best rival on test.
+          </InfoTip>
         </CardTitle>
         <CardAction className="text-muted-foreground text-sm tabular-nums">
           best calib {score(best)}
@@ -41,8 +43,21 @@ export function Progress({ d }: { d: Detail }) {
             <YAxis domain={["auto", "auto"]} tickLine={false} axisLine={false} width={52} tickFormatter={(v) => Number(v).toFixed(3)} />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
-            {rival != null && <ReferenceLine y={rival} stroke="var(--muted-foreground)" strokeDasharray="4 4" label={{ value: rivalName(d.rival?.name), position: "insideTopLeft", fontSize: 11, fill: "var(--muted-foreground)" }} />}
-            {d.promoted && <ReferenceLine x={d.promoted} stroke="var(--muted-foreground)" label={{ value: "promoted", position: "top", fontSize: 11, fill: "var(--muted-foreground)" }} />}
+            {rival != null && (
+              <ReferenceLine
+                y={rival}
+                stroke="var(--muted-foreground)"
+                strokeDasharray="4 4"
+                label={{ value: rivalName(d.rival?.name), position: "insideTopLeft", fontSize: 11, fill: "var(--muted-foreground)" }}
+              />
+            )}
+            {d.promoted && (
+              <ReferenceLine
+                x={d.promoted}
+                stroke="var(--muted-foreground)"
+                label={{ value: "promoted", position: "top", fontSize: 11, fill: "var(--muted-foreground)" }}
+              />
+            )}
             <Line dataKey="calib" stroke="var(--color-calib)" strokeWidth={2} dot={{ r: 3 }} connectNulls />
             <Line dataKey="test" stroke="var(--color-test)" strokeWidth={2} dot={{ r: 3 }} connectNulls />
           </LineChart>

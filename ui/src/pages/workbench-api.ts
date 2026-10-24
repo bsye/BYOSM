@@ -48,7 +48,11 @@ export const score = (set: TestSet, model: string): Score => set.scores[model] ?
 
 export function rowsPage(name: string, suite: string) {
   return (offset: number, limit: number) =>
-    api<RowsPage>(`/specialists/${name}/written/${encodeURIComponent(suite)}/rows?offset=${offset}&limit=${limit}`).then((p) => ({ total: p.total, rows: p.rows, extra: p.results }))
+    api<RowsPage>(`/specialists/${name}/written/${encodeURIComponent(suite)}/rows?offset=${offset}&limit=${limit}`).then((p) => ({
+      total: p.total,
+      rows: p.rows,
+      extra: p.results,
+    }))
 }
 
 export function mergeResults(a: Results, b: Results): Results {

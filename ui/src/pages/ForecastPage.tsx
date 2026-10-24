@@ -63,7 +63,11 @@ export function ForecastPage({ name }: { name: string }) {
       </Empty>
     )
   const test = f.result?.splits.test
-  const facts = [within(f.spec.horizon_years), `tested on ${f.spec.cutoffs.test.join(", ")}`, test ? `${test.n.toLocaleString()} rows, ${(test.positive * 100).toFixed(1)}% ended` : "not run yet"]
+  const facts = [
+    within(f.spec.horizon_years),
+    `tested on ${f.spec.cutoffs.test.join(", ")}`,
+    test ? `${test.n.toLocaleString()} rows, ${(test.positive * 100).toFixed(1)}% ended` : "not run yet",
+  ]
   const busy = running.has(name)
   const remove = async () => {
     if (window.prompt(`Type ${name} to delete this forecast`) === name) {
@@ -83,7 +87,12 @@ export function ForecastPage({ name }: { name: string }) {
             <Download />
             CSV
           </Button>
-          <PublishDialog name={name} exported={Boolean(f.result?.today)} size="sm" command={(repo, pub) => ["forecast", "publish", name, "--repo", repo, ...(pub ? ["--public"] : [])]} />
+          <PublishDialog
+            name={name}
+            exported={Boolean(f.result?.today)}
+            size="sm"
+            command={(repo, pub) => ["forecast", "publish", name, "--repo", repo, ...(pub ? ["--public"] : [])]}
+          />
           <Button size="sm" disabled={busy} onClick={() => void runForecast(name)}>
             {busy ? <Loader2 className="animate-spin" /> : <Play />}
             {busy ? "Running" : "Run"}

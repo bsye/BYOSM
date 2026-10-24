@@ -19,7 +19,10 @@ const pct = (v: number) => `${Math.round(v * 100)}%`
 const value = (v: string | number | null) => (v == null ? "missing" : v === NEVER_DAYS ? "never" : String(v))
 
 function Result({ answer, shown }: { answer: Answer; shown: string[] }) {
-  const who = shown.map((c) => answer.row[c]).filter(Boolean).join(" · ")
+  const who = shown
+    .map((c) => answer.row[c])
+    .filter(Boolean)
+    .join(" · ")
   if (answer.state === "ended")
     return (
       <p className="text-sm">
@@ -76,7 +79,12 @@ export function ForecastTry({ name, shown }: { name: string; shown: string[] }) 
       <CardContent className="grid gap-4">
         {mode === LOOKUP ? (
           <div className="flex gap-2">
-            <Input value={key} placeholder={inputs?.key ?? "key"} onChange={(e) => setKey(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ready && ask()} />
+            <Input
+              value={key}
+              placeholder={inputs?.key ?? "key"}
+              onChange={(e) => setKey(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && ready && ask()}
+            />
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">

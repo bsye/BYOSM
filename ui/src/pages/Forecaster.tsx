@@ -224,8 +224,9 @@ export function Forecaster({ f }: { f: ForecasterView }) {
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             {titleOf(f)}
             <InfoTip>
-              One model per recipe, trained on all of these GIFT-Eval datasets together. MASE and CRPS are relative to seasonal naive (1.0, the dashed line): lower is better. Each run picks the recipe on the calib
-              windows and reports the test windows. Published scores come from the GIFT-Eval leaderboard and show only where our seasonal naive matches theirs.
+              One model per recipe, trained on all of these GIFT-Eval datasets together. MASE and CRPS are relative to seasonal naive (1.0, the dashed line):
+              lower is better. Each run picks the recipe on the calib windows and reports the test windows. Published scores come from the GIFT-Eval leaderboard
+              and show only where our seasonal naive matches theirs.
             </InfoTip>
           </h1>
           <p className="text-muted-foreground text-sm">{f.description}</p>

@@ -64,7 +64,10 @@ const MODE_LABELS: Record<string, string> = { wait: "Wait and retry", local: "Sw
 export function OnLimitSelect() {
   const [mode, setMode] = useState<string | null>(null)
   useEffect(() => {
-    api<{ mode: string }>("/llm/on-limit").then((s) => setMode(s.mode), () => setMode(null))
+    api<{ mode: string }>("/llm/on-limit").then(
+      (s) => setMode(s.mode),
+      () => setMode(null),
+    )
   }, [])
   const pick = (m: string) => {
     setMode(m)

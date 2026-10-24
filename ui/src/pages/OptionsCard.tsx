@@ -22,12 +22,19 @@ export function OptionsCard({ name }: { name: string }) {
     api<Report | null>(`/specialists/${name}/options`).then(setReport, () => setReport(null))
   }, [name])
   if (!report?.own && !report?.compare) return null
-  const series: [string, Scores][] = report.compare ? [["this model", report.compare.model], ...Object.entries(report.compare.rivals)] : [["this model", report.own as Scores]]
+  const series: [string, Scores][] = report.compare
+    ? [["this model", report.compare.model], ...Object.entries(report.compare.rivals)]
+    : [["this model", report.own as Scores]]
   const keys = series.map((_, i) => `s${i}`)
   const config = Object.fromEntries(series.map(([who], i) => [keys[i], { label: who, color: `var(--chart-${(i % COLORS) + 1})` }])) satisfies ChartConfig
   const rows = PARTS.map(([part, label]) => ({
     part: label,
-    ...Object.fromEntries(series.flatMap(([, s], i) => [[keys[i], s[part].accuracy], [`${keys[i]}ci`, s[part].accuracy == null ? [0, 0] : [s[part].accuracy - s[part].ci[0], s[part].ci[1] - s[part].accuracy]]])),
+    ...Object.fromEntries(
+      series.flatMap(([, s], i) => [
+        [keys[i], s[part].accuracy],
+        [`${keys[i]}ci`, s[part].accuracy == null ? [0, 0] : [s[part].accuracy - s[part].ci[0], s[part].ci[1] - s[part].accuracy]],
+      ]),
+    ),
   }))
   const n = report.compare?.sample ?? report.own?.exact.n
   return (
@@ -35,7 +42,9 @@ export function OptionsCard({ name }: { name: string }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Choosing tools
-          <InfoTip>A request counts as right only when exactly the tools it needs are chosen, or none when no offered tool fits. Bars show the 95% interval.</InfoTip>
+          <InfoTip>
+            A request counts as right only when exactly the tools it needs are chosen, or none when no offered tool fits. Bars show the 95% interval.
+          </InfoTip>
         </CardTitle>
         <CardDescription>{n} held-out requests</CardDescription>
       </CardHeader>

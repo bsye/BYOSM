@@ -28,7 +28,10 @@ function RoleRow({ r, providers, onSaved }: { r: Role; providers: Provider[] | n
       })
       .catch((e) => setStatus(String(e)))
   const pickModel = (key: string) => {
-    const conf = roleConfig((providers ?? []).filter((p) => p.available), key)
+    const conf = roleConfig(
+      (providers ?? []).filter((p) => p.available),
+      key,
+    )
     if (conf) void save({ base_url: null, api_key: null, api_key_env: null, effort: null, ...conf })
   }
   return (
@@ -115,19 +118,38 @@ export function LimitsCard({ roles, biggest, onSaved }: { roles: Roles; biggest:
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Limits
-          <InfoTip>A job stops calling its LLM once it has used the token budget, input and output together. Parallel caps the calls a job sends at once; local servers take one at a time when it is empty.</InfoTip>
+          <InfoTip>
+            A job stops calling its LLM once it has used the token budget, input and output together. Parallel caps the calls a job sends at once; local servers
+            take one at a time when it is empty.
+          </InfoTip>
         </CardTitle>
         <CardAction className="text-muted-foreground text-sm tabular-nums">largest job so far {compact(biggest)}</CardAction>
       </CardHeader>
       <CardContent className="flex flex-wrap items-end gap-4">
         <div className="space-y-2">
           <Label htmlFor="budget">Tokens per job</Label>
-          <Input id="budget" className="h-8 w-40 tabular-nums" type="number" min={0} placeholder="no limit" value={budget} onChange={(e) => setBudget(e.target.value)} />
+          <Input
+            id="budget"
+            className="h-8 w-40 tabular-nums"
+            type="number"
+            min={0}
+            placeholder="no limit"
+            value={budget}
+            onChange={(e) => setBudget(e.target.value)}
+          />
         </div>
         <OnLimitSelect />
         <div className="space-y-2">
           <Label htmlFor="parallel">Parallel calls</Label>
-          <Input id="parallel" className="h-8 w-28 tabular-nums" type="number" min={1} placeholder="auto" value={parallel} onChange={(e) => setParallel(e.target.value)} />
+          <Input
+            id="parallel"
+            className="h-8 w-28 tabular-nums"
+            type="number"
+            min={1}
+            placeholder="auto"
+            value={parallel}
+            onChange={(e) => setParallel(e.target.value)}
+          />
         </div>
         <Button size="sm" className="ml-auto" onClick={save}>
           {saved ? <Check /> : <Save />}

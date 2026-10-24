@@ -12,14 +12,19 @@ type Plan = { from: string | null; epochs?: number; reasons: string[] }
 export function ContinueDialog({ d }: { d: Detail }) {
   const [plan, setPlan] = useState<Plan | null>(null)
   const [starting, setStarting] = useState(false)
-  const running = Object.values(useLive().jobs).some((j) => j.args[0] === "continue" && j.args[1] === d.name && (j.status === "running" || j.status === "queued"))
+  const running = Object.values(useLive().jobs).some(
+    (j) => j.args[0] === "continue" && j.args[1] === d.name && (j.status === "running" || j.status === "queued"),
+  )
   useEffect(() => {
     api<Plan>(`/specialists/${d.name}/continue-plan`).then(setPlan, () => setPlan(null))
   }, [d.name, d.promoted])
   const go = () => {
     setStarting(true)
     runJob(["continue", d.name, "--run"])
-      .then((j) => openJob(j.id), (e) => toast.error(String(e)))
+      .then(
+        (j) => openJob(j.id),
+        (e) => toast.error(String(e)),
+      )
       .finally(() => setStarting(false))
   }
   const busy = running || starting

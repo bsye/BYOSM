@@ -34,7 +34,13 @@ export function NewTestSet({ taken, onCreate }: { taken: string[]; onCreate: (na
         <DialogHeader>
           <DialogTitle>New test set</DialogTitle>
         </DialogHeader>
-        <Input autoFocus placeholder="e.g. noisy-calls" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && name && !clash && create()} />
+        <Input
+          autoFocus
+          placeholder="e.g. noisy-calls"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && name && !clash && create()}
+        />
         {clash && <p className="text-destructive text-sm">{name} already exists</p>}
         <DialogFooter>
           <Button disabled={!name || clash} onClick={create}>

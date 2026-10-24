@@ -50,9 +50,25 @@ function Curve({ row, rival }: { row: Row; rival: Compare }) {
         <ChartContainer config={config} className="h-72 w-full">
           <LineChart data={data} margin={{ left: 8, right: 16 }}>
             <CartesianGrid vertical={false} />
-            <XAxis dataKey="n" scale="log" type="number" domain={[1, 1e7]} ticks={CURVE_POINTS} tickFormatter={(v) => compact(Number(v))} tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="n"
+              scale="log"
+              type="number"
+              domain={[1, 1e7]}
+              ticks={CURVE_POINTS}
+              tickFormatter={(v) => compact(Number(v))}
+              tickLine={false}
+              axisLine={false}
+            />
             <YAxis scale="log" domain={["auto", "auto"]} tickFormatter={(v) => usd(Number(v))} tickLine={false} axisLine={false} width={64} allowDataOverflow />
-            <ChartTooltip content={<ChartTooltipContent labelFormatter={(_, p) => `${compact(Number(p?.[0]?.payload?.n))} items`} formatter={(v, k) => `${config[k as keyof typeof config].label} ${usd(Number(v))}`} />} />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  labelFormatter={(_, p) => `${compact(Number(p?.[0]?.payload?.n))} items`}
+                  formatter={(v, k) => `${config[k as keyof typeof config].label} ${usd(Number(v))}`}
+                />
+              }
+            />
             <ChartLegend content={<ChartLegendContent />} />
             <Line dataKey="ours" stroke="var(--color-ours)" strokeWidth={2} dot={false} />
             <Line dataKey="llm" stroke="var(--color-llm)" strokeWidth={2} dot={false} strokeDasharray="4 4" />
@@ -70,7 +86,10 @@ function CostTable({ rows, rival, picked, pick }: { rows: Row[]; rival: string; 
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Built for, and when it pays off
-          <InfoTip>LLM tokens are measured through Claude Code, which adds its own prompt to every call. That raises build cost and LLM cost per item alike, so the break-even holds better than either price. Models built before calls were recorded one by one count only the calls recorded since.</InfoTip>
+          <InfoTip>
+            LLM tokens are measured through Claude Code, which adds its own prompt to every call. That raises build cost and LLM cost per item alike, so the
+            break-even holds better than either price. Models built before calls were recorded one by one count only the calls recorded since.
+          </InfoTip>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -90,12 +109,16 @@ function CostTable({ rows, rival, picked, pick }: { rows: Row[]; rival: string; 
               return (
                 <TableRow key={r.name} className="cursor-pointer" data-state={picked === r.name ? "selected" : undefined} onClick={() => pick(r.name)}>
                   <TableCell className="font-medium">{r.title}</TableCell>
-                  <TableCell className="text-right tabular-nums">{tracked(r) ? usd(r.build.llm_usd) : <span className="text-muted-foreground">not tracked</span>}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {tracked(r) ? usd(r.build.llm_usd) : <span className="text-muted-foreground">not tracked</span>}
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-right tabular-nums">
                     {r.build.train_hours.toFixed(1)} h, {usd(r.build.compute_usd)}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-right tabular-nums">{c ? usd(c.per_million_usd) : "not measured"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{c ? (c.break_even_items == null ? "never" : `${compact(c.break_even_items)} items`) : "-"}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {c ? (c.break_even_items == null ? "never" : `${compact(c.break_even_items)} items`) : "-"}
+                  </TableCell>
                 </TableRow>
               )
             })}
@@ -121,9 +144,7 @@ export function CostsPage() {
   const pair = selected?.compare.find((c) => c.model === rival)
   const spent = rows.reduce((n, r) => n + r.build.llm_usd + r.build.compute_usd, 0)
   const evaluated = rows.reduce((n, r) => n + r.evaluate_usd, 0)
-  const fastest = measured
-    .map((r) => ({ r, n: r.compare.find((c) => c.model === rival)?.break_even_items ?? Infinity }))
-    .sort((a, b) => a.n - b.n)[0]
+  const fastest = measured.map((r) => ({ r, n: r.compare.find((c) => c.model === rival)?.break_even_items ?? Infinity })).sort((a, b) => a.n - b.n)[0]
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -144,7 +165,11 @@ export function CostsPage() {
       <div className={STAT_GRID}>
         <StatCard label="Spent building" value={usd(spent)} detail="LLM at list prices, plus training power" />
         <StatCard label="Spent evaluating" value={usd(evaluated)} detail="rival answers and test sets" />
-        <StatCard label="Pays off fastest" value={fastest && Number.isFinite(fastest.n) ? `${compact(fastest.n)} items` : "-"} detail={fastest ? fastest.r.title : "no LLM rival measured"} />
+        <StatCard
+          label="Pays off fastest"
+          value={fastest && Number.isFinite(fastest.n) ? `${compact(fastest.n)} items` : "-"}
+          detail={fastest ? fastest.r.title : "no LLM rival measured"}
+        />
         <StatCard label="Power assumption" value={`${data.settings.watts} W`} detail={`at $${data.settings.usd_per_kwh} per kWh`} />
       </div>
       {selected && pair && <Curve row={selected} rival={pair} />}

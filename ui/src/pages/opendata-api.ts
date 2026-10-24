@@ -6,7 +6,18 @@ import { openJob } from "@/job-sheet"
 const POLL_MS = 3000
 
 export type OpenFile = { name: string; format: string; url: string }
-export type OpenDataset = { source: string; id: string; title: string; publisher: string; licence: string; modified: string; url: string; notes?: string; why?: string; files: OpenFile[] }
+export type OpenDataset = {
+  source: string
+  id: string
+  title: string
+  publisher: string
+  licence: string
+  modified: string
+  url: string
+  notes?: string
+  why?: string
+  files: OpenFile[]
+}
 export type Kept = OpenDataset & { file: OpenFile; added: number; cached: { files: string[] } | null }
 export type Column = { name: string; type: string; missing: number; distinct: number; examples: string[] }
 export type Preview = { file?: string; files?: string[]; match?: number; sampled: number; columns: Column[]; rows: Record<string, string | null>[] }

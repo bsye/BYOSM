@@ -26,7 +26,15 @@ export function OverTime({ years }: { years: Year[] }) {
         <ChartTooltip content={<ChartTooltipContent />} />
         <ChartLegend content={<ChartLegendContent />} />
         {Object.keys(MODELS).map((k) => (
-          <Line key={k} dataKey={k} type="monotone" stroke={`var(--color-${k})`} strokeWidth={2} dot={{ r: 3 }} strokeDasharray={k === "base" ? "4 4" : undefined} />
+          <Line
+            key={k}
+            dataKey={k}
+            type="monotone"
+            stroke={`var(--color-${k})`}
+            strokeWidth={2}
+            dot={{ r: 3 }}
+            strokeDasharray={k === "base" ? "4 4" : undefined}
+          />
         ))}
       </LineChart>
     </ChartContainer>
@@ -96,4 +104,3 @@ export function Leakage({ leaks, excluded, dropped }: { leaks: Leak[]; excluded:
     </div>
   )
 }
-

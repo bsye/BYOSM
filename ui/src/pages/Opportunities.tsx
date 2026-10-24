@@ -45,8 +45,8 @@ export function Opportunities({ onPick }: { onPick: (prompt: string) => void }) 
             </TabsList>
           </Tabs>
           <InfoTip>
-            Trending: models trending on Hugging Face in the tasks BYOSM builds. Ideas: specialists an LLM found worth building, each with a public
-            benchmark and a rival. Replicate or Use puts the task in the prompt above.
+            Trending: models trending on Hugging Face in the tasks BYOSM builds. Ideas: specialists an LLM found worth building, each with a public benchmark
+            and a rival. Replicate or Use puts the task in the prompt above.
           </InfoTip>
         </CardTitle>
         {tab === "ideas" && (

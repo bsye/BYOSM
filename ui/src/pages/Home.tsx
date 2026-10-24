@@ -30,7 +30,10 @@ function useItems(): Summary[] | null {
   const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
   const [items, setItems] = useState<Summary[] | null>(null)
   useEffect(() => {
-    api<Summary[]>("/specialists").then((s) => setItems(s.filter((x) => !x.part_of)), () => setItems([]))
+    api<Summary[]>("/specialists").then(
+      (s) => setItems(s.filter((x) => !x.part_of)),
+      () => setItems([]),
+    )
   }, [finished])
   return items
 }
