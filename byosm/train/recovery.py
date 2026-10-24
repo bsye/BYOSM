@@ -5,6 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from ..events import emit
 from ..spec import TaskSpec
 from .gpu import LOCK_DIR
 
@@ -13,6 +14,7 @@ MIN_BATCH = 4
 BATCHES, PRECISIONS = "batches", "precisions"
 LADDER = ("auto", "bf16", "fp32")
 RETRY_IN_PROCESS = ("cuda", "cpu")
+RECOVERY = "recovery"
 
 
 class DivergedError(RuntimeError):
@@ -135,6 +137,13 @@ def recover(spec: TaskSpec, train: Callable[[TaskSpec], tuple[dict, Any]], log: 
             if step is None:
                 raise
             spec, why = step
+            emit(
+                RECOVERY,
+                why=why,
+                batch=spec.train.batch_size,
+                precision=spec.train.precision,
+                pretrain=spec.train.pretrain_steps,
+            )
             if attempt is None:
                 raise RuntimeError(f"{why}; the next run starts there") from e
             log(f"  {why}")

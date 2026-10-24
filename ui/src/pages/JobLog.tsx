@@ -1,4 +1,4 @@
-import { CircleX, Laptop, Loader2, RotateCw, Square } from "lucide-react"
+import { CircleX, Laptop, LifeBuoy, Loader2, RotateCw, Square } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { api, post, runJob } from "@/api"
 import { openJob } from "@/job-sheet"
@@ -144,6 +144,21 @@ export function JobDetail({ id }: { id: string }) {
           <AlertDescription className="space-y-3">
             <p className="font-mono text-xs break-all">{failure(lines) ?? "The job ended without output."}</p>
             <RetryButtons args={retryArgs(job)} />
+          </AlertDescription>
+        </Alert>
+      )}
+      {metrics.some((m) => m.kind === "recovery") && (
+        <Alert>
+          <LifeBuoy />
+          <AlertTitle>Recovered on its own</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc space-y-1 pl-4">
+              {metrics
+                .filter((m) => m.kind === "recovery")
+                .map((m) => (
+                  <li key={String(m.at)}>{String(m.why)}</li>
+                ))}
+            </ul>
           </AlertDescription>
         </Alert>
       )}

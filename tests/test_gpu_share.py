@@ -95,3 +95,22 @@ def test_a_model_that_outputs_nan_raises_the_error_recovery_climbs_the_precision
     monkeypatch.setattr(evaluate, "infer", lambda *a, **k: {"y": np.array([0]), "probs": np.array([[np.nan, np.nan]])})
     with pytest.raises(DivergedError):
         evaluate.evaluate_rows(None, None, spec, [{}], ["x"], "mps", None)
+
+
+def test_each_recovery_is_reported_as_an_event(ws, monkeypatch, capsys):
+    from byosm.events import EVENTS_ENV, parse
+    from byosm.spec import Label, TaskSpec
+    from byosm.train.recovery import RECOVERY, recover
+
+    monkeypatch.setenv(EVENTS_ENV, "1")
+    spec = TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
+    tries = iter([RuntimeError("out of memory"), None])
+
+    def train(s):
+        if (e := next(tries)) is not None:
+            raise e
+        return {"ok": True}, None
+
+    recover(spec, train, log=lambda _: None, device="cuda")
+    events = [e for e in map(parse, capsys.readouterr().out.splitlines()) if e and e["kind"] == RECOVERY]
+    assert len(events) == 1 and "out of GPU memory" in events[0]["why"] and events[0]["batch"] == spec.train.batch_size // 2
