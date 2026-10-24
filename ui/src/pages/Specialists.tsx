@@ -1,4 +1,4 @@
-import { CalendarDays, Hammer, Plus, Shapes } from "lucide-react"
+import { Hammer, Plus } from "lucide-react"
 import { useEffect, useState } from "react"
 import { api, runJob, type Summary } from "@/api"
 import { Button } from "@/components/ui/button"
@@ -14,12 +14,13 @@ import {
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useLive } from "@/events"
 import { describe } from "@/jobs"
 import type { NextStep } from "./NextSteps"
 import { SpecialistCard } from "./SpecialistCard"
-import { byDate, byKind, type Group } from "./specialist-groups"
+import { byDate, kindKey, kindTabs, type Group } from "./specialist-groups"
 import { openJob } from "@/job-sheet"
 
 const SKELETONS = 6
@@ -56,22 +57,26 @@ function NewSpecialist({ children }: { children: React.ReactNode }) {
   )
 }
 
-const GROUPING_KEY = "byosm-specialists-grouping"
-const GROUPINGS = { type: byKind, date: byDate }
-type Grouping = keyof typeof GROUPINGS
+const KIND_KEY = "byosm-specialists-kind"
+const STAGE_KEY = "byosm-specialists-stage"
+const ALL = "all"
+const STAGES = { ready: "Ready", training: "In training" }
+type Stage = keyof typeof STAGES
 
-function useGrouping(): [Grouping, (g: Grouping) => void] {
-  const [value, setValue] = useState<Grouping>(() => {
+const stageOf = (s: Summary): Stage => (s.score == null ? "training" : "ready")
+
+function useRemembered<T extends string>(key: string, fallback: T): [T, (v: T) => void] {
+  const [value, setValue] = useState<T>(() => {
     try {
-      return localStorage.getItem(GROUPING_KEY) === "date" ? "date" : "type"
+      return (localStorage.getItem(key) as T | null) ?? fallback
     } catch {
-      return "type"
+      return fallback
     }
   })
-  const set = (g: Grouping) => {
-    setValue(g)
+  const set = (v: T) => {
+    setValue(v)
     try {
-      localStorage.setItem(GROUPING_KEY, g)
+      localStorage.setItem(key, v)
     } catch {
       return
     }
@@ -98,8 +103,14 @@ function Section({ group, busy, showKind, steps }: { group: Group; busy: Map<str
 export function Specialists() {
   const [items, setItems] = useState<Summary[] | null>(null)
   const [error, setError] = useState("")
-  const [grouping, setGrouping] = useGrouping()
-  const shown = (items ?? []).filter((s) => !s.part_of)
+  const [picked, setKind] = useRemembered<string>(KIND_KEY, ALL)
+  const [remembered, setStage] = useRemembered<Stage>(STAGE_KEY, "ready")
+  const stage: Stage = remembered in STAGES ? remembered : "ready"
+  const everyone = (items ?? []).filter((s) => !s.part_of)
+  const listed = everyone.filter((s) => stageOf(s) === stage)
+  const tabs = kindTabs(listed)
+  const kind = tabs.some((t) => t.key === picked) ? picked : ALL
+  const shown = kind === ALL ? listed : listed.filter((s) => kindKey(s) === kind)
   const jobs = Object.values(useLive().jobs)
   const finished = jobs.filter((j) => j.status === "done").length
   const busy = new Map(
@@ -154,22 +165,30 @@ export function Specialists() {
         </div>
       )}
       {items && items.length > 0 && (
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold">All specialists</h2>
-          <ToggleGroup type="single" variant="outline" size="sm" value={grouping} onValueChange={(v) => v && setGrouping(v as Grouping)}>
-            <ToggleGroupItem value="type">
-              <Shapes />
-              Type
-            </ToggleGroupItem>
-            <ToggleGroupItem value="date">
-              <CalendarDays />
-              Date
-            </ToggleGroupItem>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Tabs value={kind} onValueChange={setKind}>
+            <TabsList className="h-auto flex-wrap">
+              <TabsTrigger value={ALL}>
+                All <span className="text-muted-foreground tabular-nums">{listed.length}</span>
+              </TabsTrigger>
+              {tabs.map((t) => (
+                <TabsTrigger key={t.key} value={t.key}>
+                  {t.label} <span className="text-muted-foreground tabular-nums">{t.items.length}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <ToggleGroup type="single" variant="outline" size="sm" value={stage} onValueChange={(v) => v && setStage(v as Stage)}>
+            {(Object.keys(STAGES) as Stage[]).map((k) => (
+              <ToggleGroupItem key={k} value={k}>
+                {STAGES[k]} <span className="text-muted-foreground tabular-nums">{everyone.filter((s) => stageOf(s) === k).length}</span>
+              </ToggleGroupItem>
+            ))}
           </ToggleGroup>
         </div>
       )}
-      {GROUPINGS[grouping](shown).map((g) => (
-        <Section key={g.key} group={g} busy={busy} showKind={grouping === "date"} steps={steps} />
+      {byDate(shown).map((g) => (
+        <Section key={g.key} group={g} busy={busy} showKind={kind === ALL} steps={steps} />
       ))}
     </div>
   )

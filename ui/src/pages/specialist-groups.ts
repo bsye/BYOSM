@@ -56,8 +56,10 @@ function grouped(items: Summary[], keyOf: (s: Summary) => string): Map<string, S
   return out
 }
 
-export function byKind(items: Summary[]): Group[] {
-  const groups = grouped(items, (s) => KIND_ORDER.find((k) => KINDS[k] === kindOf(s)) ?? "text")
+export const kindKey = (s: Summary) => KIND_ORDER.find((k) => KINDS[k] === kindOf(s)) ?? "text"
+
+export function kindTabs(items: Summary[]): Group[] {
+  const groups = grouped(items, kindKey)
   return KIND_ORDER.filter((k) => groups.has(k)).map((k) => ({ key: k, label: KINDS[k].plural, items: groups.get(k) ?? [] }))
 }
 
