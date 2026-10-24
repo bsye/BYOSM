@@ -1228,3 +1228,10 @@ own noise, capped at ten units. A series that barely moves (some GIFT-Eval servi
 step) then gets seasonal naive plus a small correction, instead of the model's usual error on a level scale. The cap
 matters: without it, one step change on a constant stretch becomes a target of hundreds of units and dominates the
 squared-error fit.
+
+## Published rival scores
+
+Timestral's GIFT-Eval scores are read from the leaderboard's per-dataset results (cached by URL), not re-run here.
+They count only where our seasonal naive MASE is within 2% of the leaderboard's seasonal naive on the same dataset,
+which shows the split and the metric match. A domain's overall includes a model only if it has a score on every
+dataset of that domain.

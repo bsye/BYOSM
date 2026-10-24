@@ -44,15 +44,15 @@ def run_config(config: str, log: Callable[[str], None]) -> dict[str, Any]:
     return out
 
 
-def _overall(per: dict[str, dict[str, Any]]) -> dict[str, dict[str, float]]:
-    overall = {}
-    for m in sorted({m for r in per.values() for m in r}):
-        rel = [relative({k: r[m][k] for k in ("mase", "crps")}, r[NAIVE]) for r in per.values() if m in r]
+def _overall(per: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    overall: dict[str, dict[str, Any]] = {}
+    for m in sorted(set.intersection(*(set(r) for r in per.values()))):
+        rel = [relative({k: r[m][k] for k in ("mase", "crps")}, r[NAIVE]) for r in per.values()]
         overall[m] = {k: geomean([x[k] for x in rel]) for k in ("mase", "crps")}
-        overall[m] |= {
-            k: round(float(np.mean([r[m][k] for r in per.values() if m in r])), 3)
-            for k in ("train_s", "ms_per_forecast")
-        }
+        for k in ("train_s", "ms_per_forecast"):
+            if all(k in r[m] for r in per.values()):
+                overall[m][k] = round(float(np.mean([r[m][k] for r in per.values()])), 3)
+        overall[m]["published"] = any(r[m].get("published") for r in per.values())
     return overall
 
 
@@ -74,6 +74,13 @@ def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dic
     return result
 
 
+def _with_published(report: dict[str, Any]) -> dict[str, Any]:
+    from .published import scores
+
+    per = {c: {**r, **scores(c, r[NAIVE]["mase"])} for c, r in report.get("configs", {}).items()}
+    return {**report, "configs": per, "overall": _overall(per)} if per else report
+
+
 def reports(ws: Path) -> list[dict[str, Any]]:
     from sqlalchemy import select
 
@@ -82,5 +89,5 @@ def reports(ws: Path) -> list[dict[str, Any]]:
 
     with session(ws) as s:
         rows = s.scalars(select(WorkspaceReport.data).where(WorkspaceReport.kind.startswith(REPORT))).all()
-    found = {r["domain"]: r for r in rows if r}
+    found = {r["domain"]: _with_published(r) for r in rows if r}
     return [found.get(d) or {"domain": d, "at": None} for d in [*DOMAINS, *(k for k in found if k not in DOMAINS)]]

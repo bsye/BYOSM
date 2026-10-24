@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts"
 import { api, runJob } from "@/api"
 import { InfoTip } from "@/components/info-tip"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
@@ -12,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useLive } from "@/events"
 import { openJob } from "@/job-sheet"
 
-type Score = { mase: number; crps: number; train_s: number; ms_per_forecast: number }
+type Score = { mase: number; crps: number; train_s?: number; ms_per_forecast?: number; published?: boolean }
 type Report = { domain: string; at: number | null; configs?: Record<string, Record<string, Score>>; overall?: Record<string, Score>; pending?: string[] }
 
 const config = {
@@ -77,11 +78,18 @@ function DomainCard({ r, running }: { r: Report; running: boolean }) {
               <TableBody>
                 {models.map(([name, s]) => (
                   <TableRow key={name}>
-                    <TableCell className="font-medium">{name}</TableCell>
+                    <TableCell className="font-medium">
+                      {name}
+                      {s.published && (
+                        <Badge variant="outline" className="ml-2">
+                          published
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">{s.mase.toFixed(3)}</TableCell>
                     <TableCell className="text-right tabular-nums">{s.crps.toFixed(3)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{s.train_s.toFixed(1)} s</TableCell>
-                    <TableCell className="text-right tabular-nums">{s.ms_per_forecast.toFixed(1)} ms</TableCell>
+                    <TableCell className="text-right tabular-nums">{s.train_s == null ? "-" : `${s.train_s.toFixed(1)} s`}</TableCell>
+                    <TableCell className="text-right tabular-nums">{s.ms_per_forecast == null ? "-" : `${s.ms_per_forecast.toFixed(1)} ms`}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -103,7 +111,7 @@ export function TimeSeries() {
     <div className="flex flex-col gap-4 md:gap-6">
       <h1 className="flex items-center gap-2 text-2xl font-semibold">
         Time series
-        <InfoTip>GIFT-Eval domains. MASE and CRPS are relative to seasonal naive (1.0, the dashed line): lower is better. Specialists train only on values before the test windows.</InfoTip>
+        <InfoTip>GIFT-Eval domains. MASE and CRPS are relative to seasonal naive (1.0, the dashed line): lower is better. Specialists train only on values before the test windows. Published scores come from the GIFT-Eval leaderboard and show only where our seasonal naive matches theirs.</InfoTip>
       </h1>
       {!rows ? (
         <Skeleton className="h-72 rounded-xl" />

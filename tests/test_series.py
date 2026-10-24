@@ -121,3 +121,19 @@ def test_a_domain_report_is_saved_after_each_dataset_so_results_show_as_they_arr
     run.run_domain(ws, "demo", log=lambda _: None)
     assert seen == [{}, {"demo": ["b"]}]
     assert run.reports(ws)[0]["pending"] == []
+
+
+def test_published_rival_scores_only_appear_where_our_seasonal_naive_matches_theirs(monkeypatch):
+    import byosm.series.published as published
+
+    def row(mase):
+        return {published.MASE_COLUMN: str(mase), published.CRPS_COLUMN: "0.1"}
+
+    tables = {
+        published.NAIVE_MODEL: {"electricity/H/short": row(1.358), "restaurant/D/short": row(1.006)},
+        **{m: {"electricity/H/short": row(0.8), "restaurant/D/short": row(0.7)} for m in published.RIVALS},
+    }
+    monkeypatch.setattr(published, "_table", tables.get)
+    assert set(published.scores("electricity/H", 1.36)) == set(published.RIVALS)
+    assert published.scores("restaurant", 1.006)[published.RIVALS[0]]["mase"] == 0.7
+    assert published.scores("restaurant", 1.2) == {}
