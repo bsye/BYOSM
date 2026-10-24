@@ -16,6 +16,7 @@ from .specialist import summary as forecaster
 
 REPORT = "series:"
 SERIES_EVENT = "series"
+MIN_GAIN = 0.01
 SCORES = ("mase", "crps", "calib_mase", "calib_crps")
 
 
@@ -118,7 +119,17 @@ def reports(ws: Path) -> list[dict[str, Any]]:
     return [found.get(d) or {"domain": d, "at": None} for d in [*DOMAINS, *(k for k in found if k not in DOMAINS)]]
 
 
+def _gain(report: dict[str, Any]) -> float:
+    versions = report.get("versions", [])
+    if len(versions) < 2:
+        return 1.0
+    before = min(v["calib"] for v in versions[:-1])
+    return (before - versions[-1]["calib"]) / before
+
+
 def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] = print) -> dict[str, Any]:
+    from .patch import weights_path
+
     for n in range(rounds):
         report = run_domain(ws, domain, log)
         rival = forecaster(_with_published(report))["rival"]
@@ -126,4 +137,8 @@ def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] =
             log(f"  beat {rival['name']} after {n + 1} round(s): {rival['ours']:.3f} vs {rival['score']:.3f}")
             return report
         log(f"  round {n + 1}: hardest rival {rival}")
+        if _gain(report) < MIN_GAIN:
+            lever = "a bigger base model" if weights_path().exists() else "the pretrained base (byosm series pretrain)"
+            log(f"  more training gained under {MIN_GAIN:.0%} on calib: stopping, the next lever is {lever}")
+            return report
     return report

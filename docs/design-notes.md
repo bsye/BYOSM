@@ -1331,3 +1331,10 @@ number never reaches a card; the board's best measured rival is the one cards an
 Running jobs keep the code they started with, so a file that several jobs read must not change format under them.
 The GPU share file went from a number to JSON and two queued jobs started hours earlier crashed reading it. The share
 file is a number again, and the holder's job and start time live next to it in `slot-N.holder`.
+
+## Keep training stops at a plateau
+
+Doubling a forecaster's training each round gained under 1% of calib MASE per round on all three domains (energy
+0.849, 0.842, 0.838 on test) while doubling the CPU time. Keep training now stops when a round improves the best calib
+MASE by less than `MIN_GAIN` (1%) and names the next lever: the pretrained base model, or a bigger one once the base
+exists. The pretrained recipe joins every round automatically when its weights are on disk.

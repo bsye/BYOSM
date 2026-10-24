@@ -242,3 +242,23 @@ def test_the_pretraining_corpus_draws_windows_from_single_and_multi_variate_seri
     drawn = [corpus.draw(rng) for _ in range(20)]
     assert all(d is not None and len(d) == 120 for d in drawn)
     assert any(d[1] - d[0] == 2 for d in drawn) and any(d[1] - d[0] == 1 for d in drawn)
+
+
+def test_keep_training_stops_when_doubling_the_training_no_longer_helps(ws, monkeypatch):
+    import byosm.series.run as run
+
+    efforts, naive = [], {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0]}
+
+    def one(configs, effort, log, progress):
+        efforts.append(effort)
+        ours = 0.85 - 0.001 * effort
+        return {
+            "a": {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
+        }
+
+    monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
+    monkeypatch.setattr(run, "fit_domain", one)
+    rival = {"Timestral-5M": {"mase": 0.5, "crps": 0.5, "published": True}}
+    monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: rival)
+    run.until_rival(ws, "demo", rounds=5, log=lambda _: None)
+    assert efforts == [0, 1]
