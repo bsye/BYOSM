@@ -113,4 +113,8 @@ def test_each_recovery_is_reported_as_an_event(ws, monkeypatch, capsys):
 
     recover(spec, train, log=lambda _: None, device="cuda")
     events = [e for e in map(parse, capsys.readouterr().out.splitlines()) if e and e["kind"] == RECOVERY]
-    assert len(events) == 1 and "out of GPU memory" in events[0]["why"] and events[0]["batch"] == spec.train.batch_size // 2
+    assert (
+        len(events) == 1
+        and "out of GPU memory" in events[0]["why"]
+        and events[0]["batch"] == spec.train.batch_size // 2
+    )
