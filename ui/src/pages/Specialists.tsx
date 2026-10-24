@@ -60,10 +60,10 @@ function NewSpecialist({ children }: { children: React.ReactNode }) {
 const KIND_KEY = "byosm-specialists-kind"
 const STAGE_KEY = "byosm-specialists-stage"
 const ALL = "all"
-const STAGES = { ready: "Ready", training: "In training" }
+const STAGES = { ready: "Ready", training: "In progress" }
 type Stage = keyof typeof STAGES
 
-const stageOf = (s: Summary): Stage => (s.score == null ? "training" : "ready")
+const stageOf = (s: Summary): Stage => (s.ready === "ready" ? "ready" : "training")
 
 function useRemembered<T extends string>(key: string, fallback: T): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {

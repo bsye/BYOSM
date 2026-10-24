@@ -29,6 +29,7 @@ def summary(row: dict[str, Any]) -> dict[str, Any]:
         "benchmark": "backtest",
         "promoted": MODEL if MODEL in scores else None,
         "score": scores.get(MODEL, {}).get("auc"),
+        "ci": tuple(scores[MODEL]["auc_ci"]) if MODEL in scores else None,
         "rival": {"name": rival, "score": rivals[rival]} if rival else None,
         "experiments": [],
         "exported": bool(result.get("today")),

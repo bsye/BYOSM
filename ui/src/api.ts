@@ -68,6 +68,8 @@ export type Result = {
   caught: Record<string, number | null> | null
 }
 
+export type Readiness = "ready" | "ties" | "behind" | "no_rival" | "no_interval" | "unbuilt"
+
 export type Summary = {
   name: string
   title?: string
@@ -86,6 +88,7 @@ export type Summary = {
   exported: boolean
   kind?: "model" | "team" | "forecast" | "risk"
   higher_is_better?: boolean
+  ready?: Readiness
   members?: string[]
   part_of?: string | null
 }

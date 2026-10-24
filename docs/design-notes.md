@@ -1298,3 +1298,11 @@ pretrain` trains a 6M-parameter base patch transformer (1024-point context in 32
 those memory-mapped files, 80%, and from the training portions of the GIFT-Eval datasets, 20%, reporting progress
 every 500 steps. Each forecaster then fine-tunes that base as its "pretrained" recipe, chosen on calib like the others.
 The small from-scratch model (2.8M parameters, 512-point context) stays as the recipe that trains on a CPU in minutes.
+
+## Ready means ready for production
+
+A specialist is ready when its promoted version beats its strongest rival with 95% confidence: the low end of its
+test interval is above the rival for higher-is-better metrics, the high end below it for MASE. Otherwise the card
+says what is missing, in this order: not built yet, no rival to beat (a rival scoring 0 because it cannot be measured
+on the metric does not count), behind the rival, tied with it, or ahead without an interval. Forecasters use their
+interval only when the rival was scored on all their datasets. The Specialists page opens on the ready ones.

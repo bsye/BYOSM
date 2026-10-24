@@ -1,5 +1,5 @@
 import { Loader2, Minus, Play, TrendingDown, TrendingUp } from "lucide-react"
-import { runJob, type Summary } from "@/api"
+import { runJob, type Readiness, type Summary } from "@/api"
 import { Button } from "@/components/ui/button"
 import { openJob } from "@/job-sheet"
 import type { NextStep } from "./NextSteps"
@@ -10,6 +10,14 @@ import { href } from "@/route"
 import { createdLabel, kindOf, leadOf, rivalScope, titleOf } from "./specialist-groups"
 
 const TIE = 0.0005
+const VERDICTS: Record<Readiness, string> = {
+  ready: "Ready for production",
+  ties: "Tied with its rival",
+  behind: "Behind its rival",
+  no_rival: "No rival to beat yet",
+  no_interval: "Needs a 95% interval",
+  unbuilt: "Not built yet",
+}
 
 function Lead({ s }: { s: Summary }) {
   const d = leadOf(s)
@@ -33,10 +41,7 @@ function Status({ s, running }: { s: Summary; running?: string }) {
         {running}
       </span>
     )
-  if (s.kind === "team") return <span>{s.members?.length === 1 ? "1 model" : `${s.members?.length} models`}</span>
-  if (s.kind === "risk") return <span>{s.score == null ? "Not run yet" : s.exported ? "Scored today" : "Tested"}</span>
-  if (s.kind === "forecast") return <span>{s.promoted ? `${s.promoted}, ${s.experiments.length} versions` : "Not run yet"}</span>
-  return <span>{s.exported ? "Exported" : s.score == null ? "Not built yet" : "Not exported"}</span>
+  return <span className={s.ready === "ready" ? "text-foreground font-medium" : undefined}>{VERDICTS[s.ready ?? "unbuilt"]}</span>
 }
 
 function Step({ steps }: { steps: NextStep[] }) {
