@@ -57,7 +57,9 @@ def forecast_router(ws: Path) -> APIRouter:
         found = next((r for r in reports(ws) if r["domain"] == domain), None)
         if found is None:
             raise HTTPException(404, f"no forecasting domain named {domain}")
-        return {**found, **summary(found)}
+        from ..series.health import health
+
+        return {**found, **summary(found), "health": health(found)}
 
     @router.get("/api/forecasts/{name}/inputs")
     def inputs(name: str) -> dict[str, Any]:

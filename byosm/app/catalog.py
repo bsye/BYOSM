@@ -137,8 +137,9 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
 
 
 def health_of(ws: Path, name: str) -> dict[str, Any] | None:
-    p = project(ws, name)
-    return health(p, p.spec())
+    from ..series.health import of_domain
+
+    return found if (found := of_domain(ws, name)) is not None else health(p := project(ws, name), p.spec())
 
 
 def steps_of(ws: Path, name: str) -> list[dict[str, Any]]:

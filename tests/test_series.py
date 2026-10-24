@@ -262,3 +262,19 @@ def test_keep_training_stops_when_doubling_the_training_no_longer_helps(ws, monk
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: rival)
     run.until_rival(ws, "demo", rounds=5, log=lambda _: None)
     assert efforts == [0, 1]
+
+
+def test_forecaster_health_checks_naive_everywhere_agreement_precision_and_the_rival():
+    from byosm.series.health import health
+
+    def row(ours, naive=1.0, timestral=None):
+        out = {"seasonal naive": {"mase": naive}, "patch transformer": {"mase": ours}}
+        return {**out, "Timestral-5M": {"mase": timestral}} if timestral else out
+
+    version = {"name": "v1", "recipe": "patch transformer", "calib": 0.80, "test": 0.82, "ci": [0.80, 0.84]}
+    report = {"promoted": "v1", "versions": [{**version, "configs": {"a": row(0.8, timestral=0.7), "b": row(1.1)}}]}
+    h = health(report)
+    status = {c["id"]: (c["status"], c["value"]) for c in h["checks"]}
+    assert status["robust"] == ("warn", "1 of 2 datasets") and status["overfit"][0] == "ok"
+    assert status["rival"][0] == "fail" and status["certainty"] == ("ok", "±0.020")
+    assert not h["ready"] and "Beats the best rival" not in h["blockers"]

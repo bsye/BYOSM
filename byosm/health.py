@@ -24,7 +24,7 @@ ADVISORY = {"rival", "size"}
 SMALLER_OK = 4.0
 
 
-def _check(cid: str, title: str, weight: int, status: str, value: str, why: str, args: list[str] | None = None):
+def check(cid: str, title: str, weight: int, status: str, value: str, why: str, args: list[str] | None = None):
     return {"id": cid, "title": title, "weight": weight, "status": status, "value": value, "why": why, "args": args}
 
 
@@ -46,7 +46,7 @@ def _lead(p: Project, spec: TaskSpec, mine: dict, rival: str, theirs: dict) -> d
 def _rival(p: Project, spec: TaskSpec, board: dict, prim: str, mine: dict) -> dict:
     best = best_baseline(board, prim)
     if not best:
-        return _check(
+        return check(
             "rival", "Beats the best rival", 3, UNKNOWN, "no rival scored", "No baseline was scored on this benchmark."
         )
     theirs = board[best[0]][prim]
@@ -58,7 +58,7 @@ def _rival(p: Project, spec: TaskSpec, board: dict, prim: str, mine: dict) -> di
         f", {sure:.0%} sure" if sure is not None else ""
     )
     why = "Paired bootstrap on the test split: the lead counts when at least 95% of resamples keep it."
-    return _check("rival", "Beats the best rival", 3, status, value, why)
+    return check("rival", "Beats the best rival", 3, status, value, why)
 
 
 def _size(p: Project, board: dict, prim: str, mine: dict) -> dict | None:
@@ -71,22 +71,22 @@ def _size(p: Project, board: dict, prim: str, mine: dict) -> dict | None:
     why = f"Parameters of the best rival over this model's: the point of a specialist is to be {SMALLER_OK:g}x smaller or more."
     value = f"{times:.1f}x smaller" if times >= 1 else f"{1 / times:.1f}x bigger"
     args = None if status == OK or p.meta(p.promoted or "").get("distilled_from") else ["distill", p.name, "--run"]
-    return _check("size", "Smaller than the rival", 1, status, value, why, args)
+    return check("size", "Smaller than the rival", 1, status, value, why, args)
 
 
 def _target(spec: TaskSpec, mine: dict) -> dict:
     t = spec.objective.target
     status = _graded(mine["objective"], t, t - TARGET_NEAR)
     why = f"The spec asks for {spec.objective.metric} of at least {t} on test."
-    return _check("target", "Meets the target", 2, status, f"{mine['objective']:.3f} of {t}", why)
+    return check("target", "Meets the target", 2, status, f"{mine['objective']:.3f} of {t}", why)
 
 
 def _overfit(p: Project) -> dict:
     r = p.report(OVERFIT)
     if not r or r.get("experiment") != p.promoted:
         why = "No overfitting check for the current model."
-        return _check("overfit", "No overfitting", 2, UNKNOWN, "not checked", why, ["overfit", p.name])
-    return _check("overfit", "No overfitting", 2, r["verdict"], r["verdict"], r["summary"])
+        return check("overfit", "No overfitting", 2, UNKNOWN, "not checked", why, ["overfit", p.name])
+    return check("overfit", "No overfitting", 2, r["verdict"], r["verdict"], r["summary"])
 
 
 def _data(p: Project, spec: TaskSpec) -> dict | None:
@@ -95,19 +95,19 @@ def _data(p: Project, spec: TaskSpec) -> dict | None:
         return None
     status = OK if c["verdict"] == ENOUGH else WARN if c["verdict"] == THIN else FAIL
     why = f"{len(c['thin'])} labels below the recommended rows; test {c['test']}, calib {c['calib']}."
-    return _check("data", "Enough data", 1, status, c["verdict"], why)
+    return check("data", "Enough data", 1, status, c["verdict"], why)
 
 
 def _certainty(mine: dict) -> dict:
     ci, n = mine.get("metrics", {}).get("ci95"), mine.get("n_test") or 0
     if n and n < MIN_TEST_ITEMS:
         why = f"The test split has {n} rows: too few for the score to mean much."
-        return _check("certainty", "Precise score", 1, FAIL, f"{n} test rows", why)
+        return check("certainty", "Precise score", 1, FAIL, f"{n} test rows", why)
     if not ci:
-        return _check("certainty", "Precise score", 1, UNKNOWN, "no interval", "The test score has no 95% interval.")
+        return check("certainty", "Precise score", 1, UNKNOWN, "no interval", "The test score has no 95% interval.")
     width = ci["hi"] - ci["lo"]
     why = "Width of the 95% interval of the test score: narrow means the score can be trusted."
-    return _check(
+    return check(
         "certainty", "Precise score", 1, _graded(width, CI_WIDTH_OK, CI_WIDTH_WARN, False), f"±{width / 2:.3f}", why
     )
 
@@ -118,7 +118,7 @@ def _weakest(mine: dict) -> dict | None:
         return None
     name, f1 = min(per.items(), key=lambda kv: kv[1])
     why = "F1 of the label the model handles worst on test: one weak label can break a product flow."
-    return _check("weakest", "No weak label", 1, _graded(f1, LABEL_OK, LABEL_WARN), f"{name} {f1:.2f}", why)
+    return check("weakest", "No weak label", 1, _graded(f1, LABEL_OK, LABEL_WARN), f"{name} {f1:.2f}", why)
 
 
 def _robustness(p: Project, spec: TaskSpec, by_suite: dict, prim: str) -> dict:
@@ -129,20 +129,20 @@ def _robustness(p: Project, spec: TaskSpec, by_suite: dict, prim: str) -> dict:
         args = ["eval", p.name] if unscored else ["testset", p.name]
         if unscored:
             why = f"{', '.join(unscored)} not scored for the current model."
-        return _check("robust", "Holds on new inputs", 2, UNKNOWN, "one suite only", why, args)
+        return check("robust", "Holds on new inputs", 2, UNKNOWN, "one suite only", why, args)
     suite, worst = min(others.items(), key=lambda kv: kv[1])
     drop = by_suite[prim]["objective"] - worst
     why = f"Drop from the primary benchmark to the hardest other suite ({len(others)} scored)."
     status = _graded(drop, DROP_OK, DROP_WARN, False)
-    return _check("robust", "Holds on new inputs", 2, status, f"{-drop:+.3f} on {suite}", why)
+    return check("robust", "Holds on new inputs", 2, status, f"{-drop:+.3f} on {suite}", why)
 
 
 def _speed(spec: TaskSpec, mine: dict) -> dict:
     ms, budget = mine.get("latency_ms"), spec.latency_budget_ms
     if ms is None:
-        return _check("speed", "Fast enough", 1, UNKNOWN, "not timed", "No latency measured for the current model.")
+        return check("speed", "Fast enough", 1, UNKNOWN, "not timed", "No latency measured for the current model.")
     status = _graded(ms, budget, budget * SLOW_FACTOR, False)
-    return _check(
+    return check(
         "speed",
         "Fast enough",
         1,
@@ -154,9 +154,9 @@ def _speed(spec: TaskSpec, mine: dict) -> dict:
 
 def _shipped(p: Project) -> dict:
     if exported_current(p.root, p.promoted):
-        return _check("export", "Exported", 1, OK, "current", "The ONNX bundle matches the promoted model.")
+        return check("export", "Exported", 1, OK, "current", "The ONNX bundle matches the promoted model.")
     why = "The ONNX bundle is missing or older than the promoted model."
-    return _check("export", "Exported", 1, UNKNOWN, "not current", why, ["export", p.name])
+    return check("export", "Exported", 1, UNKNOWN, "not current", why, ["export", p.name])
 
 
 def checks(p: Project, spec: TaskSpec) -> list[dict]:
@@ -180,8 +180,7 @@ def checks(p: Project, spec: TaskSpec) -> list[dict]:
     return [c for c in found if c]
 
 
-def health(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
-    cs = checks(p, spec)
+def report(cs: list[dict]) -> dict[str, Any] | None:
     if not cs:
         return None
     score = round(100 * sum(c["weight"] * CREDIT[c["status"]] for c in cs) / sum(c["weight"] for c in cs))
@@ -193,3 +192,7 @@ def health(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
         "blockers": blockers,
         "checks": cs,
     }
+
+
+def health(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
+    return report(checks(p, spec))

@@ -1353,3 +1353,10 @@ The watchdog stopped three forecasters that were training on the CPU for over 90
 that is silent past the limit is now stopped only if it also used less than a minute of CPU (itself and its children)
 in that time; a busy job resets the clock. Long trainings also report their step every 500 steps, so they show
 progress and time left instead of going quiet.
+
+## Forecasters have a health score
+
+A forecaster's health uses the same scoring as a classifier's (`health.report`: weighted checks, production ready at
+80 with no blocking check failed or unknown) with checks that fit forecasting: it beats seasonal naive on every
+dataset, its calib and test scores agree, its test interval is narrow, and, advisory, it beats the hardest rival on
+the datasets both were scored on. It is served by the same `/api/health/{name}` and shown on its page.

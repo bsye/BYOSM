@@ -1,5 +1,4 @@
 import { CircleCheck, CircleDashed, CircleX, HeartPulse, TriangleAlert, type LucideIcon } from "lucide-react"
-import type { Detail } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,8 +27,7 @@ function Row({ c }: { c: Check }) {
   )
 }
 
-export function Health({ d }: { d: Detail }) {
-  const h = d.health as HealthReport | null
+export function Health({ h }: { h: HealthReport | null | undefined }) {
   if (!h) return null
   return (
     <Card>

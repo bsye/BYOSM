@@ -28,7 +28,7 @@ import { Runs } from "./Runs"
 import { SizeChart } from "./SizeChart"
 import { PageSkeleton } from "@/components/page-skeleton"
 import { ModelName } from "@/components/model-name"
-import { Health } from "./Health"
+import { Health, type HealthReport } from "./Health"
 import { titleOf } from "./specialist-groups"
 import { NextSteps } from "./NextSteps"
 import { PublishDialog } from "@/components/publish-dialog"
@@ -276,7 +276,7 @@ function Model({ name }: { name: string }) {
       </div>
       <RunningHere name={name} />
       <div className="grid gap-4 *:data-[slot=card]:h-full @3xl/main:grid-cols-2">
-        <Health d={d} />
+        <Health h={d.health as HealthReport | null} />
         <NextSteps d={d} />
       </div>
       <ModelStats d={d} />

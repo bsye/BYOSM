@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useLive } from "@/events"
 import { rivalName, score, signed } from "@/format"
 import { openJob } from "@/job-sheet"
+import { Health, type HealthReport } from "./Health"
 import { RunningHere } from "./RunningHere"
 import { leadOf, rivalScope, titleOf } from "./specialist-groups"
 
@@ -24,6 +25,7 @@ export type ForecasterView = Summary & {
   overall?: Record<string, Score>
   pending?: string[]
   versions?: Version[]
+  health?: HealthReport | null
 }
 
 const RIVALS = ["seasonal naive", "Timestral"]
@@ -237,6 +239,7 @@ export function Forecaster({ f }: { f: ForecasterView }) {
         </Button>
       </div>
       <RunningHere name={f.name} />
+      <Health h={f.health} />
       <Stats f={f} />
       {f.overall && Object.keys(f.overall).length ? (
         <Tabs defaultValue="board">
