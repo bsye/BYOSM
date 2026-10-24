@@ -26,13 +26,13 @@ def _result(objective, kind="experiment", **extra):
     return {"kind": kind, "objective": objective, "n_test": 500, "n_calib": 200, **extra}
 
 
-def test_a_model_with_no_rival_and_one_suite_is_not_ready(ws):
+def test_a_missing_rival_counts_against_health_but_only_untested_inputs_block_production(ws):
     p, spec = _specialist(ws, {"v1": {"builtin": _result(0.97, latency_ms=2.0)}})
     h = health(p, spec)
     status = {c["id"]: c["status"] for c in h["checks"]}
     assert status["rival"] == status["robust"] == status["overfit"] == "unknown"
     assert status["target"] == status["speed"] == "ok"
-    assert not h["ready"] and "Beats the best rival" in h["blockers"]
+    assert not h["ready"] and "Beats the best rival" not in h["blockers"] and "Holds on new inputs" in h["blockers"]
 
 
 def test_a_big_drop_on_another_suite_fails_robustness(ws):

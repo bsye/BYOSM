@@ -1,5 +1,6 @@
 import { Loader2, Minus, Play, TrendingDown, TrendingUp } from "lucide-react"
-import { runJob, type Readiness, type Summary } from "@/api"
+import { runJob, type Summary } from "@/api"
+import type { Health } from "./HealthList"
 import { Button } from "@/components/ui/button"
 import { openJob } from "@/job-sheet"
 import type { NextStep } from "./NextSteps"
@@ -10,14 +11,6 @@ import { href } from "@/route"
 import { createdLabel, kindOf, leadOf, rivalScope, titleOf } from "./specialist-groups"
 
 const TIE = 0.0005
-const VERDICTS: Record<Readiness, string> = {
-  ready: "Ready for production",
-  ties: "Tied with its rival",
-  behind: "Behind its rival",
-  no_rival: "No rival to beat yet",
-  no_interval: "Needs a 95% interval",
-  unbuilt: "Not built yet",
-}
 
 function Lead({ s }: { s: Summary }) {
   const d = leadOf(s)
@@ -36,7 +29,7 @@ function Lead({ s }: { s: Summary }) {
   )
 }
 
-function Status({ s, running }: { s: Summary; running?: string }) {
+function Status({ s, running, health }: { s: Summary; running?: string; health?: Health | null }) {
   if (running)
     return (
       <span className="flex items-center gap-1.5">
@@ -44,7 +37,11 @@ function Status({ s, running }: { s: Summary; running?: string }) {
         {running}
       </span>
     )
-  return <span className={s.ready === "ready" ? "text-foreground font-medium" : undefined}>{VERDICTS[s.ready ?? "unbuilt"]}</span>
+  if (s.score == null) return <span>Not built yet</span>
+  if (health === undefined && s.kind === "model") return <Loader2 className="size-3.5 animate-spin" />
+  if (!health) return <span>Trained</span>
+  if (health.ready) return <span className="text-foreground font-medium">Production ready</span>
+  return <span className="tabular-nums">Health {health.score}</span>
 }
 
 function Step({ steps }: { steps: NextStep[] }) {
@@ -66,7 +63,19 @@ function Step({ steps }: { steps: NextStep[] }) {
   )
 }
 
-export function SpecialistCard({ s, running, showKind, steps }: { s: Summary; running?: string; showKind: boolean; steps?: NextStep[] }) {
+export function SpecialistCard({
+  s,
+  running,
+  showKind,
+  steps,
+  health,
+}: {
+  s: Summary
+  running?: string
+  showKind: boolean
+  steps?: NextStep[]
+  health?: Health | null
+}) {
   const kind = kindOf(s)
   const open = () => {
     window.location.hash = href("specialists", s.name)
@@ -99,7 +108,7 @@ export function SpecialistCard({ s, running, showKind, steps }: { s: Summary; ru
         </CardContent>
         <CardFooter className="text-muted-foreground/80 justify-between gap-3 text-xs">
           <span className="flex shrink-0 items-center gap-1.5">
-            <Status s={s} running={running} />
+            <Status s={s} running={running} health={health} />
             {s.created && (
               <>
                 <span>·</span>

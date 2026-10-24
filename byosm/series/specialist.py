@@ -64,11 +64,6 @@ def best_rival(report: dict[str, Any]) -> dict[str, Any] | None:
     return min(heads, key=lambda h: h["score"] - h["ours"], default=None)
 
 
-def _whole(report: dict[str, Any]) -> bool:
-    rival = best_rival(report)
-    return bool(rival) and rival["datasets"] == rival["of"]
-
-
 def summary(report: dict[str, Any]) -> dict[str, Any]:
     domain = report["domain"]
     versions = report.get("versions", [])
@@ -88,7 +83,6 @@ def summary(report: dict[str, Any]) -> dict[str, Any]:
         "benchmark": "GIFT-Eval",
         "promoted": report.get("promoted"),
         "score": promoted["test"] if promoted else None,
-        "ci": tuple(promoted["ci"]) if promoted and promoted.get("ci") and _whole(report) else None,
         "rival": best_rival(report),
         "experiments": [v["name"] for v in versions],
         "exported": False,

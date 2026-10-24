@@ -20,6 +20,7 @@ LABEL_OK, LABEL_WARN = 0.8, 0.5
 DROP_OK, DROP_WARN = 0.05, 0.15
 SLOW_FACTOR = 2.0
 LEAD = "lead"
+ADVISORY = {"rival"}
 
 
 def _check(cid: str, title: str, weight: int, status: str, value: str, why: str, args: list[str] | None = None):
@@ -169,7 +170,7 @@ def health(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
     if not cs:
         return None
     score = round(100 * sum(c["weight"] * CREDIT[c["status"]] for c in cs) / sum(c["weight"] for c in cs))
-    blockers = [c["title"] for c in cs if c["status"] in (FAIL, UNKNOWN)]
+    blockers = [c["title"] for c in cs if c["status"] in (FAIL, UNKNOWN) and c["id"] not in ADVISORY]
     return {
         "score": score,
         "ready": score >= READY_SCORE and not blockers,

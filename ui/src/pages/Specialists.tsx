@@ -14,6 +14,7 @@ import type { NextStep } from "./NextSteps"
 import { SpecialistCard } from "./SpecialistCard"
 import { byDate, kindKey, kindTabs, type Group } from "./specialist-groups"
 import { openJob } from "@/job-sheet"
+import { useHealths, type Healths } from "./HealthList"
 
 const SKELETONS = 6
 const EXAMPLE = "classify support emails into billing, shipping, technical or other"
@@ -51,10 +52,10 @@ function NewSpecialist({ children }: { children: React.ReactNode }) {
 const KIND_KEY = "byosm-specialists-kind"
 const STAGE_KEY = "byosm-specialists-stage"
 const ALL = "all"
-const STAGES = { ready: "Ready", training: "In progress" }
+const STAGES = { ready: "Ready", training: "In training" }
 type Stage = keyof typeof STAGES
 
-const stageOf = (s: Summary): Stage => (s.ready === "ready" ? "ready" : "training")
+const stageOf = (s: Summary): Stage => (s.score == null ? "training" : "ready")
 
 function useRemembered<T extends string>(key: string, fallback: T): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {
@@ -75,7 +76,19 @@ function useRemembered<T extends string>(key: string, fallback: T): [T, (v: T) =
   return [value, set]
 }
 
-function Section({ group, busy, showKind, steps }: { group: Group; busy: Map<string, string>; showKind: boolean; steps: Record<string, NextStep[]> }) {
+function Section({
+  group,
+  busy,
+  showKind,
+  steps,
+  healths,
+}: {
+  group: Group
+  busy: Map<string, string>
+  showKind: boolean
+  steps: Record<string, NextStep[]>
+  healths: Healths
+}) {
   return (
     <section className="space-y-3">
       <h2 className="flex items-baseline gap-2 text-sm font-medium">
@@ -84,7 +97,7 @@ function Section({ group, busy, showKind, steps }: { group: Group; busy: Map<str
       </h2>
       <div className="grid auto-rows-fr gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
         {group.items.map((s) => (
-          <SpecialistCard key={s.name} s={s} running={busy.get(s.name)} showKind={showKind} steps={steps[s.name]} />
+          <SpecialistCard key={s.name} s={s} running={busy.get(s.name)} showKind={showKind} steps={steps[s.name]} health={healths[s.name]} />
         ))}
       </div>
     </section>
@@ -102,6 +115,7 @@ export function Specialists() {
   const tabs = kindTabs(listed)
   const kind = tabs.some((t) => t.key === picked) ? picked : ALL
   const shown = kind === ALL ? listed : listed.filter((s) => kindKey(s) === kind)
+  const healths = useHealths(items)
   const jobs = Object.values(useLive().jobs)
   const finished = jobs.filter((j) => j.status === "done").length
   const busy = new Map(jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => [describe(j).target ?? "", describe(j).title] as const))
@@ -177,7 +191,7 @@ export function Specialists() {
         </div>
       )}
       {byDate(shown).map((g) => (
-        <Section key={g.key} group={g} busy={busy} showKind={kind === ALL} steps={steps} />
+        <Section key={g.key} group={g} busy={busy} showKind={kind === ALL} steps={steps} healths={healths} />
       ))}
     </div>
   )

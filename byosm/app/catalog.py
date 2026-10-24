@@ -19,7 +19,6 @@ from ..model_refs import model_refs
 from ..next_steps import suggestions
 from ..project import Project, list_projects
 from ..spec import Objective, TaskSpec
-from .readiness import interval, with_readiness
 
 MAX_PAGE = 500
 RESULT_FIELDS = ("objective", "calib_objective", "latency_ms", "params", "n_test", "n_calib")
@@ -71,7 +70,6 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
         "benchmark": _benchmark(s, prim),
         "promoted": p.promoted,
         "score": best.get("objective"),
-        "ci": interval(best.get("metrics", {}).get("ci95")),
         "rival": {"name": rival[0], "score": board[rival[0]][prim].get("objective")} if rival else None,
         "experiments": p.experiments(),
         "exported": is_exported(p.root / "export"),
@@ -87,7 +85,7 @@ def specialists(ws: Path) -> list[dict[str, Any]]:
 
     part_of = members(ws)
     singles = [{**summary(ws, n), "kind": "model", "part_of": part_of.get(n)} for n in list_projects(ws)]
-    return with_readiness(
+    return (
         singles
         + [team_summary(ws, t) for t in team_names(ws)]
         + [forecaster(r) for r in reports(ws) if r["at"]]

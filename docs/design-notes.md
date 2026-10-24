@@ -1299,10 +1299,8 @@ those memory-mapped files, 80%, and from the training portions of the GIFT-Eval 
 every 500 steps. Each forecaster then fine-tunes that base as its "pretrained" recipe, chosen on calib like the others.
 The small from-scratch model (2.8M parameters, 512-point context) stays as the recipe that trains on a CPU in minutes.
 
-## Ready means ready for production
+## Ready, and ready for production
 
-A specialist is ready when its promoted version beats its strongest rival with 95% confidence: the low end of its
-test interval is above the rival for higher-is-better metrics, the high end below it for MASE. Otherwise the card
-says what is missing, in this order: not built yet, no rival to beat (a rival scoring 0 because it cannot be measured
-on the metric does not count), behind the rival, tied with it, or ahead without an interval. Forecasters use their
-interval only when the rival was scored on all their datasets. The Specialists page opens on the ready ones.
+A specialist is ready once it has a scored version. It is ready for production when its health score is at least 80
+with no blocking check failed or unknown. Beating the best rival is one of the health checks and counts in the score,
+but it is advisory: an owner may require it, the app does not.
