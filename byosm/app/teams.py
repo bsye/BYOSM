@@ -5,6 +5,7 @@ from typing import Any
 
 OURS = "system"
 TEAM_METRIC = "exact_frame"
+TEAM_METRIC_LABEL = "exact frame match"
 MIN_FOLDED_MEMBERS = 2
 
 
@@ -45,7 +46,7 @@ def team_summary(ws: Path, name: str) -> dict[str, Any]:
         "modality": "text",
         "task_type": "team",
         "labels": 0,
-        "metric": TEAM_METRIC,
+        "metric": TEAM_METRIC_LABEL,
         "primary_suite": suite_name,
         "benchmark": suite_name,
         "promoted": None,
