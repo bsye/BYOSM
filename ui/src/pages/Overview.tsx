@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { rivalName, score, signed } from "@/format"
 import { href } from "@/route"
+import { leadOf, rivalScope } from "./specialist-groups"
 
 const TIE = 0.0005
 
@@ -22,8 +23,8 @@ function Lead({ d }: { d: number }) {
 
 export function Overview({ items }: { items: Summary[] }) {
   const rows = items
-    .filter((s) => s.score != null && s.rival?.score != null)
-    .map((s) => ({ s, d: (s.score ?? 0) - (s.rival?.score ?? 0) }))
+    .filter((s) => s.score != null && !!s.rival?.score)
+    .map((s) => ({ s, d: leadOf(s) ?? 0 }))
     .sort((a, b) => b.d - a.d)
   const { shown, footer } = useShowMore(rows)
   if (!rows.length) return null
@@ -56,6 +57,7 @@ export function Overview({ items }: { items: Summary[] }) {
                 <TableCell className="text-muted-foreground/70">
                   <span className="block max-w-44 truncate">
                     <span className="tabular-nums">{score(s.rival?.score)}</span> {rivalName(s.rival?.name)}
+                    {rivalScope(s)}
                   </span>
                 </TableCell>
               </TableRow>
