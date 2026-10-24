@@ -70,13 +70,13 @@ function Stats({ f }: { f: ForecasterView }) {
         value={signed(leadOf(f))}
         detail={f.rival ? `vs ${rivalName(f.rival.name)}${rivalScope(f)}, lower is better` : "no rival scored yet"}
       />
-      <StatCard label="Training" value={seconds(recipe?.train_s)} detail={`${promoted.recipe}, per dataset`} />
+      <StatCard label="Training" value={seconds(recipe?.train_s)} detail={`${promoted.recipe}, one model for ${Object.keys(f.configs ?? {}).length} datasets`} />
       <StatCard label="Per forecast" value={millis(recipe?.ms_per_forecast)} detail="CPU" />
     </div>
   )
 }
 
-function Board({ f }: { f: ForecasterView }) {
+function Board({ f, running }: { f: ForecasterView; running: boolean }) {
   const models = Object.entries(f.overall ?? {}).sort(([, a], [, b]) => a.mase - b.mase)
   return (
     <Card>
@@ -125,7 +125,7 @@ function Board({ f }: { f: ForecasterView }) {
                 <TableCell className="text-right tabular-nums">{millis(s.ms_per_forecast)}</TableCell>
               </TableRow>
             ))}
-            {(f.pending ?? []).map((name) => (
+            {(running ? (f.pending ?? []) : []).map((name) => (
               <TableRow key={name}>
                 <TableCell className="text-muted-foreground flex items-center gap-2">
                   <Loader2 className="size-3.5 animate-spin" />
@@ -218,6 +218,7 @@ function Datasets({ f }: { f: ForecasterView }) {
 }
 
 export function Forecaster({ f }: { f: ForecasterView }) {
+  const running = Object.values(useLive().jobs).some((j) => j.args[0] === "series" && j.args[2] === f.name && (j.status === "running" || j.status === "queued"))
   const train = () => void runJob(["series", "run", f.name, "--until-rival"]).then((j) => openJob(j.id))
   return (
     <div className="space-y-4">
@@ -249,7 +250,7 @@ export function Forecaster({ f }: { f: ForecasterView }) {
             <TabsTrigger value="datasets">Datasets</TabsTrigger>
           </TabsList>
           <TabsContent value="board">
-            <Board f={f} />
+            <Board f={f} running={running} />
           </TabsContent>
           <TabsContent value="versions">
             <Versions f={f} />

@@ -107,6 +107,12 @@ def _with_published(report: dict[str, Any]) -> dict[str, Any]:
     return {**report, "configs": per, "overall": _overall(per), "versions": versions} if per else report
 
 
+def promoted_board(report: dict[str, Any]) -> dict[str, Any]:
+    version = next((v for v in report.get("versions", []) if v["name"] == report.get("promoted")), None)
+    configs = (version or {}).get("configs")
+    return {"configs": configs, "overall": _overall(configs)} if configs else {}
+
+
 def reports(ws: Path) -> list[dict[str, Any]]:
     from sqlalchemy import select
 
