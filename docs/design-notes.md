@@ -1207,3 +1207,10 @@ When the Mac sleeps, a running job freezes; on waking, the stall watchdog used t
 Each training writes its share, its job id and when it got the GPU next to the slot lock, so `/api/gpu` can list who
 holds the GPU and how much of it. A running job whose last event is a GPU wait is in the queue. The Jobs page shows
 both above the timeline, so a long wait is visible without opening job logs.
+
+## Interval width per series
+
+The boosted forecaster learns one set of error quantiles, in units of each series' level. On a dataset that mixes
+smooth high-volume series with noisy small ones, that width fits neither. The errors are now divided by each series'
+own seasonal-difference noise before the quantiles are taken, and multiplied back at forecast time. CRPS on
+electricity went from 0.198 to 0.094 (seasonal naive 0.102); the median forecast, and so MASE, is unchanged.

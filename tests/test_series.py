@@ -92,3 +92,15 @@ def test_a_pretrained_patch_model_starts_from_the_saved_weights(tmp_path, monkey
     model.fit([_wave()], 24, 30)
     assert torch.allclose(model.net.embed.weight, saved.embed.weight, atol=1e-6)
     assert model.predict(_wave()[:-30], 30).shape == (len(QUANTILES), 30)
+
+
+@pytest.mark.slow
+def test_a_smooth_series_gets_narrower_intervals_than_a_noisy_one_of_the_same_level():
+    rng = np.random.default_rng(0)
+    t = np.arange(600)
+    smooth = 100 + 10 * np.sin(2 * np.pi * t / 24) + rng.normal(0, 0.5, len(t))
+    noisy = 100 + 10 * np.sin(2 * np.pi * t / 24) + rng.normal(0, 20, len(t))
+    model = Boosted()
+    model.fit([smooth, noisy] * 5, 24, 12)
+    calm, wild = model.predict_many([smooth, noisy], 12)
+    assert (calm[-1] - calm[0]).mean() * 5 < (wild[-1] - wild[0]).mean()

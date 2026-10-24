@@ -13,6 +13,7 @@ CALIB_SHARE = 0.1
 ITERATIONS = 300
 SCALE_SEASONS = 7
 SEED = 0
+MIN_NOISE = 1e-3
 
 
 def _scale(history: np.ndarray, season: int) -> float:
@@ -20,6 +21,13 @@ def _scale(history: np.ndarray, season: int) -> float:
     tail = tail[~np.isnan(tail)]
     value = float(np.mean(np.abs(tail))) if len(tail) else 1.0
     return value or 1.0
+
+
+def _noise(history: np.ndarray, season: int, scale: float) -> float:
+    tail = history[-max(SCALE_SEASONS * season, 8) - season :]
+    diffs = np.abs(tail[season:] - tail[:-season]) if len(tail) > season else np.zeros(0)
+    diffs = diffs[~np.isnan(diffs)]
+    return max(float(diffs.mean()) / scale if len(diffs) else 1.0, MIN_NOISE)
 
 
 class SeasonalNaive:
@@ -56,8 +64,8 @@ class Boosted:
 
     def _table(
         self, histories: list[np.ndarray], horizon: int, per_series: int
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        xs, ys, late = [], [], []
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        xs, ys, late, noise = [], [], [], []
         for h in histories:
             usable = len(h) - horizon
             if usable <= self.lags // 2:
@@ -69,20 +77,21 @@ class Boosted:
                 xs.append(self._rows(h, origin, horizon, scale))
                 ys.append(h[origin : origin + horizon] / scale)
                 late.append(np.full(horizon, origin >= cut))
-        return np.vstack(xs), np.concatenate(ys), np.concatenate(late)
+                noise.append(np.full(horizon, _noise(h[:origin], self.season, scale)))
+        return np.vstack(xs), np.concatenate(ys), np.concatenate(late), np.concatenate(noise)
 
     def fit(self, histories: list[np.ndarray], season: int, horizon: int) -> None:
         from sklearn.ensemble import HistGradientBoostingRegressor
 
         self.season, self.lags, self.horizon = season, min(MAX_LAGS, max(2 * season, 24)), horizon
         per_series = max(ORIGINS_PER_SERIES, MAX_ROWS // max(1, len(histories) * horizon))
-        x, y, late = self._table(histories, horizon, per_series)
+        x, y, late, noise = self._table(histories, horizon, per_series)
         known = ~np.isnan(y)
-        x, y, late = x[known], y[known], late[known]
+        x, y, late, noise = x[known], y[known], late[known], noise[known]
         model = HistGradientBoostingRegressor(loss="squared_error", max_iter=ITERATIONS, random_state=SEED)
         self.model = model.fit(x[~late], y[~late])
         steps = x[late][:, -2].astype(int)
-        errors = y[late] - self.model.predict(x[late])
+        errors = (y[late] - self.model.predict(x[late])) / noise[late]
         spread = [
             np.quantile(errors[steps == k], QUANTILES) if (steps == k).sum() > 2 else np.zeros(len(QUANTILES))
             for k in range(horizon)
@@ -97,7 +106,8 @@ class Boosted:
         scales = [_scale(h, self.season) for h in histories]
         x = np.vstack([self._rows(h, len(h), horizon, sc) for h, sc in zip(histories, scales, strict=True)])
         median = self.model.predict(x).reshape(len(histories), horizon)
-        return [np.sort((median[i][None] + self.spread) * sc, axis=0) for i, sc in enumerate(scales)]
+        noise = [_noise(h, self.season, sc) for h, sc in zip(histories, scales, strict=True)]
+        return [np.sort((median[i][None] + self.spread * noise[i]) * sc, axis=0) for i, sc in enumerate(scales)]
 
 
 def rivals() -> list[Any]:
