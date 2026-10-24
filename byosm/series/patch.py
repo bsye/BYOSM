@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from .models import Group
 from .patch_net import MAX_HORIZON, PatchNet, train, window
 
 STEPS = 3000
@@ -37,7 +38,7 @@ class PatchModel:
     def __init__(self, effort: int = 0) -> None:
         self.effort = effort
 
-    def fit(self, histories: list[np.ndarray], season: int, horizon: int) -> None:
+    def fit(self, groups: list[Group]) -> None:
         from ..train.gpu import gpu_slot
 
         torch.manual_seed(SEED)
@@ -47,12 +48,10 @@ class PatchModel:
             self.net.load_state_dict(torch.load(weights_path(), map_location="cpu"))
             steps, lr = FINETUNE_STEPS, FINETUNE_LR
         with gpu_slot(_device(), print, fallback="cpu") as device:
-            train(self.net, histories, horizon, steps * 2**self.effort, lr, BATCH, device, SEED)
+            series = [(h, g.horizon) for g in groups for h in g.histories]
+            train(self.net, series, steps * 2**self.effort, lr, BATCH, device, SEED)
 
-    def predict(self, history: np.ndarray, horizon: int) -> np.ndarray:
-        return self.predict_many([history], horizon)[0]
-
-    def predict_many(self, histories: list[np.ndarray], horizon: int) -> list[np.ndarray]:
+    def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
         windows = [window(h) for h in histories]
         out = []
         with torch.no_grad():
@@ -89,7 +88,7 @@ def pretrain(log: Callable[[str], None]) -> Path:
 
     log(f"  pretraining on {len(histories)} series for {PRETRAIN_STEPS} steps on {device}")
     with gpu_slot(device, log):
-        train(net, histories, MAX_HORIZON, PRETRAIN_STEPS, LR, BATCH, device, SEED)
+        train(net, [(h, MAX_HORIZON) for h in histories], PRETRAIN_STEPS, LR, BATCH, device, SEED)
     path = weights_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(net.state_dict(), path)

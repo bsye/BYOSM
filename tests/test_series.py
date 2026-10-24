@@ -3,7 +3,7 @@ import pytest
 
 from byosm.series.gifteval import Series, horizon, season, splits, unit, windows
 from byosm.series.metrics import QUANTILES, crps, geomean, mase
-from byosm.series.models import Boosted, SeasonalNaive
+from byosm.series.models import Boosted, Group, SeasonalNaive
 
 
 def _wave(n=24 * 60, noise=0.1, seed=0):
@@ -38,15 +38,13 @@ def test_the_boosted_specialist_beats_seasonal_naive_on_a_seasonal_series():
     histories = [s.values[: len(s.values) - cut] for s in series]
     errors = {}
     for model in (SeasonalNaive(), Boosted()):
-        model.fit(histories, 24, 48)
+        model.fit([Group(histories, 24, 48)])
+        forecasts = model.predict_many([t["history"] for t in tests], 24, 48)
+        middle = QUANTILES.index(0.5)
         errors[model.name] = np.mean(
-            [mase(t["history"], t["future"], model.predict(t["history"], 48)[QUANTILES.index(0.5)], 24) for t in tests]
+            [mase(t["history"], t["future"], f[middle], 24) for t, f in zip(tests, forecasts, strict=True)]
         )
     assert errors["gradient boosting"] < errors["seasonal naive"]
-    model = Boosted()
-    model.fit(histories, 24, 48)
-    batch = model.predict_many([t["history"] for t in tests], 48)
-    assert all(np.allclose(b, model.predict(t["history"], 48)) for b, t in zip(batch, tests, strict=True))
 
 
 @pytest.mark.slow
@@ -56,8 +54,8 @@ def test_a_series_that_is_zero_half_the_time_is_not_forecast_as_all_zeros():
     series = [Series(str(i), "H", v) for i, v in enumerate(sun)]
     cut = windows(series) * 48
     model = Boosted()
-    model.fit([s.values[: len(s.values) - cut] for s in series], 24, 48)
-    median = model.predict(series[0].values[: len(t) - cut], 48)[QUANTILES.index(0.5)]
+    model.fit([Group([s.values[: len(s.values) - cut] for s in series], 24, 48)])
+    median = model.predict_many([series[0].values[: len(t) - cut]], 24, 48)[0][QUANTILES.index(0.5)]
     assert median.max() > 50
 
 
@@ -69,8 +67,8 @@ def test_the_patch_model_returns_sorted_quantiles_for_every_window(monkeypatch):
     histories = [_wave(seed=i) for i in range(3)]
     model = patch.PatchModel()
     monkeypatch.setattr(patch, "_device", lambda: "cpu")
-    model.fit(histories, 24, 48)
-    out = model.predict_many([h[:-48] for h in histories] + [np.full(10, np.nan)], 48)
+    model.fit([Group(histories, 24, 48)])
+    out = model.predict_many([h[:-48] for h in histories] + [np.full(10, np.nan)], 24, 48)
     assert len(out) == 4 and all(o.shape == (len(QUANTILES), 48) for o in out)
     assert all(np.all(np.diff(o, axis=0) >= 0) for o in out)
 
@@ -89,9 +87,9 @@ def test_a_pretrained_patch_model_starts_from_the_saved_weights(tmp_path, monkey
     monkeypatch.setattr(patch, "BATCH", 4)
     monkeypatch.setattr(patch, "_device", lambda: "cpu")
     model = patch.PretrainedPatch()
-    model.fit([_wave()], 24, 30)
+    model.fit([Group([_wave()], 24, 30)])
     assert torch.allclose(model.net.embed.weight, saved.embed.weight, atol=1e-6)
-    assert model.predict(_wave()[:-30], 30).shape == (len(QUANTILES), 30)
+    assert model.predict_many([_wave()[:-30]], 24, 30)[0].shape == (len(QUANTILES), 30)
 
 
 @pytest.mark.slow
@@ -101,26 +99,28 @@ def test_a_smooth_series_gets_narrower_intervals_than_a_noisy_one_of_the_same_le
     smooth = 100 + 10 * np.sin(2 * np.pi * t / 24) + rng.normal(0, 0.5, len(t))
     noisy = 100 + 10 * np.sin(2 * np.pi * t / 24) + rng.normal(0, 20, len(t))
     model = Boosted()
-    model.fit([smooth, noisy] * 5, 24, 12)
-    calm, wild = model.predict_many([smooth, noisy], 12)
+    model.fit([Group([smooth, noisy] * 5, 24, 12)])
+    calm, wild = model.predict_many([smooth, noisy], 24, 12)
     assert (calm[-1] - calm[0]).mean() * 5 < (wild[-1] - wild[0]).mean()
 
 
-def test_a_domain_report_is_saved_after_each_dataset_so_results_show_as_they_arrive(ws, monkeypatch):
+def test_a_domain_report_is_saved_after_each_recipe_so_results_show_as_they_arrive(ws, monkeypatch):
     import byosm.series.run as run
 
     seen = []
-    score = {"mase": 1.0, "crps": 1.0, "train_s": 0.0, "ms_per_forecast": 0.1}
+    score = {"mase": 1.0, "crps": 1.0, "train_s": 0.0, "ms_per_forecast": 0.1, "windows": [1.0]}
 
-    def one(config, log, effort=0):
-        seen.append({r["domain"]: r.get("pending") for r in run.reports(ws) if r["at"]})
-        return {run.NAIVE: {**score, "windows": [1.0]}}
+    def fit(configs, effort, log, progress):
+        per = {c: {run.NAIVE: score} for c in configs}
+        for pending in (["gradient boosting"], []):
+            progress(per, pending)
+            seen.append(next(r["pending"] for r in run.reports(ws) if r["domain"] == "demo"))
+        return per
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a", "b"]})
-    monkeypatch.setattr(run, "run_config", one)
+    monkeypatch.setattr(run, "fit_domain", fit)
     run.run_domain(ws, "demo", log=lambda _: None)
-    assert seen == [{}, {"demo": ["b"]}]
-    assert run.reports(ws)[0]["pending"] == []
+    assert seen == [["gradient boosting"], []]
 
 
 def test_published_rival_scores_only_appear_where_our_seasonal_naive_matches_theirs(monkeypatch):
@@ -145,7 +145,9 @@ def _versioned_run(ws, monkeypatch, calib, test):
     naive = {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0, 1.0]}
     ours = {"mase": test, "crps": test, "calib_mase": calib, "calib_crps": calib, "windows": [test, test]}
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
-    monkeypatch.setattr(run, "run_config", lambda config, log, effort=0: {run.NAIVE: naive, "gradient boosting": ours})
+    monkeypatch.setattr(
+        run, "fit_domain", lambda configs, effort, log, progress: {"a": {run.NAIVE: naive, "gradient boosting": ours}}
+    )
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: {})
     return run.run_domain(ws, "demo", log=lambda _: None)
 
@@ -161,29 +163,35 @@ def test_each_run_adds_a_version_and_promotes_it_only_if_it_is_better_on_calib(w
     assert card["kind"] == "forecast" and card["score"] == 0.9 and card["higher_is_better"] is False
 
 
-def test_the_ensemble_averages_every_recipe_and_is_scored_like_one(monkeypatch):
-    import byosm.series.run as run
+def test_one_model_per_recipe_is_trained_for_all_datasets_and_the_ensemble_averages_them(monkeypatch):
+    import byosm.series.fit as fit
 
     rng = np.random.default_rng(0)
     t = np.arange(400.0)
     series = [Series(f"s{i}", "H", 10 + np.sin(2 * np.pi * t / 24) + rng.normal(0, 0.3, len(t))) for i in range(3)]
 
+    fits = []
+
     class Flat:
         def __init__(self, name, level):
             self.name, self.level = name, level
 
-        def fit(self, histories, season, horizon):
-            pass
+        def fit(self, groups):
+            fits.append((self.name, len(groups)))
 
-        def predict(self, history, horizon):
-            return np.full((len(QUANTILES), horizon), history[-1] + self.level)
+        def predict_many(self, histories, season, horizon):
+            return [np.full((len(QUANTILES), horizon), h[-1] + self.level) for h in histories]
 
-    monkeypatch.setattr(run, "load", lambda config: series)
-    monkeypatch.setattr(run, "rivals", lambda: [SeasonalNaive()])
-    monkeypatch.setattr(run, "Boosted", lambda effort: Flat("gradient boosting", 1.0))
-    monkeypatch.setattr(run, "PatchModel", lambda effort: Flat("patch transformer", -1.0))
-    out = run.run_config("demo", log=lambda _: None)
-    assert out[run.ENSEMBLE]["mase"] < min(out["gradient boosting"]["mase"], out["patch transformer"]["mase"])
+    monkeypatch.setattr(fit, "load", lambda config: series)
+    monkeypatch.setattr(
+        fit,
+        "candidates",
+        lambda effort: [SeasonalNaive(), Flat("gradient boosting", 1.0), Flat("patch transformer", -1.0)],
+    )
+    out = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None)
+    assert fits == [("gradient boosting", 2), ("patch transformer", 2)]
+    for row in out.values():
+        assert row[fit.ENSEMBLE]["mase"] < min(row["gradient boosting"]["mase"], row["patch transformer"]["mase"])
 
 
 def test_keep_training_stops_once_a_version_beats_the_best_rival(ws, monkeypatch):
@@ -191,13 +199,15 @@ def test_keep_training_stops_once_a_version_beats_the_best_rival(ws, monkeypatch
 
     efforts, naive = [], {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0]}
 
-    def one(config, log, effort=0):
+    def one(configs, effort, log, progress):
         efforts.append(effort)
         ours = 0.9 - 0.1 * effort
-        return {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
+        return {
+            "a": {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
+        }
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
-    monkeypatch.setattr(run, "run_config", one)
+    monkeypatch.setattr(run, "fit_domain", one)
     rival = {"Timestral-5M": {"mase": 0.75, "crps": 0.5, "published": True}}
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: rival)
     report = run.until_rival(ws, "demo", rounds=5, log=lambda _: None)

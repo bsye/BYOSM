@@ -1,4 +1,4 @@
-import { Play } from "lucide-react"
+import { Loader2, Play } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts"
 import { api, runJob, type Summary } from "@/api"
@@ -123,6 +123,17 @@ function Board({ f }: { f: ForecasterView }) {
                 <TableCell className="text-right tabular-nums">{millis(s.ms_per_forecast)}</TableCell>
               </TableRow>
             ))}
+            {(f.pending ?? []).map((name) => (
+              <TableRow key={name}>
+                <TableCell className="text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  {name}
+                </TableCell>
+                <TableCell colSpan={5} className="text-muted-foreground text-right">
+                  training
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </CardContent>
@@ -197,14 +208,6 @@ function Datasets({ f }: { f: ForecasterView }) {
                 ))}
               </TableRow>
             ))}
-            {(f.pending ?? []).map((config) => (
-              <TableRow key={config}>
-                <TableCell className="text-muted-foreground">{config}</TableCell>
-                <TableCell colSpan={models.length} className="text-muted-foreground text-right">
-                  running
-                </TableCell>
-              </TableRow>
-            ))}
           </TableBody>
         </Table>
       </CardContent>
@@ -221,7 +224,7 @@ export function Forecaster({ f }: { f: ForecasterView }) {
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             {titleOf(f)}
             <InfoTip>
-              GIFT-Eval datasets. MASE and CRPS are relative to seasonal naive (1.0, the dashed line): lower is better. Each run picks the recipe on the calib
+              One model per recipe, trained on all of these GIFT-Eval datasets together. MASE and CRPS are relative to seasonal naive (1.0, the dashed line): lower is better. Each run picks the recipe on the calib
               windows and reports the test windows. Published scores come from the GIFT-Eval leaderboard and show only where our seasonal naive matches theirs.
             </InfoTip>
           </h1>

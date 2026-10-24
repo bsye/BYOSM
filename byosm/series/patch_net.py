@@ -46,12 +46,10 @@ def pinball(pred: torch.Tensor, target: torch.Tensor, known: torch.Tensor) -> to
     return loss.sum() / known.sum().clamp(min=1)
 
 
-def batch(
-    histories: list[np.ndarray], horizon: int, size: int, rng: np.random.Generator, device: str
-) -> list[torch.Tensor]:
+def batch(series: list[tuple[np.ndarray, int]], size: int, rng: np.random.Generator, device: str) -> list[torch.Tensor]:
     values, seen, targets, known = [], [], [], []
-    for i in rng.integers(0, len(histories), size):
-        h = histories[i]
+    for i in rng.integers(0, len(series), size):
+        h, horizon = series[i]
         end = int(rng.integers(PATCH, len(h) - horizon + 1))
         v, m, mean, std = window(h[:end])
         future = np.full(MAX_HORIZON, np.nan)
@@ -64,15 +62,15 @@ def batch(
 
 
 def train(
-    net: PatchNet, histories: list[np.ndarray], horizon: int, steps: int, lr: float, size: int, device: str, seed: int
+    net: PatchNet, series: list[tuple[np.ndarray, int]], steps: int, lr: float, size: int, device: str, seed: int
 ) -> None:
     rng = np.random.default_rng(seed)
-    usable = [h for h in histories if len(h) > horizon + PATCH]
+    usable = [(h, horizon) for h, horizon in series if len(h) > horizon + PATCH]
     opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, lr, total_steps=steps)
     net.to(device).train()
     for _ in range(steps):
-        values, seen, targets, known = batch(usable, horizon, size, rng, device)
+        values, seen, targets, known = batch(usable, size, rng, device)
         loss = pinball(net(values, seen), targets, known)
         opt.zero_grad()
         loss.backward()

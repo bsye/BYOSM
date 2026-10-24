@@ -1253,3 +1253,11 @@ what Keep training starts, adds versions until the promoted one beats the best r
 Promotion still decides on calib. The stop condition reads test, because the published rival scores exist only on
 test; stopping on the first win leans the reported number slightly optimistic, so every version stays on the page
 with its interval.
+
+## One model per forecaster
+
+A forecaster's version is one model per recipe, trained on every dataset of its domain together (`series/fit.py`),
+not one model per dataset. Datasets in a domain can differ in season and horizon (sales mixes daily and monthly), so
+models fit on groups that each carry their own season and horizon: boosting takes the season as a feature and a
+fixed lag window, and the patch transformer trains each series with its own horizon from one 60-step head. Scores are
+still reported per dataset, and the domain score is the geometric mean across them.
