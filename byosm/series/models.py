@@ -51,6 +51,9 @@ class SeasonalNaive:
 class Boosted:
     name = "gradient boosting"
 
+    def __init__(self, effort: int = 0) -> None:
+        self.effort = effort
+
     def _rows(self, history: np.ndarray, origin: int, horizon: int, scale: float) -> np.ndarray:
         lags = history[max(0, origin - self.lags) : origin] / scale
         lags = np.concatenate([np.full(self.lags - len(lags), np.nan), lags])
@@ -96,7 +99,9 @@ class Boosted:
         x, y, late = self._table(histories, horizon, per_series)
         known = ~np.isnan(y)
         x, y, late = x[known], y[known], late[known]
-        model = HistGradientBoostingRegressor(loss="squared_error", max_iter=ITERATIONS, random_state=SEED)
+        model = HistGradientBoostingRegressor(
+            loss="squared_error", max_iter=ITERATIONS * 2**self.effort, random_state=SEED
+        )
         self.model = model.fit(x[~late], y[~late])
         steps = x[late][:, -2].astype(int)
         errors = y[late] - self.model.predict(x[late])

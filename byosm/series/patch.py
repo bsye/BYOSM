@@ -34,6 +34,9 @@ class PatchModel:
     name = "patch transformer"
     pretrained = False
 
+    def __init__(self, effort: int = 0) -> None:
+        self.effort = effort
+
     def fit(self, histories: list[np.ndarray], season: int, horizon: int) -> None:
         from ..train.gpu import gpu_slot
 
@@ -44,7 +47,7 @@ class PatchModel:
             self.net.load_state_dict(torch.load(weights_path(), map_location="cpu"))
             steps, lr = FINETUNE_STEPS, FINETUNE_LR
         with gpu_slot(_device(), print, fallback="cpu") as device:
-            train(self.net, histories, horizon, steps, lr, BATCH, device, SEED)
+            train(self.net, histories, horizon, steps * 2**self.effort, lr, BATCH, device, SEED)
 
     def predict(self, history: np.ndarray, horizon: int) -> np.ndarray:
         return self.predict_many([history], horizon)[0]

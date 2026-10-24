@@ -137,6 +137,7 @@ def options_rival(
         )
 
 
+MAX_ROUNDS = 4
 series_app = typer.Typer(no_args_is_help=True, help="Time series: specialists against Timestral on GIFT-Eval.")
 app.add_typer(series_app, name="series")
 
@@ -144,12 +145,20 @@ app.add_typer(series_app, name="series")
 @series_app.command("run")
 def series_run(
     domain: str = typer.Argument(..., help="energy, sales, operations, or one GIFT-Eval dataset such as solar/H"),
+    until_rival: bool = typer.Option(
+        False, "--until-rival", help="Keep adding versions until one beats the best rival"
+    ),
+    rounds: int = typer.Option(MAX_ROUNDS, help="Most versions to add with --until-rival"),
 ) -> None:
-    """Train a forecasting specialist for a domain and score it against seasonal naive and Timestral, with timings."""
+    """Train a new version of a forecasting specialist, each one with twice the training of the last, and score it against seasonal naive and Timestral."""
     from ..config import find_workspace
     from ..series.run import run_domain
+    from ..series.run import until_rival as loop
 
-    run_domain(find_workspace(), domain, log)
+    if until_rival:
+        loop(find_workspace(), domain, rounds, log)
+    else:
+        run_domain(find_workspace(), domain, log)
 
 
 @series_app.command("pretrain")

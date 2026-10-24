@@ -22,7 +22,7 @@ def choose(overall: dict[str, dict[str, Any]]) -> str | None:
     return min(recipes, key=lambda m: recipes[m]) if recipes else None
 
 
-def add_version(report: dict[str, Any], interval: list[float] | None) -> dict[str, Any]:
+def add_version(report: dict[str, Any], interval: list[float] | None, effort: int = 0) -> dict[str, Any]:
     recipe = choose(report["overall"])
     if recipe is None:
         return report
@@ -31,6 +31,7 @@ def add_version(report: dict[str, Any], interval: list[float] | None) -> dict[st
     version = {
         "name": f"v{len(versions) + 1}",
         "recipe": recipe,
+        "effort": effort,
         "calib": scores["calib_mase"],
         "test": scores["mase"],
         "crps": scores["crps"],

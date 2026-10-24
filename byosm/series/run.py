@@ -12,6 +12,7 @@ from .metrics import geomean, ratio_interval, summary
 from .models import Boosted, rivals
 from .patch import PatchModel, PretrainedPatch, weights_path
 from .specialist import CI_DRAWS, CI_SEED, NAIVE, add_version, choose, is_rival
+from .specialist import summary as forecaster
 
 REPORT = "series:"
 SERIES_EVENT = "series"
@@ -37,7 +38,7 @@ def _line(score: dict[str, Any]) -> str:
     return f"calib MASE {score['calib_mase']:.3f}, test MASE {score['mase']:.3f}, CRPS {score['crps']:.3f}, trained in {score['train_s']:.1f} s, {score['ms_per_forecast']:.1f} ms per forecast"
 
 
-def run_config(config: str, log: Callable[[str], None]) -> dict[str, Any]:
+def run_config(config: str, log: Callable[[str], None], effort: int = 0) -> dict[str, Any]:
     series = load(config)
     h, s = horizon(series[0].freq), season(series[0].freq)
     tests, calib = splits(series), splits(series, back=1)
@@ -45,7 +46,12 @@ def run_config(config: str, log: Callable[[str], None]) -> dict[str, Any]:
     histories = [x.values[: len(x.values) - cut] for x in series]
     log(f"  {config}: {len(series)} series, {len(calib)} calib and {len(tests)} test windows of {h} steps")
     out, made = {}, {}
-    for model in [*rivals(), Boosted(), PatchModel(), *([PretrainedPatch()] if weights_path().exists() else [])]:
+    for model in [
+        *rivals(),
+        Boosted(effort),
+        PatchModel(effort),
+        *([PretrainedPatch(effort)] if weights_path().exists() else []),
+    ]:
         t0 = time.perf_counter()
         model.fit(histories, s, h)
         trained = time.perf_counter() - t0
@@ -107,14 +113,16 @@ def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dic
 
     previous = next((r for r in reports(ws) if r["domain"] == domain), {})
     kept = {"versions": previous.get("versions", []), "promoted": previous.get("promoted")}
+    effort = len(kept["versions"])
+    log(f"  effort {effort}: {2**effort}x the base training steps")
     configs, per = DOMAINS.get(domain, [domain]), {}
     for config in configs:
-        per[config] = run_config(config, log)
+        per[config] = run_config(config, log, effort)
         pending = [c for c in configs if c not in per]
         report = {"domain": domain, "at": time.time(), "configs": _stored(per), "overall": _overall(per), **kept}
         _save(ws, {**report, "pending": pending})
         emit(SERIES_EVENT, domain=domain, config=config, pending=len(pending))
-    report = add_version({**report, "pending": []}, _interval(per, choose(report["overall"])))
+    report = add_version({**report, "pending": []}, _interval(per, choose(report["overall"])), effort)
     _save(ws, report)
     for m, score in report["overall"].items():
         log(f"  {domain} {m}: test MASE {score['mase']:.3f}, calib MASE {score.get('calib_mase', 0):.3f} vs naive")
@@ -141,3 +149,16 @@ def reports(ws: Path) -> list[dict[str, Any]]:
         rows = s.scalars(select(WorkspaceReport.data).where(WorkspaceReport.kind.startswith(REPORT))).all()
     found = {r["domain"]: _with_published(r) for r in rows if r}
     return [found.get(d) or {"domain": d, "at": None} for d in [*DOMAINS, *(k for k in found if k not in DOMAINS)]]
+
+
+def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] = print) -> dict[str, Any]:
+    for n in range(rounds):
+        report = run_domain(ws, domain, log)
+        card = forecaster(_with_published(report))
+        if card["score"] is not None and card["rival"] and card["score"] < card["rival"]["score"]:
+            log(
+                f"  beat {card['rival']['name']} after {n + 1} round(s): {card['score']:.3f} vs {card['rival']['score']:.3f}"
+            )
+            return report
+        log(f"  round {n + 1}: {card['score']} vs best rival {card['rival']}")
+    return report

@@ -112,7 +112,7 @@ def test_a_domain_report_is_saved_after_each_dataset_so_results_show_as_they_arr
     seen = []
     score = {"mase": 1.0, "crps": 1.0, "train_s": 0.0, "ms_per_forecast": 0.1}
 
-    def one(config, log):
+    def one(config, log, effort=0):
         seen.append({r["domain"]: r.get("pending") for r in run.reports(ws) if r["at"]})
         return {run.NAIVE: {**score, "windows": [1.0]}}
 
@@ -145,7 +145,7 @@ def _versioned_run(ws, monkeypatch, calib, test):
     naive = {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0, 1.0]}
     ours = {"mase": test, "crps": test, "calib_mase": calib, "calib_crps": calib, "windows": [test, test]}
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
-    monkeypatch.setattr(run, "run_config", lambda config, log: {run.NAIVE: naive, "gradient boosting": ours})
+    monkeypatch.setattr(run, "run_config", lambda config, log, effort=0: {run.NAIVE: naive, "gradient boosting": ours})
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: {})
     return run.run_domain(ws, "demo", log=lambda _: None)
 
@@ -180,7 +180,25 @@ def test_the_ensemble_averages_every_recipe_and_is_scored_like_one(monkeypatch):
 
     monkeypatch.setattr(run, "load", lambda config: series)
     monkeypatch.setattr(run, "rivals", lambda: [SeasonalNaive()])
-    monkeypatch.setattr(run, "Boosted", lambda: Flat("gradient boosting", 1.0))
-    monkeypatch.setattr(run, "PatchModel", lambda: Flat("patch transformer", -1.0))
+    monkeypatch.setattr(run, "Boosted", lambda effort: Flat("gradient boosting", 1.0))
+    monkeypatch.setattr(run, "PatchModel", lambda effort: Flat("patch transformer", -1.0))
     out = run.run_config("demo", log=lambda _: None)
     assert out[run.ENSEMBLE]["mase"] < min(out["gradient boosting"]["mase"], out["patch transformer"]["mase"])
+
+
+def test_keep_training_stops_once_a_version_beats_the_best_rival(ws, monkeypatch):
+    import byosm.series.run as run
+
+    efforts, naive = [], {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0]}
+
+    def one(config, log, effort=0):
+        efforts.append(effort)
+        ours = 0.9 - 0.1 * effort
+        return {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
+
+    monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
+    monkeypatch.setattr(run, "run_config", one)
+    rival = {"Timestral-5M": {"mase": 0.75, "crps": 0.5, "published": True}}
+    monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: rival)
+    report = run.until_rival(ws, "demo", rounds=5, log=lambda _: None)
+    assert efforts == [0, 1, 2] and report["promoted"] == "v3"

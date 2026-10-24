@@ -18,7 +18,7 @@ import { RunningHere } from "./RunningHere"
 import { leadOf, titleOf } from "./specialist-groups"
 
 type Score = { mase: number; crps: number; calib_mase?: number; train_s?: number; ms_per_forecast?: number; published?: boolean }
-type Version = { name: string; recipe: string; calib: number; test: number; crps: number; ci: [number, number] | null; at: number }
+type Version = { name: string; recipe: string; effort?: number; calib: number; test: number; crps: number; ci: [number, number] | null; at: number }
 export type ForecasterView = Summary & {
   configs?: Record<string, Record<string, Score>>
   overall?: Record<string, Score>
@@ -139,6 +139,7 @@ function Versions({ f }: { f: ForecasterView }) {
             <TableRow>
               <TableHead>Version</TableHead>
               <TableHead>Recipe</TableHead>
+              <TableHead className="text-right">Training</TableHead>
               <TableHead className="text-right">Calib MASE</TableHead>
               <TableHead className="text-right">Test MASE</TableHead>
               <TableHead className="text-right">95% CI</TableHead>
@@ -153,6 +154,7 @@ function Versions({ f }: { f: ForecasterView }) {
                   {v.name === f.promoted && <Badge className="ml-2">promoted</Badge>}
                 </TableCell>
                 <TableCell>{v.recipe}</TableCell>
+                <TableCell className="text-right tabular-nums">{2 ** (v.effort ?? 0)}x</TableCell>
                 <TableCell className="text-right tabular-nums">{score(v.calib)}</TableCell>
                 <TableCell className="text-right tabular-nums">{score(v.test)}</TableCell>
                 <TableCell className="text-right tabular-nums">{v.ci ? `${score(v.ci[0])} to ${score(v.ci[1])}` : "-"}</TableCell>
@@ -211,7 +213,7 @@ function Datasets({ f }: { f: ForecasterView }) {
 }
 
 export function Forecaster({ f }: { f: ForecasterView }) {
-  const train = () => void runJob(["series", "run", f.name]).then((j) => openJob(j.id))
+  const train = () => void runJob(["series", "run", f.name, "--until-rival"]).then((j) => openJob(j.id))
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">

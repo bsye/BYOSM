@@ -1244,3 +1244,12 @@ lives outside `TaskSpec`, whose labels and classifier steps do not apply. Each r
 before the calib windows, picks the recipe with the lowest calib MASE, scores test with that same fit (later history
 is only input), and adds a version with a 95% bootstrap interval over test windows. A version is promoted only if its
 calib MASE beats the promoted one. Lower is better, so the lead over a rival is the rival's score minus ours.
+
+## Keep training until a rival is beaten
+
+A forecaster's next version trains with twice the steps of the last (patch transformer steps and boosting
+iterations, `2**effort` where effort is the number of versions so far). `series run DOMAIN --until-rival`, which is
+what Keep training starts, adds versions until the promoted one beats the best rival or `--rounds` is spent.
+Promotion still decides on calib. The stop condition reads test, because the published rival scores exist only on
+test; stopping on the first win leans the reported number slightly optimistic, so every version stays on the page
+with its interval.
