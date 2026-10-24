@@ -138,6 +138,7 @@ def options_rival(
 
 
 MAX_ROUNDS = 4
+CORPUS_GB = 50.0
 series_app = typer.Typer(no_args_is_help=True, help="Time series: specialists against Timestral on GIFT-Eval.")
 app.add_typer(series_app, name="series")
 
@@ -159,6 +160,16 @@ def series_run(
         loop(find_workspace(), domain, rounds, log)
     else:
         run_domain(find_workspace(), domain, log)
+
+
+@series_app.command("corpus")
+def series_corpus(
+    gb: float = typer.Option(CORPUS_GB, help="Gigabytes to sample from the GIFT-Eval pretraining corpus"),
+) -> None:
+    """Download a balanced sample of GIFT-Eval's pretraining corpus, which shares no series with its test sets."""
+    from ..series.corpus import download
+
+    download(gb, log)
 
 
 @series_app.command("pretrain")
