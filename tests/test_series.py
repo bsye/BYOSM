@@ -114,7 +114,7 @@ def test_a_domain_report_is_saved_after_each_dataset_so_results_show_as_they_arr
 
     def one(config, log):
         seen.append({r["domain"]: r.get("pending") for r in run.reports(ws) if r["at"]})
-        return {run.NAIVE: score}
+        return {run.NAIVE: {**score, "windows": [1.0]}}
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a", "b"]})
     monkeypatch.setattr(run, "run_config", one)
@@ -137,3 +137,25 @@ def test_published_rival_scores_only_appear_where_our_seasonal_naive_matches_the
     assert set(published.scores("electricity/H", 1.36)) == set(published.RIVALS)
     assert published.scores("restaurant", 1.006)[published.RIVALS[0]]["mase"] == 0.7
     assert published.scores("restaurant", 1.2) == {}
+
+
+def _versioned_run(ws, monkeypatch, calib, test):
+    import byosm.series.run as run
+
+    naive = {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0, 1.0]}
+    ours = {"mase": test, "crps": test, "calib_mase": calib, "calib_crps": calib, "windows": [test, test]}
+    monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
+    monkeypatch.setattr(run, "run_config", lambda config, log: {run.NAIVE: naive, "gradient boosting": ours})
+    monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: {})
+    return run.run_domain(ws, "demo", log=lambda _: None)
+
+
+def test_each_run_adds_a_version_and_promotes_it_only_if_it_is_better_on_calib(ws, monkeypatch):
+    from byosm.series.specialist import summary
+
+    first = _versioned_run(ws, monkeypatch, calib=0.8, test=0.9)
+    assert first["promoted"] == "v1" and first["versions"][0]["recipe"] == "gradient boosting"
+    second = _versioned_run(ws, monkeypatch, calib=0.85, test=0.7)
+    assert [v["name"] for v in second["versions"]] == ["v1", "v2"] and second["promoted"] == "v1"
+    card = summary(second)
+    assert card["kind"] == "forecast" and card["score"] == 0.9 and card["higher_is_better"] is False

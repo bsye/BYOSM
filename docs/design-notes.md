@@ -1235,3 +1235,12 @@ Timestral's GIFT-Eval scores are read from the leaderboard's per-dataset results
 They count only where our seasonal naive MASE is within 2% of the leaderboard's seasonal naive on the same dataset,
 which shows the split and the metric match. A domain's overall includes a model only if it has a score on every
 dataset of that domain.
+
+## Forecasters are specialists
+
+A GIFT-Eval domain (energy, sales, operations) is a specialist of kind `forecast`, listed with the others once it has
+been run and shown on the same specialist route with a page of its own: rivals board, versions, datasets. Like teams it
+lives outside `TaskSpec`, whose labels and classifier steps do not apply. Each run fits every recipe once on the history
+before the calib windows, picks the recipe with the lowest calib MASE, scores test with that same fit (later history
+is only input), and adds a version with a 95% bootstrap interval over test windows. A version is promoted only if its
+calib MASE beats the promoted one. Lower is better, so the lead over a rival is the rival's score minus ours.

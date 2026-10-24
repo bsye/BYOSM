@@ -22,7 +22,6 @@ import { CostsPage } from "@/pages/Costs"
 import { Datasets } from "@/pages/Datasets"
 import { ForecastPage } from "@/pages/ForecastPage"
 import { Forecasts } from "@/pages/Forecasts"
-import { TimeSeries } from "@/pages/TimeSeries"
 import { Deployments } from "@/pages/Deployments"
 import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
@@ -39,7 +38,6 @@ function Page({ route }: { route: string[] }) {
   if (section === "costs") return <CostsPage />
   if (section === "deployments") return <Deployments />
   if (section === "datasets") return <Datasets />
-  if (section === "series") return <TimeSeries />
   if (section === "forecasts") return id ? <ForecastPage name={id} /> : <Forecasts />
   if (section === "keys") return <Settings />
   if (section === "settings") return <Settings />

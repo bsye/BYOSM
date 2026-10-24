@@ -26,13 +26,13 @@ def crps(future: np.ndarray, quantiles: np.ndarray) -> tuple[float, float]:
     return float(loss / len(QUANTILES)), float(np.sum(np.abs(y)))
 
 
-def summary(windows: list[dict[str, Any]], forecasts: list[np.ndarray], seasons: list[int]) -> dict[str, float]:
+def summary(windows: list[dict[str, Any]], forecasts: list[np.ndarray], seasons: list[int]) -> dict[str, Any]:
     mases, losses, totals = [], 0.0, 0.0
     for w, q, s in zip(windows, forecasts, seasons, strict=True):
         mases.append(mase(w["history"], w["future"], q[QUANTILES.index(0.5)], s))
         loss, total = crps(w["future"], q)
         losses, totals = losses + loss, totals + total
-    return {"mase": float(np.nanmean(mases)), "crps": losses / totals if totals else float("nan")}
+    return {"mase": float(np.nanmean(mases)), "crps": losses / totals if totals else float("nan"), "windows": mases}
 
 
 def relative(scores: dict[str, float], naive: dict[str, float]) -> dict[str, float]:
@@ -42,3 +42,16 @@ def relative(scores: dict[str, float], naive: dict[str, float]) -> dict[str, flo
 def geomean(values: list[float]) -> float:
     arr = np.asarray([v for v in values if v and np.isfinite(v)])
     return float(np.exp(np.mean(np.log(arr)))) if len(arr) else float("nan")
+
+
+def ratio_interval(ours: list[list[float]], base: list[list[float]], draws: int, seed: int) -> list[float]:
+    rng = np.random.default_rng(seed)
+    pairs = [(np.asarray(o), np.asarray(b)) for o, b in zip(ours, base, strict=True)]
+    samples = []
+    for _ in range(draws):
+        ratios = []
+        for o, b in pairs:
+            pick = rng.integers(0, len(o), len(o))
+            ratios.append(np.nanmean(o[pick]) / np.nanmean(b[pick]))
+        samples.append(geomean(ratios))
+    return [float(np.nanpercentile(samples, 2.5)), float(np.nanpercentile(samples, 97.5))]

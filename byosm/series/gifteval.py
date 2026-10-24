@@ -56,12 +56,12 @@ def windows(series: list[Series]) -> int:
     return max(1, min(MAX_WINDOWS, math.ceil(TEST_SHARE * shortest / h)))
 
 
-def splits(series: list[Series]) -> list[dict[str, Any]]:
+def splits(series: list[Series], back: int = 0) -> list[dict[str, Any]]:
     h, w = horizon(series[0].freq), windows(series)
     out = []
     for s in series:
         for k in range(w):
-            end = len(s.values) - (w - k) * h
+            end = len(s.values) - ((back + 1) * w - k) * h
             if end > 2 * season(s.freq):
                 out.append(
                     {"item": s.item, "freq": s.freq, "history": s.values[:end], "future": s.values[end : end + h]}

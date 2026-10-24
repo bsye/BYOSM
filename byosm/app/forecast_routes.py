@@ -66,6 +66,16 @@ def forecast_router(ws: Path) -> APIRouter:
 
         return reports(ws)
 
+    @router.get("/api/series/{domain}")
+    def forecaster(domain: str) -> dict[str, Any]:
+        from ..series.run import reports
+        from ..series.specialist import summary
+
+        found = next((r for r in reports(ws) if r["domain"] == domain), None)
+        if found is None:
+            raise HTTPException(404, f"no forecasting domain named {domain}")
+        return {**found, **summary(found)}
+
     @router.get("/api/forecasts/{name}/inputs")
     def inputs(name: str) -> dict[str, Any]:
         from ..tabular.predict import inputs as needed

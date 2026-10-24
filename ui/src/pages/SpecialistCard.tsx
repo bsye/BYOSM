@@ -7,11 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { rivalName, score, signed } from "@/format"
 import { href } from "@/route"
-import { createdLabel, kindOf, titleOf } from "./specialist-groups"
+import { createdLabel, kindOf, leadOf, titleOf } from "./specialist-groups"
 
 function Lead({ s }: { s: Summary }) {
-  if (s.score == null || s.rival?.score == null) return <span className="text-muted-foreground">No rival scored yet</span>
-  const d = s.score - s.rival.score
+  const d = leadOf(s)
+  if (d == null || !s.rival) return <span className="text-muted-foreground">No rival scored yet</span>
   const Icon = d > 0 ? TrendingUp : d < 0 ? TrendingDown : Minus
   return (
     <span className="text-muted-foreground flex min-w-0 items-center gap-1">
@@ -31,6 +31,7 @@ function Status({ s, running }: { s: Summary; running?: string }) {
       </span>
     )
   if (s.kind === "team") return <span>{s.members?.length === 1 ? "1 model" : `${s.members?.length} models`}</span>
+  if (s.kind === "forecast") return <span>{s.promoted ? `${s.promoted}, ${s.experiments.length} versions` : "Not run yet"}</span>
   return <span>{s.exported ? "Exported" : s.score == null ? "Not built yet" : "Not exported"}</span>
 }
 
