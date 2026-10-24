@@ -18,6 +18,7 @@ EXIT_SUFFIX = ".exit"
 KILL_GRACE_S = 10
 INTERRUPTED = "interrupted"
 PID_CLOCK_SLACK_S = 1.0
+CAFFEINATE = "caffeinate"
 WRAPPER = """
 import os, signal, sys, traceback
 path, entry, code = sys.argv.pop(1), sys.argv.pop(1), 1
@@ -73,6 +74,19 @@ def spawn(ws: Path, job_id: str, entry: str, args: list[str], env: dict[str, str
             stdin=subprocess.DEVNULL,
             stdout=out,
             stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+
+def keep_awake(pid: int) -> None:
+    import shutil
+
+    if sys.platform == "darwin" and shutil.which(CAFFEINATE):
+        subprocess.Popen(
+            [CAFFEINATE, "-i", "-w", str(pid)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
 

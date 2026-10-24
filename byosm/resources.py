@@ -29,6 +29,13 @@ def can_start_job(running: int) -> bool:
 
 STALL_KEY = "stall_minutes"
 STALL_MINUTES = 90
+AWAKE_KEY = "keep_awake"
+
+
+def keeps_awake(ws: Path) -> bool:
+    from .config import load_config
+
+    return bool(load_config(ws).get(AWAKE_KEY, True))
 
 
 def stall_seconds(ws: Path) -> int:

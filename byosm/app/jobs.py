@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any
 
 from ..events import TARGET, parse
-from ..resources import can_start_job, max_jobs, stall_seconds
+from ..resources import can_start_job, keeps_awake, max_jobs, stall_seconds
 from .allowed import ALLOWED_COMMANDS
-from .detached import LOG_SUFFIX, Tail, ending, exit_code, forget, job_file, kill_group, owned, spawn
+from .detached import LOG_SUFFIX, Tail, ending, exit_code, forget, job_file, keep_awake, kill_group, owned, spawn
 from .hub import Hub
 from .job import Job, job_env
 from .store import JobStore
@@ -21,6 +21,7 @@ ADMIT_POLL_S = 2
 ENTRY = "from byosm.cli import app; app()"
 LOST_LINE = "the job process ended without reporting an exit code"
 FOLLOW_SECONDS = 0.1
+SLEEP_GAP_S = 30
 FAILED = "failed"
 
 
@@ -134,6 +135,8 @@ class Runner:
     def _run(self, job: Job) -> None:
         forget(self.ws, job.id)
         proc = spawn(self.ws, job.id, ENTRY, job.args, job_env(self.ws, job))
+        if keeps_awake(self.ws):
+            keep_awake(proc.pid)
         with self.lock:
             self.procs[job.id] = proc
             job.pid, job.started = proc.pid, time.time()
@@ -148,7 +151,12 @@ class Runner:
 
     def _follow(self, job: Job) -> None:
         tail, heard, limit, killed = self._tail(job), [time.time()], stall_seconds(self.ws), False
+        last = time.time()
         while not self.stopped and not self._settled(job, tail, heard):
+            now = time.time()
+            if now - last > SLEEP_GAP_S:
+                heard[0] += now - last
+            last = now
             if not killed and job.pid and time.time() - heard[0] > limit:
                 self._line(job, f"stopped: no output for {limit // 60} minutes, the job looked stuck")
                 self._kill(job)

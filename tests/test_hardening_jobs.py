@@ -89,3 +89,36 @@ def test_cancel_kills_a_job_whose_pid_is_set_before_it_shows_running(ws, monkeyp
     finally:
         proc.kill()
         proc.wait()
+
+
+def test_a_sleeping_machine_does_not_count_as_a_stalled_job(ws, monkeypatch):
+    import byosm.app.jobs as jobs_module
+
+    clock = [1000.0]
+    monkeypatch.setattr(jobs_module.time, "time", lambda: clock[0])
+
+    def sleep(seconds):
+        clock[0] += 8 * 3600 if clock[0] < 1001 else seconds
+
+    monkeypatch.setattr(jobs_module.time, "sleep", sleep)
+    runner = Runner.__new__(Runner)
+    runner.ws, runner.stopped, killed = ws, False, []
+    job = Job(id="x", args=["build"], pid=123)
+    calls = iter([False, False, True])
+    monkeypatch.setattr(runner, "_tail", lambda job: None, raising=False)
+    monkeypatch.setattr(runner, "_settled", lambda job, tail, heard: next(calls), raising=False)
+    monkeypatch.setattr(runner, "_kill", killed.append, raising=False)
+    monkeypatch.setattr(runner, "_line", lambda job, line: None, raising=False)
+    runner._follow(job)
+    assert killed == [] and not job.stalled
+
+
+def test_jobs_keep_the_mac_awake_unless_switched_off(ws):
+    import yaml
+
+    from byosm.resources import keeps_awake
+
+    assert keeps_awake(ws)
+    cfg = yaml.safe_load((ws / "byosm.yaml").read_text())
+    (ws / "byosm.yaml").write_text(yaml.safe_dump({**cfg, "keep_awake": False}))
+    assert not keeps_awake(ws)
