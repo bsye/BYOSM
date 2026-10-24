@@ -15,6 +15,7 @@ from .standing import standing
 from .state import Log, Session
 
 DECISION_EXTRAS = ("by", "alternatives")
+DISTILL_TOLERANCE = 0.01
 
 
 def _compile(name: str | None, prompt: str | None, modality: str | None, cfg: Any) -> Any:
@@ -84,9 +85,10 @@ def _distill_student(s: Session, st: dict, meta: dict) -> None:
     smeta = s.p.meta(exp)
     s.p.promote(exp)
     stu = standing(s.name, s.margin)
-    if not stu["won"]:
+    close = stu["ours"] is not None and stu["ours"] >= st["ours"] - DISTILL_TOLERANCE
+    if not close:
         s.p.promote(teacher)
-    outcome = "student still wins -> promoted" if stu["won"] else "student no longer wins -> keep the teacher"
+    outcome = "student within tolerance -> promoted" if close else "student too far behind -> keep the teacher"
     ours = stu["ours"] if stu["ours"] is not None else float("nan")
     s.log(
         "distill",
@@ -139,11 +141,8 @@ def _overfit(s: Session) -> None:
 
 
 def _finish(s: Session, distill: bool, max_params_m: float, publish: str | None, license: str) -> None:
-    won = standing(s.name, s.margin)["won"]
-    if distill and won:
+    if distill:
         _distill(s, max_params_m)
-    elif distill:
-        s.log("distill", None, "skipped: it did not win, so there is no winner to shrink")
     _overfit(s)
     _ship(s, standing(s.name, s.margin)["won"], publish, license)
 

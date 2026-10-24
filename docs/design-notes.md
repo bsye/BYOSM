@@ -1311,3 +1311,9 @@ Accuracy alone made a 109M-parameter model built on its rival's own checkpoint l
 now has a "Smaller than the rival" check (4x smaller or more is ok, smaller is a warning, bigger fails; advisory like
 the rival check), and the model card's facts carry `size_vs_best_rival`: how many times smaller the model is and
 whether it is built on the rival's checkpoint. The card's headline must state both.
+
+## Distill by default
+
+The autopilot distills its promoted model whenever it is above the size target, whether or not it beat its rival,
+and ships the student when its calib score is within `DISTILL_TOLERANCE` (0.01) of the teacher's. A specialist that
+is not at least 4x smaller than its rival gets a "Distill into a smaller model" next step from its health.

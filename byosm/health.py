@@ -61,7 +61,7 @@ def _rival(p: Project, spec: TaskSpec, board: dict, prim: str, mine: dict) -> di
     return _check("rival", "Beats the best rival", 3, status, value, why)
 
 
-def _size(board: dict, prim: str, mine: dict) -> dict | None:
+def _size(p: Project, board: dict, prim: str, mine: dict) -> dict | None:
     best = best_baseline(board, prim)
     theirs = board[best[0]][prim].get("params") if best else None
     if not theirs or not mine.get("params"):
@@ -70,7 +70,8 @@ def _size(board: dict, prim: str, mine: dict) -> dict | None:
     status = OK if times >= SMALLER_OK else WARN if times > 1 else FAIL
     why = f"Parameters of the best rival over this model's: the point of a specialist is to be {SMALLER_OK:g}x smaller or more."
     value = f"{times:.1f}x smaller" if times >= 1 else f"{1 / times:.1f}x bigger"
-    return _check("size", "Smaller than the rival", 1, status, value, why)
+    args = None if status == OK or p.meta(p.promoted or "").get("distilled_from") else ["distill", p.name, "--run"]
+    return _check("size", "Smaller than the rival", 1, status, value, why, args)
 
 
 def _target(spec: TaskSpec, mine: dict) -> dict:
@@ -173,7 +174,7 @@ def checks(p: Project, spec: TaskSpec) -> list[dict]:
         _certainty(mine),
         _weakest(mine),
         _speed(spec, mine),
-        _size(board, prim, mine),
+        _size(p, board, prim, mine),
         _shipped(p),
     ]
     return [c for c in found if c]

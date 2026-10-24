@@ -62,7 +62,7 @@ def test_proposal_whose_ops_do_not_apply_is_skipped(ws, monkeypatch):
 
 
 @pytest.mark.parametrize("won", [False, True])
-def test_only_a_winner_is_distilled_and_published(ws, monkeypatch, won):
+def test_every_model_is_distilled_but_only_a_winner_is_published(ws, monkeypatch, won):
     p, spec = make_project(ws)
     calls = []
     monkeypatch.setattr(autopilot, "improve_until_stop", lambda s, n, use_llm: "plateau")
@@ -73,15 +73,15 @@ def test_only_a_winner_is_distilled_and_published(ws, monkeypatch, won):
     monkeypatch.setattr(autopilot, "_report", lambda p, decisions, final: None)
     autopilot.run("t", publish="me/t", echo=lambda m: None)
     decisions = p.report("autopilot")["decisions"]
-    assert calls == (["distill", "export", "publish"] if won else ["export"])
+    assert calls == (["distill", "export", "publish"] if won else ["distill", "export"])
     skipped = {d["step"] for d in decisions if "did not win" in d["why"]}
-    assert skipped == (set() if won else {"distill", "export", "publish"})
+    assert skipped == (set() if won else {"export", "publish"})
 
 
 def test_won_is_rechecked_after_distill(ws, monkeypatch):
     p, spec = make_project(ws)
     calls = []
-    wins = iter([True, False])
+    wins = iter([False])
     monkeypatch.setattr(autopilot, "improve_until_stop", lambda s, n, use_llm: "won")
     monkeypatch.setattr(autopilot, "standing", lambda name, margin: {**LOST, "won": next(wins, False)})
     monkeypatch.setattr(autopilot, "_distill", lambda s, m: calls.append("distill"))
@@ -92,8 +92,8 @@ def test_won_is_rechecked_after_distill(ws, monkeypatch):
     assert calls == ["distill", "export"] and not final["won"]
 
 
-@pytest.mark.parametrize("student_wins", [False, True])
-def test_student_is_kept_only_if_it_still_wins(ws, monkeypatch, student_wins):
+@pytest.mark.parametrize("student", [0.80, 0.90])
+def test_a_student_is_kept_when_it_scores_within_the_tolerance_of_its_teacher(ws, monkeypatch, student):
     from byosm import distill, pipeline
 
     p, spec = make_project(ws)
@@ -105,10 +105,10 @@ def test_student_is_kept_only_if_it_still_wins(ws, monkeypatch, student_wins):
 
     monkeypatch.setattr(distill, "create", create)
     monkeypatch.setattr(pipeline, "build", lambda name, exp, echo: p.promote(exp))
-    monkeypatch.setattr(autopilot, "standing", lambda name, margin: {**LOST, "won": student_wins})
+    monkeypatch.setattr(autopilot, "standing", lambda name, margin: {**LOST, "ours": student})
     s = session(p, spec)
-    autopilot._distill_student(s, {**LOST, "won": True}, {"params": 50e6})
-    assert p.promoted == ("v2" if student_wins else "v1")
+    autopilot._distill_student(s, {**LOST, "ours": 0.905}, {"params": 50e6})
+    assert p.promoted == ("v2" if student >= 0.905 - autopilot.DISTILL_TOLERANCE else "v1")
 
 
 def test_an_experiment_that_never_finished_is_built_before_improving(ws, monkeypatch):
