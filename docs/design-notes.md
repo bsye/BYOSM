@@ -1317,3 +1317,11 @@ whether it is built on the rival's checkpoint. The card's headline must state bo
 The autopilot distills its promoted model whenever it is above the size target, whether or not it beat its rival,
 and ships the student when its calib score is within `DISTILL_TOLERANCE` (0.01) of the teacher's. A specialist that
 is not at least 4x smaller than its rival gets a "Distill into a smaller model" next step from its health.
+
+## The strongest rival, measured
+
+Fine-tuned rivals are searched by the specialist's own task (text, token, audio and image classification), and up to
+three are added per benchmark. Candidates are ordered by the score they report for the benchmark in their Hugging Face
+metadata, then by size, since the larger fine-tuned checkpoint is usually the stronger one. Rivals already on the
+board and models published by BYOSM are skipped. Every added rival is then scored by our own code, so a self-reported
+number never reaches a card; the board's best measured rival is the one cards and health compare against.

@@ -8,12 +8,20 @@ from .project import Project
 from .spec import TaskSpec
 from .text import match_label
 
-MAX_RIVALS = 2
+MAX_RIVALS = 3
 MAX_PARAMS = 1_000_000_000
 MIN_COVERAGE = 0.6
 MIN_AGREEMENT = 0.8
 SEARCH_LIMIT = 8
-TEXT_CLASSIFIER = "text-classification"
+PIPELINES = {
+    ("text", "classify"): "text-classification",
+    ("text", "frame"): "token-classification",
+    ("audio", "classify"): "audio-classification",
+    ("image", "classify"): "image-classification",
+    ("document", "classify"): "image-classification",
+}
+SCORE_METRICS = ("accuracy", "f1")
+OWN_TAG = "byosm"
 REPORT = "finetuned-rivals"
 GENERIC_LABEL = "LABEL_"
 
@@ -26,14 +34,21 @@ def benchmarks(spec: TaskSpec) -> list[str]:
     return list(dict.fromkeys(names))
 
 
-def _size(repo: str) -> int:
+def _strength(repo: str, datasets: list[str]) -> tuple[float, int] | None:
     from huggingface_hub import HfApi
 
     try:
-        info = HfApi().model_info(repo, files_metadata=False)
+        info = HfApi().model_info(repo, expand=["cardData", "safetensors", "tags"])
     except Exception:
-        return 0
-    return int(getattr(getattr(info, "safetensors", None), "total", 0) or 0)
+        return None
+    if OWN_TAG in (info.tags or []):
+        return None
+    reported = [
+        float(r.metric_value)
+        for r in getattr(info.card_data, "eval_results", None) or []
+        if any(d in f"{r.dataset_type} {r.dataset_name}" for d in datasets) and r.metric_type in SCORE_METRICS
+    ]
+    return max(reported, default=-1.0), int(getattr(getattr(info, "safetensors", None), "total", 0) or 0)
 
 
 def candidates(spec: TaskSpec, log: Callable[[str], None] = print) -> list[str]:
@@ -43,17 +58,20 @@ def candidates(spec: TaskSpec, log: Callable[[str], None] = print) -> list[str]:
     from .data.hf_source.research import research_models
 
     picked = [m["id"] for m in research_models(spec, benchmarks(spec), load_config(), log)]
-    seen: dict[str, int] = {}
-    for ds in benchmarks(spec):
+    tag, sets = PIPELINES.get((spec.modality, spec.task_type)), benchmarks(spec)
+    seen: set[str] = set()
+    for ds in sets:
         try:
-            found = HfApi().list_models(
-                trained_dataset=ds, pipeline_tag=TEXT_CLASSIFIER, sort="downloads", limit=SEARCH_LIMIT
-            )
-            seen |= {m.id: getattr(m, "downloads", 0) or 0 for m in found if m.id not in seen}
+            seen |= {
+                m.id
+                for m in HfApi().list_models(trained_dataset=ds, pipeline_tag=tag, sort="downloads", limit=SEARCH_LIMIT)
+            }
         except Exception:
             continue
-    ranked = list(dict.fromkeys([*picked, *sorted(seen, key=lambda r: -seen[r])]))
-    return [r for r in ranked if _size(r) <= MAX_PARAMS]
+    known = {b.removeprefix("hf:").partition("#")[0] for b in spec.baselines}
+    strength = {r: s for r in dict.fromkeys([*picked, *seen]) if r not in known and (s := _strength(r, sets))}
+    fitting = [r for r, (_, size) in strength.items() if size <= MAX_PARAMS]
+    return sorted(fitting, key=lambda r: (-strength[r][0], -strength[r][1]))
 
 
 def _rival(p: Project, spec: TaskSpec, repo: str) -> tuple[str, str] | None:
