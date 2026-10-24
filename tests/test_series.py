@@ -59,3 +59,16 @@ def test_a_series_that_is_zero_half_the_time_is_not_forecast_as_all_zeros():
     model.fit([s.values[: len(s.values) - cut] for s in series], 24, 48)
     median = model.predict(series[0].values[: len(t) - cut], 48)[QUANTILES.index(0.5)]
     assert median.max() > 50
+
+
+def test_the_patch_model_returns_sorted_quantiles_for_every_window(monkeypatch):
+    import byosm.series.patch as patch
+
+    monkeypatch.setattr(patch, "STEPS", 5)
+    monkeypatch.setattr(patch, "BATCH", 8)
+    histories = [_wave(seed=i) for i in range(3)]
+    model = patch.PatchModel()
+    model.fit(histories, 24, 48)
+    out = model.predict_many([h[:-48] for h in histories] + [np.full(10, np.nan)], 48)
+    assert len(out) == 4 and all(o.shape == (len(QUANTILES), 48) for o in out)
+    assert all(np.all(np.diff(o, axis=0) >= 0) for o in out)
