@@ -11,16 +11,30 @@ from .gifteval import DOMAINS, horizon, load, season, splits, windows
 from .metrics import geomean, ratio_interval, summary
 from .models import Boosted, rivals
 from .patch import PatchModel, PretrainedPatch, weights_path
-from .specialist import CI_DRAWS, CI_SEED, NAIVE, add_version, choose
+from .specialist import CI_DRAWS, CI_SEED, NAIVE, add_version, choose, is_rival
 
 REPORT = "series:"
 SERIES_EVENT = "series"
+ENSEMBLE = "ensemble"
 SCORES = ("mase", "crps", "calib_mase", "calib_crps")
 
 
 def _forecast(model: Any, windows: list[dict[str, Any]], h: int) -> list[np.ndarray]:
     many = getattr(model, "predict_many", None)
     return many([w["history"] for w in windows], h) if many else [model.predict(w["history"], h) for w in windows]
+
+
+def _scores(calib: list, held: list, tests: list, test: list, season: int) -> dict[str, Any]:
+    a, b = summary(calib, held, [season] * len(calib)), summary(tests, test, [season] * len(tests))
+    return {**b, "calib_mase": a["mase"], "calib_crps": a["crps"]}
+
+
+def _average(forecasts: list[list[np.ndarray]]) -> list[np.ndarray]:
+    return [np.mean(group, axis=0) for group in zip(*forecasts, strict=True)]
+
+
+def _line(score: dict[str, Any]) -> str:
+    return f"calib MASE {score['calib_mase']:.3f}, test MASE {score['mase']:.3f}, CRPS {score['crps']:.3f}, trained in {score['train_s']:.1f} s, {score['ms_per_forecast']:.1f} ms per forecast"
 
 
 def run_config(config: str, log: Callable[[str], None]) -> dict[str, Any]:
@@ -30,25 +44,28 @@ def run_config(config: str, log: Callable[[str], None]) -> dict[str, Any]:
     cut = 2 * windows(series) * h
     histories = [x.values[: len(x.values) - cut] for x in series]
     log(f"  {config}: {len(series)} series, {len(calib)} calib and {len(tests)} test windows of {h} steps")
-    out = {}
+    out, made = {}, {}
     for model in [*rivals(), Boosted(), PatchModel(), *([PretrainedPatch()] if weights_path().exists() else [])]:
         t0 = time.perf_counter()
         model.fit(histories, s, h)
         trained = time.perf_counter() - t0
-        held = summary(calib, _forecast(model, calib, h), [s] * len(calib))
+        held = _forecast(model, calib, h)
         t1 = time.perf_counter()
-        test = summary(tests, _forecast(model, tests, h), [s] * len(tests))
+        test = _forecast(model, tests, h)
         per = (time.perf_counter() - t1) / max(1, len(tests)) * 1000
-        out[model.name] = {
-            **test,
-            "calib_mase": held["mase"],
-            "calib_crps": held["crps"],
+        out[model.name] = _scores(calib, held, tests, test, s) | {
             "train_s": round(trained, 2),
             "ms_per_forecast": round(per, 2),
         }
-        log(
-            f"    {model.name}: calib MASE {held['mase']:.3f}, test MASE {test['mase']:.3f}, CRPS {test['crps']:.3f}, trained in {trained:.1f} s, {per:.1f} ms per forecast"
+        made[model.name] = (held, test, trained, per)
+        log(f"    {model.name}: {_line(out[model.name])}")
+    ours = [made[m] for m in made if not is_rival(m)]
+    if len(ours) > 1:
+        timing = {"train_s": round(sum(o[2] for o in ours), 2), "ms_per_forecast": round(sum(o[3] for o in ours), 2)}
+        out[ENSEMBLE] = (
+            _scores(calib, _average([o[0] for o in ours]), tests, _average([o[1] for o in ours]), s) | timing
         )
+        log(f"    {ENSEMBLE}: {_line(out[ENSEMBLE])}")
     return out
 
 

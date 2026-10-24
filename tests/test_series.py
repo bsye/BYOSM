@@ -159,3 +159,28 @@ def test_each_run_adds_a_version_and_promotes_it_only_if_it_is_better_on_calib(w
     assert [v["name"] for v in second["versions"]] == ["v1", "v2"] and second["promoted"] == "v1"
     card = summary(second)
     assert card["kind"] == "forecast" and card["score"] == 0.9 and card["higher_is_better"] is False
+
+
+def test_the_ensemble_averages_every_recipe_and_is_scored_like_one(monkeypatch):
+    import byosm.series.run as run
+
+    rng = np.random.default_rng(0)
+    t = np.arange(400.0)
+    series = [Series(f"s{i}", "H", 10 + np.sin(2 * np.pi * t / 24) + rng.normal(0, 0.3, len(t))) for i in range(3)]
+
+    class Flat:
+        def __init__(self, name, level):
+            self.name, self.level = name, level
+
+        def fit(self, histories, season, horizon):
+            pass
+
+        def predict(self, history, horizon):
+            return np.full((len(QUANTILES), horizon), history[-1] + self.level)
+
+    monkeypatch.setattr(run, "load", lambda config: series)
+    monkeypatch.setattr(run, "rivals", lambda: [SeasonalNaive()])
+    monkeypatch.setattr(run, "Boosted", lambda: Flat("gradient boosting", 1.0))
+    monkeypatch.setattr(run, "PatchModel", lambda: Flat("patch transformer", -1.0))
+    out = run.run_config("demo", log=lambda _: None)
+    assert out[run.ENSEMBLE]["mase"] < min(out["gradient boosting"]["mase"], out["patch transformer"]["mase"])
