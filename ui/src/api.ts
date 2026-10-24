@@ -81,7 +81,7 @@ export type Summary = {
   benchmark: string
   promoted: string | null
   score: number | null
-  rival: { name: string; score: number | null } | null
+  rival: { name: string; score: number | null; ours?: number; datasets?: number; of?: number } | null
   experiments: string[]
   exported: boolean
   kind?: "model" | "team" | "forecast" | "risk"

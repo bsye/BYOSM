@@ -212,3 +212,17 @@ def test_keep_training_stops_once_a_version_beats_the_best_rival(ws, monkeypatch
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: rival)
     report = run.until_rival(ws, "demo", rounds=5, log=lambda _: None)
     assert efforts == [0, 1, 2] and report["promoted"] == "v3"
+
+
+def test_the_rival_is_compared_on_the_datasets_both_were_scored_on_and_the_hardest_one_wins():
+    from byosm.series.specialist import best_rival
+
+    def row(ours, timestral=None):
+        out = {"seasonal naive": {"mase": 1.0}, "patch transformer": {"mase": ours}}
+        return {**out, "Timestral-209M": {"mase": timestral}} if timestral else out
+
+    configs = {"a": row(0.7, 0.6), "b": row(0.8)}
+    report = {"promoted": "v1", "versions": [{"name": "v1", "recipe": "patch transformer", "configs": configs}]}
+    rival = best_rival(report)
+    assert rival["name"] == "Timestral-209M" and rival["datasets"] == 1 and rival["of"] == 2
+    assert rival["ours"] == pytest.approx(0.7) and rival["score"] == pytest.approx(0.6)

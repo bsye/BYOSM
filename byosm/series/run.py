@@ -98,8 +98,12 @@ def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dic
 def _with_published(report: dict[str, Any]) -> dict[str, Any]:
     from .published import scores
 
-    per = {c: {**r, **scores(c, r[NAIVE]["mase"])} for c, r in report.get("configs", {}).items()}
-    return {**report, "configs": per, "overall": _overall(per)} if per else report
+    def merged(configs: dict[str, Any]) -> dict[str, Any]:
+        return {c: {**r, **scores(c, r[NAIVE]["mase"])} for c, r in configs.items()}
+
+    per = merged(report.get("configs", {}))
+    versions = [{**v, "configs": merged(v["configs"])} if v.get("configs") else v for v in report.get("versions", [])]
+    return {**report, "configs": per, "overall": _overall(per), "versions": versions} if per else report
 
 
 def reports(ws: Path) -> list[dict[str, Any]]:
@@ -117,11 +121,9 @@ def reports(ws: Path) -> list[dict[str, Any]]:
 def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] = print) -> dict[str, Any]:
     for n in range(rounds):
         report = run_domain(ws, domain, log)
-        card = forecaster(_with_published(report))
-        if card["score"] is not None and card["rival"] and card["score"] < card["rival"]["score"]:
-            log(
-                f"  beat {card['rival']['name']} after {n + 1} round(s): {card['score']:.3f} vs {card['rival']['score']:.3f}"
-            )
+        rival = forecaster(_with_published(report))["rival"]
+        if rival and rival["ours"] < rival["score"]:
+            log(f"  beat {rival['name']} after {n + 1} round(s): {rival['ours']:.3f} vs {rival['score']:.3f}")
             return report
-        log(f"  round {n + 1}: {card['score']} vs best rival {card['rival']}")
+        log(f"  round {n + 1}: hardest rival {rival}")
     return report

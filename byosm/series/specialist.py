@@ -4,6 +4,7 @@ import time
 from typing import Any
 
 from .gifteval import DOMAINS
+from .metrics import geomean
 
 NAIVE = "seasonal naive"
 METRIC = "MASE vs naive"
@@ -37,18 +38,30 @@ def add_version(report: dict[str, Any], interval: list[float] | None, effort: in
         "crps": scores["crps"],
         "ci": interval,
         "at": time.time(),
+        "configs": report["configs"],
     }
     best = next((v for v in versions if v["name"] == report.get("promoted")), None)
     promoted = version["name"] if best is None or version["calib"] < best["calib"] else best["name"]
     return {**report, "versions": [*versions, version], "promoted": promoted}
 
 
-def best_rival(overall: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
-    rivals = {m: s["mase"] for m, s in overall.items() if is_rival(m)}
-    if not rivals:
+def _relative(rows: list[dict[str, Any]], model: str) -> float:
+    return geomean([r[model]["mase"] / r[NAIVE]["mase"] for r in rows])
+
+
+def best_rival(report: dict[str, Any]) -> dict[str, Any] | None:
+    promoted = next((v for v in report.get("versions", []) if v["name"] == report.get("promoted")), None)
+    if not promoted:
         return None
-    name = min(rivals, key=lambda m: rivals[m])
-    return {"name": name, "score": rivals[name]}
+    configs, ours = promoted.get("configs") or report.get("configs") or {}, promoted["recipe"]
+    names = {m for r in configs.values() for m in r if is_rival(m)}
+    heads = []
+    for name in names:
+        shared = [r for r in configs.values() if name in r and ours in r and NAIVE in r]
+        if shared:
+            us, them = _relative(shared, ours), _relative(shared, name)
+            heads.append({"name": name, "score": them, "ours": us, "datasets": len(shared), "of": len(configs)})
+    return min(heads, key=lambda h: h["score"] - h["ours"], default=None)
 
 
 def summary(report: dict[str, Any]) -> dict[str, Any]:
@@ -70,7 +83,7 @@ def summary(report: dict[str, Any]) -> dict[str, Any]:
         "benchmark": "GIFT-Eval",
         "promoted": report.get("promoted"),
         "score": promoted["test"] if promoted else None,
-        "rival": best_rival(report.get("overall") or {}),
+        "rival": best_rival(report),
         "experiments": [v["name"] for v in versions],
         "exported": False,
         "part_of": None,

@@ -7,6 +7,7 @@ RESULTS = "https://raw.githubusercontent.com/SalesforceAIResearch/gift-eval/main
 NAIVE_MODEL = "Seasonal_Naive"
 RIVALS = ("Timestral-209M", "Timestral-5M")
 TERM = "short"
+ALIASES = {"car_parts_with_missing": "car_parts"}
 MASE_COLUMN = "eval_metrics/MASE[0.5]"
 CRPS_COLUMN = "eval_metrics/mean_weighted_sum_quantile_loss"
 PROTOCOL_TOLERANCE = 0.02
@@ -22,6 +23,7 @@ def _table(model: str) -> dict[str, dict[str, str]]:
 
 
 def _key(config: str, known: dict[str, Any]) -> str | None:
+    config = ALIASES.get(config, config)
     if "/" in config:
         return f"{config}/{TERM}"
     found = [k for k in known if k.startswith(config + "/") and k.endswith("/" + TERM)]

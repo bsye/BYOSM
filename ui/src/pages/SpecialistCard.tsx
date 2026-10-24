@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { rivalName, score, signed } from "@/format"
 import { href } from "@/route"
-import { createdLabel, kindOf, leadOf, titleOf } from "./specialist-groups"
+import { createdLabel, kindOf, leadOf, rivalScope, titleOf } from "./specialist-groups"
 
 const TIE = 0.0005
 
@@ -20,7 +20,7 @@ function Lead({ s }: { s: Summary }) {
     <span className="text-muted-foreground flex min-w-0 items-center gap-1">
       <Icon className="size-3.5 shrink-0" />
       <span className="text-foreground font-medium tabular-nums">{tied ? "tied" : signed(d)}</span>
-      <span className="min-w-0 truncate">vs {rivalName(s.rival.name)}</span>
+      <span className="min-w-0 truncate">vs {rivalName(s.rival.name)}{rivalScope(s)}</span>
     </span>
   )
 }

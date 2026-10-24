@@ -15,7 +15,7 @@ import { useLive } from "@/events"
 import { rivalName, score, signed } from "@/format"
 import { openJob } from "@/job-sheet"
 import { RunningHere } from "./RunningHere"
-import { leadOf, titleOf } from "./specialist-groups"
+import { leadOf, rivalScope, titleOf } from "./specialist-groups"
 
 type Score = { mase: number; crps: number; calib_mase?: number; train_s?: number; ms_per_forecast?: number; published?: boolean }
 type Version = { name: string; recipe: string; effort?: number; calib: number; test: number; crps: number; ci: [number, number] | null; at: number }
@@ -66,7 +66,7 @@ function Stats({ f }: { f: ForecasterView }) {
       <StatCard
         label="Lead over best rival"
         value={signed(leadOf(f))}
-        detail={f.rival ? `vs ${rivalName(f.rival.name)}, lower is better` : "no rival scored yet"}
+        detail={f.rival ? `vs ${rivalName(f.rival.name)}${rivalScope(f)}, lower is better` : "no rival scored yet"}
       />
       <StatCard label="Training" value={seconds(recipe?.train_s)} detail={`${promoted.recipe}, per dataset`} />
       <StatCard label="Per forecast" value={millis(recipe?.ms_per_forecast)} detail="CPU" />

@@ -1268,3 +1268,11 @@ The "will this entity end within N years" models built from open data registers 
 listed with the others and opened on the same route. Their score is gradient boosting's test AUC and their rival is
 the better of logistic regression and the base rate, both already scored by the same code. They are only created
 from a sentence: `auto` routes it, finds the table on open data portals and designs the spec, so there is no form.
+
+## Rivals are compared on shared datasets
+
+Published rival scores exist only where the protocol check passes, so a rival can cover fewer datasets than the
+forecaster. Each rival is compared with the promoted version on the datasets both were scored on (geometric mean of
+MASE relative to seasonal naive), and the hardest one, with the smallest margin, is the card's rival and the target of
+Keep training. Each version keeps its per-dataset scores, so the comparison does not change while a new round is half
+done. GIFT-Eval calls `car_parts_with_missing` just `car_parts`.

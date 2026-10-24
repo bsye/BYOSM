@@ -28,9 +28,12 @@ export function kindOf(s: Summary): Kind {
 }
 
 export function leadOf(s: Summary): number | null {
-  if (s.score == null || s.rival?.score == null) return null
-  return s.higher_is_better === false ? s.rival.score - s.score : s.score - s.rival.score
+  const ours = s.rival?.ours ?? s.score
+  if (ours == null || s.rival?.score == null) return null
+  return s.higher_is_better === false ? s.rival.score - ours : ours - s.rival.score
 }
+
+export const rivalScope = (s: Summary) => (s.rival?.datasets && s.rival.of && s.rival.datasets < s.rival.of ? ` on ${s.rival.datasets} of ${s.rival.of} datasets` : "")
 
 export const titleOf = (s: Summary) => s.title || s.name.split("-").join(" ")
 
