@@ -1276,3 +1276,9 @@ forecaster. Each rival is compared with the promoted version on the datasets bot
 MASE relative to seasonal naive), and the hardest one, with the smallest margin, is the card's rival and the target of
 Keep training. Each version keeps its per-dataset scores, so the comparison does not change while a new round is half
 done. GIFT-Eval calls `car_parts_with_missing` just `car_parts`.
+
+## Give GPU memory back
+
+PyTorch's MPS allocator keeps every block it has used and never returns it unless asked. A text encoder at batch
+size 8 was holding 33 GB of GPU memory, leaving 5.7 GB free on a 64 GB machine and every other training queued. The
+cache is now released after each epoch's dev evaluation and after each time series training (`release_cache`).

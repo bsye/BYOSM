@@ -18,7 +18,7 @@ from ..model import SpecialistModel, count_params
 from ..spec import TaskSpec
 from .common import build_model, cpu_state, targets_of
 from .evaluate import evaluate_rows
-from .gpu import gpu_slot
+from .gpu import gpu_slot, release_cache
 from .outputs import build_meta, save_run
 from .pretraining import pretrain_backbone
 from .recovery import recover
@@ -96,6 +96,7 @@ def _select(
     for ep in range(tc.epochs):
         losses = trainer.epoch(ep)
         ev = _dev_epoch(trainer, ep, losses, dev_rows, dev_raw, history, log, exp)
+        release_cache()
         m = ev["metrics"]
         if (m["objective"], m["macro_f1"]) > (best["objective"], best.get("macro_f1", -1)):
             best = _snapshot(trainer.selected, ep, ev)

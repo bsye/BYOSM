@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch import nn
 
+from ..train.gpu import release_cache
 from .metrics import QUANTILES
 
 CONTEXT = 512
@@ -78,3 +79,4 @@ def train(
         opt.step()
         sched.step()
     net.to("cpu").eval()
+    release_cache()

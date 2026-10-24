@@ -111,6 +111,15 @@ def _share_left(device: str, ws: Path) -> float:
     return MPS_SHARE - held_share(ws) if device == "mps" else MPS_SHARE
 
 
+def release_cache() -> None:
+    import torch
+
+    if torch.backends.mps.is_available():
+        torch.mps.empty_cache()
+    elif torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 def _cap_memory(device: str, log: Callable[[str], None], share: float | None = None) -> None:
     import torch
 
@@ -180,12 +189,4 @@ def gpu_slot(device: str, log: Callable[[str], None] = print, fallback: str | No
 
 
 def busy_slots(ws: Path) -> int:
-    held = 0
-    for path in (ws / LOCK_DIR).glob("slot-*.lock"):
-        handle = _try(path)
-        if handle is None:
-            held += 1
-        else:
-            fcntl.flock(handle, fcntl.LOCK_UN)
-            handle.close()
-    return held
+    return len(holders(ws))
