@@ -1214,3 +1214,9 @@ The boosted forecaster learns one set of error quantiles, in units of each serie
 smooth high-volume series with noisy small ones, that width fits neither. The errors are now divided by each series'
 own seasonal-difference noise before the quantiles are taken, and multiplied back at forecast time. CRPS on
 electricity went from 0.198 to 0.094 (seasonal naive 0.102); the median forecast, and so MASE, is unchanged.
+
+## CPU fallback for small trainings
+
+A training can ask `gpu_slot` for a fallback device. When the GPU has no room at that moment, it runs there at once
+instead of queueing. The time series patch transformer (0.6M parameters) uses it: it trains on the CPU in minutes,
+while a queue behind a large training can last hours.

@@ -146,3 +146,14 @@ def test_the_gpu_queue_shows_which_job_holds_the_gpu_and_its_share(ws, monkeypat
         [held] = gpu.holders(ws)
         assert held["job"] == "job-1" and round(held["share"], 2) == gpu.MPS_SHARE and held["since"] > 0
     assert gpu.holders(ws) == []
+
+
+def test_a_small_training_runs_on_the_cpu_instead_of_waiting_for_a_busy_gpu(ws, monkeypatch):
+    _two_slots(ws, monkeypatch)
+    with (
+        gpu.gpu_slot("mps", log=lambda _: None) as first,
+        gpu.gpu_slot("mps", log=lambda _: None, fallback="cpu") as second,
+    ):
+        assert (first, second) == ("mps", "cpu")
+    with gpu.gpu_slot("mps", log=lambda _: None, fallback="cpu") as alone:
+        assert alone == "mps"

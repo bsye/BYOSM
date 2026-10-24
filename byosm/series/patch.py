@@ -43,8 +43,7 @@ class PatchModel:
         if self.pretrained:
             self.net.load_state_dict(torch.load(weights_path(), map_location="cpu"))
             steps, lr = FINETUNE_STEPS, FINETUNE_LR
-        device = _device()
-        with gpu_slot(device, lambda _: None):
+        with gpu_slot(_device(), print, fallback="cpu") as device:
             train(self.net, histories, horizon, steps, lr, BATCH, device, SEED)
 
     def predict(self, history: np.ndarray, horizon: int) -> np.ndarray:

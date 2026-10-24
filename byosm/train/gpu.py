@@ -134,9 +134,9 @@ def _admission(base: Path) -> Iterator[None]:
 
 
 @contextlib.contextmanager
-def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
+def gpu_slot(device: str, log: Callable[[str], None] = print, fallback: str | None = None) -> Iterator[str]:
     if device not in GPU_DEVICES:
-        yield
+        yield device
         return
     from ..config import find_workspace
     from ..events import emit
@@ -155,6 +155,10 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
                 held = {"share": round(share, 3), "job": os.environ.get(JOB_ENV), "since": time.time()}
                 (base / f"slot-{index}.share").write_text(json.dumps(held))
                 break
+        if fallback:
+            log(f"  the {device} GPU is busy: training on the {fallback} instead")
+            yield fallback
+            return
         if not waited:
             log(
                 f"  waiting for the {device} GPU: other trainings hold {held_share(ws):.0%} of it, or less than {needed_gb():.0f} GB is free"
@@ -168,7 +172,7 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
     os.environ[SHARE_ENV] = f"{share:.3f}"
     _cap_memory(device, log, share)
     try:
-        yield
+        yield device
     finally:
         (base / f"slot-{index}.share").unlink(missing_ok=True)
         fcntl.flock(handle, fcntl.LOCK_UN)
