@@ -9,14 +9,17 @@ import { rivalName, score, signed } from "@/format"
 import { href } from "@/route"
 import { createdLabel, kindOf, leadOf, titleOf } from "./specialist-groups"
 
+const TIE = 0.0005
+
 function Lead({ s }: { s: Summary }) {
   const d = leadOf(s)
   if (d == null || !s.rival) return <span className="text-muted-foreground">No rival scored yet</span>
-  const Icon = d > 0 ? TrendingUp : d < 0 ? TrendingDown : Minus
+  const tied = Math.abs(d) < TIE
+  const Icon = tied ? Minus : d > 0 ? TrendingUp : TrendingDown
   return (
     <span className="text-muted-foreground flex min-w-0 items-center gap-1">
       <Icon className="size-3.5 shrink-0" />
-      <span className="text-foreground font-medium tabular-nums">{signed(d)}</span>
+      <span className="text-foreground font-medium tabular-nums">{tied ? "tied" : signed(d)}</span>
       <span className="min-w-0 truncate">vs {rivalName(s.rival.name)}</span>
     </span>
   )
@@ -88,8 +91,12 @@ export function SpecialistCard({ s, running, showKind, steps }: { s: Summary; ru
         <CardFooter className="text-muted-foreground/80 justify-between gap-3 text-xs">
           <span className="flex shrink-0 items-center gap-1.5">
             <Status s={s} running={running} />
-            <span>·</span>
-            <span className="tabular-nums">{createdLabel(s)}</span>
+            {s.created && (
+              <>
+                <span>·</span>
+                <span className="tabular-nums">{createdLabel(s)}</span>
+              </>
+            )}
           </span>
           {steps && steps.length > 0 && <Step steps={steps} />}
         </CardFooter>

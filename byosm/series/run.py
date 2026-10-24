@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -112,7 +113,11 @@ def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dic
     from ..events import emit
 
     previous = next((r for r in reports(ws) if r["domain"] == domain), {})
-    kept = {"versions": previous.get("versions", []), "promoted": previous.get("promoted")}
+    kept = {
+        "versions": previous.get("versions", []),
+        "promoted": previous.get("promoted"),
+        "created": previous.get("created") or datetime.now(UTC).isoformat(),
+    }
     effort = len(kept["versions"])
     log(f"  effort {effort}: {2**effort}x the base training steps")
     configs, per = DOMAINS.get(domain, [domain]), {}

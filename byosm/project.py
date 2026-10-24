@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -39,10 +40,11 @@ class Project:
         from .spec import TaskSpec
 
         with session(self.ws) as s:
-            row = s.scalar(select(Specialist.spec).where(Specialist.name == self.name))
+            row = s.execute(select(Specialist.spec, Specialist.created).where(Specialist.name == self.name)).first()
         if row is None:
             raise KeyError(f"no specialist {self.name!r}")
-        return TaskSpec.model_validate(row)
+        spec, created = row
+        return TaskSpec.model_validate({**spec, "created": spec.get("created") or created.replace(tzinfo=UTC)})
 
     def save_spec(self, spec: TaskSpec) -> None:
         data = spec.model_dump(mode="json")

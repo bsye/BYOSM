@@ -59,7 +59,7 @@ def summary(report: dict[str, Any]) -> dict[str, Any]:
         "name": domain,
         "kind": KIND,
         "title": f"{domain.capitalize()} forecasting",
-        "created": versions[0]["at"] if versions else None,
+        "created": report.get("created"),
         "description": " · ".join(DOMAINS.get(domain, [domain])),
         "modality": "series",
         "task_type": KIND,
