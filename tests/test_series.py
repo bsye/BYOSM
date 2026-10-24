@@ -43,3 +43,7 @@ def test_the_boosted_specialist_beats_seasonal_naive_on_a_seasonal_series():
             [mase(t["history"], t["future"], model.predict(t["history"], 48)[QUANTILES.index(0.5)], 24) for t in tests]
         )
     assert errors["gradient boosting"] < errors["seasonal naive"]
+    model = Boosted()
+    model.fit(histories, 24, 48)
+    batch = model.predict_many([t["history"] for t in tests], 48)
+    assert all(np.allclose(b, model.predict(t["history"], 48)) for b, t in zip(batch, tests, strict=True))

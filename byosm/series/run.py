@@ -28,7 +28,8 @@ def run_config(config: str, log: Callable[[str], None]) -> dict[str, Any]:
         model.fit(histories, s, h)
         trained = time.perf_counter() - t0
         t1 = time.perf_counter()
-        forecasts = [model.predict(w["history"], h) for w in tests]
+        many = getattr(model, "predict_many", None)
+        forecasts = many([w["history"] for w in tests], h) if many else [model.predict(w["history"], h) for w in tests]
         per = (time.perf_counter() - t1) / max(1, len(tests)) * 1000
         out[model.name] = {
             **summary(tests, forecasts, [s] * len(tests)),
@@ -63,3 +64,15 @@ def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dic
     with session(ws) as s:
         get_or_add(s, WorkspaceReport, kind=REPORT + domain).data = result
     return result
+
+
+def reports(ws: Path) -> list[dict[str, Any]]:
+    from sqlalchemy import select
+
+    from ..db import session
+    from ..db.models import WorkspaceReport
+
+    with session(ws) as s:
+        rows = s.scalars(select(WorkspaceReport.data).where(WorkspaceReport.kind.startswith(REPORT))).all()
+    found = {r["domain"]: r for r in rows if r}
+    return [found.get(d) or {"domain": d, "at": None} for d in [*DOMAINS, *(k for k in found if k not in DOMAINS)]]

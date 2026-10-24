@@ -60,6 +60,12 @@ def forecast_router(ws: Path) -> APIRouter:
             raise HTTPException(404, "run the forecast first")
         return FileResponse(path, filename=f"{name}-scored.csv")
 
+    @router.get("/api/series")
+    def series() -> list[dict[str, Any]]:
+        from ..series.run import reports
+
+        return reports(ws)
+
     @router.get("/api/forecasts/{name}/inputs")
     def inputs(name: str) -> dict[str, Any]:
         from ..tabular.predict import inputs as needed

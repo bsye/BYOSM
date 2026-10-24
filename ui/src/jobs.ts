@@ -39,6 +39,7 @@ const SUB_VERBS: Record<string, Record<string, string>> = {
   suite: { add: "Add suite" },
   exp: { create: "Create experiment" },
   forecast: { run: "Run forecast", new: "Save forecast" },
+  series: { run: "Run time series" },
   opendata: { find: "Find open data", fetch: "Download open data", search: "Search open data" },
 }
 const NAMED_FLAGS = new Set(["--apply", "--suite"])

@@ -77,9 +77,19 @@ class Boosted:
         ]
 
     def predict(self, history: np.ndarray, horizon: int) -> np.ndarray:
-        scale = _scale(history, self.season)
-        x = np.stack([self._features(history, len(history), step, scale) for step in range(horizon)])
-        return np.sort(np.stack([m.predict(x) for m in self.models]) * scale, axis=0)
+        return self.predict_many([history], horizon)[0]
+
+    def predict_many(self, histories: list[np.ndarray], horizon: int) -> list[np.ndarray]:
+        scales = [_scale(h, self.season) for h in histories]
+        x = np.stack(
+            [
+                self._features(h, len(h), step, sc)
+                for h, sc in zip(histories, scales, strict=True)
+                for step in range(horizon)
+            ]
+        )
+        out = np.stack([m.predict(x) for m in self.models]).reshape(len(QUANTILES), len(histories), horizon)
+        return [np.sort(out[:, i] * sc, axis=0) for i, sc in enumerate(scales)]
 
 
 def rivals() -> list[Any]:
