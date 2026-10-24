@@ -168,3 +168,17 @@ def test_a_second_training_starts_when_memory_is_free_even_if_the_first_reserved
     monkeypatch.setattr("psutil.virtual_memory", lambda: type("M", (), {"total": 64 * 1024**3})())
     with gpu.gpu_slot("mps", log=lambda _: None), gpu.gpu_slot("mps", log=lambda _: None, fallback="cpu") as second:
         assert second == "mps"
+
+
+def test_the_gpu_goes_to_whoever_has_waited_longest(tmp_path):
+    import os
+
+    from byosm.train.gpu_queue import QUEUE, TICKET, first, join
+
+    mine = join(tmp_path)
+    older = tmp_path / QUEUE / f"{os.getppid()}{TICKET}"
+    older.write_text("1.0")
+    assert not first(mine)
+    older.unlink()
+    (tmp_path / QUEUE / f"999999{TICKET}").write_text("0.5")
+    assert first(mine) and not (tmp_path / QUEUE / f"999999{TICKET}").exists()

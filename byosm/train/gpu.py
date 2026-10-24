@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from ..config import STATE_DIR
+from .gpu_queue import first, join
 
 GPU_DEVICES = ("mps", "cuda")
 SLOTS_KEY = "gpu_jobs"
@@ -153,10 +154,11 @@ def gpu_slot(device: str, log: Callable[[str], None] = print, fallback: str | No
 
     ws, waited = find_workspace(), 0.0
     base = ws / LOCK_DIR
+    ticket = None if fallback else join(base)
     while True:
         with _admission(base):
             share = _share_left(device, ws)
-            roomy = share >= MIN_SHARE and _may_start(device, ws)
+            roomy = share >= MIN_SHARE and _may_start(device, ws) and (ticket is None or first(ticket))
             taken = (
                 next(((i, h) for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if roomy else None
             )
@@ -178,6 +180,8 @@ def gpu_slot(device: str, log: Callable[[str], None] = print, fallback: str | No
             emit("gpu", state="waiting", waited=round(waited))
         time.sleep(WAIT_S)
         waited += WAIT_S
+    if ticket:
+        ticket.unlink(missing_ok=True)
     if waited:
         log(f"  got the GPU after {waited:.0f} s")
     os.environ[SHARE_ENV] = f"{share:.3f}"

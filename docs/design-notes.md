@@ -1360,3 +1360,10 @@ A forecaster's health uses the same scoring as a classifier's (`health.report`: 
 80 with no blocking check failed or unknown) with checks that fit forecasting: it beats seasonal naive on every
 dataset, its calib and test scores agree, its test interval is narrow, and, advisory, it beats the hardest rival on
 the datasets both were scored on. It is served by the same `/api/health/{name}` and shown on its page.
+
+## The GPU goes to whoever waited longest
+
+When the GPU freed up, whichever waiting job polled first took it, so a pretraining job waited four and a half hours
+through three handoffs. Each waiting job now leaves a ticket with its start time in `.byosm/gpu/queue`, and only the
+oldest live ticket may take a free slot. Tickets of jobs that died are removed. Small trainings with a CPU fallback
+never queue.
