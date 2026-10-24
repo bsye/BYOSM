@@ -104,3 +104,20 @@ def test_a_smooth_series_gets_narrower_intervals_than_a_noisy_one_of_the_same_le
     model.fit([smooth, noisy] * 5, 24, 12)
     calm, wild = model.predict_many([smooth, noisy], 12)
     assert (calm[-1] - calm[0]).mean() * 5 < (wild[-1] - wild[0]).mean()
+
+
+def test_a_domain_report_is_saved_after_each_dataset_so_results_show_as_they_arrive(ws, monkeypatch):
+    import byosm.series.run as run
+
+    seen = []
+    score = {"mase": 1.0, "crps": 1.0, "train_s": 0.0, "ms_per_forecast": 0.1}
+
+    def one(config, log):
+        seen.append({r["domain"]: r.get("pending") for r in run.reports(ws) if r["at"]})
+        return {run.NAIVE: score}
+
+    monkeypatch.setattr(run, "DOMAINS", {"demo": ["a", "b"]})
+    monkeypatch.setattr(run, "run_config", one)
+    run.run_domain(ws, "demo", log=lambda _: None)
+    assert seen == [{}, {"demo": ["b"]}]
+    assert run.reports(ws)[0]["pending"] == []

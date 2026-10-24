@@ -14,6 +14,7 @@ from .patch import PatchModel, PretrainedPatch, weights_path
 
 REPORT = "series:"
 NAIVE = "seasonal naive"
+SERIES_EVENT = "series"
 
 
 def run_config(config: str, log: Callable[[str], None]) -> dict[str, Any]:
@@ -43,27 +44,33 @@ def run_config(config: str, log: Callable[[str], None]) -> dict[str, Any]:
     return out
 
 
-def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dict[str, Any]:
-    from ..db import get_or_add, session
-    from ..db.models import WorkspaceReport
-
-    configs = DOMAINS.get(domain, [domain])
-    per = {c: run_config(c, log) for c in configs}
-    models = sorted({m for r in per.values() for m in r})
+def _overall(per: dict[str, dict[str, Any]]) -> dict[str, dict[str, float]]:
     overall = {}
-    for m in models:
+    for m in sorted({m for r in per.values() for m in r}):
         rel = [relative({k: r[m][k] for k in ("mase", "crps")}, r[NAIVE]) for r in per.values() if m in r]
         overall[m] = {k: geomean([x[k] for x in rel]) for k in ("mase", "crps")}
         overall[m] |= {
             k: round(float(np.mean([r[m][k] for r in per.values() if m in r])), 3)
             for k in ("train_s", "ms_per_forecast")
         }
-        log(
-            f"  {domain} {m}: MASE {overall[m]['mase']:.3f} and CRPS {overall[m]['crps']:.3f} relative to seasonal naive"
-        )
-    result = {"domain": domain, "at": time.time(), "configs": per, "overall": overall}
-    with session(ws) as s:
-        get_or_add(s, WorkspaceReport, kind=REPORT + domain).data = result
+    return overall
+
+
+def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dict[str, Any]:
+    from ..db import get_or_add, session
+    from ..db.models import WorkspaceReport
+    from ..events import emit
+
+    configs, per = DOMAINS.get(domain, [domain]), {}
+    for config in configs:
+        per[config] = run_config(config, log)
+        pending = [c for c in configs if c not in per]
+        result = {"domain": domain, "at": time.time(), "configs": per, "overall": _overall(per), "pending": pending}
+        with session(ws) as s:
+            get_or_add(s, WorkspaceReport, kind=REPORT + domain).data = result
+        emit(SERIES_EVENT, domain=domain, config=config, pending=len(pending))
+    for m, score in result["overall"].items():
+        log(f"  {domain} {m}: MASE {score['mase']:.3f} and CRPS {score['crps']:.3f} relative to seasonal naive")
     return result
 
 
