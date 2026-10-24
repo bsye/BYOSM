@@ -1304,3 +1304,10 @@ The small from-scratch model (2.8M parameters, 512-point context) stays as the r
 A specialist is ready once it has a scored version. It is ready for production when its health score is at least 80
 with no blocking check failed or unknown. Beating the best rival is one of the health checks and counts in the score,
 but it is advisory: an owner may require it, the app does not.
+
+## Size against the rival is part of every result
+
+Accuracy alone made a 109M-parameter model built on its rival's own checkpoint look like a win over that rival. Health
+now has a "Smaller than the rival" check (4x smaller or more is ok, smaller is a warning, bigger fails; advisory like
+the rival check), and the model card's facts carry `size_vs_best_rival`: how many times smaller the model is and
+whether it is built on the rival's checkpoint. The card's headline must state both.

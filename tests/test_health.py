@@ -65,3 +65,15 @@ def test_the_lead_is_recomputed_when_a_new_rival_becomes_the_best(ws, monkeypatc
     p.add_baselines(["strong"])
     p.save_result("strong", "builtin", _result(0.88, kind="baseline"))
     assert {c["id"]: c for c in health(p, spec)["checks"]}["rival"]["value"].startswith("+0.020")
+
+
+def test_a_specialist_bigger_than_its_rival_fails_the_size_check_without_blocking_production(ws):
+    rows = {
+        "v1": {"builtin": _result(0.97, params=110e6)},
+        "jev": {"builtin": _result(0.9, kind="baseline", params=86e6)},
+    }
+    p, spec = _specialist(ws, rows)
+    h = health(p, spec)
+    size = next(c for c in h["checks"] if c["id"] == "size")
+    assert size["status"] == "fail" and size["value"] == "1.3x bigger"
+    assert "Smaller than the rival" not in h["blockers"]

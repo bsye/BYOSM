@@ -20,7 +20,8 @@ LABEL_OK, LABEL_WARN = 0.8, 0.5
 DROP_OK, DROP_WARN = 0.05, 0.15
 SLOW_FACTOR = 2.0
 LEAD = "lead"
-ADVISORY = {"rival"}
+ADVISORY = {"rival", "size"}
+SMALLER_OK = 4.0
 
 
 def _check(cid: str, title: str, weight: int, status: str, value: str, why: str, args: list[str] | None = None):
@@ -58,6 +59,18 @@ def _rival(p: Project, spec: TaskSpec, board: dict, prim: str, mine: dict) -> di
     )
     why = "Paired bootstrap on the test split: the lead counts when at least 95% of resamples keep it."
     return _check("rival", "Beats the best rival", 3, status, value, why)
+
+
+def _size(board: dict, prim: str, mine: dict) -> dict | None:
+    best = best_baseline(board, prim)
+    theirs = board[best[0]][prim].get("params") if best else None
+    if not theirs or not mine.get("params"):
+        return None
+    times = theirs / mine["params"]
+    status = OK if times >= SMALLER_OK else WARN if times > 1 else FAIL
+    why = f"Parameters of the best rival over this model's: the point of a specialist is to be {SMALLER_OK:g}x smaller or more."
+    value = f"{times:.1f}x smaller" if times >= 1 else f"{1 / times:.1f}x bigger"
+    return _check("size", "Smaller than the rival", 1, status, value, why)
 
 
 def _target(spec: TaskSpec, mine: dict) -> dict:
@@ -160,6 +173,7 @@ def checks(p: Project, spec: TaskSpec) -> list[dict]:
         _certainty(mine),
         _weakest(mine),
         _speed(spec, mine),
+        _size(board, prim, mine),
         _shipped(p),
     ]
     return [c for c in found if c]

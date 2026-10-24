@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from typing import Any
 
 from ..project import Project
 from ..spec import TaskSpec
@@ -84,6 +85,23 @@ class CardFacts:
 
 
 HUB_SOURCE = "hf:"
+
+
+def millions(params: Any) -> float | None:
+    return round(params / 1e6, 1) if params else None
+
+
+def against(f: CardFacts, rivals: list[dict[str, Any]]) -> dict[str, Any] | None:
+    scored = [r for r in rivals if r["score"] is not None]
+    if not scored:
+        return None
+    best = max(scored, key=lambda r: r["score"])
+    ours, theirs = millions(f.manifest.get("params")), best["params_millions"]
+    return {
+        "rival": best["name"],
+        "times_smaller": round(theirs / ours, 1) if ours and theirs else None,
+        "built_on_rival": best["id"].removeprefix(HUB_SOURCE) in f.encoders,
+    }
 
 
 def used_sources(p: Project, spec: TaskSpec, exp: str) -> dict[str, dict[str, int]]:

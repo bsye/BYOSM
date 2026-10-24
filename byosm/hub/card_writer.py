@@ -6,7 +6,7 @@ from typing import Any
 from ..metrics import metric_label
 from ..model_refs import model_ref
 from . import sections
-from .facts import CardFacts, suite_dataset
+from .facts import CardFacts, against, millions, suite_dataset
 
 CARD_ROLE = "card"
 SAME_AS_SECTION = {"usage", "reproduce"}
@@ -19,7 +19,9 @@ NUMBER_CHARS = "0123456789."
 SYSTEM = """You write Hugging Face model cards in the style of livekit/turn-detector: concise, neutral, technical, short
 paragraphs, bold key terms, lists for procedures and constraints, no hype, no em dashes. Use only the facts given.
 Never write a number that is not in the facts. Structure, with these exact headings:
-# <title>, a two-sentence summary and the headline result in one sentence
+# <title>, a two-sentence summary and the headline result in one sentence that gives this model's size next to the
+best rival's (size_vs_best_rival; say plainly when it is not smaller, and when built_on_rival is true say the model
+is built on that rival's own checkpoint)
 ## Table of Contents (links to the sections below)
 ## Overview (the problem, why a small specialist, when to use it)
 ## How It Works (numbered: input, prediction, decision threshold, output)
@@ -71,6 +73,7 @@ def facts(f: CardFacts) -> dict[str, Any]:
         {
             **model_ref(f.p, pid, by.get(f.prim)),
             "score": by.get(f.prim, {}).get("objective"),
+            "params_millions": millions(by.get(f.prim, {}).get("params")),
             "caught_per_label": _caught(by.get(f.prim, {})),
         }
         for pid, by in f.board.items()
@@ -98,6 +101,7 @@ def facts(f: CardFacts) -> dict[str, Any]:
             "backbone": f.spec.backbone,
         },
         "rivals": rivals,
+        "size_vs_best_rival": against(f, rivals),
         "training": {
             "rows": f.meta.get("n_train"),
             "dev_rows": f.meta.get("n_dev"),
