@@ -1,4 +1,4 @@
-import { Activity, Boxes, CircleDollarSign, Container, Database, Cpu, Github, House, Settings, Smile, TrendingUp } from "lucide-react"
+import { Activity, Boxes, CircleDollarSign, Container, Database, Cpu, Github, House, Settings, Smile } from "lucide-react"
 import type { ComponentProps } from "react"
 import {
   Sidebar,
@@ -21,7 +21,6 @@ const GROUPS = [
     label: "Build",
     items: [
       { key: "specialists", label: "Specialists", icon: Boxes },
-      { key: "forecasts", label: "Forecasts", icon: TrendingUp },
       { key: "datasets", label: "Datasets", icon: Database },
     ],
   },

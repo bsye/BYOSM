@@ -1261,3 +1261,10 @@ not one model per dataset. Datasets in a domain can differ in season and horizon
 models fit on groups that each carry their own season and horizon: boosting takes the season as a feature and a
 fixed lag window, and the patch transformer trains each series with its own horizon from one 60-step head. Scores are
 still reported per dataset, and the domain score is the geometric mean across them.
+
+## Event risk is a specialist kind
+
+The "will this entity end within N years" models built from open data registers are specialists of kind `risk`,
+listed with the others and opened on the same route. Their score is gradient boosting's test AUC and their rival is
+the better of logistic regression and the base rate, both already scored by the same code. They are only created
+from a sentence: `auto` routes it, finds the table on open data portals and designs the spec, so there is no form.

@@ -34,6 +34,7 @@ function Status({ s, running }: { s: Summary; running?: string }) {
       </span>
     )
   if (s.kind === "team") return <span>{s.members?.length === 1 ? "1 model" : `${s.members?.length} models`}</span>
+  if (s.kind === "risk") return <span>{s.score == null ? "Not run yet" : s.exported ? "Scored today" : "Tested"}</span>
   if (s.kind === "forecast") return <span>{s.promoted ? `${s.promoted}, ${s.experiments.length} versions` : "Not run yet"}</span>
   return <span>{s.exported ? "Exported" : s.score == null ? "Not built yet" : "Not exported"}</span>
 }

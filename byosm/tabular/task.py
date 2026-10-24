@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +13,7 @@ from sqlalchemy import delete, select
 from ..config import STATE_DIR
 from ..db import get_or_add, session
 from ..db.models import WorkspaceReport
-from .backtest import windows
+from .backtest import check_windows, windows
 from .history import History
 from .snapshots import Recipe
 
@@ -79,9 +79,11 @@ def check_name(name: str) -> str:
 def create(ws: Path, name: str, data: dict[str, Any]) -> ForecastSpec:
     check_name(name)
     spec = ForecastSpec.model_validate(data)
-    _check_windows(spec)
+    check_windows(spec.cutoffs, spec.backtest, spec.horizon_years)
     _clear(ws, name)
-    _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": None})
+    _write(
+        ws, name, {"name": name, "created": datetime.now(UTC).isoformat(), "spec": spec.model_dump(), "result": None}
+    )
     return spec
 
 
@@ -90,17 +92,6 @@ def load(ws: Path, name: str) -> ForecastSpec:
     if not row:
         raise KeyError(f"no forecast named {name}")
     return ForecastSpec.model_validate(row["spec"])
-
-
-def _check_windows(spec: ForecastSpec) -> None:
-    last_train = max(spec.cutoffs["train"]) + spec.horizon_years
-    if last_train > min(spec.cutoffs["test"]):
-        raise ValueError(f"train labels reach {last_train}, after the first test cutoff {min(spec.cutoffs['test'])}")
-    unknown = [y for y in [*spec.cutoffs["test"], *spec.backtest] if y + spec.horizon_years > date.today().year]
-    if unknown:
-        raise ValueError(
-            f"the outcome of test years {unknown} is not known yet with a {spec.horizon_years} year horizon"
-        )
 
 
 def _read(spec: ForecastSpec, log: Callable[[str], None]) -> Any:
@@ -135,7 +126,7 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
     from .snapshots import LABEL, build
 
     spec = load(ws, name)
-    _check_windows(spec)
+    check_windows(spec.cutoffs, spec.backtest, spec.horizon_years)
     from .derive import typed
 
     df, histories = _read(spec, log)
@@ -169,7 +160,7 @@ def run(ws: Path, name: str, log: Callable[[str], None] = print) -> dict[str, An
         "over_time": over_time,
         "today": now,
     }
-    _write(ws, name, {"name": name, "spec": spec.model_dump(), "result": result})
+    _write(ws, name, {**(_row(ws, name) or {}), "name": name, "spec": spec.model_dump(), "result": result})
     return result
 
 

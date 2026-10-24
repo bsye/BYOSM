@@ -1,5 +1,7 @@
 import { InfoTip } from "@/components/info-tip"
 import { Forecaster, useForecaster } from "./Forecaster"
+import { ForecastPage } from "./ForecastPage"
+import { useForecasts } from "./forecast-api"
 import { RunningHere } from "./RunningHere"
 import { Gauge, Hammer, Info, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
@@ -176,9 +178,11 @@ function SpecEditor({ d, onSaved }: { d: Detail; onSaved: () => void }) {
 export function Specialist({ name }: { name: string }) {
   const team = useTeam(name)
   const forecaster = useForecaster(name)
-  if (team === undefined || forecaster === undefined) return <PageSkeleton />
+  const [risks] = useForecasts()
+  if (team === undefined || forecaster === undefined || risks == null) return <PageSkeleton />
   if (team) return <Team view={team} />
   if (forecaster) return <Forecaster f={forecaster} />
+  if (risks.some((r) => r.name === name)) return <ForecastPage name={name} />
   return <Model key={name} name={name} />
 }
 

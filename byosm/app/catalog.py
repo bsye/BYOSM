@@ -79,11 +79,18 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
 def specialists(ws: Path) -> list[dict[str, Any]]:
     from ..series.run import reports
     from ..series.specialist import summary as forecaster
+    from ..tabular.specialist import summary as risk
+    from ..tabular.task import forecasts
     from .teams import members, team_names, team_summary
 
     part_of = members(ws)
     singles = [{**summary(ws, n), "kind": "model", "part_of": part_of.get(n)} for n in list_projects(ws)]
-    return singles + [team_summary(ws, t) for t in team_names(ws)] + [forecaster(r) for r in reports(ws) if r["at"]]
+    return (
+        singles
+        + [team_summary(ws, t) for t in team_names(ws)]
+        + [forecaster(r) for r in reports(ws) if r["at"]]
+        + [risk(r) for r in forecasts(ws)]
+    )
 
 
 def _run(p: Project, exp: str) -> dict[str, Any]:

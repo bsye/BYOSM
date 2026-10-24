@@ -8,11 +8,6 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 
-class NewForecast(BaseModel):
-    name: str
-    spec: dict[str, Any]
-
-
 class Entity(BaseModel):
     key: str | None = None
     row: dict[str, Any] | None = None
@@ -26,18 +21,6 @@ def forecast_router(ws: Path) -> APIRouter:
         from ..tabular.task import forecasts as saved
 
         return saved(ws)
-
-    @router.post("/api/forecasts")
-    def new_forecast(body: NewForecast) -> list[dict[str, Any]]:
-        from pydantic import ValidationError
-
-        from ..tabular.task import create, forecasts
-
-        try:
-            create(ws, body.name, body.spec)
-        except (ValueError, ValidationError) as e:
-            raise HTTPException(422, str(e)) from e
-        return forecasts(ws)
 
     @router.delete("/api/forecasts/{name}")
     def drop_forecast(name: str, confirm: str) -> list[dict[str, Any]]:

@@ -273,3 +273,25 @@ def test_a_published_forecast_has_its_numbers_and_leaks_but_never_the_scored_ent
     card = (out / "README.md").read_text()
     assert "0.700 | 0.600 to 0.800" in card and "`nard`: leaks" in card and "`status`: the answer" in card
     assert "SOME COMPANY" not in card + (out / "results.json").read_text()
+
+
+def test_an_event_risk_forecast_is_listed_as_a_specialist_against_its_best_rival():
+    from byosm.tabular.specialist import summary
+
+    score = {"auc_ci": [0, 1], "ap": 0.1, "brier": 0.1, "base_rate": 0.1}
+    row = {
+        "name": "closing",
+        "spec": {"title": "Closing", "horizon_years": 3},
+        "result": {
+            "at": 0.0,
+            "scores": {
+                "base rate": {**score, "auc": 0.5},
+                "gradient boosting": {**score, "auc": 0.64},
+                "logistic regression": {**score, "auc": 0.63},
+            },
+        },
+    }
+    card = summary(row)
+    assert card["kind"] == "risk" and card["score"] == 0.64
+    assert card["rival"] == {"name": "logistic regression", "score": 0.63}
+    assert card["description"] == "within 3 years" and card["created"]

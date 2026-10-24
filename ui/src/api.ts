@@ -84,7 +84,7 @@ export type Summary = {
   rival: { name: string; score: number | null } | null
   experiments: string[]
   exported: boolean
-  kind?: "model" | "team" | "forecast"
+  kind?: "model" | "team" | "forecast" | "risk"
   higher_is_better?: boolean
   members?: string[]
   part_of?: string | null

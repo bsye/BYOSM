@@ -9,8 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Leakage, OverTime, ScoreChart } from "./ForecastCharts"
 import { ForecastToday } from "./ForecastToday"
 import { ForecastTry } from "./ForecastTry"
-import { runForecast, useForecasts, type Forecast } from "./forecast-api"
-import { within } from "./Forecasts"
+import { runForecast, useForecasts, within, type Forecast } from "./forecast-api"
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -69,7 +68,7 @@ export function ForecastPage({ name }: { name: string }) {
   const remove = async () => {
     if (window.prompt(`Type ${name} to delete this forecast`) === name) {
       await del(`/forecasts/${name}?confirm=${encodeURIComponent(name)}`)
-      go("forecasts")
+      go("specialists")
     }
   }
   return (

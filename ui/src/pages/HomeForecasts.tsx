@@ -27,9 +27,9 @@ function ForecastsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Forecasts</CardTitle>
+        <CardTitle>Event risk</CardTitle>
         <CardAction>
-          <Open to="forecasts" label="All" />
+          <Open to="specialists" label="All" />
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -50,7 +50,7 @@ function ForecastsCard() {
               {rows.slice(0, SHOWN).map((f) => (
                 <TableRow key={f.name}>
                   <TableCell className="max-w-72">
-                    <a className="flex items-center gap-2 font-medium hover:underline" href={href("forecasts", f.name)}>
+                    <a className="flex items-center gap-2 font-medium hover:underline" href={href("specialists", f.name)}>
                       <span className="truncate">{f.spec.title}</span>
                       {running.has(f.name) && <Loader2 className="text-muted-foreground size-3.5 shrink-0 animate-spin" />}
                     </a>
@@ -116,7 +116,7 @@ function DataCard() {
 
 export function HomeForecasts() {
   return (
-    <Section title="Forecasts and data">
+    <Section title="Event risk and data">
       <div className="grid auto-rows-fr gap-4 @5xl/main:grid-cols-2">
         <ForecastsCard />
         <DataCard />

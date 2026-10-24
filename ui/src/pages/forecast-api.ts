@@ -13,6 +13,7 @@ export type Forecast = { name: string; spec: Spec; result: Result | null }
 
 
 export const runForecast = (name: string) => runJob(["forecast", "run", name]).then((j) => openJob(j.id))
+export const within = (years: number) => (years === 1 ? "within a year" : `within ${years} years`)
 export const best = (f: Forecast) => f.result?.scores["gradient boosting"]
 
 export function useForecasts(): [Forecast[] | null, Set<string>, () => void] {

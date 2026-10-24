@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from typing import Any
 
 from .snapshots import LABEL, Recipe, snapshot
 
 TRAIN_YEARS = 3
 TRAIN_STEP = 2
+
+
+def check_windows(cutoffs: dict[str, list[int]], backtest: list[int], horizon: int) -> None:
+    last_train = max(cutoffs["train"]) + horizon
+    if last_train > min(cutoffs["test"]):
+        raise ValueError(f"train labels reach {last_train}, after the first test cutoff {min(cutoffs['test'])}")
+    unknown = [y for y in [*cutoffs["test"], *backtest] if y + horizon > date.today().year]
+    if unknown:
+        raise ValueError(f"the outcome of test years {unknown} is not known yet with a {horizon} year horizon")
 
 
 def windows(test: int, horizon: int) -> dict[str, list[int]]:
