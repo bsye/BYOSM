@@ -135,3 +135,18 @@ def options_rival(
         log(
             f"  {who}: exact {s['exact']['accuracy']} ({s['exact']['ci'][0]} to {s['exact']['ci'][1]}) on {out['sample']} requests"
         )
+
+
+series_app = typer.Typer(no_args_is_help=True, help="Time series: specialists against Timestral on GIFT-Eval.")
+app.add_typer(series_app, name="series")
+
+
+@series_app.command("run")
+def series_run(
+    domain: str = typer.Argument(..., help="energy, sales, operations, or one GIFT-Eval dataset such as solar/H"),
+) -> None:
+    """Train a forecasting specialist for a domain and score it against seasonal naive and Timestral, with timings."""
+    from ..config import find_workspace
+    from ..series.run import run_domain
+
+    run_domain(find_workspace(), domain, log)

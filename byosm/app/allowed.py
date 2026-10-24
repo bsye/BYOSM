@@ -37,6 +37,7 @@ ALLOWED_COMMANDS = (
     "ideas",
     "opendata",
     "options",
+    "series",
     "forecast",
     "inputs",
     "datasets",

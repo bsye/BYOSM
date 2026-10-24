@@ -1197,3 +1197,7 @@ Without options, `byosm continue` (and the Keep training button) plans the step 
 ## Jobs and a sleeping Mac
 
 When the Mac sleeps, a running job freezes; on waking, the stall watchdog used to see hours without output and killed healthy trainings (two at once, after a night). The watchdog now notices a clock jump much larger than its polling interval and does not count that time as silence. While a job runs, `caffeinate -i -w <pid>` also keeps the Mac from idle sleep, ending by itself with the job; closing the lid still sleeps the machine. `keep_awake: false` in `byosm.yaml` turns that off.
+
+## Time series against Timestral
+
+`byosm series run <domain>` trains a forecasting specialist on a GIFT-Eval domain (energy, sales, operations, or any single dataset) and scores it with the rivals by the same code. The protocol follows GIFT-Eval's short term: the horizon comes from the frequency, the last windows of each series are the test (up to 20, about a tenth of the shortest series), and specialists train only on values before the first test window. MASE is scaled by each series' seasonal naive error, CRPS comes from nine quantiles, and a domain is summarised by the geometric mean of each dataset's score relative to seasonal naive, as GIFT-Eval does. Every model's training seconds and milliseconds per forecast are recorded. Timestral is scored through its own package when it is installed; the first specialist is a gradient-boosted global model per quantile on scaled lags, a seasonal lag, the step and recent level statistics.
