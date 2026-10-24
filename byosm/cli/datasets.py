@@ -83,3 +83,15 @@ def continue_training(
     log(f"created {name}/{exp}: {why}" + (f", adding {data}" if data else ""))
     if run:
         build(name, exp, log)
+
+
+@app.command("dataset-gaps")
+def dataset_gaps() -> None:
+    """Rank tasks and languages where Hugging Face models are downloaded far more than the datasets to train them."""
+    from ..config import find_workspace
+    from ..hub.demand import save, scan
+
+    rows = scan(log)
+    save(find_workspace(), rows)
+    for r in rows[:10]:
+        log(f"  {r['score']:>8.1f}x  {r['prompt']}")
