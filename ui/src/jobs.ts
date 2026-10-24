@@ -52,16 +52,19 @@ export function describe(job: Pick<Job, "args" | "target">): Described {
   return job.target ? { ...parsed, target: job.target } : parsed
 }
 
+const positional = (args: string[]) => args.filter((a, i) => !a.startsWith("--") && !(args[i - 1]?.startsWith("--") && !NAMED_FLAGS.has(args[i - 1])))
+
 function fromArgs(args: string[]): Described {
   const [cmd, ...rest] = args
   const sub = SUB_VERBS[cmd]?.[rest[0]]
-  if (sub && cmd === "opendata") return { title: sub, target: null, subject: rest[1] ?? null }
-  if (sub) return { title: sub, target: rest[1] ?? null, subject: rest[2] ?? null }
+  const given = positional(rest.slice(1))
+  if (sub && cmd === "opendata") return { title: sub, target: null, subject: given[0] ?? null }
+  if (sub) return { title: sub, target: given[0] ?? null, subject: given[1] ?? null }
   if (cmd === "inputs") return { title: INPUT_VERBS[rest[0]] ?? "Test inputs", target: rest[1] ?? null, subject: rest[rest.indexOf("--set") + 1] ?? null }
   if (cmd === "system") return { title: `${rest[0] === "eval" ? "Score" : "Build"} team`, target: rest[1] ?? null, subject: null }
   const applied = rest.includes("--apply") ? rest[rest.indexOf("--apply") + 1].split(",").length : 0
   const verb = cmd === "improve" && applied ? (applied === 1 ? "Run 1 experiment" : `Run ${applied} experiments`) : (VERBS[cmd] ?? cmd)
-  const plain = rest.filter((a, i) => !a.startsWith("--") && !(rest[i - 1]?.startsWith("--") && !NAMED_FLAGS.has(rest[i - 1])))
+  const plain = positional(rest)
   if (cmd === "auto" && plain.length === 1 && plain[0].includes(" ")) return { title: verb, target: null, subject: plain[0] }
   return { title: verb, target: plain[0] ?? null, subject: plain.slice(1).join(" ") || null }
 }
