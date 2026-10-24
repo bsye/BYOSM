@@ -9,6 +9,21 @@ wins.
 BYOSM turns one sentence and one command into a small specialist model that beats general models, including LLMs, in
 its domain, measured on public benchmarks. Every change should serve that thesis or the honesty of its evidence.
 
+## Product
+
+- **One entry point.** Everything BYOSM builds is a specialist (text classifier, tagger, forecaster, event risk,
+  team), created from one sentence in the Home prompt bar or New specialist. The app decides the kind, finds the data
+  and fills every setting. Never add a per-kind creation button or a form that asks for columns, horizons or splits.
+  Kinds show only as filter tabs and the badge on a card.
+- **Best in class against a reference, automatically.** The goal of every build is a model comparable to the best
+  public reference for its task. The path that got one specialist there (finding the reference, protocol checks,
+  balancing data, pretraining, escalating Keep training) is the default path for the next one.
+- **Experiments end as code.** Every experiment that works is consolidated into the pipeline, tested, and noted in
+  `docs/design-notes.md`, so the app does it by default from then on. A result reached only by a scratch script, a
+  manual setting or a one-off command does not count; land it in the code or drop it.
+- **Never cancel running work to free resources.** If jobs wait on the GPU, memory or a lock, fix the scheduling or
+  the memory use; long trainings must be allowed to finish.
+
 ## Code
 
 - **No comments.** Names carry the meaning. The reasons behind a design go in `docs/design-notes.md`, not next to the
@@ -36,11 +51,18 @@ its domain, measured on public benchmarks. Every change should serve that thesis
   paired bootstrap against the baseline.
 - Never claim what has not been run. If a feature exists but has not been measured, say so.
 - Measure speed and accuracy before and after a change that could affect them.
+- A published reference score counts only after a protocol check: our run of a shared baseline (seasonal naive, base
+  rate) must reproduce the published one on the same split. Compare with a reference only on the datasets both were
+  scored on, and say on how many.
 
 ## UI
 
 - The web app in `ui/` follows `docs/ui-guidelines.md`: stock shadcn components only, standard shadcn layout, clear
-  hierarchy, equal-height cards in a grid, informative labels, every state designed. Screenshot before committing.
+  hierarchy, equal-height cards in a grid, informative labels, every state designed.
+- **Work in a cycle.** Build, screenshot the page, critique it against the guidelines, cut what does not earn its
+  place, and repeat before committing.
+- **Formatting.** `ui/.prettierrc` is the style (no semicolons, 160 columns). Run `npx prettier --check` on the files
+  you touch.
 - No regex and no comments in TypeScript either.
 - **Understandable at first glance.** Archetypal elements only: a list of cards that opens a detail page, the primary
   action top right, tabs for sections, stat cards, tables, a centred prompt bar. If a page needs a paragraph to be
@@ -57,7 +79,7 @@ its domain, measured on public benchmarks. Every change should serve that thesis
   caption each. Nothing else: the goal and thesis live in `docs/assumptions.md`, methodology and benchmarks in
   `docs/methodology.md`, results in `docs/results.md`, the rest in `docs/details.md`.
 - Every one of these pages starts and ends with the same contents line linking all of them.
-- Retake the screenshots in `docs/screenshots/` when the UI changes.
+- Retake the screenshots in `docs/screenshots/` when the UI changes, in light mode.
 - Short and visual. Fewer words, more tables and diagrams.
 - No em dashes.
 
