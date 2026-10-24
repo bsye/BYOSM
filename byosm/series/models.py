@@ -87,9 +87,10 @@ class Boosted:
         seasonal, last = x[:, SEASONAL_COLUMN], x[:, MAX_LAGS - 1]
         return np.nan_to_num(np.where(np.isnan(seasonal), last, seasonal))
 
-    def _table(self, groups: list[Group], per_series: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _table(self, groups: list[Group]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         xs, ys, late = [], [], []
         for g in groups:
+            per_series = max(ORIGINS_PER_SERIES, MAX_ROWS // len(groups) // max(1, len(g.histories) * g.horizon))
             start = _lags(g.season) // 2
             for h in g.histories:
                 usable = len(h) - g.horizon
@@ -110,8 +111,7 @@ class Boosted:
     def fit(self, groups: list[Group]) -> None:
         from sklearn.ensemble import HistGradientBoostingRegressor
 
-        cells = sum(len(g.histories) * g.horizon for g in groups)
-        x, y, late = self._table(groups, max(ORIGINS_PER_SERIES, MAX_ROWS // max(1, cells)))
+        x, y, late = self._table(groups)
         known = ~np.isnan(y)
         x, y, late = x[known], y[known], late[known]
         iterations = ITERATIONS * 2**self.effort

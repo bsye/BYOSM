@@ -1282,3 +1282,9 @@ done. GIFT-Eval calls `car_parts_with_missing` just `car_parts`.
 PyTorch's MPS allocator keeps every block it has used and never returns it unless asked. A text encoder at batch
 size 8 was holding 33 GB of GPU memory, leaving 5.7 GB free on a 64 GB machine and every other training queued. The
 cache is now released after each epoch's dev evaluation and after each time series training (`release_cache`).
+
+## Each dataset gets an equal share of boosting rows
+
+With one boosted model per domain, rows were budgeted per series, so electricity's 370 series supplied almost all of
+the 1.5M training rows and the 7-series ETT datasets about 1% each. The row budget is now split equally between the
+domain's datasets, then between each dataset's series.
