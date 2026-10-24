@@ -1325,3 +1325,9 @@ three are added per benchmark. Candidates are ordered by the score they report f
 metadata, then by size, since the larger fine-tuned checkpoint is usually the stronger one. Rivals already on the
 board and models published by BYOSM are skipped. Every added rival is then scored by our own code, so a self-reported
 number never reaches a card; the board's best measured rival is the one cards and health compare against.
+
+## Files shared with running jobs keep their format
+
+Running jobs keep the code they started with, so a file that several jobs read must not change format under them.
+The GPU share file went from a number to JSON and two queued jobs started hours earlier crashed reading it. The share
+file is a number again, and the holder's job and start time live next to it in `slot-N.holder`.

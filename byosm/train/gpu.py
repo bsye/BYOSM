@@ -17,6 +17,7 @@ CORES_PER_TRAINING = 8
 GB_PER_TRAINING = 16
 MPS_SHARE = 0.9
 MIN_SHARE = 0.25
+HOLDER = ".holder"
 SHARE_ENV = "BYOSM_GPU_SHARE"
 ADMISSION_LOCK = "admission.lock"
 JOB_ENV = "BYOSM_JOB_ID"
@@ -90,8 +91,8 @@ def held_share(ws: Path) -> float:
 def _reserved(path: Path) -> dict:
     if not path.exists():
         return {}
-    text = path.read_text().strip()
-    return json.loads(text) if text.startswith("{") else {"share": float(text or 0)}
+    holder = path.with_suffix(HOLDER)
+    return {"share": float(path.read_text() or 0), **(json.loads(holder.read_text()) if holder.exists() else {})}
 
 
 def holders(ws: Path) -> list[dict]:
@@ -161,8 +162,9 @@ def gpu_slot(device: str, log: Callable[[str], None] = print, fallback: str | No
             )
             if taken:
                 index, handle = taken
-                held = {"share": round(share, 3), "job": os.environ.get(JOB_ENV), "since": time.time()}
-                (base / f"slot-{index}.share").write_text(json.dumps(held))
+                (base / f"slot-{index}.share").write_text(f"{share:.3f}")
+                holder = {"job": os.environ.get(JOB_ENV), "since": time.time()}
+                (base / f"slot-{index}{HOLDER}").write_text(json.dumps(holder))
                 break
         if fallback:
             log(f"  the {device} GPU is busy: training on the {fallback} instead")
@@ -184,6 +186,7 @@ def gpu_slot(device: str, log: Callable[[str], None] = print, fallback: str | No
         yield device
     finally:
         (base / f"slot-{index}.share").unlink(missing_ok=True)
+        (base / f"slot-{index}{HOLDER}").unlink(missing_ok=True)
         fcntl.flock(handle, fcntl.LOCK_UN)
         handle.close()
 
