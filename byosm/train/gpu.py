@@ -17,6 +17,7 @@ GB_PER_TRAINING = 16
 MPS_SHARE = 0.9
 MIN_SHARE = 0.25
 SHARE_ENV = "BYOSM_GPU_SHARE"
+ADMISSION_LOCK = "admission.lock"
 LOCK_DIR = STATE_DIR / "gpu"
 WAIT_S = 5
 HEARTBEAT_S = 300
@@ -100,6 +101,17 @@ def _cap_memory(device: str, log: Callable[[str], None], share: float | None = N
 
 
 @contextlib.contextmanager
+def _admission(base: Path) -> Iterator[None]:
+    base.mkdir(parents=True, exist_ok=True)
+    with (base / ADMISSION_LOCK).open("w") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
 def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
     if device not in GPU_DEVICES:
         yield
@@ -110,12 +122,16 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
     ws, waited = find_workspace(), 0.0
     base = ws / LOCK_DIR
     while True:
-        share = _share_left(device, ws)
-        roomy = share >= MIN_SHARE and _may_start(device, ws)
-        taken = next(((i, h) for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if roomy else None
-        if taken:
-            index, handle = taken
-            break
+        with _admission(base):
+            share = _share_left(device, ws)
+            roomy = share >= MIN_SHARE and _may_start(device, ws)
+            taken = (
+                next(((i, h) for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if roomy else None
+            )
+            if taken:
+                index, handle = taken
+                (base / f"slot-{index}.share").write_text(f"{share:.3f}")
+                break
         if not waited:
             log(
                 f"  waiting for the {device} GPU: other trainings hold {held_share(ws):.0%} of it, or less than {needed_gb():.0f} GB is free"
@@ -126,7 +142,6 @@ def gpu_slot(device: str, log: Callable[[str], None] = print) -> Iterator[None]:
         waited += WAIT_S
     if waited:
         log(f"  got the GPU after {waited:.0f} s")
-    (base / f"slot-{index}.share").write_text(f"{share:.3f}")
     os.environ[SHARE_ENV] = f"{share:.3f}"
     _cap_memory(device, log, share)
     try:

@@ -118,3 +118,22 @@ def test_each_recovery_is_reported_as_an_event(ws, monkeypatch, capsys):
         and "out of GPU memory" in events[0]["why"]
         and events[0]["batch"] == spec.train.batch_size // 2
     )
+
+
+def test_trainings_starting_together_cannot_both_reserve_most_of_the_gpu(ws, monkeypatch):
+    _two_slots(ws, monkeypatch)
+    reserved = []
+    monkeypatch.setattr(gpu, "_cap_memory", lambda device, log, share=None: reserved.append(gpu.held_share(ws)))
+    release, ready = threading.Event(), threading.Barrier(2)
+
+    def train():
+        ready.wait(5)
+        with gpu.gpu_slot("mps", log=lambda _: None):
+            release.wait(0.5)
+
+    threads = [threading.Thread(target=train) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(reserved) == 2 and max(reserved) <= gpu.MPS_SHARE + 1e-6
