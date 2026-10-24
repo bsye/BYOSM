@@ -1220,3 +1220,11 @@ electricity went from 0.198 to 0.094 (seasonal naive 0.102); the median forecast
 A training can ask `gpu_slot` for a fallback device. When the GPU has no room at that moment, it runs there at once
 instead of queueing. The time series patch transformer (0.6M parameters) uses it: it trains on the CPU in minutes,
 while a queue behind a large training can last hours.
+
+## Boosting predicts a correction to seasonal naive
+
+The boosted forecaster predicts how far each step will be from the seasonal naive value, in units of that series'
+own noise, capped at ten units. A series that barely moves (some GIFT-Eval service metrics sit at 0.74 with a 0.001
+step) then gets seasonal naive plus a small correction, instead of the model's usual error on a level scale. The cap
+matters: without it, one step change on a constant stretch becomes a target of hundreds of units and dominates the
+squared-error fit.
