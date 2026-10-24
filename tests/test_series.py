@@ -47,3 +47,15 @@ def test_the_boosted_specialist_beats_seasonal_naive_on_a_seasonal_series():
     model.fit(histories, 24, 48)
     batch = model.predict_many([t["history"] for t in tests], 48)
     assert all(np.allclose(b, model.predict(t["history"], 48)) for b, t in zip(batch, tests, strict=True))
+
+
+@pytest.mark.slow
+def test_a_series_that_is_zero_half_the_time_is_not_forecast_as_all_zeros():
+    t = np.arange(24 * 120)
+    sun = [np.clip(np.sin(2 * np.pi * (t - 6) / 24), 0, None) * (100 + i) for i in range(4)]
+    series = [Series(str(i), "H", v) for i, v in enumerate(sun)]
+    cut = windows(series) * 48
+    model = Boosted()
+    model.fit([s.values[: len(s.values) - cut] for s in series], 24, 48)
+    median = model.predict(series[0].values[: len(t) - cut], 48)[QUANTILES.index(0.5)]
+    assert median.max() > 50
