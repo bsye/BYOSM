@@ -150,3 +150,11 @@ def series_run(
     from ..series.run import run_domain
 
     run_domain(find_workspace(), domain, log)
+
+
+@series_app.command("pretrain")
+def series_pretrain() -> None:
+    """Pretrain the patch transformer on the training portion of every GIFT-Eval dataset, never their test windows."""
+    from ..series.patch import pretrain
+
+    pretrain(log)

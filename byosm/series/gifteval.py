@@ -67,3 +67,10 @@ def splits(series: list[Series]) -> list[dict[str, Any]]:
                     {"item": s.item, "freq": s.freq, "history": s.values[:end], "future": s.values[end : end + h]}
                 )
     return out
+
+
+def all_configs() -> list[str]:
+    from huggingface_hub import list_repo_files
+
+    files = list_repo_files(REPO, repo_type="dataset")
+    return sorted({f.rpartition("/")[0] for f in files if f.endswith(ARROW)})

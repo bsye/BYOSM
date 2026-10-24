@@ -68,7 +68,27 @@ def test_the_patch_model_returns_sorted_quantiles_for_every_window(monkeypatch):
     monkeypatch.setattr(patch, "BATCH", 8)
     histories = [_wave(seed=i) for i in range(3)]
     model = patch.PatchModel()
+    monkeypatch.setattr(patch, "_device", lambda: "cpu")
     model.fit(histories, 24, 48)
     out = model.predict_many([h[:-48] for h in histories] + [np.full(10, np.nan)], 48)
     assert len(out) == 4 and all(o.shape == (len(QUANTILES), 48) for o in out)
     assert all(np.all(np.diff(o, axis=0) >= 0) for o in out)
+
+
+def test_a_pretrained_patch_model_starts_from_the_saved_weights(tmp_path, monkeypatch):
+    import torch
+
+    import byosm.series.patch as patch
+    from byosm.series.patch_net import PatchNet
+
+    saved = PatchNet()
+    torch.save(saved.state_dict(), tmp_path / "w.pt")
+    monkeypatch.setattr(patch, "weights_path", lambda: tmp_path / "w.pt")
+    monkeypatch.setattr(patch, "FINETUNE_STEPS", 1)
+    monkeypatch.setattr(patch, "FINETUNE_LR", 1e-12)
+    monkeypatch.setattr(patch, "BATCH", 4)
+    monkeypatch.setattr(patch, "_device", lambda: "cpu")
+    model = patch.PretrainedPatch()
+    model.fit([_wave()], 24, 30)
+    assert torch.allclose(model.net.embed.weight, saved.embed.weight, atol=1e-6)
+    assert model.predict(_wave()[:-30], 30).shape == (len(QUANTILES), 30)

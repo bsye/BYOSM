@@ -1,103 +1,95 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
+
 import numpy as np
 import torch
-from torch import nn
 
-from .metrics import QUANTILES
+from .patch_net import MAX_HORIZON, PatchNet, train, window
 
-CONTEXT = 512
-PATCH = 16
-WIDTH = 128
-LAYERS = 3
-HEADS = 4
 STEPS = 3000
+FINETUNE_STEPS = 800
+PRETRAIN_STEPS = 20000
 BATCH = 256
 LR = 1e-3
+FINETUNE_LR = 2e-4
 SEED = 0
-DEVICE = "cpu"
+WEIGHTS = "patch-pretrained.pt"
 
 
-class PatchNet(nn.Module):
-    def __init__(self, horizon: int):
-        super().__init__()
-        self.horizon, patches = horizon, CONTEXT // PATCH
-        self.embed = nn.Linear(2 * PATCH, WIDTH)
-        self.position = nn.Parameter(torch.zeros(patches, WIDTH))
-        layer = nn.TransformerEncoderLayer(WIDTH, HEADS, 4 * WIDTH, dropout=0.1, batch_first=True, norm_first=True)
-        self.encoder = nn.TransformerEncoder(layer, LAYERS)
-        self.head = nn.Linear(patches * WIDTH, horizon * len(QUANTILES))
+def weights_path() -> Path:
+    from ..config import cache_root
 
-    def forward(self, values: torch.Tensor, seen: torch.Tensor) -> torch.Tensor:
-        v, m = values.unfold(1, PATCH, PATCH), seen.unfold(1, PATCH, PATCH)
-        x = self.encoder(self.embed(torch.cat([v, m], -1)) + self.position)
-        return self.head(x.flatten(1)).view(-1, len(QUANTILES), self.horizon)
+    return cache_root() / "series" / WEIGHTS
 
 
-def _window(history: np.ndarray) -> tuple[np.ndarray, np.ndarray, float, float]:
-    ctx = history[-CONTEXT:]
-    ctx = np.concatenate([np.full(CONTEXT - len(ctx), np.nan), ctx])
-    seen = ~np.isnan(ctx)
-    mean = float(np.mean(ctx[seen])) if seen.any() else 0.0
-    std = float(np.std(ctx[seen])) if seen.any() else 1.0
-    std = std or 1.0
-    return np.where(seen, (ctx - mean) / std, 0.0), seen.astype(float), mean, std
+def _device() -> str:
+    from ..config import device
 
-
-def _pinball(pred: torch.Tensor, target: torch.Tensor, known: torch.Tensor) -> torch.Tensor:
-    levels = torch.tensor(QUANTILES).view(1, -1, 1)
-    diff = target.unsqueeze(1) - pred
-    loss = torch.maximum(levels * diff, (levels - 1) * diff) * known.unsqueeze(1)
-    return loss.sum() / known.sum().clamp(min=1)
+    return device()
 
 
 class PatchModel:
     name = "patch transformer"
+    pretrained = False
 
     def fit(self, histories: list[np.ndarray], season: int, horizon: int) -> None:
+        from ..train.gpu import gpu_slot
+
         torch.manual_seed(SEED)
-        rng = np.random.default_rng(SEED)
-        self.horizon = horizon
-        usable = [h for h in histories if len(h) > horizon + PATCH]
-        self.net = PatchNet(horizon).to(DEVICE)
-        opt = torch.optim.AdamW(self.net.parameters(), lr=LR, weight_decay=0.01)
-        sched = torch.optim.lr_scheduler.OneCycleLR(opt, LR, total_steps=STEPS)
-        self.net.train()
-        for _ in range(STEPS):
-            values, seen, targets, known = [], [], [], []
-            for i in rng.integers(0, len(usable), BATCH):
-                h = usable[i]
-                end = int(rng.integers(PATCH, len(h) - horizon + 1))
-                v, m, mean, std = _window(h[:end])
-                future = (h[end : end + horizon] - mean) / std
-                values.append(v)
-                seen.append(m)
-                targets.append(np.nan_to_num(future))
-                known.append(~np.isnan(future))
-            pred = self.net(*(torch.tensor(np.asarray(a), dtype=torch.float32, device=DEVICE) for a in (values, seen)))
-            loss = _pinball(
-                pred,
-                torch.tensor(np.asarray(targets), dtype=torch.float32),
-                torch.tensor(np.asarray(known), dtype=torch.float32),
-            )
-            opt.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.net.parameters(), 1.0)
-            opt.step()
-            sched.step()
-        self.net.eval()
+        self.net = PatchNet()
+        steps, lr = STEPS, LR
+        if self.pretrained:
+            self.net.load_state_dict(torch.load(weights_path(), map_location="cpu"))
+            steps, lr = FINETUNE_STEPS, FINETUNE_LR
+        device = _device()
+        with gpu_slot(device, lambda _: None):
+            train(self.net, histories, horizon, steps, lr, BATCH, device, SEED)
 
     def predict(self, history: np.ndarray, horizon: int) -> np.ndarray:
         return self.predict_many([history], horizon)[0]
 
     def predict_many(self, histories: list[np.ndarray], horizon: int) -> list[np.ndarray]:
-        windows = [_window(h) for h in histories]
+        windows = [window(h) for h in histories]
         out = []
         with torch.no_grad():
             for start in range(0, len(windows), BATCH):
                 part = windows[start : start + BATCH]
                 v = torch.tensor(np.asarray([w[0] for w in part]), dtype=torch.float32)
                 m = torch.tensor(np.asarray([w[1] for w in part]), dtype=torch.float32)
-                pred = self.net(v, m).numpy()
+                pred = self.net(v, m).numpy()[:, :, :horizon]
                 out += [np.sort(p * w[3] + w[2], axis=0) for p, w in zip(pred, part, strict=True)]
         return out
+
+
+class PretrainedPatch(PatchModel):
+    name = "patch transformer, pretrained"
+    pretrained = True
+
+
+def pretrain(log: Callable[[str], None]) -> Path:
+    from .gifteval import all_configs, horizon, load, windows
+
+    histories = []
+    for config in all_configs():
+        try:
+            series = load(config)
+        except Exception as e:
+            log(f"  skip {config}: {type(e).__name__}")
+            continue
+        cut = windows(series) * horizon(series[0].freq)
+        histories += [s.values[: len(s.values) - cut] for s in series if len(s.values) > cut]
+        log(f"  {config}: {len(series)} series, training portion only")
+    torch.manual_seed(SEED)
+    net, device = PatchNet(), _device()
+    from ..train.gpu import gpu_slot
+
+    log(f"  pretraining on {len(histories)} series for {PRETRAIN_STEPS} steps on {device}")
+    with gpu_slot(device, log):
+        train(net, histories, MAX_HORIZON, PRETRAIN_STEPS, LR, BATCH, device, SEED)
+    path = weights_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(net.state_dict(), path)
+    log(f"  saved {path}")
+    return path

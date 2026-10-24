@@ -10,7 +10,7 @@ import numpy as np
 from .gifteval import DOMAINS, horizon, load, season, splits, windows
 from .metrics import geomean, relative, summary
 from .models import Boosted, rivals
-from .patch import PatchModel
+from .patch import PatchModel, PretrainedPatch, weights_path
 
 REPORT = "series:"
 NAIVE = "seasonal naive"
@@ -24,7 +24,7 @@ def run_config(config: str, log: Callable[[str], None]) -> dict[str, Any]:
     histories = [x.values[: len(x.values) - cut] for x in series]
     log(f"  {config}: {len(series)} series, {len(tests)} windows of {h} steps")
     out = {}
-    for model in [*rivals(), Boosted(), PatchModel()]:
+    for model in [*rivals(), Boosted(), PatchModel(), *([PretrainedPatch()] if weights_path().exists() else [])]:
         t0 = time.perf_counter()
         model.fit(histories, s, h)
         trained = time.perf_counter() - t0
