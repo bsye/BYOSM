@@ -20,7 +20,7 @@ def test_with_one_slot_only_one_job_trains_on_the_gpu_at_a_time(ws, monkeypatch)
     import byosm.train.gpu as gpu
 
     monkeypatch.setattr(gpu, "WAIT_S", 0.05)
-    monkeypatch.setattr(gpu, "_roomy", lambda: True)
+    monkeypatch.setattr(gpu, "free_gb", lambda: 100.0)
     threads = [threading.Thread(target=job, args=(n,)) for n in "ab"]
     for t in threads:
         t.start()
@@ -53,8 +53,8 @@ def test_slots_follow_cores_and_memory_up_to_two(monkeypatch):
 def test_a_training_waits_while_memory_is_short(ws, monkeypatch):
     import byosm.train.gpu as gpu
 
-    free = iter([2.0, 2.0, 40.0])
-    monkeypatch.setattr(gpu, "free_gb", lambda: next(free))
+    reads = []
+    monkeypatch.setattr(gpu, "free_gb", lambda: 2.0 if len(reads.append(1) or reads) < 6 else 40.0)
     monkeypatch.setattr(gpu, "WAIT_S", 0.01)
     monkeypatch.setattr(gpu, "busy_slots", lambda _: 1)
     lines = []

@@ -1338,3 +1338,11 @@ Doubling a forecaster's training each round gained under 1% of calib MASE per ro
 0.849, 0.842, 0.838 on test) while doubling the CPU time. Keep training now stops when a round improves the best calib
 MASE by less than `MIN_GAIN` (1%) and names the next lever: the pretrained base model, or a bigger one once the base
 exists. The pretrained recipe joins every round automatically when its weights are on disk.
+
+## Admit trainings by the memory that is really free
+
+Reservations alone kept three trainings waiting for hours while the GPU holder used 2.3 GB and the machine had 35 GB
+free: the first training reserves up to 90% of the GPU so it can grow alone, and nothing else fit the 10% left. On
+Apple silicon a waiting training's share is now the larger of what the reservations leave and the share of memory
+actually free, so it starts when real memory allows. If two trainings later grow into each other, the out-of-memory
+recovery halves the batch.

@@ -22,8 +22,9 @@ def test_a_training_alone_gets_most_of_the_gpu_and_gives_it_back(ws, monkeypatch
     assert caps == [gpu.MPS_SHARE] and gpu.held_share(ws) == 0.0
 
 
-def test_a_second_training_waits_until_the_first_gives_its_share_back(ws, monkeypatch):
+def test_a_second_training_waits_while_memory_is_really_short(ws, monkeypatch):
     caps = _two_slots(ws, monkeypatch)
+    monkeypatch.setattr(gpu, "free_gb", lambda: 4.0)
     started, release, done = threading.Event(), threading.Event(), threading.Event()
 
     def first():
@@ -120,8 +121,9 @@ def test_each_recovery_is_reported_as_an_event(ws, monkeypatch, capsys):
     )
 
 
-def test_trainings_starting_together_cannot_both_reserve_most_of_the_gpu(ws, monkeypatch):
+def test_trainings_starting_together_when_memory_is_short_cannot_both_reserve_most_of_the_gpu(ws, monkeypatch):
     _two_slots(ws, monkeypatch)
+    monkeypatch.setattr(gpu, "free_gb", lambda: 4.0)
     reserved = []
     monkeypatch.setattr(gpu, "_cap_memory", lambda device, log, share=None: reserved.append(gpu.held_share(ws)))
     release, ready = threading.Event(), threading.Barrier(2)
@@ -150,6 +152,7 @@ def test_the_gpu_queue_shows_which_job_holds_the_gpu_and_its_share(ws, monkeypat
 
 def test_a_small_training_runs_on_the_cpu_instead_of_waiting_for_a_busy_gpu(ws, monkeypatch):
     _two_slots(ws, monkeypatch)
+    monkeypatch.setattr(gpu, "free_gb", lambda: 4.0)
     with (
         gpu.gpu_slot("mps", log=lambda _: None) as first,
         gpu.gpu_slot("mps", log=lambda _: None, fallback="cpu") as second,
@@ -157,3 +160,11 @@ def test_a_small_training_runs_on_the_cpu_instead_of_waiting_for_a_busy_gpu(ws, 
         assert (first, second) == ("mps", "cpu")
     with gpu.gpu_slot("mps", log=lambda _: None, fallback="cpu") as alone:
         assert alone == "mps"
+
+
+def test_a_second_training_starts_when_memory_is_free_even_if_the_first_reserved_most(ws, monkeypatch):
+    _two_slots(ws, monkeypatch)
+    monkeypatch.setattr(gpu, "free_gb", lambda: 32.0)
+    monkeypatch.setattr("psutil.virtual_memory", lambda: type("M", (), {"total": 64 * 1024**3})())
+    with gpu.gpu_slot("mps", log=lambda _: None), gpu.gpu_slot("mps", log=lambda _: None, fallback="cpu") as second:
+        assert second == "mps"

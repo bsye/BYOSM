@@ -56,12 +56,8 @@ def needed_gb() -> float:
     return min(GB_PER_TRAINING, psutil.virtual_memory().total * UNIFIED_MEMORY_SHARE / 1024**3)
 
 
-def _roomy() -> bool:
-    return free_gb() >= needed_gb()
-
-
 def _may_start(device: str, ws: Path) -> bool:
-    return device == "cuda" or busy_slots(ws) == 0 or _roomy()
+    return device == "cuda" or busy_slots(ws) == 0 or free_gb() >= needed_gb()
 
 
 def _try(path: Path):
@@ -109,7 +105,11 @@ def holders(ws: Path) -> list[dict]:
 
 
 def _share_left(device: str, ws: Path) -> float:
-    return MPS_SHARE - held_share(ws) if device == "mps" else MPS_SHARE
+    if device != "mps":
+        return MPS_SHARE
+    import psutil
+
+    return max(MPS_SHARE - held_share(ws), min(MPS_SHARE, free_gb() * 1024**3 / psutil.virtual_memory().total))
 
 
 def release_cache() -> None:
