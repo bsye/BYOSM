@@ -124,3 +124,14 @@ def test_an_experiment_that_never_finished_is_built_before_improving(ws, monkeyp
     monkeypatch.setattr(autopilot, "_report", lambda p, decisions, final: None)
     autopilot.run("t", echo=lambda m: None)
     assert calls == ["build", "improve"]
+
+
+def test_next_steps_that_run_the_same_command_are_shown_once_in_their_first_place():
+    from byosm.next_steps import unique
+
+    steps = [
+        {"args": ["eval", "q"], "title": "a"},
+        {"args": ["improve", "q"], "title": "b"},
+        {"args": ["eval", "q"], "title": "c"},
+    ]
+    assert [s["title"] for s in unique(steps)] == ["a", "b"]

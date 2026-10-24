@@ -119,6 +119,11 @@ def _with_gain(step: dict[str, Any], cs: list[dict]) -> dict[str, Any]:
     return {**step, "gain": gain, "unblocks": [c["title"] for c in hit if c["status"] in (FAIL, UNKNOWN)]}
 
 
+def unique(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[str, ...]] = set()
+    return [s for s in steps if not (tuple(s["args"]) in seen or seen.add(tuple(s["args"])))]
+
+
 def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
     p = Project(name, ws)
     if not p.exists():
@@ -139,4 +144,4 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         faster(p, spec, cs),
         _experiments(p),
     ]
-    return [_with_gain(s, cs) for s in [s for s in steps if s] + _from_checks(p, spec)]
+    return [_with_gain(s, cs) for s in unique([s for s in steps if s] + _from_checks(p, spec))]
