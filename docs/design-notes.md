@@ -1430,3 +1430,10 @@ mean level and training targets are capped at 50 scaled units; ordinary windows 
 A training that cannot get the GPU falls back to the CPU once, at its start, and stays there. That suits the small
 patch transformer (2.8M parameters, 512-point context), but the pretrained base (6M, 1024-point context) fine-tuned at
 about 1,000 steps an hour on the CPU while the GPU freed up beside it. The pretrained base now waits for the GPU.
+
+## The GPU queue backfills
+
+With strict first come first served, a job that needed 34 GB held the head of the queue while 29 GB were free, so a
+job that fitted waited behind it and a slot sat idle. Each ticket now records the share its job needs, and an older
+ticket blocks a newer one only if the older job could start with the share free now; otherwise a job that fits goes
+first.

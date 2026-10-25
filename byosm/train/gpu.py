@@ -123,12 +123,12 @@ def gpu_slot(
 
     ws, waited = find_workspace(), 0.0
     base = ws / LOCK_DIR
-    ticket = None if fallback else join(base)
+    enough = max(MIN_SHARE, need_gb(base, key) / total_gb())
+    ticket = None if fallback else join(base, enough)
     while True:
         with _admission(base):
             share = _share_left(device, ws)
-            enough = max(MIN_SHARE, need_gb(base, key) / total_gb())
-            roomy = share >= enough and _may_start(device, ws) and (ticket is None or first(ticket))
+            roomy = share >= enough and _may_start(device, ws) and (ticket is None or first(ticket, share))
             taken = (
                 next(((i, h) for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if roomy else None
             )

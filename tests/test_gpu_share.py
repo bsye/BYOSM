@@ -170,18 +170,19 @@ def test_a_second_training_starts_when_memory_is_free_even_if_the_first_reserved
         assert second == "mps"
 
 
-def test_the_gpu_goes_to_whoever_has_waited_longest(tmp_path):
+def test_the_gpu_goes_to_whoever_has_waited_longest_unless_they_cannot_fit_yet(tmp_path):
     import os
 
     from byosm.train.gpu_queue import QUEUE, TICKET, first, join
 
-    mine = join(tmp_path)
+    mine = join(tmp_path, 0.3)
     older = tmp_path / QUEUE / f"{os.getppid()}{TICKET}"
-    older.write_text("1.0")
-    assert not first(mine)
+    older.write_text("1.0 0.5")
+    assert not first(mine, room=0.6)
+    assert first(mine, room=0.4)
     older.unlink()
-    (tmp_path / QUEUE / f"999999{TICKET}").write_text("0.5")
-    assert first(mine) and not (tmp_path / QUEUE / f"999999{TICKET}").exists()
+    (tmp_path / QUEUE / f"999999{TICKET}").write_text("0.5 0.1")
+    assert first(mine, room=0.6) and not (tmp_path / QUEUE / f"999999{TICKET}").exists()
 
 
 def test_a_share_file_written_by_an_older_job_as_json_is_still_read(ws):
