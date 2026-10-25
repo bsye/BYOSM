@@ -56,7 +56,12 @@ def _text(sp: Specialist, out: Path) -> tuple[dict[str, Any], list[str], tuple, 
     enc = mod.tokenizer(["example input for export tracing"], return_tensors="pt")
     names = [k for k in TOKEN_INPUTS if k in enc]
     example = tuple(enc[k] for k in names)
-    frontend = {"type": "tokenizer", "max_len": sp.spec.train.max_len, "inputs": names}
+    frontend = {
+        "type": "tokenizer",
+        "max_len": sp.spec.train.max_len,
+        "truncation": sp.spec.train.truncation,
+        "inputs": names,
+    }
     return frontend, names, example, {k: {0: "batch", 1: "seq"} for k in names}
 
 

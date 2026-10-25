@@ -29,6 +29,17 @@ def hysteresis(
     return st.finish(len(p))
 
 
+HEAD_TAIL = "head_tail"
+HEAD_SHARE = 0.25
+
+
+def head_tail(ids: list[int], n: int) -> list[int]:
+    if len(ids) <= n:
+        return list(ids)
+    head = int(n * HEAD_SHARE)
+    return list(ids[:head]) + list(ids[len(ids) - (n - head) :])
+
+
 class HysteresisState:
     def __init__(
         self,
@@ -243,7 +254,8 @@ class Specialist:
         from tokenizers import Tokenizer
 
         tok = Tokenizer.from_file(str(self.dir / "tokenizer.json"))
-        tok.enable_truncation(fe["max_len"])
+        if fe.get("truncation") != HEAD_TAIL:
+            tok.enable_truncation(fe["max_len"])
         if fe["type"] == "document":
             tok.enable_padding()
         return tok
@@ -263,9 +275,11 @@ class Specialist:
 
     def _text_inputs(self, x: Any, fe: dict) -> dict[str, np.ndarray]:
         enc = self._encode_text(x)
-        feeds = {"input_ids": np.array([enc.ids], np.int64), "attention_mask": np.array([enc.attention_mask], np.int64)}
+        n = fe["max_len"] if fe.get("truncation") == HEAD_TAIL else len(enc.ids)
+        ids, types = head_tail(enc.ids, n), head_tail(enc.type_ids, n)
+        feeds = {"input_ids": np.array([ids], np.int64), "attention_mask": np.ones((1, len(ids)), np.int64)}
         if "token_type_ids" in fe.get("inputs", []):
-            feeds["token_type_ids"] = np.array([enc.type_ids], np.int64)
+            feeds["token_type_ids"] = np.array([types], np.int64)
         return feeds
 
     def _document_inputs(self, x: Any, fe: dict) -> dict[str, np.ndarray]:

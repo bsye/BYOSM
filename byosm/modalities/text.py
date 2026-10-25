@@ -6,7 +6,7 @@ from typing import Any
 
 import torch
 
-from ..rt import first_subtokens
+from ..rt import HEAD_TAIL, first_subtokens, head_tail
 from .base import IGNORE, Backbone, Modality, pretrained, register
 
 
@@ -57,6 +57,9 @@ class Text(Modality):
     ) -> tuple[dict[str, torch.Tensor], torch.Tensor | None]:
         max_len = self.spec.train.max_len
         if frame_labels is None and self.spec.task_type != "frame":
+            if self.spec.train.truncation == HEAD_TAIL:
+                ids = [head_tail(x, max_len) for x in self.tokenizer(raws, truncation=False)["input_ids"]]
+                return dict(self.tokenizer.pad({"input_ids": ids}, return_tensors="pt")), None
             enc = self.tokenizer(raws, padding=True, truncation=True, max_length=max_len, return_tensors="pt")
             return dict(enc), None
         enc = self.encode_words(raws)

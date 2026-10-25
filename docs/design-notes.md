@@ -1392,3 +1392,12 @@ cache is released and saved per backbone when it leaves its slot (`.byosm/gpu/ne
 memory records 25% more than the share it had. A backbone with a recorded need is admitted only once that much is
 free. All memory accounting (free, total, needed, cache release, needs) lives in `train/gpu_memory.py`, which the job
 admission in `resources.py` also uses instead of its own copy of `free_gb`.
+
+## Long inputs keep their head and their tail
+
+The tool-call gate's own error analysis found that every dev example with 15 to 25 tools was wrong: the tool list comes
+first, the deciding user turn last, and plain truncation at the length cap cut the user turn. A text classifier can
+now read long inputs head and tail (`train.truncation: head_tail`): the first quarter of the token budget from the
+start and the rest from the end, the split found best for long-text classification with BERT-style models. New text
+specs use it; older models keep `right`, and the setting travels in the bundle's manifest so the one-file runtime
+(`rt.head_tail`, which training imports too) reads inputs exactly as training did.

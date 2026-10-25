@@ -65,7 +65,8 @@ def _named(candidates: list[dict]) -> list[str]:
 def train_cfg(mod: str, backbone: str) -> TrainCfg:
     recipe = PRETRAINED_TRAIN if backbone.startswith("hf:") else FROM_SCRATCH_TRAIN
     batch = {"batch_size": AUDIO_BATCH_SIZE} if mod == "audio" else {}
-    return TrainCfg(**recipe, **batch)
+    reading = {"truncation": "head_tail"} if mod == "text" else {}
+    return TrainCfg(**recipe, **batch, **reading)
 
 
 def _task_fields(out: dict) -> dict:

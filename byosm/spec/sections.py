@@ -131,6 +131,7 @@ class TrainCfg(BaseModel):
     lr_head: float = 1e-3
     freeze_backbone: bool = False
     max_len: int = 128
+    truncation: Literal["right", "head_tail"] = "right"
     refine_rounds: int = 2
     refine_examples: int = 300
     pool: Literal["mean", "attention"] = "mean"
