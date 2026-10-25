@@ -73,23 +73,15 @@ def _try(path: Path):
 
 
 def held_share(ws: Path) -> float:
-    held = 0.0
-    for i in range(slots()):
-        lock, share = ws / LOCK_DIR / f"slot-{i}.lock", ws / LOCK_DIR / f"slot-{i}.share"
-        handle = _try(lock) if lock.exists() else None
-        if handle is not None:
-            fcntl.flock(handle, fcntl.LOCK_UN)
-            handle.close()
-        elif lock.exists():
-            held += _reserved(share).get("share", MPS_SHARE / slots())
-    return held
+    return sum(h.get("share", MPS_SHARE / slots()) for h in holders(ws))
 
 
 def _reserved(path: Path) -> dict:
     if not path.exists():
         return {}
-    holder = path.with_suffix(HOLDER)
-    return {"share": float(path.read_text() or 0), **(json.loads(holder.read_text()) if holder.exists() else {})}
+    text, holder = path.read_text().strip(), path.with_suffix(HOLDER)
+    held = json.loads(text) if text.startswith("{") else {"share": float(text or 0)}
+    return {**held, **(json.loads(holder.read_text()) if holder.exists() else {})}
 
 
 def holders(ws: Path) -> list[dict]:

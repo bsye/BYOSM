@@ -182,3 +182,15 @@ def test_the_gpu_goes_to_whoever_has_waited_longest(tmp_path):
     older.unlink()
     (tmp_path / QUEUE / f"999999{TICKET}").write_text("0.5")
     assert first(mine) and not (tmp_path / QUEUE / f"999999{TICKET}").exists()
+
+
+def test_a_share_file_written_by_an_older_job_as_json_is_still_read(ws):
+    import json
+
+    from byosm.train.gpu import _reserved
+
+    path = ws / "slot-0.share"
+    path.write_text(json.dumps({"share": 0.9, "job": "old", "since": 1.0}))
+    assert _reserved(path)["share"] == 0.9 and _reserved(path)["job"] == "old"
+    path.write_text("0.450")
+    assert _reserved(path) == {"share": 0.45}

@@ -1328,10 +1328,10 @@ number never reaches a card; the board's best measured rival is the one cards an
 
 ## Files shared with running jobs keep their format
 
-Running jobs keep the code they started with, so a file that several jobs read must not change format under them.
-The GPU share file went from a number to JSON and two queued jobs started hours earlier crashed reading it. The share
-file is a number again, and the holder's job and start time live next to it in `slot-N.holder`.
-
+Running jobs keep the code they started with, so files several jobs read must be readable by every version still
+running. The GPU share file changed from a number to JSON and back, and each change crashed jobs started under the
+other version. The share file is a number again, the holder's job and start time live next to it in `slot-N.holder`,
+and the reader accepts both a number and the old JSON, because a job writing JSON can still be alive.
 ## Keep training stops at a plateau
 
 Doubling a forecaster's training each round gained under 1% of calib MASE per round on all three domains (energy
