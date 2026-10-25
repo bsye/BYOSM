@@ -1410,3 +1410,10 @@ with and others at whatever is on disk later. The tool-call gate crashed that wa
 the source is hashed (the hash is cached until a file changes), copied once per version into the machine cache under
 `code/<hash>`, put first on the job's `PYTHONPATH`, and the job starts with `python -P` so the working directory
 cannot shadow it. Snapshots older than a week are removed.
+
+## A collapsed training is a diverged one
+
+laya-encoder's refine round fell from dev macro F1 0.534 to 0.182 in one epoch, the score of predicting one class,
+while training in bfloat16. Only NaN outputs counted as divergence, so it would have trained six more epochs on
+nothing. Once a run has reached macro F1 0.4, a dev score below half its best raises `DivergedError`, and recovery
+retries at the next precision (bfloat16, then fp32) as it does for NaN.

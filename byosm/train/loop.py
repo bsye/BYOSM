@@ -22,12 +22,14 @@ from .gpu import gpu_slot
 from .gpu_memory import release_cache
 from .outputs import build_meta, save_run
 from .pretraining import pretrain_backbone
-from .recovery import recover
+from .recovery import DivergedError, recover
 from .teacher import _teacher_targets, row_soft_targets
 from .trainer import Trainer, class_weight
 from .warm import replay, warm_start
 
 PATIENCE = 4
+COLLAPSE_FROM = 0.4
+COLLAPSE_SHARE = 0.5
 
 
 def split_rows(
@@ -99,6 +101,10 @@ def _select(
         ev = _dev_epoch(trainer, ep, losses, dev_rows, dev_raw, history, log, exp)
         release_cache()
         m = ev["metrics"]
+        if best.get("macro_f1", 0) >= COLLAPSE_FROM and m["macro_f1"] < best["macro_f1"] * COLLAPSE_SHARE:
+            raise DivergedError(
+                f"training collapsed: dev macro F1 fell from {best['macro_f1']:.3f} to {m['macro_f1']:.3f}"
+            )
         if (m["objective"], m["macro_f1"]) > (best["objective"], best.get("macro_f1", -1)):
             best = _snapshot(trainer.selected, ep, ev)
             bad = 0

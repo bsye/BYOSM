@@ -201,3 +201,31 @@ def test_a_backbone_that_ran_out_of_memory_waits_next_time_for_more_than_the_sha
 
     remember(tmp_path, "laya", ran_out_at=21.0)
     assert need_gb(tmp_path, "laya") >= 21.0 * OOM_HEADROOM and need_gb(tmp_path, "other") == 0.0
+
+
+def test_a_training_whose_dev_score_collapses_is_treated_as_diverged(monkeypatch):
+    from types import SimpleNamespace
+
+    import pytest
+
+    import byosm.train.loop as loop
+    from byosm.train.recovery import DivergedError
+
+    scores = iter([0.50, 0.70, 0.20])
+    trainer = SimpleNamespace(
+        spec=SimpleNamespace(train=SimpleNamespace(epochs=5)), selected=None, epoch=lambda ep: [1.0]
+    )
+    monkeypatch.setattr(loop, "release_cache", lambda: None)
+    monkeypatch.setattr(
+        loop,
+        "_snapshot",
+        lambda model, ep, ev: {"objective": ev["metrics"]["objective"], "macro_f1": ev["metrics"]["macro_f1"]},
+    )
+
+    def dev(trainer, ep, losses, rows, raw, history, log, exp):
+        f1 = next(scores)
+        return {"metrics": {"objective": f1, "macro_f1": f1}}
+
+    monkeypatch.setattr(loop, "_dev_epoch", dev)
+    with pytest.raises(DivergedError, match="collapsed"):
+        loop._select(trainer, [], [], lambda _: None, "v1")
