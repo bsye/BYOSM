@@ -7,7 +7,8 @@ from .data.sufficiency import MIN_CALIB_ITEMS, MIN_TEST_ITEMS, data_check
 from .dataset_search import saved_suggestions
 from .finetuned_rivals import REPORT as FINETUNED
 from .finetuned_rivals import benchmarks
-from .health import CREDIT, FAIL, OK, UNKNOWN, checks
+from .health import checks
+from .health_score import CREDIT, FAIL, OK, UNKNOWN
 from .held_out import bigger_held_out
 from .improve.proposals import PROPOSALS, proposal_key
 from .next_fixes import faster, less_overfit

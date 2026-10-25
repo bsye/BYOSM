@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..health import FAIL, OK, UNKNOWN, WARN, check, report
+from ..health_score import FAIL, OK, UNKNOWN, WARN, check, report
 from .specialist import NAIVE, best_rival
 
 AGREE_OK, AGREE_WARN = 0.10, 0.25

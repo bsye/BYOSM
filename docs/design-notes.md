@@ -1367,3 +1367,10 @@ When the GPU freed up, whichever waiting job polled first took it, so a pretrain
 through three handoffs. Each waiting job now leaves a ticket with its start time in `.byosm/gpu/queue`, and only the
 oldest live ticket may take a free slot. Tickets of jobs that died are removed. Small trainings with a CPU fallback
 never queue.
+
+## Robustness suggestions that can be acted on
+
+The "Holds on new inputs" check suggested `eval` for suites whose test rows the promoted model had trained on (folded
+in), which `eval` rightly never scores, and `testset` for tagging models, which it cannot write tests for. It now
+skips folded suites, suggests writing a fresh test set only for classification, and says so otherwise. The scoring
+primitives that classifier and forecaster health share live in `health_score.py`.

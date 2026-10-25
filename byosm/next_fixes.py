@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .evals.overfit import OVERFIT
-from .health import OK, UNKNOWN
+from .health_score import OK, UNKNOWN
 from .project import Project
 from .spec import TaskSpec
 
