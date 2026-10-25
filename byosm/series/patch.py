@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 from .models import Group
-from .patch_net import BASE, SMALL, PatchNet, Size, picker, train, window
+from .patch_net import BASE, SIZES, SMALL, PatchNet, Size, picker, train, window
 
 STEPS = 3000
 FINETUNE_STEPS = 800
@@ -15,13 +15,16 @@ BATCH = 256
 LR = 1e-3
 FINETUNE_LR = 2e-4
 SEED = 0
-WEIGHTS = "patch-base.pt"
 
 
-def weights_path() -> Path:
+def weights_path(name: str = "base") -> Path:
     from ..config import cache_root
 
-    return cache_root() / "series" / WEIGHTS
+    return cache_root() / "series" / f"patch-{name}.pt"
+
+
+def pretrained() -> tuple[str, Size] | None:
+    return next(((n, s) for n, s in reversed(SIZES.items()) if weights_path(n).exists()), None)
 
 
 def reporter(label: str, steps: int, log: Callable[[str], None] = print) -> Callable[[int, float], None]:
@@ -55,7 +58,7 @@ class PatchModel:
         self.net = PatchNet(self.size)
         steps, lr = STEPS, LR
         if self.pretrained:
-            self.net.load_state_dict(torch.load(weights_path(), map_location="cpu"))
+            self.net.load_state_dict(torch.load(weights_path(self.weights), map_location="cpu"))
             steps, lr = FINETUNE_STEPS, FINETUNE_LR
         with gpu_slot(_device(), print, fallback="cpu" if self.size == SMALL else None) as device:
             series, total = [(h, g.horizon) for g in groups for h in g.histories], steps * 2**self.effort
@@ -77,5 +80,8 @@ class PatchModel:
 
 class PretrainedPatch(PatchModel):
     name = "patch transformer, pretrained"
-    size = BASE
     pretrained = True
+
+    def __init__(self, effort: int = 0) -> None:
+        super().__init__(effort)
+        self.weights, self.size = pretrained() or ("base", BASE)

@@ -80,8 +80,8 @@ def test_a_pretrained_patch_model_starts_from_the_saved_weights(tmp_path, monkey
     from byosm.series.patch_net import PatchNet
 
     saved = PatchNet(patch.BASE)
-    torch.save(saved.state_dict(), tmp_path / "w.pt")
-    monkeypatch.setattr(patch, "weights_path", lambda: tmp_path / "w.pt")
+    torch.save(saved.state_dict(), tmp_path / "base.pt")
+    monkeypatch.setattr(patch, "weights_path", lambda name="base": tmp_path / f"{name}.pt")
     monkeypatch.setattr(patch, "FINETUNE_STEPS", 1)
     monkeypatch.setattr(patch, "FINETUNE_LR", 1e-12)
     monkeypatch.setattr(patch, "BATCH", 4)
@@ -238,7 +238,7 @@ def test_the_pretraining_corpus_draws_windows_from_single_and_multi_variate_seri
         tmp_path / "many"
     )
     paths = [str(next((tmp_path / d).glob("*.arrow"))) for d in ("one", "many")]
-    corpus, rng = Corpus(paths, 120), np.random.default_rng(0)
+    corpus, rng = Corpus(paths, 120, 32), np.random.default_rng(0)
     drawn = [corpus.draw(rng) for _ in range(20)]
     assert all(d is not None and len(d) == 120 for d in drawn)
     assert any(d[1] - d[0] == 2 for d in drawn) and any(d[1] - d[0] == 1 for d in drawn)
@@ -309,3 +309,14 @@ def test_only_the_small_forecaster_falls_back_to_the_cpu_and_the_pretrained_base
     for model in (patch.PatchModel(), patch.PretrainedPatch()):
         model.fit([Group([_wave()], 24, 30)])
     assert asked == ["cpu", None]
+
+
+def test_the_pretrained_recipe_uses_the_largest_base_that_has_been_pretrained(tmp_path, monkeypatch):
+    import byosm.series.patch as patch
+
+    monkeypatch.setattr(patch, "weights_path", lambda name="base": tmp_path / f"{name}.pt")
+    assert patch.pretrained() is None
+    (tmp_path / "base.pt").write_bytes(b"")
+    assert patch.pretrained()[0] == "base"
+    (tmp_path / "large.pt").write_bytes(b"")
+    assert patch.pretrained() == ("large", patch.SIZES["large"]) and patch.PretrainedPatch().weights == "large"

@@ -10,7 +10,7 @@ import numpy as np
 from .gifteval import horizon, load, season, splits, windows
 from .metrics import summary
 from .models import Boosted, Group, rivals
-from .patch import PatchModel, PretrainedPatch, weights_path
+from .patch import PatchModel, PretrainedPatch, pretrained
 from .specialist import is_rival
 
 ENSEMBLE = "ensemble"
@@ -39,8 +39,8 @@ def prepare(config: str, log: Callable[[str], None]) -> Prepared:
 
 
 def candidates(effort: int) -> list[Any]:
-    pretrained = [PretrainedPatch(effort)] if weights_path().exists() else []
-    return [*rivals(), Boosted(effort), PatchModel(effort), *pretrained]
+    base = [PretrainedPatch(effort)] if pretrained() else []
+    return [*rivals(), Boosted(effort), PatchModel(effort), *base]
 
 
 def _forecast(model: Any, windows: list[dict[str, Any]], p: Prepared) -> list[np.ndarray]:

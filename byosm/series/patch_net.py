@@ -28,6 +28,8 @@ class Size:
 
 SMALL = Size(context=512, patch=16, width=128, layers=3, heads=4)
 BASE = Size(context=1024, patch=32, width=192, layers=6, heads=6)
+LARGE = Size(context=1024, patch=32, width=384, layers=8, heads=8)
+SIZES = {"base": BASE, "large": LARGE}
 
 
 class PatchNet(nn.Module):

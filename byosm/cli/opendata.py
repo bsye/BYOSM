@@ -174,8 +174,11 @@ def series_corpus(
 
 
 @series_app.command("pretrain")
-def series_pretrain(steps: int = typer.Option(PRETRAIN_STEPS, help="Training steps on the GPU")) -> None:
+def series_pretrain(
+    steps: int = typer.Option(PRETRAIN_STEPS, help="Training steps on the GPU"),
+    size: str = typer.Option("base", help="base (6M parameters) or large (21M)"),
+) -> None:
     """Pretrain the base forecaster on GIFT-Eval's pretraining corpus and the training portions of its datasets, never their test windows."""
     from ..series.pretrain import pretrain
 
-    pretrain(log, steps)
+    pretrain(log, steps, size)

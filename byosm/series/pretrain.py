@@ -7,17 +7,17 @@ import numpy as np
 import torch
 
 from .patch import BATCH, LR, SEED, _device, reporter, weights_path
-from .patch_net import BASE, MAX_HORIZON, PatchNet, Pick, picker, train
+from .patch_net import MAX_HORIZON, SIZES, PatchNet, Pick, picker, train
 
 CORPUS_SHARE = 0.8
 
 
 class Corpus:
-    def __init__(self, paths: list[str], length: int) -> None:
+    def __init__(self, paths: list[str], length: int, patch: int) -> None:
         from datasets import Dataset
 
         self.columns = [Dataset.from_file(p).data.table.column("target") for p in paths]
-        self.length = length
+        self.length, self.patch = length, patch
 
     def draw(self, rng: np.random.Generator) -> np.ndarray | None:
         import pyarrow as pa
@@ -27,7 +27,7 @@ class Corpus:
         if pa.types.is_list(values.type) or pa.types.is_large_list(values.type):
             values = values[int(rng.integers(len(values)))].values
         series = values.to_numpy(zero_copy_only=False).astype(float)
-        if len(series) <= MAX_HORIZON + BASE.patch or np.isnan(series).all():
+        if len(series) <= MAX_HORIZON + self.patch or np.isnan(series).all():
             return None
         start = int(rng.integers(0, max(1, len(series) - self.length)))
         return series[start : start + self.length]
@@ -60,21 +60,22 @@ def _training_portions(log: Callable[[str], None]) -> list[tuple[np.ndarray, int
     return out
 
 
-def pretrain(log: Callable[[str], None], steps: int) -> Path:
+def pretrain(log: Callable[[str], None], steps: int, size_name: str = "base") -> Path:
     from ..train.gpu import gpu_slot
     from .corpus import files
 
-    own = picker(_training_portions(log), BASE.patch)
+    size = SIZES[size_name]
+    own = picker(_training_portions(log), size.patch)
     paths = files()
-    pick = mixed(Corpus(paths, BASE.context + MAX_HORIZON), own) if paths else own
+    pick = mixed(Corpus(paths, size.context + MAX_HORIZON, size.patch), own) if paths else own
     log(f"  GIFT-Eval training portions plus {len(paths)} pretraining corpus files")
     torch.manual_seed(SEED)
-    net, device = PatchNet(BASE), _device()
+    net, device = PatchNet(size), _device()
     log(f"  {sum(p.numel() for p in net.parameters()) / 1e6:.1f}M parameters, {steps} steps on {device}")
 
     with gpu_slot(device, log):
         train(net, pick, steps, LR, BATCH, device, SEED, reporter("pretraining", steps, log))
-    path = weights_path()
+    path = weights_path(size_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(net.state_dict(), path)
     log(f"  saved {path}")

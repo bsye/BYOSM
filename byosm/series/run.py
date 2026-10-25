@@ -134,7 +134,7 @@ def _gain(report: dict[str, Any]) -> float:
 
 
 def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] = print) -> dict[str, Any]:
-    from .patch import weights_path
+    from .patch import pretrained
 
     for n in range(rounds):
         report = run_domain(ws, domain, log)
@@ -144,7 +144,11 @@ def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] =
             return report
         log(f"  round {n + 1}: hardest rival {rival}")
         if _gain(report) < MIN_GAIN:
-            lever = "a bigger base model" if weights_path().exists() else "the pretrained base (byosm series pretrain)"
+            lever = (
+                "a bigger base (series pretrain --size large)"
+                if pretrained()
+                else "the pretrained base (series pretrain)"
+            )
             log(f"  more training gained under {MIN_GAIN:.0%} on calib: stopping, the next lever is {lever}")
             return report
     return report
