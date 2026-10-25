@@ -181,3 +181,13 @@ def test_plain_baselines_store_no_identity(toy):
     p.save_spec(base.model_copy(update={"baselines": ["energy"]}))
     run("toy", log=lambda m: None)
     assert "identity" not in p.result("energy", "bench")
+
+
+def test_retraining_an_experiment_rescores_it(toy):
+    run("toy", baselines=[], log=lambda m: None)
+    toy.calls.clear()
+    run("toy", baselines=[], log=lambda m: None)
+    assert toy.calls == []
+    Project("toy").save_experiment("v1", meta={"best_epoch": 2})
+    run("toy", baselines=[], log=lambda m: None)
+    assert toy.calls == ["v1"]

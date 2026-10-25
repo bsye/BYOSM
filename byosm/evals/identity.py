@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 
 SECRET_KEYS = ("api_key",)
@@ -24,3 +25,7 @@ def _llm_identity(role: str) -> str:
 
     conf = role_config(load_config()["llm"], role)
     return json.dumps({k: v for k, v in conf.items() if k not in (*SECRET_KEYS, *RUN_ONLY_KEYS)}, sort_keys=True)
+
+
+def experiment_identity(meta: dict) -> str:
+    return hashlib.sha1(json.dumps(meta, sort_keys=True, default=str).encode()).hexdigest()[:12]

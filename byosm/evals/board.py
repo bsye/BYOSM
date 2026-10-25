@@ -8,7 +8,7 @@ from ..events import emit, stage
 from ..predictors import ExperimentPredictor, Predictor, get_baseline
 from ..project import Project
 from ..spec import EvalSuite, TaskSpec
-from .identity import baseline_identity
+from .identity import baseline_identity, experiment_identity
 from .scoring import score
 from .suites import fingerprint, materialize
 
@@ -32,14 +32,14 @@ def _jobs(p: Project, base: TaskSpec, suite: EvalSuite, exps: list[str], bls: li
     return jobs
 
 
-def _identity(kind: str, pid: str) -> str | None:
-    return None if kind == "experiment" else baseline_identity(pid)
+def _identity(p: Project, kind: str, pid: str) -> str | None:
+    return experiment_identity(p.meta(pid)) if kind == "experiment" else baseline_identity(pid)
 
 
 def _fresh(p: Project, pid: str, suite: str, cached: dict, fp: str, kind: str) -> bool:
     if cached.get("fingerprint") != fp:
         return False
-    identity = _identity(kind, pid)
+    identity = _identity(p, kind, pid)
     if identity is not None and "identity" not in cached:
         cached["identity"] = identity
         p.save_result(pid, suite, cached)
@@ -57,7 +57,7 @@ def _cached_or_scored(
     log(f"  scoring {pid} on {suite} ({len(test)} test items)...")
     try:
         r = score(make(), base, calib, test, root, space)
-        identity = _identity(kind, pid)
+        identity = _identity(p, kind, pid)
     except Exception as ex:
         log(f"  {pid} failed on {suite}: {type(ex).__name__}: {ex}")
         return None

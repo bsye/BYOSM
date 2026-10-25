@@ -1443,3 +1443,10 @@ first.
 A finishing training deleted its share file before it unlocked its slot. A training that looked in between saw a held
 slot with no share and assumed the default half, so it started with half the GPU when the whole of it was about to be
 free. Releasing takes the same lock as admitting, so a waiting training sees a slot either fully held or fully free.
+
+## A cached score belongs to one training of an experiment
+
+Scores were cached by test set only, so when the autopilot retrained `v1` in place, the board kept the old `v1`
+score and the keep/revert decision compared against a model that no longer existed. Each experiment's cached score now
+carries a hash of its training metadata, which changes on every training, so a retrained experiment is scored again.
+Scores cached before this change are adopted once, like baseline scores were.
