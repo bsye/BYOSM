@@ -1401,3 +1401,12 @@ now read long inputs head and tail (`train.truncation: head_tail`): the first qu
 start and the rest from the end, the split found best for long-text classification with BERT-style models. New text
 specs use it; older models keep `right`, and the setting travels in the bundle's manifest so the one-file runtime
 (`rt.head_tail`, which training imports too) reads inputs exactly as training did.
+
+## Every job runs a frozen copy of the code
+
+Python imports modules when first used, so a job that runs for hours loads some modules at the version it started
+with and others at whatever is on disk later. The tool-call gate crashed that way: its old `TrainCfg` met today's
+`text.py`. Each job now runs from a snapshot of the `byosm` package taken when it starts (`app/snapshot.py`):
+the source is hashed (the hash is cached until a file changes), copied once per version into the machine cache under
+`code/<hash>`, put first on the job's `PYTHONPATH`, and the job starts with `python -P` so the working directory
+cannot shadow it. Snapshots older than a week are removed.

@@ -26,3 +26,21 @@ def test_a_job_stopped_from_outside_is_interrupted_not_failed():
     assert ending(-signal.SIGTERM, cancelled=False, stalled=True) == "failed"
     assert ending(-signal.SIGTERM, cancelled=True, stalled=False) == "cancelled"
     assert ending(1, cancelled=False, stalled=False) == "failed" and ending(0, False, False) == "done"
+
+
+def test_a_job_runs_from_a_frozen_copy_of_the_code_so_later_edits_cannot_reach_it(ws):
+    import subprocess
+    import sys
+
+    from byosm.app.snapshot import frozen
+
+    code = frozen()
+    assert frozen() == code and (code / "byosm" / "__init__.py").exists()
+    found = subprocess.run(
+        [sys.executable, "-P", "-c", "import byosm; print(byosm.__file__)"],
+        env={"PYTHONPATH": str(code)},
+        capture_output=True,
+        text=True,
+        cwd=ws,
+    ).stdout
+    assert found.startswith(str(code))

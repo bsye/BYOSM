@@ -68,7 +68,7 @@ def spawn(ws: Path, job_id: str, entry: str, args: list[str], env: dict[str, str
     done = job_file(ws, job_id, EXIT_SUFFIX)
     with log.open("ab") as out:
         return subprocess.Popen(
-            [sys.executable, "-c", WRAPPER, str(done), entry, *args],
+            [sys.executable, "-P", "-c", WRAPPER, str(done), entry, *args],
             cwd=ws,
             env=env,
             stdin=subprocess.DEVNULL,

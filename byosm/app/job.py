@@ -11,6 +11,7 @@ from ..events import EVENTS_ENV, TARGET
 from ..train.gpu import JOB_ENV
 from .store import JOB_FIELDS
 
+PYTHONPATH = "PYTHONPATH"
 TERMINAL_COLUMNS = "160"
 
 
@@ -35,10 +36,13 @@ class Job:
 
 def job_env(ws: Path, job: Job) -> dict[str, str]:
     from ..config import LLM_OVERRIDE_ENV, env_file
+    from .snapshot import frozen
 
+    code = [str(frozen()), *filter(None, [os.environ.get(PYTHONPATH)])]
     return {
         **os.environ,
         **env_file(ws),
+        PYTHONPATH: os.pathsep.join(code),
         "PYTHONUNBUFFERED": "1",
         "COLUMNS": TERMINAL_COLUMNS,
         "NO_COLOR": "1",
