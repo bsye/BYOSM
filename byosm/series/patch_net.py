@@ -12,6 +12,8 @@ from .metrics import QUANTILES
 
 MAX_HORIZON = 60
 REPORT_EVERY = 500
+MIN_SCALE = 0.01
+TARGET_CAP = 50.0
 Pick = Callable[[np.random.Generator, int], list[tuple[np.ndarray, int]]]
 
 
@@ -54,7 +56,8 @@ def window(history: np.ndarray, context: int) -> tuple[np.ndarray, np.ndarray, f
     seen = ~np.isnan(ctx)
     mean = float(np.mean(ctx[seen])) if seen.any() else 0.0
     std = float(np.std(ctx[seen])) if seen.any() else 1.0
-    return np.where(seen, (ctx - mean) / (std or 1.0), 0.0), seen.astype(float), mean, std or 1.0
+    std = max(std, MIN_SCALE * abs(mean)) or 1.0
+    return np.where(seen, (ctx - mean) / std, 0.0), seen.astype(float), mean, std
 
 
 def pinball(pred: torch.Tensor, target: torch.Tensor, known: torch.Tensor) -> torch.Tensor:
@@ -77,7 +80,7 @@ def batch(
         end = int(rng.integers(size.patch, len(h) - horizon + 1))
         v, m, mean, std = window(h[:end], size.context)
         future = np.full(MAX_HORIZON, np.nan)
-        future[:horizon] = (h[end : end + horizon] - mean) / std
+        future[:horizon] = np.clip((h[end : end + horizon] - mean) / std, -TARGET_CAP, TARGET_CAP)
         values.append(v)
         seen.append(m)
         targets.append(np.nan_to_num(future))

@@ -278,3 +278,13 @@ def test_forecaster_health_checks_naive_everywhere_agreement_precision_and_the_r
     assert status["robust"] == ("warn", "1 of 2 datasets") and status["overfit"][0] == "ok"
     assert status["rival"][0] == "fail" and status["certainty"] == ("ok", "±0.020")
     assert not h["ready"] and "Beats the best rival" not in h["blockers"]
+
+
+def test_a_nearly_flat_window_cannot_blow_up_the_training_targets():
+    from byosm.series.patch_net import SMALL, TARGET_CAP, batch, window
+
+    flat = np.concatenate([np.full(600, 100.0) + np.random.default_rng(0).normal(0, 1e-6, 600), np.full(60, 160.0)])
+    _, _, mean, std = window(flat[:600], SMALL.context)
+    assert std >= 0.99 and abs(mean - 100.0) < 1e-3
+    _, _, targets, _ = batch([(flat, 60)] * 4, SMALL, np.random.default_rng(1), "cpu")
+    assert float(targets.abs().max()) <= TARGET_CAP

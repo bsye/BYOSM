@@ -1417,3 +1417,10 @@ laya-encoder's refine round fell from dev macro F1 0.534 to 0.182 in one epoch, 
 while training in bfloat16. Only NaN outputs counted as divergence, so it would have trained six more epochs on
 nothing. Once a run has reached macro F1 0.4, a dev score below half its best raises `DivergedError`, and recovery
 retries at the next precision (bfloat16, then fp32) as it does for NaN.
+
+## Robust scaling for the patch transformer
+
+Each input window is scaled by its own mean and standard deviation. On the operations data, nearly flat 10-second
+windows gave a standard deviation close to zero, so the next jump became a normalised target in the hundreds and
+single training batches hit losses of 202 and 72 against a usual 1. The scale now has a floor of 1% of the window's
+mean level and training targets are capped at 50 scaled units; ordinary windows are unchanged.
