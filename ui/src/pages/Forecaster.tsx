@@ -1,6 +1,6 @@
 import { Loader2, Play } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Bar, BarChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts"
 import { api, runJob, type Summary } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { StatCard, STAT_GRID } from "@/components/stat-card"
@@ -70,7 +70,11 @@ function Stats({ f }: { f: ForecasterView }) {
         value={signed(leadOf(f))}
         detail={f.rival ? `vs ${rivalName(f.rival.name)}${rivalScope(f)}, lower is better` : "no rival scored yet"}
       />
-      <StatCard label="Training" value={seconds(recipe?.train_s)} detail={`${promoted.recipe}, one model for ${Object.keys(f.configs ?? {}).length} datasets`} />
+      <StatCard
+        label="Training"
+        value={seconds(recipe?.train_s)}
+        detail={`${promoted.recipe}, one model for ${Object.keys(f.configs ?? {}).length} datasets`}
+      />
       <StatCard label="Per forecast" value={millis(recipe?.ms_per_forecast)} detail="CPU" />
     </div>
   )
@@ -143,10 +147,37 @@ function Board({ f, running }: { f: ForecasterView; running: boolean }) {
   )
 }
 
+const progress = {
+  test: { label: "Test MASE", color: "var(--chart-1)" },
+  calib: { label: "Calib MASE", color: "var(--chart-2)" },
+} satisfies ChartConfig
+
+function Progress({ f }: { f: ForecasterView }) {
+  const versions = f.versions ?? []
+  if (versions.length < 2) return null
+  return (
+    <ChartContainer config={progress} className="h-48 w-full">
+      <LineChart data={versions.map((v) => ({ name: v.name, test: v.test, calib: v.calib }))} margin={{ top: 8, left: 8, right: 8 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis dataKey="name" tickLine={false} axisLine={false} />
+        <YAxis tickLine={false} axisLine={false} width={40} domain={["auto", "auto"]} tickFormatter={(v) => Number(v).toFixed(2)} />
+        {f.rival?.score != null && (
+          <ReferenceLine y={f.rival.score} strokeDasharray="4 4" label={{ value: rivalName(f.rival.name), position: "insideTopRight", fontSize: 11 }} />
+        )}
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartLegend content={<ChartLegendContent />} />
+        <Line dataKey="test" stroke="var(--color-test)" strokeWidth={2} dot />
+        <Line dataKey="calib" stroke="var(--color-calib)" strokeWidth={2} dot />
+      </LineChart>
+    </ChartContainer>
+  )
+}
+
 function Versions({ f }: { f: ForecasterView }) {
   return (
     <Card>
-      <CardContent>
+      <CardContent className="grid gap-4">
+        <Progress f={f} />
         <Table>
           <TableHeader>
             <TableRow>
