@@ -50,10 +50,12 @@ def eval_(
     baseline: Annotated[list[str], typer.Option(help="only these baselines")] = None,
     force: bool = False,
 ) -> None:
-    """Score experiments and baselines on every suite (results cached by suite fingerprint)."""
+    """Score experiments and baselines on every suite (results cached per suite and per training). Naming only
+    experiments, or only baselines, scores just those."""
     from .. import evals
 
-    evals.run(name, exp or None, baseline or None, suite or None, force, log)
+    exps = exp or ([] if baseline else None)
+    evals.run(name, exps, baseline or ([] if exp else None), suite or None, force, log)
     board(name, detail=True)
 
 
