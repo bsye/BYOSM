@@ -194,3 +194,10 @@ def test_a_share_file_written_by_an_older_job_as_json_is_still_read(ws):
     assert _reserved(path)["share"] == 0.9 and _reserved(path)["job"] == "old"
     path.write_text("0.450")
     assert _reserved(path) == {"share": 0.45}
+
+
+def test_a_backbone_that_ran_out_of_memory_waits_next_time_for_more_than_the_share_it_had(tmp_path):
+    from byosm.train.gpu_memory import OOM_HEADROOM, need_gb, remember
+
+    remember(tmp_path, "laya", ran_out_at=21.0)
+    assert need_gb(tmp_path, "laya") >= 21.0 * OOM_HEADROOM and need_gb(tmp_path, "other") == 0.0

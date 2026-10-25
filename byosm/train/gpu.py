@@ -9,13 +9,13 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from ..config import STATE_DIR
+from .gpu_memory import GB_PER_TRAINING, free_gb, need_gb, needed_gb, remember, total_gb
 from .gpu_queue import first, join
 
 GPU_DEVICES = ("mps", "cuda")
 SLOTS_KEY = "gpu_jobs"
 MAX_AUTO_SLOTS = 2
 CORES_PER_TRAINING = 8
-GB_PER_TRAINING = 16
 MPS_SHARE = 0.9
 MIN_SHARE = 0.25
 HOLDER = ".holder"
@@ -41,20 +41,6 @@ def slots() -> int:
     from ..config import load_config
 
     return max(1, int(load_config().get(SLOTS_KEY) or auto_slots()))
-
-
-def free_gb() -> float:
-    import psutil
-
-    return psutil.virtual_memory().available / 1024**3
-
-
-def needed_gb() -> float:
-    import psutil
-
-    from ..machine import UNIFIED_MEMORY_SHARE
-
-    return min(GB_PER_TRAINING, psutil.virtual_memory().total * UNIFIED_MEMORY_SHARE / 1024**3)
 
 
 def _may_start(device: str, ws: Path) -> bool:
@@ -100,18 +86,7 @@ def holders(ws: Path) -> list[dict]:
 def _share_left(device: str, ws: Path) -> float:
     if device != "mps":
         return MPS_SHARE
-    import psutil
-
-    return max(MPS_SHARE - held_share(ws), min(MPS_SHARE, free_gb() * 1024**3 / psutil.virtual_memory().total))
-
-
-def release_cache() -> None:
-    import torch
-
-    if torch.backends.mps.is_available():
-        torch.mps.empty_cache()
-    elif torch.cuda.is_available():
-        torch.cuda.empty_cache()
+    return max(MPS_SHARE - held_share(ws), min(MPS_SHARE, free_gb() / total_gb()))
 
 
 def _cap_memory(device: str, log: Callable[[str], None], share: float | None = None) -> None:
@@ -137,7 +112,9 @@ def _admission(base: Path) -> Iterator[None]:
 
 
 @contextlib.contextmanager
-def gpu_slot(device: str, log: Callable[[str], None] = print, fallback: str | None = None) -> Iterator[str]:
+def gpu_slot(
+    device: str, log: Callable[[str], None] = print, fallback: str | None = None, key: str | None = None
+) -> Iterator[str]:
     if device not in GPU_DEVICES:
         yield device
         return
@@ -150,7 +127,8 @@ def gpu_slot(device: str, log: Callable[[str], None] = print, fallback: str | No
     while True:
         with _admission(base):
             share = _share_left(device, ws)
-            roomy = share >= MIN_SHARE and _may_start(device, ws) and (ticket is None or first(ticket))
+            enough = max(MIN_SHARE, need_gb(base, key) / total_gb())
+            roomy = share >= enough and _may_start(device, ws) and (ticket is None or first(ticket))
             taken = (
                 next(((i, h) for i in range(slots()) if (h := _try(base / f"slot-{i}.lock"))), None) if roomy else None
             )
@@ -178,9 +156,14 @@ def gpu_slot(device: str, log: Callable[[str], None] = print, fallback: str | No
         log(f"  got the GPU after {waited:.0f} s")
     os.environ[SHARE_ENV] = f"{share:.3f}"
     _cap_memory(device, log, share)
+    ran_out = None
     try:
         yield device
+    except RuntimeError as e:
+        ran_out = share * total_gb() if "out of memory" in str(e) else None
+        raise
     finally:
+        remember(base, key, ran_out)
         (base / f"slot-{index}.share").unlink(missing_ok=True)
         (base / f"slot-{index}{HOLDER}").unlink(missing_ok=True)
         fcntl.flock(handle, fcntl.LOCK_UN)

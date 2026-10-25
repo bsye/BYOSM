@@ -18,7 +18,8 @@ from ..model import SpecialistModel, count_params
 from ..spec import TaskSpec
 from .common import build_model, cpu_state, targets_of
 from .evaluate import evaluate_rows
-from .gpu import gpu_slot, release_cache
+from .gpu import gpu_slot
+from .gpu_memory import release_cache
 from .outputs import build_meta, save_run
 from .pretraining import pretrain_backbone
 from .recovery import recover
@@ -126,7 +127,7 @@ def fit(
     splits: tuple[str, ...] | list[str] = BASE_TRAIN,
 ) -> tuple[dict[str, Any], list[Any]]:
     dev = pick_device()
-    with gpu_slot(dev, log):
+    with gpu_slot(dev, log, key=spec.backbone or spec.name):
         return recover(spec, lambda s: _fit(s, data_dir, run_dir, log, seed, splits, dev), log, dev)
 
 

@@ -1383,3 +1383,12 @@ the LLM rivals score 0.95 to 1.00 because the set is in their own style. An abso
 benchmark's labelling sits from an LLM's, not whether a model generalises. "Holds on new inputs" now compares the
 model's score on its hardest other suite with the best fine-tuned rival on that same suite (ok within 0.05, warning
 within 0.15), and keeps the absolute drop only when no such rival was scored there.
+
+## Each backbone remembers how much GPU memory it needs
+
+Admitting a waiting training by free memory let one start on a 40% share that it then outgrew (laya, about 33 GB, out
+of memory at batch 8 with nothing smaller to fall back to). The peak memory a training holds is sampled each time the
+cache is released and saved per backbone when it leaves its slot (`.byosm/gpu/needs.json`); a run that ran out of
+memory records 25% more than the share it had. A backbone with a recorded need is admitted only once that much is
+free. All memory accounting (free, total, needed, cache release, needs) lives in `train/gpu_memory.py`, which the job
+admission in `resources.py` also uses instead of its own copy of `free_gb`.

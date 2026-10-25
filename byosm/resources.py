@@ -3,16 +3,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from .train.gpu_memory import free_gb
+
 GB = 1024**3
 LOCAL_CALL_GB = 2.0
 JOB_GB = 3.0
 REMOTE_PARALLEL = 64
-
-
-def free_gb() -> float:
-    import psutil
-
-    return psutil.virtual_memory().available / GB
 
 
 def local_parallel() -> int:

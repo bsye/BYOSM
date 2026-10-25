@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from ..train.gpu import release_cache
+from ..train.gpu_memory import release_cache
 from .metrics import QUANTILES
 
 MAX_HORIZON = 60
