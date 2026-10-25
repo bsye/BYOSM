@@ -116,5 +116,5 @@ class Trainer:
         for b in batches(len(self.train_raw), tc.batch_size, True, self.rng):
             loss = self._loss(b)
             self._step(loss)
-            losses.append(float(loss))
+            losses.append(loss.item())
         return losses
