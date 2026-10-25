@@ -57,7 +57,7 @@ class PatchModel:
         if self.pretrained:
             self.net.load_state_dict(torch.load(weights_path(), map_location="cpu"))
             steps, lr = FINETUNE_STEPS, FINETUNE_LR
-        with gpu_slot(_device(), print, fallback="cpu") as device:
+        with gpu_slot(_device(), print, fallback="cpu" if self.size == SMALL else None) as device:
             series, total = [(h, g.horizon) for g in groups for h in g.histories], steps * 2**self.effort
             report = reporter(self.name, total)
             train(self.net, picker(series, self.size.patch), total, lr, BATCH, device, SEED, report)

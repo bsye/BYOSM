@@ -1424,3 +1424,9 @@ Each input window is scaled by its own mean and standard deviation. On the opera
 windows gave a standard deviation close to zero, so the next jump became a normalised target in the hundreds and
 single training batches hit losses of 202 and 72 against a usual 1. The scale now has a floor of 1% of the window's
 mean level and training targets are capped at 50 scaled units; ordinary windows are unchanged.
+
+## Only the small forecaster falls back to the CPU
+
+A training that cannot get the GPU falls back to the CPU once, at its start, and stays there. That suits the small
+patch transformer (2.8M parameters, 512-point context), but the pretrained base (6M, 1024-point context) fine-tuned at
+about 1,000 steps an hour on the CPU while the GPU freed up beside it. The pretrained base now waits for the GPU.

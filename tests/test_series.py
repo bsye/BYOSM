@@ -288,3 +288,24 @@ def test_a_nearly_flat_window_cannot_blow_up_the_training_targets():
     assert std >= 0.99 and abs(mean - 100.0) < 1e-3
     _, _, targets, _ = batch([(flat, 60)] * 4, SMALL, np.random.default_rng(1), "cpu")
     assert float(targets.abs().max()) <= TARGET_CAP
+
+
+def test_only_the_small_forecaster_falls_back_to_the_cpu_and_the_pretrained_base_waits_for_the_gpu(monkeypatch):
+    import contextlib
+
+    import byosm.series.patch as patch
+    import byosm.train.gpu as gpu
+
+    asked = []
+
+    @contextlib.contextmanager
+    def slot(device, log, fallback=None, key=None):
+        asked.append(fallback)
+        yield "cpu"
+
+    monkeypatch.setattr(gpu, "gpu_slot", slot)
+    monkeypatch.setattr(patch, "train", lambda *a, **k: None)
+    monkeypatch.setattr(patch.torch, "load", lambda *a, **k: patch.PatchNet(patch.BASE).state_dict())
+    for model in (patch.PatchModel(), patch.PretrainedPatch()):
+        model.fit([Group([_wave()], 24, 30)])
+    assert asked == ["cpu", None]
