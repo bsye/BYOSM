@@ -161,7 +161,7 @@ function Progress({ f }: { f: ForecasterView }) {
         <CartesianGrid vertical={false} />
         <XAxis dataKey="name" tickLine={false} axisLine={false} />
         <YAxis tickLine={false} axisLine={false} width={40} domain={["auto", "auto"]} tickFormatter={(v) => Number(v).toFixed(2)} />
-        {f.rival?.score != null && (
+        {f.rival?.score != null && f.rival.datasets === f.rival.of && (
           <ReferenceLine y={f.rival.score} strokeDasharray="4 4" label={{ value: rivalName(f.rival.name), position: "insideTopRight", fontSize: 11 }} />
         )}
         <ChartTooltip content={<ChartTooltipContent />} />
