@@ -1437,3 +1437,9 @@ With strict first come first served, a job that needed 34 GB held the head of th
 job that fitted waited behind it and a slot sat idle. Each ticket now records the share its job needs, and an older
 ticket blocks a newer one only if the older job could start with the share free now; otherwise a job that fits goes
 first.
+
+## A GPU slot is released under the admission lock
+
+A finishing training deleted its share file before it unlocked its slot. A training that looked in between saw a held
+slot with no share and assumed the default half, so it started with half the GPU when the whole of it was about to be
+free. Releasing takes the same lock as admitting, so a waiting training sees a slot either fully held or fully free.

@@ -164,10 +164,11 @@ def gpu_slot(
         raise
     finally:
         remember(base, key, ran_out)
-        (base / f"slot-{index}.share").unlink(missing_ok=True)
-        (base / f"slot-{index}{HOLDER}").unlink(missing_ok=True)
-        fcntl.flock(handle, fcntl.LOCK_UN)
-        handle.close()
+        with _admission(base):
+            (base / f"slot-{index}.share").unlink(missing_ok=True)
+            (base / f"slot-{index}{HOLDER}").unlink(missing_ok=True)
+            fcntl.flock(handle, fcntl.LOCK_UN)
+            handle.close()
 
 
 def busy_slots(ws: Path) -> int:
