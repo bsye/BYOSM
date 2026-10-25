@@ -18,6 +18,7 @@ LABEL_OK, LABEL_WARN = 0.8, 0.5
 DROP_OK, DROP_WARN = 0.05, 0.15
 SLOW_FACTOR = 2.0
 LEAD = "lead"
+HUB_RIVAL = "hf:"
 SMALLER_OK = 4.0
 
 
@@ -108,7 +109,8 @@ def _weakest(mine: dict) -> dict | None:
     return check("weakest", "No weak label", 1, graded(f1, LABEL_OK, LABEL_WARN), f"{name} {f1:.2f}", why)
 
 
-def _robustness(p: Project, spec: TaskSpec, by_suite: dict, prim: str) -> dict:
+def _robustness(p: Project, spec: TaskSpec, board: dict, prim: str) -> dict:
+    by_suite = board.get(p.promoted or "", {})
     others = {s: r["objective"] for s, r in by_suite.items() if s != prim and r.get("objective") is not None}
     folded = {"builtin"} if p.meta(p.promoted or "").get("n_test_folded") else set()
     unscored = [e.name for e in spec.evals if e.name != prim and e.name not in others and e.kind not in folded]
@@ -123,6 +125,13 @@ def _robustness(p: Project, spec: TaskSpec, by_suite: dict, prim: str) -> dict:
             )
         return check("robust", "Holds on new inputs", 2, UNKNOWN, "one suite only", why, args)
     suite, worst = min(others.items(), key=lambda kv: kv[1])
+    found = [r[suite]["objective"] for pid, r in board.items() if pid.startswith(HUB_RIVAL) and suite in r]
+    if found := [v for v in found if v is not None]:
+        why = "On a test set written by an LLM every trained model drops, so it is judged against the best model fine-tuned on the benchmark."
+        status = graded(worst - max(found), -DROP_OK, -DROP_WARN)
+        return check(
+            "robust", "Holds on new inputs", 2, status, f"{worst:.3f} vs {max(found):.3f} for rivals on {suite}", why
+        )
     drop = by_suite[prim]["objective"] - worst
     why = f"Drop from the primary benchmark to the hardest other suite ({len(others)} scored)."
     status = graded(drop, DROP_OK, DROP_WARN, False)
@@ -161,7 +170,7 @@ def checks(p: Project, spec: TaskSpec) -> list[dict]:
         _rival(p, spec, board, prim, mine),
         _target(spec, mine),
         _overfit(p),
-        _robustness(p, spec, by_suite, prim),
+        _robustness(p, spec, board, prim),
         _data(p, spec),
         _certainty(mine),
         _weakest(mine),

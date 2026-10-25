@@ -1374,3 +1374,12 @@ The "Holds on new inputs" check suggested `eval` for suites whose test rows the 
 in), which `eval` rightly never scores, and `testset` for tagging models, which it cannot write tests for. It now
 skips folded suites, suggests writing a fresh test set only for classification, and says so otherwise. The scoring
 primitives that classifier and forecaster health share live in `health_score.py`.
+
+## An LLM-written test set is judged against fine-tuned rivals
+
+Independent test sets are written by an LLM, so they follow the LLM's reading of the label definitions. Every model
+fine-tuned on a benchmark drops on them (emotion: ours 0.898 to 0.536, j-hartmann distilroberta 0.838 to 0.438), while
+the LLM rivals score 0.95 to 1.00 because the set is in their own style. An absolute drop therefore measured how far a
+benchmark's labelling sits from an LLM's, not whether a model generalises. "Holds on new inputs" now compares the
+model's score on its hardest other suite with the best fine-tuned rival on that same suite (ok within 0.05, warning
+within 0.15), and keeps the absolute drop only when no such rival was scored there.

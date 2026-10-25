@@ -77,3 +77,15 @@ def test_a_specialist_bigger_than_its_rival_fails_the_size_check_without_blockin
     size = next(c for c in h["checks"] if c["id"] == "size")
     assert size["status"] == "fail" and size["value"] == "1.3x bigger"
     assert "Smaller than the rival" not in h["blockers"]
+
+
+def test_a_drop_on_an_llm_written_suite_is_judged_against_fine_tuned_rivals_on_the_same_suite(ws):
+    rows = {
+        "v1": {"builtin": _result(0.90), "llm-written": _result(0.54)},
+        "hf:ref/emotion": {"builtin": _result(0.84, kind="baseline"), "llm-written": _result(0.53, kind="baseline")},
+    }
+    p, spec = _specialist(ws, rows)
+    p.add_baselines(["hf:ref/emotion"])
+    spec = p.spec()
+    robust = next(c for c in health(p, spec)["checks"] if c["id"] == "robust")
+    assert robust["status"] == "ok" and "vs 0.530 for rivals" in robust["value"]
