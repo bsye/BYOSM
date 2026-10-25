@@ -11,15 +11,17 @@ Rivals and benchmarks: [methodology](methodology.md).
 |---|---|---|---|---|---|---|---|
 | Which words of a request fill an action's arguments, and their type (MASSIVE slots) | AmazonScience/massive (span_f1) | v2 (70.73M) | 0.734 [0.717, 0.751] | no outside baseline scored yet | - | - | - |
 | Which of the assistant's 60 actions a request asks for (MASSIVE intents) | AmazonScience/massive (accuracy) | stream (22.74M) | 0.890 [0.877, 0.901] | jev (-) | 0.815 [0.799, 0.831] | +0.075, P(better) = 1.00 | 0.894 vs 0.824 (ahead) |
-| 77-way banking intent classification | mteb/banking77 (accuracy) | v1 (22.74M) | 0.797 [0.780, 0.812] | jev (-) | 0.807 [0.792, 0.822] | -0.010, P(better) = 0.09 | 0.747 vs 0.776 (behind) |
+| 77-way banking intent classification | mteb/banking77 (accuracy) | v1 (22.74M) | 0.797 [0.780, 0.812] | llm (-) | 0.811 [0.796, 0.826] | -0.015, P(better) = 0.04 | 0.747 vs 0.812 (behind) |
 | Route a member's request about insurance or benefits to one of 39 support intents | benefits-intent-builtin (accuracy) | v1 (22.73M) | 0.997 [0.996, 0.999] | jev (-) | 0.910 [0.903, 0.919] | +0.087, P(better) = 1.00 | 0.999 vs 0.909 (ahead) |
 | Categorise a card or bank transaction description into one of 17 spending categories | card-spend-builtin (accuracy) | v1 (22.72M) | 0.999 [0.999, 1.000] | llm (-) | 0.886 [0.877, 0.894] | +0.114, P(better) = 1.00 | 0.998 vs 0.877 (ahead) |
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
 | Classify the primary emotion expressed in a short English text (single sentence, tweet-style or short social media string) into one of six named emotions (sadness, joy, love, anger, fear, surprise). Any text that does not clearly express one of these dominates falls into a catch-all neutral-other class (including neutral statements, irony/sarcasm without a dominant named emotion, ambiguity, or non-English). | dair-ai/emotion (accuracy) | v1 (22.72M) | 0.898 [0.883, 0.913] | hf:j-hartmann/emotion-english-distilroberta-base (82.12M) | 0.838 [0.819, 0.856] | +0.060, P(better) = 1.00 | 0.904 vs 0.813 (ahead) |
+| Decide whether an excerpt from a company's financial disclosure (annual/quarterly report MD&A, notes to the financial statements, auditor or risk-factor sections, earnings releases) shows elevated risk of financial-reporting fraud or accounting misconduct, or reads as ordinary, low-risk disclosure. | fraud-risk-builtin (recall_at_precision) | v1 (149.02M) | 0.000 [0.000, 0.000] | no outside baseline scored yet | - | - | - |
 | 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | hf:DarioFrK/sift-banking77-modernbert (149.66M) | 0.937 [0.927, 0.947] | +0.000, P(better) = 0.54 | 0.948 vs 0.929 (ahead) |
-| ASSUMPTION, NOT VERIFIED: I could not look up convaiinnovations/laya, so its exact label set is unconfirmed. This spec guesses it is a 3-way sentiment classifier (negative / neutral / positive) for short user text in English, Hindi and romanized Hindi-English (Hinglish), which fits the publisher's Indic focus. Check the model card's id2label and replace the labels if they differ. The goal is a much smaller student model that matches or beats laya's macro-F1 on a held-out multilingual sentiment test set, with laya itself as the main baseline. | laya-sentiment-builtin (macro_f1) | v1 (117.66M) | 0.788 [0.760, 0.818] | llm (-) | 0.667 [0.633, 0.701] | +0.121, P(better) = 1.00 | 0.789 vs 0.642 (ahead) |
+| ASSUMPTION, NOT VERIFIED: I could not look up convaiinnovations/laya, so its exact label set is unconfirmed. This spec guesses it is a 3-way sentiment classifier (negative / neutral / positive) for short user text in English, Hindi and romanized Hindi-English (Hinglish), which fits the publisher's Indic focus. Check the model card's id2label and replace the labels if they differ. The goal is a much smaller student model that matches or beats laya's macro-F1 on a held-out multilingual sentiment test set, with laya itself as the main baseline. | laya-sentiment-builtin (macro_f1) | v1 (117.66M) | 0.788 [0.760, 0.818] | hf:cardiffnlp/twitter-xlm-roberta-base-sentiment (278.05M) | 0.700 [0.665, 0.733] | +0.089, P(better) = 1.00 | 0.789 vs 0.693 (ahead) |
 | Token-tag every token in a lease-agreement text to identify spans of DATE, AMOUNT, and PARTY (landlord, tenant, guarantor, or other named signatory) using BIO tagging. | lease-entities-builtin (span_f1) | v1 (70.69M) | 0.514 [0.389, 0.651] | hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 (183.92M) | 0.301 [0.178, 0.432] | +0.213, P(better) = 1.00 | 0.632 vs 0.370 (ahead) |
 | Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
+| Decide whether one offered tool should be used for a request; the chosen tools are the ones that fit. | tool-choice-builtin (f1) | v1 (394.79M) | 0.974 [0.967, 0.981] | no outside baseline scored yet | - | - | - |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
 | From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification of a partial-utterance. | turn-completion-builtin (recall_at_precision) | v15 (22.71M) | 0.895 [0.861, 0.924] | llm:rival-claude-haiku-5-5 (-) | 0.000 [0.000, 0.000] | +0.895, P(better) = 0.99 | 0.753 vs 0.965 (behind) |
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
@@ -66,8 +68,10 @@ Suite `ava` (nccratliri/vad-human-ava-speech): 20 test and 8 calib recordings. S
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
 | **v2-ditft** (promoted) | v1 + `document.image_backbone=hf:microsoft/dit-base-finetuned-rvlcdip document.image_pool=pooler` | 34935 (+5823 builtin test) | 109.55M | 43.27ms | 0.948 [0.941, 0.956] | 0.935 |
+| hf:microsoft/dit-large-finetuned-rvlcdip | outside baseline | - | 303.34M | 296.26ms | 0.942 [0.933, 0.950] | 0.929 |
 | hf:microsoft/dit-base-finetuned-rvlcdip | outside baseline | - | 85.82M | 36.76ms | 0.940 [0.932, 0.948] | 0.936 |
 | v1 | r2 + more-data | 34935 (+5823 builtin test) | 109.55M | 44.65ms | 0.918 [0.908, 0.928] | 0.930 |
+| distill-v2-ditft | v2-ditft + distill | 34935 (+5823 builtin test) | 17.58M | 53.53ms | 0.913 [0.904, 0.923] | 0.904 |
 | r2 | fused-dit + `train.holdout_test=auto` | 11520 (+1920 builtin test) | 109.55M | 48.11ms | 0.905 [0.894, 0.915] | 0.906 |
 | fused-dit | fused + more-data, domain-encoder, train-longer | 9600 | 109.55M | 46.90ms | 0.884 [0.873, 0.895] | 0.904 |
 | distill-r2 | r2 + distill | 11520 (+1920 builtin test) | 17.58M | 10.68ms | 0.882 [0.870, 0.893] | 0.894 |
@@ -107,10 +111,10 @@ Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses cali
 <!-- report:bank-panel -->
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
+| llm | outside baseline | - | - | - | 0.811 [0.796, 0.826] | 0.812 |
 | jev | outside baseline | - | - | 374.56ms | 0.807 [0.792, 0.822] | 0.776 |
 | **v1** (promoted) | no recorded parent | 4228 (+70 builtin test) | 22.74M | 2.38ms | 0.797 [0.780, 0.812] | 0.747 |
 | panel | outside baseline | - | - | - | 0.779 [0.763, 0.794] | 0.750 |
-| llm | outside baseline | - | - | - | 0.770 [0.752, 0.787] | 0.716 |
 | gold | spec.yaml + `data.teachers=[]` | 416 (+70 builtin test) | 22.74M | 2.54ms | 0.749 [0.731, 0.767] | 0.734 |
 
 Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
@@ -282,6 +286,8 @@ short of its own 0.93 target when the time budget ran out.
 <!-- report:lease-entities -->
 | model | built from | train rows | params | CPU | test span_f1 [95% CI] | calib span_f1 |
 |---|---|---|---|---|---|---|
+| v5 | v1 + more-data | 677 | 70.69M | 22.87ms | 0.548 [0.401, 0.707] | 0.562 |
+| v6 | v1 + train-longer | 287 | 70.69M | 18.43ms | 0.530 [0.392, 0.675] | 0.684 |
 | **v1** (promoted) | no recorded parent | 287 | 70.69M | 17.60ms | 0.514 [0.389, 0.651] | 0.632 |
 | hf:h2oai/deberta_finetuned_pii | outside baseline | - | 138.69M | 47.54ms | 0.356 [0.226, 0.500] | 0.308 |
 | hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 | outside baseline | - | 183.92M | 61.79ms | 0.301 [0.178, 0.432] | 0.370 |
@@ -296,6 +302,8 @@ Suite `builtin` (lease-entities-builtin): 50 test and 10 calib items. Selection 
 |---|---|---|---|---|---|---|
 | **v15** (promoted) | no recorded parent | 6086 | 22.71M | 6.17ms | 0.895 [0.861, 0.924] | 0.753 |
 | v18 | v15 + llm-early-stop-regularize | 7921 | 22.71M | 5.11ms | 0.881 [0.000, 0.912] | 0.808 |
+| v30 | v15 + llm-electra-small-gentle-lr-bigger-calib | 5703 | 13.48M | 11.23ms | 0.824 [0.000, 0.860] | 0.753 |
+| v28 | v15 + llm-electra-small-gentle-lr-bigger-calib | 5723 | 13.48M | 15.27ms | 0.819 [0.778, 0.855] | 0.000 |
 | v16 | v15 + hard-pairs | 5679 | 22.71M | 3.32ms | 0.816 [0.000, 0.851] | 0.000 |
 | v23 | v15 + llm-v23-downweight-hf-source | 5878 | 22.71M | 15.75ms | 0.816 [0.000, 0.855] | 0.000 |
 | v21 | v15 + llm-more-real-turn-data | 5709 | 22.71M | 18.33ms | 0.324 [0.280, 0.372] | 0.000 |
@@ -380,8 +388,30 @@ Experiments named `<recipe>-s<seed>` on suite `bench`, mean ± sample sd over se
 | model | built from | train rows | params | CPU | test macro_f1 [95% CI] | calib macro_f1 |
 |---|---|---|---|---|---|---|
 | **v1** (promoted) | no recorded parent | 3868 | 117.66M | 80.06ms | 0.788 [0.760, 0.818] | 0.789 |
+| distill-v1 | v1 + distill | 4435 | 11.17M | 7.82ms | 0.726 [0.694, 0.753] | 0.739 |
+| hf:cardiffnlp/twitter-xlm-roberta-base-sentiment | outside baseline | - | 278.05M | 152.51ms | 0.700 [0.665, 0.733] | 0.693 |
 | llm | outside baseline | - | - | - | 0.667 [0.633, 0.701] | 0.642 |
+| hf:Aayushi137/hindi-sentiment-muril | outside baseline | - | 237.56M | 16.81ms | 0.440 [0.417, 0.460] | 0.431 |
 | hf:distilbert/distilbert-base-uncased-finetuned-sst-2-english | outside baseline | - | 66.96M | 45.91ms | 0.433 [0.411, 0.455] | 0.418 |
+| hf:cardiffnlp/twitter-roberta-base-sentiment-latest | outside baseline | - | 124.65M | 320.24ms | - | - |
 
 Suite `builtin` (laya-sentiment-builtin): 773 test and 515 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
 <!-- /report:laya-sentiment -->
+
+<!-- report:fraud-risk -->
+| model | built from | train rows | params | CPU | test recall_at_precision [95% CI] | calib recall_at_precision |
+|---|---|---|---|---|---|---|
+| **v1** (promoted) | no recorded parent | 128 | 149.02M | 193.88ms | 0.000 [0.000, 0.000] | 0.909 |
+| distill-v1 | v1 + distill | 128 | 11.17M | 167.85ms | 0.000 [0.000, 0.000] | 0.000 |
+| llm | outside baseline | - | - | - | - | - |
+
+Suite `builtin` (fraud-risk-builtin): 26 test and 16 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+<!-- /report:fraud-risk -->
+
+<!-- report:tool-choice -->
+| model | built from | train rows | params | CPU | test f1 [95% CI] | calib f1 |
+|---|---|---|---|---|---|---|
+| **v1** (promoted) | no recorded parent | 13433 | 394.79M | 163.02ms | 0.974 [0.967, 0.981] | 0.978 |
+
+Suite `builtin` (tool-choice-builtin): 2535 test and 1447 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+<!-- /report:tool-choice -->
