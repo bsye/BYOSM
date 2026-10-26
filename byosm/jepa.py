@@ -91,8 +91,9 @@ def pretrain(
             torch.nn.utils.clip_grad_norm_(params, 1.0)
             opt.step()
             sched.step()
-            history.append({"step": step, "loss": float(loss), **parts})
-            prog.update(task, advance=1, description=f"LeJEPA pretraining loss={float(loss):.3f}")
+            value = loss.item()
+            history.append({"step": step, "loss": value, **parts})
+            prog.update(task, advance=1, description=f"LeJEPA pretraining loss={value:.3f}")
             if step % max(1, steps // 5) == 0:
-                _log_step(log, step, steps, float(loss), parts)
+                _log_step(log, step, steps, value, parts)
     return history

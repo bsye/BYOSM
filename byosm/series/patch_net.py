@@ -113,6 +113,6 @@ def train(
         opt.step()
         sched.step()
         if report and step % REPORT_EVERY == 0:
-            report(step, float(loss))
+            report(step, loss.item())
     net.to("cpu").eval()
     release_cache()
