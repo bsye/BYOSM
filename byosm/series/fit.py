@@ -9,11 +9,11 @@ import numpy as np
 
 from .gifteval import horizon, load, season, splits, windows
 from .metrics import summary
-from .models import Boosted, Group, rivals
+from .models import Boosted, Ensemble, Group, average, rivals
 from .patch import PatchModel, PretrainedPatch, pretrained
 from .specialist import is_rival
 
-ENSEMBLE = "ensemble"
+ENSEMBLE = Ensemble.name
 Progress = Callable[[dict[str, dict[str, Any]], list[str]], None]
 
 
@@ -53,15 +53,13 @@ def _scores(p: Prepared, held: list[np.ndarray], test: list[np.ndarray]) -> dict
     return {**b, "calib_mase": a["mase"], "calib_crps": a["crps"]}
 
 
-def _average(forecasts: list[list[np.ndarray]]) -> list[np.ndarray]:
-    return [np.mean(group, axis=0) for group in zip(*forecasts, strict=True)]
-
-
 def _line(name: str, score: dict[str, Any]) -> str:
     return f"    {name}: calib MASE {score['calib_mase']:.3f}, test MASE {score['mase']:.3f}, CRPS {score['crps']:.3f}, {score['ms_per_forecast']:.1f} ms per forecast"
 
 
-def fit_domain(configs: list[str], effort: int, log: Callable[[str], None], progress: Progress) -> dict[str, Any]:
+def fit_domain(
+    configs: list[str], effort: int, log: Callable[[str], None], progress: Progress
+) -> tuple[dict[str, Any], dict[str, Any]]:
     prepared = [prepare(c, log) for c in configs]
     groups = [Group(p.histories, p.season, p.horizon) for p in prepared]
     models, per, made = candidates(effort), {p.config: {} for p in prepared}, {}
@@ -84,7 +82,8 @@ def fit_domain(configs: list[str], effort: int, log: Callable[[str], None], prog
     ours = [m for m in made if not is_rival(m)]
     if len(ours) > 1:
         for p in prepared:
-            held, test = (_average([made[m][p.config][k] for m in ours]) for k in (0, 1))
+            held, test = (average([made[m][p.config][k] for m in ours]) for k in (0, 1))
             timing = {k: round(sum(per[p.config][m][k] for m in ours), 2) for k in ("train_s", "ms_per_forecast")}
             per[p.config][ENSEMBLE] = _scores(p, held, test) | timing
-    return per
+    trained = {m.name: m for m in models if m.name in ours}
+    return per, {**trained, ENSEMBLE: Ensemble(list(trained.values()))}

@@ -8,6 +8,11 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 
+class History(BaseModel):
+    history: list[float | None]
+    freq: str
+
+
 class Entity(BaseModel):
     key: str | None = None
     row: dict[str, Any] | None = None
@@ -59,8 +64,29 @@ def forecast_router(ws: Path) -> APIRouter:
             raise HTTPException(404, f"no forecasting domain named {domain}")
         from ..series.health import health
         from ..series.run import promoted_board
+        from ..series.saved import saved
 
-        return {**found, **promoted_board(found), **summary(found), "health": health(found)}
+        live = saved(ws, domain, found.get("promoted"))
+        return {**found, **promoted_board(found), **summary(found), "health": health(found), "live": live}
+
+    @router.get("/api/series/{domain}/example")
+    def example(domain: str, config: str, index: int = 0) -> dict[str, Any]:
+        from ..series.saved import example
+
+        try:
+            return example(domain, config, index)
+        except KeyError as e:
+            raise HTTPException(404, str(e).strip("'\"")) from e
+
+    @router.post("/api/series/{domain}/forecast")
+    def forecast(domain: str, body: History) -> dict[str, Any]:
+        from ..series.run import reports
+        from ..series.saved import forecast, saved
+
+        version = next((r.get("promoted") for r in reports(ws) if r["domain"] == domain), None)
+        if not saved(ws, domain, version):
+            raise HTTPException(409, "train a version first: Keep training saves the model it builds")
+        return {"version": version, **forecast(ws, domain, version, body.history, body.freq)}
 
     @router.get("/api/forecasts/{name}/inputs")
     def inputs(name: str) -> dict[str, Any]:

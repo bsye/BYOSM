@@ -11,6 +11,7 @@ import numpy as np
 from .fit import fit_domain
 from .gifteval import DOMAINS
 from .metrics import geomean, ratio_interval
+from .saved import save
 from .specialist import CI_DRAWS, CI_SEED, NAIVE, add_version, choose
 from .specialist import summary as forecaster
 
@@ -22,15 +23,16 @@ SCORES = ("mase", "crps", "calib_mase", "calib_crps")
 
 def _overall(per: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     overall: dict[str, dict[str, Any]] = {}
-    for m in sorted(set.intersection(*(set(r) for r in per.values()))):
-        overall[m] = {}
+    for m in sorted({m for r in per.values() for m in r}):
+        rows = [r for r in per.values() if m in r and NAIVE in r]
+        overall[m] = {"datasets": len(rows)}
         for k in SCORES:
-            if all(k in r[m] and k in r[NAIVE] for r in per.values()):
-                overall[m][k] = geomean([r[m][k] / r[NAIVE][k] for r in per.values()])
+            if rows and all(k in r[m] and k in r[NAIVE] for r in rows):
+                overall[m][k] = geomean([r[m][k] / r[NAIVE][k] for r in rows])
         for k in ("train_s", "ms_per_forecast"):
-            if all(k in r[m] for r in per.values()):
-                overall[m][k] = round(float(np.mean([r[m][k] for r in per.values()])), 3)
-        overall[m]["published"] = any(r[m].get("published") for r in per.values())
+            if rows and all(k in r[m] for r in rows):
+                overall[m][k] = round(float(np.mean([r[m][k] for r in rows])), 3)
+        overall[m]["published"] = any(r[m].get("published") for r in rows)
     return overall
 
 
@@ -79,7 +81,7 @@ def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dic
         )
         emit(SERIES_EVENT, domain=domain, pending=len(pending))
 
-    per = fit_domain(DOMAINS.get(domain, [domain]), effort, log, progress)
+    per, trained = fit_domain(DOMAINS.get(domain, [domain]), effort, log, progress)
     report = {
         "domain": domain,
         "at": time.time(),
@@ -92,6 +94,7 @@ def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dic
     _save(ws, report)
     if report.get("versions"):
         newest = report["versions"][-1]
+        save(ws, domain, newest["name"], trained[newest["recipe"]])
         log(f"  {newest['name']}: {newest['recipe']}, promoted {report['promoted']}")
     return report
 
@@ -110,7 +113,14 @@ def _with_published(report: dict[str, Any]) -> dict[str, Any]:
 def promoted_board(report: dict[str, Any]) -> dict[str, Any]:
     version = next((v for v in report.get("versions", []) if v["name"] == report.get("promoted")), None)
     configs = (version or {}).get("configs")
-    return {"configs": configs, "overall": _overall(configs)} if configs else {}
+    if not configs:
+        return {}
+    overall = _overall(configs)
+    for name, s in overall.items():
+        shared = {c: r for c, r in configs.items() if name in r and version["recipe"] in r}
+        if s["datasets"] < len(configs) and shared:
+            s["ours_on_shared"] = _overall(shared)[version["recipe"]]["mase"]
+    return {"configs": configs, "overall": overall}
 
 
 def reports(ws: Path) -> list[dict[str, Any]]:

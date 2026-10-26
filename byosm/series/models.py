@@ -34,6 +34,20 @@ def _noise(history: np.ndarray, season: int, scale: float) -> float:
     return max(float(diffs.mean()) / scale if len(diffs) else 1.0, MIN_NOISE)
 
 
+def average(forecasts: list[list[np.ndarray]]) -> list[np.ndarray]:
+    return [np.mean(group, axis=0) for group in zip(*forecasts, strict=True)]
+
+
+class Ensemble:
+    name = "ensemble"
+
+    def __init__(self, models: list[Any]) -> None:
+        self.models = models
+
+    def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
+        return average([m.predict_many(histories, season, horizon) for m in self.models])
+
+
 @dataclass
 class Group:
     histories: list[np.ndarray]

@@ -5,6 +5,8 @@ from byosm.series.gifteval import Series, horizon, season, splits, unit, windows
 from byosm.series.metrics import QUANTILES, crps, geomean, mase
 from byosm.series.models import Boosted, Group, SeasonalNaive
 
+TRAINED = {"gradient boosting": SeasonalNaive()}
+
 
 def _wave(n=24 * 60, noise=0.1, seed=0):
     t = np.arange(n)
@@ -115,7 +117,7 @@ def test_a_domain_report_is_saved_after_each_recipe_so_results_show_as_they_arri
         for pending in (["gradient boosting"], []):
             progress(per, pending)
             seen.append(next(r["pending"] for r in run.reports(ws) if r["domain"] == "demo"))
-        return per
+        return per, {}
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a", "b"]})
     monkeypatch.setattr(run, "fit_domain", fit)
@@ -146,7 +148,9 @@ def _versioned_run(ws, monkeypatch, calib, test):
     ours = {"mase": test, "crps": test, "calib_mase": calib, "calib_crps": calib, "windows": [test, test]}
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
     monkeypatch.setattr(
-        run, "fit_domain", lambda configs, effort, log, progress: {"a": {run.NAIVE: naive, "gradient boosting": ours}}
+        run,
+        "fit_domain",
+        lambda configs, effort, log, progress: ({"a": {run.NAIVE: naive, "gradient boosting": ours}}, TRAINED),
     )
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: {})
     return run.run_domain(ws, "demo", log=lambda _: None)
@@ -161,6 +165,36 @@ def test_each_run_adds_a_version_and_promotes_it_only_if_it_is_better_on_calib(w
     assert [v["name"] for v in second["versions"]] == ["v1", "v2"] and second["promoted"] == "v1"
     card = summary(second)
     assert card["kind"] == "forecast" and card["score"] == 0.9 and card["higher_is_better"] is False
+
+
+def test_each_version_saves_its_model_so_it_can_forecast_a_new_series_live(ws, monkeypatch):
+    from byosm.series.saved import forecast, saved
+
+    _versioned_run(ws, monkeypatch, calib=0.8, test=0.9)
+    assert saved(ws, "demo", "v1") and not saved(ws, "demo", "v2")
+    out = forecast(ws, "demo", "v1", [1.0, None, 3.0] * 30, "H")
+    assert out["horizon"] == 48 and len(out["forecast"]) == len(QUANTILES) and len(out["forecast"][0]) == 48
+
+
+def test_the_forecaster_routes_serve_a_test_window_and_a_live_forecast(ws, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    import byosm.series.saved as saved
+    from byosm.app.forecast_routes import forecast_router
+
+    _versioned_run(ws, monkeypatch, calib=0.8, test=0.9)
+    monkeypatch.setattr(saved, "DOMAINS", {"demo": ["a"]})
+    monkeypatch.setattr(saved, "_series", lambda config: [Series("s", "H", _wave())])
+    app = FastAPI()
+    app.include_router(forecast_router(ws))
+    client = TestClient(app)
+    assert client.get("/api/series/demo").json()["live"] is True
+    window = client.get("/api/series/demo/example", params={"config": "a"}).json()
+    assert len(window["future"]) == 48 and len(window["history"]) == saved.HISTORY
+    body = client.post("/api/series/demo/forecast", json={"history": window["history"], "freq": window["freq"]}).json()
+    assert body["version"] == "v1" and len(body["forecast"][0]) == 48
+    assert client.get("/api/series/demo/example", params={"config": "b"}).status_code == 404
 
 
 def test_one_model_per_recipe_is_trained_for_all_datasets_and_the_ensemble_averages_them(monkeypatch):
@@ -188,7 +222,8 @@ def test_one_model_per_recipe_is_trained_for_all_datasets_and_the_ensemble_avera
         "candidates",
         lambda effort: [SeasonalNaive(), Flat("gradient boosting", 1.0), Flat("patch transformer", -1.0)],
     )
-    out = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None)
+    out, trained = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None)
+    assert set(trained) == {"gradient boosting", "patch transformer", fit.ENSEMBLE}
     assert fits == [("gradient boosting", 2), ("patch transformer", 2)]
     for row in out.values():
         assert row[fit.ENSEMBLE]["mase"] < min(row["gradient boosting"]["mase"], row["patch transformer"]["mase"])
@@ -204,7 +239,7 @@ def test_keep_training_stops_once_a_version_beats_the_best_rival(ws, monkeypatch
         ours = 0.9 - 0.1 * effort
         return {
             "a": {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
-        }
+        }, TRAINED
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
     monkeypatch.setattr(run, "fit_domain", one)
@@ -226,6 +261,21 @@ def test_the_rival_is_compared_on_the_datasets_both_were_scored_on_and_the_harde
     rival = best_rival(report)
     assert rival["name"] == "Timestral-209M" and rival["datasets"] == 1 and rival["of"] == 2
     assert rival["ours"] == pytest.approx(0.7) and rival["score"] == pytest.approx(0.6)
+
+
+def test_the_board_shows_a_rival_scored_on_some_datasets_next_to_ours_on_the_same_ones():
+    from byosm.series.run import promoted_board
+
+    def row(ours, timestral=None):
+        out = {"seasonal naive": {"mase": 1.0}, "patch transformer": {"mase": ours}}
+        return {**out, "Timestral-5M": {"mase": timestral}} if timestral else out
+
+    configs = {"a": row(0.7, 0.6), "b": row(0.8)}
+    report = {"promoted": "v1", "versions": [{"name": "v1", "recipe": "patch transformer", "configs": configs}]}
+    overall = promoted_board(report)["overall"]
+    assert overall["Timestral-5M"]["datasets"] == 1 and overall["Timestral-5M"]["mase"] == pytest.approx(0.6)
+    assert overall["Timestral-5M"]["ours_on_shared"] == pytest.approx(0.7)
+    assert overall["patch transformer"]["datasets"] == 2 and "ours_on_shared" not in overall["patch transformer"]
 
 
 def test_the_pretraining_corpus_draws_windows_from_single_and_multi_variate_series(tmp_path):
@@ -254,7 +304,7 @@ def test_keep_training_stops_when_doubling_the_training_no_longer_helps(ws, monk
         ours = 0.85 - 0.001 * effort
         return {
             "a": {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
-        }
+        }, TRAINED
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
     monkeypatch.setattr(run, "fit_domain", one)

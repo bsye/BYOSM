@@ -1450,3 +1450,18 @@ Scores were cached by test set only, so when the autopilot retrained `v1` in pla
 score and the keep/revert decision compared against a model that no longer existed. Each experiment's cached score now
 carries a hash of its training metadata, which changes on every training, so a retrained experiment is scored again.
 Scores cached before this change are adopted once, like baseline scores were.
+
+## Every forecaster version can be run live
+
+A forecaster used to be scored and then thrown away, so there was nothing to forecast with. `byosm/series/run.py`
+`run_domain` now saves the model behind each new version's recipe to `.byosm/forecasters/<domain>/<version>.joblib`
+(`byosm/series/saved.py`); an ensemble is saved as the trained models it averages (`Ensemble` in
+`byosm/series/models.py`, also used to score it). The Try it tab forecasts a random test window of any of the domain's
+datasets with the promoted version, next to what really happened, or a series pasted by the user. Versions built before
+this change have no saved model until the next Keep training.
+
+## The board shows rivals scored on fewer datasets
+
+The board scored only models present on every dataset, so a rival published for two of three datasets disappeared from
+it. Each model is now scored on the datasets it has (`datasets` in `overall`), and a rival with fewer shows our
+promoted model's score on the same ones (`ours_on_shared`), as the rival stat card already did.

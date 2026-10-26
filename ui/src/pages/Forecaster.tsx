@@ -1,6 +1,6 @@
 import { Loader2, Play } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts"
 import { api, runJob, type Summary } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { StatCard, STAT_GRID } from "@/components/stat-card"
@@ -14,11 +14,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useLive } from "@/events"
 import { rivalName, score, signed } from "@/format"
 import { openJob } from "@/job-sheet"
+import { ForecastTry } from "./ForecastTry"
 import { Health, type HealthReport } from "./Health"
 import { RunningHere } from "./RunningHere"
 import { leadOf, rivalScope, titleOf } from "./specialist-groups"
 
-type Score = { mase: number; crps: number; calib_mase?: number; train_s?: number; ms_per_forecast?: number; published?: boolean }
+type Score = {
+  mase: number
+  crps: number
+  calib_mase?: number
+  train_s?: number
+  ms_per_forecast?: number
+  published?: boolean
+  datasets?: number
+  ours_on_shared?: number
+}
 type Version = { name: string; recipe: string; effort?: number; calib: number; test: number; crps: number; ci: [number, number] | null; at: number }
 export type ForecasterView = Summary & {
   configs?: Record<string, Record<string, Score>>
@@ -26,15 +36,35 @@ export type ForecasterView = Summary & {
   pending?: string[]
   versions?: Version[]
   health?: HealthReport | null
+  live?: boolean
 }
 
 const RIVALS = ["seasonal naive", "Timestral"]
 const isRival = (model: string) => RIVALS.some((r) => model.startsWith(r))
 
 const chart = {
-  mase: { label: "MASE", color: "var(--chart-1)" },
-  crps: { label: "CRPS", color: "var(--chart-2)" },
+  mase: { label: "Test MASE", color: "var(--chart-1)" },
 } satisfies ChartConfig
+
+const OURS_FILL = "var(--chart-1)"
+const RIVAL_FILL = "var(--muted-foreground)"
+
+function Who({ name, f, s }: { name: string; f: ForecasterView; s: Score }) {
+  if (isRival(name)) return <Badge variant="outline">{s.published ? "published rival" : "rival"}</Badge>
+  const promoted = f.versions?.find((v) => v.name === f.promoted)?.recipe === name
+  return promoted ? <Badge>ours, {f.promoted}</Badge> : <Badge variant="secondary">ours</Badge>
+}
+
+function Coverage({ s, total }: { s: Score; total: number }) {
+  const n = s.datasets ?? total
+  if (n >= total) return <>{`${n} of ${total}`}</>
+  return (
+    <span className="inline-flex items-center gap-1">
+      {`${n} of ${total}`}
+      {s.ours_on_shared != null && <InfoTip>{`On the same ${n} datasets our promoted model scores ${score(s.ours_on_shared)}.`}</InfoTip>}
+    </span>
+  )
+}
 
 export function useForecaster(name: string): ForecasterView | null | undefined {
   const [view, setView] = useState<ForecasterView | null | undefined>(undefined)
@@ -81,7 +111,8 @@ function Stats({ f }: { f: ForecasterView }) {
 }
 
 function Board({ f, running }: { f: ForecasterView; running: boolean }) {
-  const models = Object.entries(f.overall ?? {}).sort(([, a], [, b]) => a.mase - b.mase)
+  const models = Object.entries(f.overall ?? {}).sort(([a, x], [b, y]) => Number(isRival(a)) - Number(isRival(b)) || x.mase - y.mase)
+  const total = Object.keys(f.configs ?? {}).length
   return (
     <Card>
       <CardHeader>
@@ -89,21 +120,26 @@ function Board({ f, running }: { f: ForecasterView; running: boolean }) {
       </CardHeader>
       <CardContent className="grid gap-4">
         <ChartContainer config={chart} className="h-56 w-full">
-          <BarChart data={models.map(([name, s]) => ({ name, mase: s.mase, crps: s.crps }))} margin={{ top: 8, left: 8, right: 8 }}>
+          <BarChart data={models.map(([name, s]) => ({ name, mase: s.mase }))} margin={{ top: 20, left: 8, right: 8 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} fontSize={11} />
             <YAxis tickLine={false} axisLine={false} width={36} tickFormatter={(v) => Number(v).toFixed(1)} />
             <ReferenceLine y={1} strokeDasharray="4 4" />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Bar dataKey="mase" fill="var(--color-mase)" radius={4} />
-            <Bar dataKey="crps" fill="var(--color-crps)" radius={4} />
+            <Bar dataKey="mase" radius={4}>
+              {models.map(([name]) => (
+                <Cell key={name} fill={isRival(name) ? RIVAL_FILL : OURS_FILL} />
+              ))}
+              <LabelList dataKey="mase" position="top" fontSize={11} formatter={(v: number) => score(v)} />
+            </Bar>
           </BarChart>
         </ChartContainer>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Model</TableHead>
+              <TableHead />
+              <TableHead className="text-right">Datasets</TableHead>
               <TableHead className="text-right">Calib MASE</TableHead>
               <TableHead className="text-right">Test MASE</TableHead>
               <TableHead className="text-right">Test CRPS</TableHead>
@@ -114,13 +150,12 @@ function Board({ f, running }: { f: ForecasterView; running: boolean }) {
           <TableBody>
             {models.map(([name, s]) => (
               <TableRow key={name}>
-                <TableCell className="font-medium">
-                  {name}
-                  {isRival(name) ? (
-                    <Badge variant="outline" className="ml-2">
-                      {s.published ? "published rival" : "rival"}
-                    </Badge>
-                  ) : null}
+                <TableCell className="font-medium">{name}</TableCell>
+                <TableCell>
+                  <Who name={name} f={f} s={s} />
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  <Coverage s={s} total={total} />
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{score(s.calib_mase)}</TableCell>
                 <TableCell className="text-right tabular-nums">{score(s.mase)}</TableCell>
@@ -135,7 +170,7 @@ function Board({ f, running }: { f: ForecasterView; running: boolean }) {
                   <Loader2 className="size-3.5 animate-spin" />
                   {name}
                 </TableCell>
-                <TableCell colSpan={5} className="text-muted-foreground text-right">
+                <TableCell colSpan={7} className="text-muted-foreground text-right">
                   training
                 </TableCell>
               </TableRow>
@@ -277,11 +312,15 @@ export function Forecaster({ f }: { f: ForecasterView }) {
         <Tabs defaultValue="board">
           <TabsList>
             <TabsTrigger value="board">Board</TabsTrigger>
+            <TabsTrigger value="try">Try it</TabsTrigger>
             <TabsTrigger value="versions">Versions</TabsTrigger>
             <TabsTrigger value="datasets">Datasets</TabsTrigger>
           </TabsList>
           <TabsContent value="board">
             <Board f={f} running={running} />
+          </TabsContent>
+          <TabsContent value="try">
+            <ForecastTry f={f} />
           </TabsContent>
           <TabsContent value="versions">
             <Versions f={f} />
