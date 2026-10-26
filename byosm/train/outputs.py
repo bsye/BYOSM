@@ -5,6 +5,7 @@ from typing import Any
 
 import torch
 
+from ..project import WEIGHTS
 from ..spec import TaskSpec
 
 
@@ -39,4 +40,4 @@ def build_meta(
 
 def save_run(run_dir: Path, best: dict[str, Any]) -> None:
     run_dir.mkdir(parents=True, exist_ok=True)
-    torch.save(best["state"], run_dir / "model.pt")
+    torch.save(best["state"], run_dir / WEIGHTS)

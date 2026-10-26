@@ -6,6 +6,7 @@ from typing import Any
 
 import torch
 
+from ..project import WEIGHTS
 from ..spec import TaskSpec
 
 REPLAY_SHARE = 0.5
@@ -34,7 +35,7 @@ def _rows_by_label(
 
 def warm_start(model: torch.nn.Module, spec: TaskSpec, log: Callable[[str], None]) -> None:
     p, parent = _parent(spec)
-    state = torch.load(p.exp_dir(spec.train.init_from) / "model.pt", map_location="cpu")
+    state = torch.load(p.exp_dir(spec.train.init_from) / WEIGHTS, map_location="cpu")
     own = model.state_dict()
     kept, mapped = 0, 0
     for key, value in state.items():

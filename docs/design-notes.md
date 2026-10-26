@@ -111,10 +111,10 @@ opinion only when `judge` is configured as a different model.
 returns failure patterns with data recipes; the `generate` role then writes targeted training rows from them (filtered
 by `judge` when it is on), deduped against train, dev and test. The refine prompts come from the patterns and do not
 read `hard_cases`. The refine loop itself never sees test rows, but dev is the builtin suite's calib split (see "The
-builtin calib split is also the training dev split"). Gotcha: each round retrains from scratch on the grown
-`train.jsonl` and overwrites `model.pt` and `meta.json` (`byosm/train/outputs.py` `save_run`). The experiment keeps the
-last round's model, not the round with the best dev score, so a round that makes dev worse still replaces a better
-model.
+builtin calib split is also the training dev split"). Each round retrains from scratch on the grown `train.jsonl`
+and overwrites `model.pt` (`byosm/train/outputs.py` `save_run`), so `build` copies the best round's weights aside and
+keeps the round with the best dev score, as epoch selection does within a round (`kept_round` in the experiment meta).
+A tool-call gate run showed why: round 0 reached dev 0.871, round 1 fell to 0.833 and would have replaced it.
 
 **Text held-out sets are deduped against train.**
 `byosm/data/__init__.py`, `byosm/data/store.py` `dedupe`: for text, test is deduped against train+dev and dev against

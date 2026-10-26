@@ -11,7 +11,7 @@ import torch
 
 from . import metrics
 from .modalities import get_modality
-from .project import Project
+from .project import WEIGHTS, Project
 from .spec import TaskSpec
 from .train import build_model, to_device
 
@@ -30,7 +30,7 @@ def timed_ms(fn: Callable[[], Any], n: int, warmup: int = 0, sync: Callable[[], 
 
 
 def _weights(spec: TaskSpec, run_dir: Path) -> Path:
-    path = run_dir / "model.pt"
+    path = run_dir / WEIGHTS
     if path.exists():
         return path
     from .artifacts import weights

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -12,10 +13,12 @@ from .data.review import reviewed_labels
 from .data.store import Dataset, refine_split
 from .events import stage
 from .held_out import adopt_data, bigger_held_out
-from .project import Project
+from .project import WEIGHTS, Project
 from .spec import TaskSpec
 from .train import fit
 from .train.input_length import fitted_max_len
+
+KEPT_WEIGHTS = "model.kept.pt"
 
 
 def next_exp(p: Project) -> str:
@@ -81,18 +84,25 @@ def build(
     dd = ensure_data(p, spec, cfg, log, force_data, data_seconds)
     spec = fitted_max_len(spec, dd, log)
     can_refine = spec.modality == "text" and spec.task_type == "classify"
-    rounds, analyses = [], []
+    rounds, analyses, kept = [], [], None
     for r in range(spec.train.refine_rounds + 1):
         log(f"[train] round {r}")
         meta, errors = fit(spec, dd, ed, log, splits=["train", refine_split(exp)])
         rounds.append({"round": r, "dev_objective": meta["dev"]["objective"], "n_train": meta["n_train"]})
+        if kept is None or meta["dev"]["objective"] > kept[0]["dev"]["objective"]:
+            kept = (meta, errors, r)
+            shutil.copyfile(ed / WEIGHTS, ed / KEPT_WEIGHTS)
         if meta["dev"]["objective"] >= spec.objective.target or not can_refine or r == spec.train.refine_rounds:
             break
         analysis = refine(spec, cfg, errors, dd, exp, log)
         if not analysis or not analysis["added"]:
             break
         analyses.append(analysis)
-    meta |= {"rounds": rounds, "data_key": spec.data_key(), "refine_analyses": analyses}
+    meta, errors, best_round = kept
+    (ed / KEPT_WEIGHTS).replace(ed / WEIGHTS)
+    if best_round != rounds[-1]["round"]:
+        log(f"[train] keeping round {best_round}: the best dev {spec.objective.metric} of {len(rounds)} rounds")
+    meta |= {"rounds": rounds, "kept_round": best_round, "data_key": spec.data_key(), "refine_analyses": analyses}
     p.save_experiment(exp, spec=spec, meta=meta, errors=errors)
 
     log("[eval] scoring on every suite (+ baselines, cached)")

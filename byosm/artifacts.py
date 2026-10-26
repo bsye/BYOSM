@@ -4,11 +4,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .config import HF_TOKEN_KEY, load_config, secret
-from .project import Project
+from .project import WEIGHTS, Project
 
 REMOTE_KEY = "artifact_repo"
 REPO_TYPE = "model"
-WEIGHTS = "model.pt"
 EXPORT_DIR = "export"
 
 

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from .spec import TaskSpec
 
+WEIGHTS = "model.pt"
 EXPERIMENT_FIELDS = ("spec", "meta", "proposal", "errors", "created")
 
 
