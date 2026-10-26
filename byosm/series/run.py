@@ -133,9 +133,14 @@ def _gain(report: dict[str, Any]) -> float:
     return (before - versions[-1]["calib"]) / before
 
 
-def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] = print) -> dict[str, Any]:
-    from .patch import pretrained
+def _lever() -> str:
+    from .patch import missing_size
 
+    size = missing_size()
+    return f"the {size} base (series pretrain --size {size})" if size else "more pretraining data (series corpus --gb)"
+
+
+def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] = print) -> dict[str, Any]:
     for n in range(rounds):
         report = run_domain(ws, domain, log)
         rival = forecaster(_with_published(report))["rival"]
@@ -144,11 +149,6 @@ def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] =
             return report
         log(f"  round {n + 1}: hardest rival {rival}")
         if _gain(report) < MIN_GAIN:
-            lever = (
-                "a bigger base (series pretrain --size large)"
-                if pretrained()
-                else "the pretrained base (series pretrain)"
-            )
-            log(f"  more training gained under {MIN_GAIN:.0%} on calib: stopping, the next lever is {lever}")
+            log(f"  more training gained under {MIN_GAIN:.0%} on calib: stopping, the next lever is {_lever()}")
             return report
     return report

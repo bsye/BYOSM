@@ -323,3 +323,15 @@ def test_the_pretrained_recipe_uses_the_largest_base_that_has_been_pretrained(tm
     assert patch.pretrained()[0] == "base"
     (tmp_path / "large.pt").write_bytes(b"")
     assert patch.pretrained() == ("large", patch.SIZES["large"]) and patch.PretrainedPatch().weights == "large"
+
+
+def test_the_next_lever_names_the_smallest_base_not_pretrained_yet(tmp_path, monkeypatch):
+    import byosm.series.patch as patch
+    from byosm.series.run import _lever
+
+    monkeypatch.setattr(patch, "weights_path", lambda name="base": tmp_path / f"{name}.pt")
+    assert patch.missing_size() == "base" and "--size base" in _lever()
+    (tmp_path / "base.pt").write_bytes(b"")
+    assert "--size large" in _lever()
+    (tmp_path / "large.pt").write_bytes(b"")
+    assert patch.missing_size() is None and "series corpus" in _lever()

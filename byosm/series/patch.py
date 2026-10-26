@@ -27,6 +27,10 @@ def pretrained() -> tuple[str, Size] | None:
     return next(((n, s) for n, s in reversed(SIZES.items()) if weights_path(n).exists()), None)
 
 
+def missing_size() -> str | None:
+    return next((n for n in SIZES if not weights_path(n).exists()), None)
+
+
 def reporter(label: str, steps: int, log: Callable[[str], None] = print) -> Callable[[int, float], None]:
     from ..events import emit
 
