@@ -189,7 +189,7 @@ def test_the_forecaster_routes_serve_a_test_window_and_a_live_forecast(ws, monke
     app = FastAPI()
     app.include_router(forecast_router(ws))
     client = TestClient(app)
-    assert client.get("/api/series/demo").json()["live"] is True
+    assert client.get("/api/series/demo").json()["live"] == "v1"
     window = client.get("/api/series/demo/example", params={"config": "a"}).json()
     assert len(window["future"]) == 48 and len(window["history"]) == saved.HISTORY
     body = client.post("/api/series/demo/forecast", json={"history": window["history"], "freq": window["freq"]}).json()
@@ -475,3 +475,14 @@ def test_calib_and_test_must_agree_on_every_dataset_not_only_on_average():
     h = health({"promoted": "v1", "versions": [{**version, "configs": configs}]})
     agree = next(c for c in h["checks"] if c["id"] == "overfit")
     assert agree["status"] == "fail" and agree["value"] == "34% apart on solar"
+
+
+def test_a_live_forecast_uses_the_newest_saved_version_when_the_promoted_one_has_no_model(ws):
+    from byosm.series.saved import live_version, save
+
+    report = {"promoted": "v1", "versions": [{"name": n} for n in ("v1", "v2", "v3")]}
+    assert live_version(ws, "demo", report) is None
+    save(ws, "demo", "v2", TRAINED["gradient boosting"])
+    assert live_version(ws, "demo", report) == "v2"
+    save(ws, "demo", "v1", TRAINED["gradient boosting"])
+    assert live_version(ws, "demo", report) == "v1"

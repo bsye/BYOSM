@@ -36,7 +36,7 @@ export type ForecasterView = Summary & {
   pending?: string[]
   versions?: Version[]
   health?: HealthReport | null
-  live?: boolean
+  live?: string | null
 }
 
 const RIVALS = ["seasonal naive", "Timestral"]

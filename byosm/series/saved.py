@@ -33,6 +33,11 @@ def saved(ws: Path, domain: str, version: str | None) -> bool:
     return bool(version) and path(ws, domain, version).exists()
 
 
+def live_version(ws: Path, domain: str, report: dict[str, Any]) -> str | None:
+    names = [report.get("promoted"), *(v["name"] for v in reversed(report.get("versions", [])))]
+    return next((n for n in names if saved(ws, domain, n)), None)
+
+
 def _json(values: np.ndarray) -> list[float | None]:
     return [None if np.isnan(v) else float(v) for v in values]
 

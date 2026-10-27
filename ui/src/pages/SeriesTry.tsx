@@ -133,7 +133,7 @@ export function SeriesTry({ f }: { f: ForecasterView }) {
                 <ChartLegend content={<ChartLegendContent />} />
                 <Area dataKey="band" stroke="none" fill="var(--color-band)" fillOpacity={0.2} isAnimationActive={false} />
                 <Line dataKey="history" stroke="var(--color-history)" dot={false} strokeWidth={1.5} isAnimationActive={false} />
-                <Line dataKey="actual" stroke="var(--color-actual)" dot={false} strokeWidth={1.5} isAnimationActive={false} />
+                <Line dataKey="actual" stroke="var(--color-actual)" strokeDasharray="4 3" dot={false} strokeWidth={1.5} isAnimationActive={false} />
                 <Line dataKey="median" stroke="var(--color-median)" dot={false} strokeWidth={2} isAnimationActive={false} />
               </ComposedChart>
             </ChartContainer>
@@ -144,7 +144,11 @@ export function SeriesTry({ f }: { f: ForecasterView }) {
             </div>
           )}
           <p className="text-muted-foreground text-sm">
-            {forecast ? `${forecast.version} · mean absolute error ${mae == null ? "-" : score(mae)}` : example ? "Forecasting" : ""}
+            {forecast
+              ? `${forecast.version}${forecast.version === f.promoted ? "" : `, newest saved (${f.promoted} is promoted)`} · mean absolute error ${mae == null ? "-" : score(mae)}`
+              : example
+                ? "Forecasting"
+                : ""}
           </p>
         </CardContent>
       </Card>
