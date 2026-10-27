@@ -1023,6 +1023,22 @@ exact: the LLM places them through `{{RESULTS}}`-style placeholders. Every numbe
 the facts or the exact blocks (rounding, percent and millions allowed); otherwise the LLM gets one retry with the
 offending numbers, and after that the template card is used.
 
+## Archive instead of delete
+
+`byosm/archive.py`: archiving keeps everything a specialist built and only hides it from the list (the "Archived"
+filter on the specialists page shows it again, and Restore brings it back). The archived names are one workspace
+record, so models, teams, forecasters and event risk can all be archived without a schema change. Deleting a
+specialist also takes it off the archive list.
+
+## Publishing with a preview
+
+`byosm/hub/preview.py`, the publish dialog: before pushing, the dialog stages the bundle as a dry run and shows the
+card exactly as it will be published, the files and their size. The card can be edited by hand or by asking the `card`
+role, whose edit is refused when it adds a number that is not already in the card (the same `unsupported` check that
+guards the generated prose). The edited card is saved next to the staged files and passed to `publish --card`. "Test
+the bundle" loads the exported files with their own runtime, scores up to 200 test inputs and answers an input typed in
+the dialog, so what is tested is what is pushed. "Include the dataset" maps to `publish --data/--no-data`.
+
 ## Publishing the data next to the model
 
 For text specialists, `byosm publish` also uploads `<repo>-data` as a Hugging Face dataset (`byosm/hub/data_release.py`):

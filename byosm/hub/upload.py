@@ -15,17 +15,19 @@ from .data_release import data_repo, publish_data, releasable
 from .data_release import stage as stage_data
 from .facts import lineage, load_facts
 
+CARD_FILE = "README.md"
+
 
 def _stage(p: Project, repo_id: str, license: str, experiment: str) -> Path:
     export_dir = p.root / "export"
     stage = p.root / HUB_DIR / repo_id.replace("/", HUB_SEPARATOR)
     if stage.exists():
         shutil.rmtree(stage)
-    shutil.copytree(export_dir, stage, ignore=shutil.ignore_patterns("__pycache__", "README.md"))
+    shutil.copytree(export_dir, stage, ignore=shutil.ignore_patterns("__pycache__", CARD_FILE))
     p.exp_spec(experiment).save(stage / "spec.yaml")
     (stage / "board.json").write_text(_dumps(p.board()))
     (stage / "lineage.json").write_text(json.dumps(lineage(p, experiment), indent=2))
-    (stage / "README.md").write_text(model_card(p.name, repo_id, license))
+    (stage / CARD_FILE).write_text(model_card(p.name, repo_id, license))
     f = load_facts(p.name, repo_id, license)
     if releasable(f):
         _stage_dataset(p, f, repo_id)
@@ -57,6 +59,8 @@ def publish(
     private: bool = True,
     dry_run: bool = False,
     log: Callable[[str], None] = print,
+    card: Path | None = None,
+    data: bool = True,
 ) -> Path:
     p = Project(name)
     manifest = p.root / "export" / "manifest.json"
@@ -66,6 +70,8 @@ def publish(
     if experiment != p.promoted:
         raise RuntimeError(f"the export holds {experiment} but {p.promoted} is promoted: byosm export {name} first")
     stage = _stage(p, repo_id, license, experiment)
+    if card:
+        (stage / CARD_FILE).write_text(card.read_text())
     log(f"  staged {len(list(stage.iterdir()))} files in {stage}")
     if dry_run:
         log("  dry run: nothing uploaded")
@@ -79,6 +85,6 @@ def publish(
     api.upload_folder(folder_path=str(stage), repo_id=repo_id, commit_message=f"BYOSM publish {name}/{experiment}")
     log(f"  published https://huggingface.co/{repo_id} ({'private' if private else 'public'})")
     f = load_facts(name, repo_id, license)
-    if releasable(f):
+    if data and releasable(f):
         publish_data(f, p.root / HUB_DIR / data_repo(repo_id).replace("/", HUB_SEPARATOR), private, log)
     return stage

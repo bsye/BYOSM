@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import catalog, keys, panel_routes
+from .archive_routes import archive_router
 from .config_routes import config_router
 from .data_routes import data_router
 from .errors import missing
@@ -23,6 +24,7 @@ from .live_routes import live_router
 from .lock import claim, release
 from .models_routes import models_router
 from .opendata_routes import opendata_router
+from .publish_routes import publish_router
 from .resources_routes import resources_router
 from .systems_routes import systems_router
 from .try_routes import try_router
@@ -186,13 +188,10 @@ def create_app(
     _routes(app, ws, runner, hub, Depends(check))
     app.include_router(systems_router(ws, Depends(check)))
     app.include_router(config_router(ws, Depends(check)))
-    app.include_router(try_router(ws), dependencies=[Depends(check)])
-    app.include_router(workbench_router(ws), dependencies=[Depends(check)])
-    app.include_router(live_router(ws, runner), dependencies=[Depends(check)])
-    app.include_router(models_router(ws, runner), dependencies=[Depends(check)])
-    app.include_router(resources_router(ws), dependencies=[Depends(check)])
-    app.include_router(opendata_router(ws), dependencies=[Depends(check)])
-    app.include_router(forecast_router(ws), dependencies=[Depends(check)])
+    for r in (try_router(ws), workbench_router(ws), live_router(ws, runner), models_router(ws, runner)):
+        app.include_router(r, dependencies=[Depends(check)])
+    for r in (resources_router(ws), opendata_router(ws), forecast_router(ws), publish_router(ws), archive_router(ws)):
+        app.include_router(r, dependencies=[Depends(check)])
     app.include_router(data_router(ws), dependencies=[Depends(check)])
     app.include_router(panel_routes.router(ws), dependencies=[Depends(check)])
     if STATIC_DIR.exists():

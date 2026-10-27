@@ -50,13 +50,16 @@ def publish(
     dry_run: Annotated[
         bool, typer.Option("--dry-run", help="stage files + model card locally, upload nothing")
     ] = False,
+    card: Annotated[Path | None, typer.Option(help="a model card to publish instead of the generated one")] = None,
+    data: Annotated[bool, typer.Option("--data/--no-data", help="also publish the train, dev and test sets")] = True,
 ) -> None:
     """Push the exported bundle to the Hugging Face Hub with a generated model card:
     what it does, how it was built, test eval per suite, comparison with every baseline, lineage, usage."""
     from ..hub import publish as run
+    from ..hub.upload import CARD_FILE
 
-    stage = run(name, repo, license, not public, dry_run, log)
-    log(f"model card: {stage / 'README.md'}")
+    stage = run(name, repo, license, not public, dry_run, log, card, data)
+    log(f"model card: {stage / CARD_FILE}")
 
 
 @app.command()
