@@ -23,7 +23,7 @@ from .sections import (
 )
 
 SYNTH_FIELDS = ("name", "summary", "input_description", "languages", "diversity_axes", "hard_cases")
-DATA_RUN_SETTINGS = {"max_minutes"}
+DATA_RUN_SETTINGS = {"max_minutes", "local_source"}
 
 
 class TaskSpec(BaseModel):

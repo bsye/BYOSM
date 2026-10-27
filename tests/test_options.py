@@ -91,7 +91,12 @@ def test_a_table_marking_dev_rows_keeps_them_in_dev(ws, tmp_path):
         w.writerows([[f"t{i}", "a", "train"] for i in range(20)] + [["d", "a", "dev"], ["x", "a", "test"]])
     spec = TaskSpec(name="q", description="q", modality="text", labels=[Label(name="a", definition="")])
     spec.data.local_dir = str(table)
+    spec.data.local_source = "hf:lockon/xlam-function-calling-60k"
     splits = {"train": [], "dev": [], "test": []}
     _add_local(spec, splits, random.Random(0), log=lambda m: None)
     assert [r["input"] for r in splits["dev"]] == ["d"] and [r["input"] for r in splits["test"]] == ["x"]
     assert len(splits["train"]) == 20
+    assert {r["source"] for rows in splits.values() for r in rows} == {spec.data.local_source}
+    before = spec.data_key()
+    spec.data.local_source = "local"
+    assert spec.data_key() == before

@@ -33,7 +33,8 @@ def build_table(ws: Path, name: str, source: str, situations: int, log: Callable
     return path
 
 
-def spec_for(name: str, table: Path, backbone: str = LAYA) -> TaskSpec:
+def spec_for(name: str, table: Path, source: str, backbone: str = LAYA) -> TaskSpec:
+    from ..hub.facts import HUB_SOURCE
     from ..spec.compiler import train_cfg
 
     train = train_cfg("text", backbone).model_copy(update={"epochs": EPOCHS, "batch_size": BATCH})
@@ -52,6 +53,6 @@ def spec_for(name: str, table: Path, backbone: str = LAYA) -> TaskSpec:
         objective=Objective(metric="f1", target=TARGET),
         backbone=backbone,
         latency_budget_ms=LATENCY_MS,
-        data=DataPlan(synthetic=False, local_dir=str(table)),
+        data=DataPlan(synthetic=False, local_dir=str(table), local_source=f"{HUB_SOURCE}{source}"),
         train=train,
     )

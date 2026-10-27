@@ -84,8 +84,9 @@ def _split_by_recording(real: list[dict], rng: random.Random) -> dict[str, list[
 
 def _add_local(spec: TaskSpec, splits: dict[str, list[dict]], rng: random.Random, log: Log) -> None:
     local = _local(spec)
-    marked = {m: [record(x, y, "local") for x, y, s in local if s == m] for m in HELD}
-    rows = [record(x, y, "local") for x, y, s in local if s not in HELD]
+    source = spec.data.local_source
+    marked = {m: [record(x, y, source) for x, y, s in local if s == m] for m in HELD}
+    rows = [record(x, y, source) for x, y, s in local if s not in HELD]
     shares = {m: 0.0 for m in HELD if marked[m]}
     parts = _split3(rows, rng, **shares) if shares else _split3(rows, rng, test=TEST_SHARE)
     for s, part in parts.items():

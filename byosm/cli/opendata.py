@@ -99,7 +99,7 @@ def options_new(
 
     ws = find_workspace()
     p = Project(name).ensure()
-    p.save_spec(spec_for(name, build_table(ws, name, source, situations, log)))
+    p.save_spec(spec_for(name, build_table(ws, name, source, situations, log), source))
     log(f"saved {name}: run `byosm build {name}` to train it")
 
 

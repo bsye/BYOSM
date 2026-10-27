@@ -11,14 +11,13 @@ from ..data.store import BASE_TRAIN, Dataset
 from ..evals.test_sets import held_out_set, test_sets
 from ..evals.workbench import OURS
 from ..model_refs import model_ref
-from .facts import CardFacts
+from .facts import HUB_SOURCE, CardFacts
 
 SUFFIX = "-data"
 UNKNOWN_LICENCE = "licence not stated on its card"
 MAIN_SPLITS = ("train", "validation", "test")
 FIELDS = ("id", "input", "label", "source")
 LLM_SOURCE = "llm:"
-HUB_SOURCE = "hf:"
 CARD = """---
 {front}---
 
