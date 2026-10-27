@@ -1224,8 +1224,10 @@ electricity went from 0.198 to 0.094 (seasonal naive 0.102); the median forecast
 ## CPU fallback for small trainings
 
 A training can ask `gpu_slot` for a fallback device. When the GPU has no room at that moment, it runs there at once
-instead of queueing. The time series patch transformer (0.6M parameters) uses it: it trains on the CPU in minutes,
-while a queue behind a large training can last hours.
+instead of queueing. The time series patch transformer (0.6M parameters) uses it while its training is at most
+`CPU_FALLBACK_STEPS` (12,000) steps: that trains on the CPU in about 45 minutes, while a queue behind a large training
+can last hours. Keep training doubles the steps each round, and past that limit the CPU loses: an energy run at 192,000
+steps went at 500 steps per 110 s on the CPU, about 12 hours, against about 3 hours on the GPU after a wait of minutes.
 
 ## Boosting predicts a correction to seasonal naive
 

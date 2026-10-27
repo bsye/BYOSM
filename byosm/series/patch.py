@@ -12,6 +12,7 @@ from .patch_net import BASE, SIZES, SMALL, PatchNet, Size, picker, train, window
 
 STEPS = 3000
 FINETUNE_STEPS = 800
+CPU_FALLBACK_STEPS = 12000
 BATCH = 256
 LR = 1e-3
 FINETUNE_LR = 2e-4
@@ -65,8 +66,9 @@ class PatchModel:
         if self.pretrained:
             self.net.load_state_dict(torch.load(weights_path(self.weights), map_location="cpu"))
             steps, lr = FINETUNE_STEPS, FINETUNE_LR
-        with gpu_slot(_device(), print, fallback="cpu" if self.size == SMALL else None) as device:
-            series, total = [(h, g.horizon) for g in groups for h in g.histories], steps * 2**self.effort
+        series, total = [(h, g.horizon) for g in groups for h in g.histories], steps * 2**self.effort
+        quick = self.size == SMALL and total <= CPU_FALLBACK_STEPS
+        with gpu_slot(_device(), print, fallback="cpu" if quick else None) as device:
             report = reporter(self.name, total)
             resume = checkpoint.path(checkpoint.key(self.name, self.size, total, lr, arrays=[h for h, _ in series]))
             train(self.net, picker(series, self.size.patch), total, lr, BATCH, device, SEED, report, resume)
