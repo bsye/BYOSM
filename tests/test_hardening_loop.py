@@ -55,6 +55,5 @@ def test_time_spent_waiting_for_the_gpu_does_not_count_against_the_budget(monkey
     import byosm.train.gpu as gpu
 
     s = _session()
-    ends = s.deadline
     monkeypatch.setattr(gpu, "_WAITED", [1800.0, 600.0])
-    assert s.deadline == ends + 2400.0
+    assert s.deadline == s.ends + 2400.0
