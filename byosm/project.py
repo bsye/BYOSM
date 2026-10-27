@@ -113,6 +113,11 @@ class Project:
             mine = Experiment.specialist_id == sid
             return sorted(s.scalars(select(Experiment.name).where(mine, Experiment.meta.is_not(None)))) if sid else []
 
+    def attempts(self) -> list[str]:
+        with session(self.ws) as s:
+            sid = self._id(s)
+            return sorted(s.scalars(select(Experiment.name).where(Experiment.specialist_id == sid))) if sid else []
+
     def experiment(self, exp: str) -> dict[str, Any] | None:
         with session(self.ws) as s:
             e = self._experiment(s, exp)

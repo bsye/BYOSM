@@ -1008,6 +1008,19 @@ proposal is applied, `improve.paths.untrainable` lists its Hub backbones that ha
 is dropped with a log line. The check is one file listing per repo; when the Hub cannot be reached it lets the proposal
 through, since loading from the local cache may still work.
 
+## A proposal runs once
+
+`byosm/improve/proposals.py` `apply`: a proposal whose edits already ran is refused (`AlreadyTriedError`, or
+`improve --force` to run it again), and one whose build never finished reuses that experiment instead of creating a
+new one. Every attempt counts, built or not (`Project.attempts`): `next_steps.tried_proposals`, the autopilot and the
+analyst's history all read it, and the history says when an attempt never finished. Before, only experiments with a
+finished training counted, so a failed or interrupted run looked untried: the tool-call gate's drop-xlam proposal ran
+three times and v4, v5 and v6 have identical specs.
+
+Setting `data.hf_sources` to an empty list on a spec that had sources also clears `data.hf_queries`. Without that, data
+resolution treats an empty source list as "search again" and picked the same sources back: the drop-xlam runs still
+trained on xlam.
+
 ## A crashed job keeps its error
 
 The job wrapper writes the exit code in a `finally` block. Python prints an uncaught traceback only after that block, so

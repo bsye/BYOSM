@@ -43,7 +43,23 @@ def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print)
     return dg, props
 
 
-def apply(name: str, ids: list[str], exp: str | None = None) -> str:
+class AlreadyTriedError(ValueError):
+    pass
+
+
+def _same_attempt(p: Project, keys: set[str]) -> str | None:
+    return next(
+        (e for e in p.attempts() if {proposal_key(a) for a in (p.proposal(e) or {}).get("applied", [])} == keys), None
+    )
+
+
+def _explicit_sources(parent: TaskSpec, spec: TaskSpec) -> TaskSpec:
+    if parent.data.hf_sources and not spec.data.hf_sources:
+        spec.data.hf_queries = []
+    return spec
+
+
+def apply(name: str, ids: list[str], exp: str | None = None, force: bool = False) -> str:
     from ..pipeline import next_exp
 
     p = Project(name)
@@ -51,8 +67,13 @@ def apply(name: str, ids: list[str], exp: str | None = None) -> str:
     chosen = [pr for pr in saved["proposals"] if pr["id"] in ids]
     if len(chosen) != len(ids):
         raise KeyError(f"unknown proposal ids: {set(ids) - {pr['id'] for pr in chosen}}")
+    if (same := _same_attempt(p, {proposal_key(pr) for pr in chosen})) and not force:
+        if same not in p.experiments():
+            return same
+        raise AlreadyTriedError(f"{', '.join(ids)} already ran as {same}")
     parent = saved["from"]
-    spec = apply_ops(p.exp_spec(parent), [o for pr in chosen for o in pr["ops"]])
+    base = p.exp_spec(parent)
+    spec = _explicit_sources(base, apply_ops(base, [o for pr in chosen for o in pr["ops"]]))
     exp = exp or next_exp(p)
     p.save_experiment(exp, spec=spec, proposal={"parent": parent, "applied": chosen})
     return exp

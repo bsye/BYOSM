@@ -95,6 +95,7 @@ def diagnose(name: str) -> dict[str, Any]:
 
 
 VALUE_CHARS = 80
+NOT_BUILT = "never finished training (failed or interrupted)"
 
 
 def _change(op: dict) -> str:
@@ -102,8 +103,8 @@ def _change(op: dict) -> str:
 
 
 def tried(p: Project, board: dict, prim: str) -> list[dict]:
-    out = []
-    for exp in p.experiments():
+    out, built = [], set(p.experiments())
+    for exp in p.attempts():
         pr = p.proposal(exp) or {}
         r = board.get(exp, {}).get(prim, {})
         out.append(
@@ -114,6 +115,7 @@ def tried(p: Project, board: dict, prim: str) -> list[dict]:
                 "calib": r.get("calib_objective"),
                 "test": r.get("objective"),
                 "promoted": exp == p.promoted,
+                "outcome": "scored" if r else "trained, not scored" if exp in built else NOT_BUILT,
             }
         )
     return out

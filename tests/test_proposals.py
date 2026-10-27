@@ -135,3 +135,37 @@ def test_next_steps_that_run_the_same_command_are_shown_once_in_their_first_plac
         {"args": ["eval", "q"], "title": "c"},
     ]
     assert [s["title"] for s in unique(steps)] == ["a", "b"]
+
+
+def _saved(p, *props):
+    p.save_report(proposals.PROPOSALS, {"from": "v1", "proposals": list(props)})
+
+
+def test_a_proposal_that_already_ran_is_refused_unless_forced(ws):
+    p, spec = make_project(ws)
+    longer = {"id": "longer", "why": "", "ops": [{"op": "set", "path": "train.epochs", "value": 9}]}
+    _saved(p, longer)
+    first = improve.apply("t", ["longer"])
+    p.save_experiment(first, meta={"params": 1})
+    with pytest.raises(improve.AlreadyTriedError, match=first):
+        improve.apply("t", ["longer"])
+    assert improve.apply("t", ["longer"], force=True) != first
+
+
+def test_a_proposal_whose_build_never_finished_reuses_its_experiment(ws):
+    p, spec = make_project(ws)
+    _saved(p, {"id": "longer", "why": "", "ops": [{"op": "set", "path": "train.epochs", "value": 9}]})
+    first = improve.apply("t", ["longer"])
+    assert improve.apply("t", ["longer"]) == first
+
+
+def test_emptying_the_sources_also_stops_the_search_that_would_pick_them_again(ws):
+    from byosm.spec import HFSource
+
+    p, spec = make_project(ws)
+    spec.data.hf_sources = [HFSource(dataset="org/xlam")]
+    spec.data.hf_queries = ["function calling"]
+    p.save_experiment("v1", spec=spec)
+    _saved(p, {"id": "drop", "why": "", "ops": [{"op": "set", "path": "data.hf_sources", "value": []}]})
+    data = p.exp_spec(improve.apply("t", ["drop"])).data
+    assert data.hf_sources == [] and data.hf_queries == []

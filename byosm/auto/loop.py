@@ -117,8 +117,9 @@ def _applicable(s: Session, props: list[dict], tried: set[str]) -> list[dict]:
 
 def improve_until_stop(s: Session, max_experiments: int, use_llm: bool) -> str:
     from .. import improve
+    from ..next_steps import tried_proposals
 
-    tried = {
+    tried = tried_proposals(s.p) | {
         proposal_key(d["proposal"]) for d in s.log.decisions if d["step"] in ("experiment", "skip") and "proposal" in d
     }
     stale = 0

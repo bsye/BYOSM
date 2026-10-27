@@ -65,6 +65,7 @@ def improve(
     run: Annotated[bool, typer.Option("--run", help="build the new experiment")] = False,
     each: Annotated[bool, typer.Option("--each", help="one experiment per proposal, one after the other")] = False,
     no_llm: Annotated[bool, typer.Option(help="rule-based proposals only")] = False,
+    force: Annotated[bool, typer.Option("--force", help="run a proposal again even if it already ran")] = False,
 ) -> None:
     """Diagnose the board and propose the next experiment (spec edits with evidence)."""
     from .. import improve as imp
@@ -73,13 +74,20 @@ def improve(
     ids = [s.strip() for s in (apply or "").split(",") if s.strip()]
     for pid in ids if each else []:
         with stage(f"Try {pid}"):
-            exp = imp.apply(name, [pid])
-            log(f"created experiment {exp} from {pid}")
+            try:
+                exp = imp.apply(name, [pid], force=force)
+            except imp.AlreadyTriedError as e:
+                log(f"skipped: {e}")
+                continue
+            log(f"experiment {exp} from {pid}")
             _build_or_hint(name, exp, run)
     if each:
         return
     if apply:
-        exp = imp.apply(name, [s.strip() for s in apply.split(",")])
+        try:
+            exp = imp.apply(name, ids, force=force)
+        except imp.AlreadyTriedError as e:
+            raise typer.BadParameter(f"{e}; pass --force to run it again") from e
         log(f"created experiment {exp} -> {Project(name).exp_dir(exp) / 'spec.yaml'}")
         _build_or_hint(name, exp, run)
         return

@@ -85,7 +85,7 @@ def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
 
 
 def tried_proposals(p: Project) -> set[str]:
-    return {proposal_key(a) for exp in p.experiments() for a in (p.proposal(exp) or {}).get("applied", [])}
+    return {proposal_key(a) for exp in p.attempts() for a in (p.proposal(exp) or {}).get("applied", [])}
 
 
 def _experiments(p: Project) -> dict[str, Any]:
