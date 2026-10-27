@@ -1348,6 +1348,12 @@ The autopilot distills its promoted model whenever it is above the size target, 
 and ships the student when its calib score is within `DISTILL_TOLERANCE` (0.01) of the teacher's. A specialist that
 is not at least 4x smaller than its rival gets a "Distill into a smaller model" next step from its health.
 
+Any build is promoted for speed by the same rule (`byosm/pipeline.py` `fixes_speed`, the one `DISTILL_TOLERANCE`): it
+meets the latency budget that the promoted model misses and its calib score is within the tolerance. Before, only the
+autopilot applied the tolerance; a "Make it faster" step built the student through `maybe_promote`, which asked for a
+sure calib win, so the step could never pass the speed check it was chosen for. tool-choice's 11M student (10 ms,
+calib 0.956) still stays out: the 163 ms teacher's calib is 0.978, 0.022 ahead.
+
 ## The strongest rival, measured
 
 Fine-tuned rivals are searched by the specialist's own task (text, token, audio and image classification), and up to

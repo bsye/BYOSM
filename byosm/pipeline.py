@@ -19,6 +19,7 @@ from .train import fit
 from .train.input_length import fitted_max_len
 
 KEPT_WEIGHTS = "model.kept.pt"
+DISTILL_TOLERANCE = 0.01
 
 
 def next_exp(p: Project) -> str:
@@ -126,6 +127,12 @@ def build(
     return maybe_promote(p, exp, log)
 
 
+def fixes_speed(spec: TaskSpec, mine: dict, cur: dict, mine_value: float, cur_value: float) -> bool:
+    ms, was, budget = mine.get("latency_ms"), cur.get("latency_ms"), spec.latency_budget_ms
+    in_budget = ms is not None and was is not None and ms <= budget < was
+    return in_budget and mine_value >= cur_value - DISTILL_TOLERANCE
+
+
 def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> dict[str, Any]:
     base = p.spec()
     prim = base.primary_suite()
@@ -140,6 +147,13 @@ def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> d
     if mine > cur and evals.sure_lead(cmp):
         p.promote(exp)
         log(f"  promoted {exp}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{sig}){test}")
+    elif b and fixes_speed(base, board.get(exp, {}), board.get(p.promoted, {}), mine, cur):
+        was = p.promoted
+        p.promote(exp)
+        log(
+            f"  promoted {exp}: within {DISTILL_TOLERANCE} of {was} on {prim} calib ({mine:.4f} vs {cur:.4f}) "
+            f"and inside the {base.latency_budget_ms:g} ms budget that {was} misses{test}"
+        )
     elif mine > cur:
         log(f"  kept {p.promoted}: {exp}'s calib lead {mine:.4f} over {cur:.4f} is not sure{sig}{test}")
     else:

@@ -8,6 +8,7 @@ from ..config import PUBLISH_LICENSE, load_config
 from ..data.request import missing_labels
 from ..events import TARGET, emit
 from ..llm import role_model
+from ..pipeline import DISTILL_TOLERANCE
 from ..project import Project
 from .loop import improve_until_stop
 from .report import _report
@@ -15,7 +16,6 @@ from .standing import standing
 from .state import Log, Session
 
 DECISION_EXTRAS = ("by", "alternatives")
-DISTILL_TOLERANCE = 0.01
 
 
 def _compile(name: str | None, prompt: str | None, modality: str | None, cfg: Any) -> Any:
