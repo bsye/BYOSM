@@ -8,11 +8,12 @@ MAX_ROUNDS = 12
 BUDGET_H = 6.0
 
 
-def _next(name: str, tried: set[tuple], model: str | None = None) -> dict[str, Any] | None:
+def _next(name: str, tried: set[tuple], model: str | None = None, blockers: list[str] = ()) -> dict[str, Any] | None:
     from ..next_steps import suggestions
 
     fresh = [s for s in suggestions(name) if (model, s["id"], *s["args"]) not in tried]
-    return max(fresh, key=lambda s: (bool(s.get("unblocks")), s.get("gain") or 0), default=None)
+    clears = {s["id"]: bool(set(s.get("unblocks") or []) & set(blockers)) for s in fresh}
+    return max(fresh, key=lambda s: (clears[s["id"]], bool(s.get("unblocks")), s.get("gain") or 0), default=None)
 
 
 def _report_move(step: dict[str, Any], before: dict[str, str], h: dict[str, Any], log: Callable[[str], None]) -> None:
@@ -45,7 +46,7 @@ def until_ready(
         if h["ready"]:
             return {"ready": True, "score": h["score"], "rounds": n}
         model = p.promoted if p.exists() else None
-        step = _next(name, tried, model) if time.time() < deadline else None
+        step = _next(name, tried, model, h["blockers"]) if time.time() < deadline else None
         if step is None:
             reason = "time budget spent" if time.time() >= deadline else "no untried step left"
             return {"ready": False, "score": h["score"], "rounds": n, "stop": reason}

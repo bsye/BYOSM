@@ -1396,7 +1396,9 @@ but it is advisory: an owner may require it, the app does not.
 `next --all` runs the same loop as `byosm ready` (`byosm/auto/ready.py`): it reads the health, runs the untried step
 with the largest gain, reads the health again and logs whether the checks that step targets moved. It used to compute
 the step list once and run every step in a fixed order, so a step ran even when an earlier one had already fixed, or
-could not fix, the check it was meant for.
+could not fix, the check it was meant for. A step that clears a production blocker goes before one that only moves
+an advisory check: tool-choice's run picked "Find more experiments" three rounds in a row, credited with the advisory
+rival check, while overfitting and robustness, the two blockers, waited.
 
 Every failing check has a step. A failing "Holds on new inputs" now offers Keep training (`continue --run`, titled
 "Train on varied inputs"), whose plan writes rows that vary phrasing and context; before, the check had a step only

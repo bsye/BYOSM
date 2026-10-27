@@ -59,3 +59,16 @@ def test_each_step_reports_whether_it_moved_the_check_it_was_chosen_for():
         "[ready] Make it faster: check speed was fail, unchanged",
         "[ready] Make it faster: check speed was fail, now ok",
     ]
+
+
+def test_the_next_step_is_one_that_clears_a_blocker_before_one_that_only_helps_an_advisory_check(monkeypatch):
+    import byosm.next_steps as next_steps
+    from byosm.auto.ready import _next
+
+    steps = [
+        {"id": "experiments", "args": ["improve", "q"], "unblocks": ["Beats the best rival"], "gain": 39},
+        {"id": "robust", "args": ["continue", "q", "--run"], "unblocks": ["Holds on new inputs"], "gain": 14},
+    ]
+    monkeypatch.setattr(next_steps, "suggestions", lambda name: steps)
+    assert _next("q", set(), "v1", ["Holds on new inputs"])["id"] == "robust"
+    assert _next("q", set(), "v1", [])["id"] == "experiments"
