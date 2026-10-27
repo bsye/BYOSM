@@ -123,6 +123,12 @@ build was for, and it rarely helped: on the tool-call gate dev went 0.633 to 0.4
 0.833 to 0.798 across rounds, and a Banking77 ablation found it neutral. When rounds are on, `build` stops after a round
 that does not beat the kept one instead of writing more rows from a worse model's errors.
 
+The rules that ask for more data read their own evidence (`byosm/improve/registry.py` `plateaued`, `refine_hurt`).
+`more-data` is proposed only while dev is still rising or noisy, not after it plateaued: its text used to say "dev
+plateaued at 0.86, so more of the same data may help less" and propose doubling the data anyway. `refine-more` and
+`hard-pairs` are dropped once the last build's refine rounds left dev no higher than round 0 (`refine_gain` in the
+diagnosis).
+
 **Text held-out sets are deduped against train.**
 `byosm/data/__init__.py`, `byosm/data/store.py` `dedupe`: for text, test is deduped against train+dev and dev against
 train. A row is dropped if it is an exact normalised duplicate of a reference row, or if its 5-gram Jaccard is above

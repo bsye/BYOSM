@@ -64,7 +64,14 @@ def training_summary(meta: dict, spec: TaskSpec) -> dict[str, Any]:
         "epochs_cfg": spec.train.epochs,
         "n_train": meta.get("n_train"),
         "late_best": _converging_late(curve, best_ep, spec.train.epochs),
+        "refine_gain": _refine_gain(meta.get("rounds", [])),
     }
+
+
+def _refine_gain(rounds: list[dict]) -> float | None:
+    if len(rounds) < 2:
+        return None
+    return max(r["dev_objective"] for r in rounds[1:]) - rounds[0]["dev_objective"]
 
 
 def diagnose(name: str) -> dict[str, Any]:

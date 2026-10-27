@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .registry import gap, rule
+from .registry import gap, refine_hurt, rule
 
 DOMAIN_ENCODERS: dict[str, dict[str, Any]] = {
     "document.image_backbone": {
@@ -89,7 +89,7 @@ def label_convention(dg: dict) -> list[dict]:
 def confusable_pairs(dg: dict) -> list[dict]:
     spec = dg["spec"]
     conf = dg["suites"].get(dg["primary"], {}).get("confusions") or []
-    if not conf or not spec.data.synthetic:
+    if not conf or not spec.data.synthetic or refine_hurt(dg):
         return []
     cases = [f"{g} that looks like {p} (it is {g})" for g, p, _ in conf[:4]]
     ops = [
@@ -109,7 +109,12 @@ def confusable_pairs(dg: dict) -> list[dict]:
 @rule
 def refine_more(dg: dict) -> list[dict]:
     spec = dg["spec"]
-    if spec.modality == "text" and spec.data.synthetic and (dg["dev"] or 0) < spec.objective.target:
+    if (
+        spec.modality == "text"
+        and spec.data.synthetic
+        and (dg["dev"] or 0) < spec.objective.target
+        and not refine_hurt(dg)
+    ):
         ops = [{"op": "set", "path": "train.refine_rounds", "value": spec.train.refine_rounds + 2}]
         why = f"dev {dg['dev']:.3f} < target {spec.objective.target}; run more analyze->generate->retrain rounds."
         return [{"id": "refine-more", "ops": ops, "why": why}]

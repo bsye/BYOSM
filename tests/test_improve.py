@@ -125,10 +125,23 @@ def test_more_data_grows_the_labeled_source_that_supplied_rows():
     assert _richest_labeled(dg)[0] == 0
 
 
-def test_more_data_is_proposed_for_any_gap_to_a_baseline():
+def test_more_data_is_proposed_for_a_gap_to_a_baseline_only_while_dev_still_rises():
     spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="a", definition="")])
     spec.objective.target = 0.5
-    assert "more-data" in proposals(spec, 0.92, 0.93, PLATEAU, 2)
+    spec.train.epochs = len(RISING)
+    assert "more-data" in proposals(spec, 0.92, 0.93, RISING, len(RISING) - 1)
+    assert "more-data" not in proposals(spec, 0.92, 0.93, PLATEAU, 2)
+
+
+def test_refine_proposals_stop_once_refine_rounds_made_dev_worse():
+    from byosm.improve import confusable_pairs, refine_more
+
+    spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="a", definition="")])
+    dg = diagnosis(spec, 0.7, 0.9, RISING, 3)
+    dg["suites"][dg["primary"]]["confusions"] = [("a", "b", 5)]
+    assert refine_more(dg) and confusable_pairs(dg)
+    dg["refine_gain"] = -0.04
+    assert not refine_more(dg) and not confusable_pairs(dg)
 
 
 def test_streamed_source_read_to_the_end_proposes_an_unused_split(monkeypatch):

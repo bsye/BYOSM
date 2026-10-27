@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .registry import gap, rule
+from .registry import gap, plateaued, rule
 
 
 def _train_partition(source: Any) -> Any:
@@ -42,10 +42,9 @@ def _curve_note(dg: dict) -> str:
     curve = dg["curve"]
     if len(curve) < 2:
         return ""
-    tail = curve[-max(2, len(curve) // 3) :]
     if dg["late_best"]:
         return f"; dev was still rising at the end ({curve[0]:.2f} -> {max(curve):.2f}), consistent with being data-limited"
-    if max(tail) - min(tail) < 0.01:
+    if plateaued(dg):
         return (
             f"; dev plateaued at {max(curve):.2f}, so more of the same data may help less than new data or a new recipe"
         )
@@ -101,7 +100,7 @@ def more_data(dg: dict) -> list[dict]:
     spec, out = dg["spec"], []
     lag, bb = gap(dg, dg["primary"])
     below = (dg["suites"].get(dg["primary"], {}).get("objective") or 0) < spec.objective.target
-    if not (lag > 0 or below):
+    if not (lag > 0 or below) or plateaued(dg):
         return out
     ev = _more_data_evidence(dg, lag, bb)
     labeled = _richest_labeled(dg)
