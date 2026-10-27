@@ -169,11 +169,10 @@ def distill(
 @app.command("next")
 def next_(
     name: str,
-    run_all: Annotated[bool, typer.Option("--all", help="run every suggested step, in order")] = False,
+    run_all: Annotated[bool, typer.Option("--all", help="run the steps, re-reading the health after each one")] = False,
 ) -> None:
     """Show what to do next for a specialist (a held-out set too small, rivals not scored, no overfitting check,
-    an untried proposal, a stale export), and with --all do it, one step after the other."""
-    from ..events import stage
+    an untried proposal, a stale export), and with --all do them, picking each next step from the health again."""
     from ..next_steps import suggestions
 
     steps = suggestions(name)
@@ -181,9 +180,8 @@ def next_(
         log(f"- {s['title']}: {s['why']}  (byosm {' '.join(s['args'])})")
     if not steps:
         log(f"{name}: nothing to do")
-    for s in steps if run_all else []:
-        with stage(s["title"]):
-            app(s["args"], standalone_mode=False)
+    if run_all and steps:
+        ready(name, MAX_ROUNDS, BUDGET_H)
 
 
 @app.command("ready")

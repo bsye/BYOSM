@@ -15,6 +15,16 @@ def _next(name: str, tried: set[tuple], model: str | None = None) -> dict[str, A
     return max(fresh, key=lambda s: (bool(s.get("unblocks")), s.get("gain") or 0), default=None)
 
 
+def _report_move(step: dict[str, Any], before: dict[str, str], h: dict[str, Any], log: Callable[[str], None]) -> None:
+    from ..next_steps import STEP_CHECKS
+
+    after = {c["id"]: c["status"] for c in h.get("checks", [])}
+    for cid in STEP_CHECKS.get(step["id"], ()):
+        if cid in before:
+            change = "unchanged" if after.get(cid) == before[cid] else f"now {after.get(cid)}"
+            log(f"[ready] {step['title']}: check {cid} was {before[cid]}, {change}")
+
+
 def until_ready(
     name: str,
     run: Callable[[list[str]], Any],
@@ -26,9 +36,11 @@ def until_ready(
     from ..health import health
     from ..project import Project
 
-    p, deadline, tried = Project(name), time.time() + budget_h * 3600, set()
+    p, deadline, tried, moved = Project(name), time.time() + budget_h * 3600, set(), []
     for n in range(rounds):
         h = health(p, p.spec()) or {"score": 0, "ready": False, "blockers": []}
+        if moved:
+            _report_move(*moved.pop(), h, log)
         log(f"[ready] round {n + 1}: health {h['score']}, blocked by {', '.join(h['blockers']) or 'nothing'}")
         if h["ready"]:
             return {"ready": True, "score": h["score"], "rounds": n}
@@ -38,6 +50,7 @@ def until_ready(
             reason = "time budget spent" if time.time() >= deadline else "no untried step left"
             return {"ready": False, "score": h["score"], "rounds": n, "stop": reason}
         tried.add((model, step["id"], *step["args"]))
+        moved.append((step, {c["id"]: c["status"] for c in h.get("checks", [])}))
         try:
             with stage(step["title"]):
                 code = run(step["args"])

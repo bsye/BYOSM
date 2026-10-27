@@ -1361,6 +1361,11 @@ A specialist is ready once it has a scored version. It is ready for production w
 with no blocking check failed or unknown. Beating the best rival is one of the health checks and counts in the score,
 but it is advisory: an owner may require it, the app does not.
 
+`next --all` runs the same loop as `byosm ready` (`byosm/auto/ready.py`): it reads the health, runs the untried step
+with the largest gain, reads the health again and logs whether the checks that step targets moved. It used to compute
+the step list once and run every step in a fixed order, so a step ran even when an earlier one had already fixed, or
+could not fix, the check it was meant for.
+
 ## Size against the rival is part of every result
 
 Accuracy alone made a 109M-parameter model built on its rival's own checkpoint look like a win over that rival. Health

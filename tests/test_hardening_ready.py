@@ -46,3 +46,16 @@ def test_a_failing_step_is_logged_and_the_loop_moves_on(monkeypatch):
     assert "[ready] Find data failed: RuntimeError: LLM down" in logs
     assert "[ready] Export failed: exit code 2" in logs
     assert out["stop"] == "no untried step left"
+
+
+def test_each_step_reports_whether_it_moved_the_check_it_was_chosen_for():
+    from byosm.auto.ready import _report_move
+
+    lines = []
+    step = {"id": "faster", "title": "Make it faster"}
+    _report_move(step, {"speed": "fail"}, {"checks": [{"id": "speed", "status": "fail"}]}, lines.append)
+    _report_move(step, {"speed": "fail"}, {"checks": [{"id": "speed", "status": "ok"}]}, lines.append)
+    assert lines == [
+        "[ready] Make it faster: check speed was fail, unchanged",
+        "[ready] Make it faster: check speed was fail, now ok",
+    ]
