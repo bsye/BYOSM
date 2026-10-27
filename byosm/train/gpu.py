@@ -144,7 +144,7 @@ def gpu_slot(
             return
         if not waited:
             log(
-                f"  waiting for the {device} GPU: {len(holders(ws))} training(s) on it, {free_gb():.0f} GB free, {max(needed_gb(), need_gb(base, key)):.0f} GB needed"
+                f"  waiting for the {device} GPU: {len(holders(ws))} training(s) on it, {free_gb():.1f} GB free, {max(needed_gb(), need_gb(base, key)):.1f} GB needed"
             )
         if waited % HEARTBEAT_S < WAIT_S:
             emit("gpu", state="waiting", waited=round(waited))
