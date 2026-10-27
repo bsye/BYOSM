@@ -1273,7 +1273,9 @@ steps went at 500 steps per 110 s on the CPU, about 12 hours, against about 3 ho
 `byosm/series/models.py` `Boosted.fit`: Keep training doubles boosting's `max_iter` each round, but on these tables
 scikit-learn stops early once the validation score stops improving, so a larger `max_iter` with the same data and
 seed gives the same model. Each fit is cached under a key of its training table, with the iterations it used; a later
-round with at least as many allowed iterations reuses a fit that stopped before its limit. Energy's boosting took
+round with at least as many allowed iterations reuses a fit that stopped before its limit, and a retried round with
+the same limit reuses its fit outright (the patch transformer resumes from its checkpoint), so an interrupted Keep
+training does not repeat hours of finished work. Energy's boosting took
 8,787 s and then 11,434 s for rounds whose extra iterations were not used. Not yet measured on a real run: the next
 Keep training of a domain shows the time saved.
 

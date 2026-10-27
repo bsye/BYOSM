@@ -459,6 +459,8 @@ def test_boosting_that_stopped_early_is_reused_when_more_iterations_are_allowed(
     again = models.Boosted(effort=1)
     again.fit(groups)
     assert len(calls) == fits and again.model == "model"
+    models.Boosted(effort=1).fit(groups)
+    assert len(calls) == fits
 
 
 def test_calib_and_test_must_agree_on_every_dataset_not_only_on_average():

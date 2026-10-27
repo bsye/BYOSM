@@ -141,10 +141,8 @@ class Boosted:
         iterations = ITERATIONS * 2**self.effort
         cached = _boosted_path(key(self.name, SEED, arrays=[x, y, late]))
         kept = joblib.load(cached) if cached.exists() else None
-        if kept and kept["converged"] and iterations >= kept["iterations"]:
-            print(
-                f"  {self.name}: converged at {kept['used']} of {kept['iterations']} iterations last time, reusing it"
-            )
+        if kept and (iterations == kept["iterations"] or kept["converged"] and iterations > kept["iterations"]):
+            print(f"  {self.name}: same fit as before ({kept['used']} of {kept['iterations']} iterations), reusing it")
             self.model, self.spread = kept["model"], kept["spread"]
             return
         self._fit(x, y, late, iterations, max(g.horizon for g in groups))
