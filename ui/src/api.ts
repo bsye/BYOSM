@@ -88,6 +88,7 @@ export type Summary = {
   higher_is_better?: boolean
   members?: string[]
   part_of?: string | null
+  archived?: boolean
 }
 
 export type Run = {

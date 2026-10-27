@@ -6,6 +6,7 @@ from typing import Any
 
 from ..ablation import is_arm
 from ..ablation import summaries as ablation_summaries
+from ..archive import archived, set_archived
 from ..auto.standing import best_baseline
 from ..data.store import SPLITS, Dataset
 from ..data.sufficiency import data_check
@@ -58,6 +59,7 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
     best = board.get(p.promoted or "", {}).get(prim, {})
     rival = best_baseline(board, prim)
     return {
+        "archived": name in archived(ws),
         "name": name,
         "title": s.title,
         "created": s.created.isoformat() if s.created else None,
@@ -83,14 +85,14 @@ def specialists(ws: Path) -> list[dict[str, Any]]:
     from ..tabular.task import forecasts
     from .teams import members, team_names, team_summary
 
-    part_of = members(ws)
-    singles = [{**summary(ws, n), "kind": "model", "part_of": part_of.get(n)} for n in list_projects(ws)]
-    return (
-        singles
+    part_of, shelved = members(ws), archived(ws)
+    every = (
+        [{**summary(ws, n), "kind": "model", "part_of": part_of.get(n)} for n in list_projects(ws)]
         + [team_summary(ws, t) for t in team_names(ws)]
         + [forecaster(r) for r in reports(ws) if r["at"]]
         + [risk(r) for r in forecasts(ws)]
     )
+    return [{**s, "archived": s["name"] in shelved} for s in every]
 
 
 def _run(p: Project, exp: str) -> dict[str, Any]:
@@ -165,6 +167,7 @@ def save_spec(ws: Path, name: str, body: dict) -> dict[str, Any]:
 
 def delete(ws: Path, name: str) -> None:
     p = project(ws, name)
+    set_archived(ws, name, False)
     p.delete()
     shutil.rmtree(p.root, ignore_errors=True)
 

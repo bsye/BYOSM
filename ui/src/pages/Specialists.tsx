@@ -19,10 +19,10 @@ const SKELETONS = 6
 const KIND_KEY = "byosm-specialists-kind"
 const STAGE_KEY = "byosm-specialists-stage"
 const ALL = "all"
-const STAGES = { ready: "Ready", training: "In training" }
+const STAGES = { ready: "Ready", training: "In training", archived: "Archived" }
 type Stage = keyof typeof STAGES
 
-const stageOf = (s: Summary): Stage => (s.score == null ? "training" : "ready")
+const stageOf = (s: Summary): Stage => (s.archived ? "archived" : s.score == null ? "training" : "ready")
 
 function useRemembered<T extends string>(key: string, fallback: T): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {

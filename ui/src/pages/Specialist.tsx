@@ -3,9 +3,9 @@ import { Forecaster, useForecaster } from "./Forecaster"
 import { ForecastPage } from "./ForecastPage"
 import { useForecasts } from "./forecast-api"
 import { RunningHere } from "./RunningHere"
-import { Gauge, Hammer, Info, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
+import { Archive, ArchiveRestore, Gauge, Hammer, Info, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
-import { api, del, put, runJob, type Detail } from "@/api"
+import { api, del, post, put, runJob, type Detail } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -233,6 +233,7 @@ function Model({ name }: { name: string }) {
   }, [load, finished])
   if (error) return <p className="text-destructive">{error}</p>
   if (!d) return <PageSkeleton />
+  const shelve = () => post(`/specialists/${name}/archive`, { archived: !d.archived }).then(load)
   const remove = async () => {
     if (window.prompt(`Type ${name} to delete it and everything it built`) === name) {
       await del(`/specialists/${name}?confirm=${encodeURIComponent(name)}`)
@@ -268,6 +269,10 @@ function Model({ name }: { name: string }) {
           <Button onClick={() => runJob(["auto", name]).then((j) => openJob(j.id))}>
             <Wand2 />
             Autopilot
+          </Button>
+          <Button variant="outline" onClick={shelve}>
+            {d.archived ? <ArchiveRestore /> : <Archive />}
+            {d.archived ? "Restore" : "Archive"}
           </Button>
           <Button variant="destructive" size="icon" aria-label="Delete this specialist" title="Delete" onClick={remove}>
             <Trash2 />
