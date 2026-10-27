@@ -501,6 +501,11 @@ It is opt-in after a build (`byosm build --overfit`), because scoring the train 
 specialists, 17 s for vad and 79 s for doctype on CPU (measured); the autopilot runs it once, before export.
 Gotcha: overlap compares text only; for audio and document inputs it is listed under `skipped`. For a builtin primary
 suite, calib is the dev split that picked the best epoch, so calib there is optimistic by construction.
+The fix follows the finding (`byosm/next_fixes.py` `less_overfit`): a dev curve still rising at the last epoch with no
+train/test gap is underfitting, so the step trains for twice the epochs; a gap or a dev drop after the best epoch
+halves the learning rate and stops at the best epoch; calib/test drift alone gets no training fix, since a slower
+model does not make the two splits alike. A fix whose build never finished is offered again as a build of the same
+experiment instead of disappearing: tool-choice's fit-v1 was interrupted and its step was never shown again.
 
 **An LLM-written test set is a check, never the benchmark.**
 `byosm/evals/testset.py`, `byosm testset NAME`: the `eval` role writes `--per-label` examples per label with the same

@@ -9,6 +9,8 @@ from .spec import TaskSpec
 
 GAP, CURVE = "gap", "curve"
 FIT_PREFIX = "fit-"
+LONGER_PREFIX = "longer-"
+EPOCH_FACTOR = 2
 LR_FACTOR = 0.5
 
 
@@ -20,12 +22,44 @@ def _finding(report: dict, check: str) -> dict:
     return next((f for f in report.get("findings", []) if f["check"] == check and f["severity"] != OK), {})
 
 
+def _create_or_finish(p: Project, exp: str, sets: list[str]) -> list[str] | None:
+    e = p.experiment(exp)
+    if e is None:
+        return [
+            "exp",
+            "create",
+            p.name,
+            exp,
+            "--base",
+            str(p.promoted),
+            *(a for s in sets for a in ("--set", s)),
+            "--run",
+        ]
+    return ["build", p.name, "--exp", exp] if e.get("meta") is None else None
+
+
+def _still_rising(curve: dict) -> bool:
+    nums = curve.get("numbers", {})
+    return bool(curve) and nums.get("best_epoch") == nums.get("epochs_run")
+
+
+def _train_longer(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
+    epochs = spec.train.epochs * EPOCH_FACTOR
+    args = _create_or_finish(p, f"{LONGER_PREFIX}{p.promoted}", [f"train.epochs={epochs}"])
+    why = f"Dev was still rising at the last epoch: it underfits. Train for {epochs} epochs instead of {spec.train.epochs}."
+    return args and {"id": "train-longer", "title": "Train longer", "why": why, "args": args}
+
+
 def less_overfit(p: Project, spec: TaskSpec, cs: list[dict]) -> dict[str, Any] | None:
-    report = p.report(OVERFIT) or {}
-    exp = f"{FIT_PREFIX}{p.promoted}"
-    if not _check(cs, "overfit") or p.experiment(exp) is not None:
+    if not _check(cs, "overfit"):
         return None
-    gap, curve = _finding(report, GAP).get("numbers", {}), _finding(report, CURVE).get("numbers", {})
+    report = p.report(OVERFIT) or {}
+    gap_found, curve_found = _finding(report, GAP), _finding(report, CURVE)
+    if not gap_found and _still_rising(curve_found):
+        return _train_longer(p, spec)
+    if not gap_found and not curve_found:
+        return None
+    gap, curve = gap_found.get("numbers", {}), curve_found.get("numbers", {})
     lr = spec.train.lr_backbone * LR_FACTOR
     sets = [f"train.lr_backbone={lr:g}"]
     why = [f"Halve the encoder learning rate ({spec.train.lr_backbone:g} to {lr:g})"]
@@ -35,10 +69,15 @@ def less_overfit(p: Project, spec: TaskSpec, cs: list[dict]) -> dict[str, Any] |
     seen = (
         f"Train scores {gap['train']:.3f} but test {gap['test']:.3f}: it memorised its training rows. "
         if gap.get("train") is not None
-        else "The overfitting check failed. "
+        else "Dev fell after its best epoch while train loss kept falling. "
     )
-    args = ["exp", "create", p.name, exp, "--base", str(p.promoted), *(a for s in sets for a in ("--set", s)), "--run"]
-    return {"id": "fix-overfit", "title": "Reduce overfitting", "why": seen + " and ".join(why) + ".", "args": args}
+    args = _create_or_finish(p, f"{FIT_PREFIX}{p.promoted}", sets)
+    return args and {
+        "id": "fix-overfit",
+        "title": "Reduce overfitting",
+        "why": seen + " and ".join(why) + ".",
+        "args": args,
+    }
 
 
 def faster(p: Project, spec: TaskSpec, cs: list[dict]) -> dict[str, Any] | None:

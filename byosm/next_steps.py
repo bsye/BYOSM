@@ -28,6 +28,7 @@ STEP_CHECKS = {
     "propose": EXPERIMENT_CHECKS,
     "overfit": ("overfit",),
     "fix-overfit": ("overfit",),
+    "train-longer": ("overfit",),
     "faster": ("speed",),
     "robust": ("robust",),
     "export": ("export",),
