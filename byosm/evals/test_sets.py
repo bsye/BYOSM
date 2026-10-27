@@ -66,6 +66,16 @@ def _score(s: dict[str, Any], model: str) -> dict[str, int]:
     return {"right": sum(got[i]["label"] == labels[i] for i in scored), "scored": len(scored)}
 
 
+def same_family(s: dict[str, Any]) -> dict[str, str]:
+    from ..data.budget import LLM_SOURCE
+    from ..model_refs import family, llm_model
+
+    sources = {str(r.get("source", "")) for r in s["rows"]}
+    writers = sorted({w.rpartition(":")[2] for w in sources if w.startswith(LLM_SOURCE)})
+    models = {m: llm_model(m) for m in s["results"]}
+    return {m: w for m, model in models.items() if model for w in writers if family(w) == family(model)}
+
+
 def summaries(p: Project, spec: TaskSpec) -> list[dict[str, Any]]:
     return [
         {
@@ -74,6 +84,7 @@ def summaries(p: Project, spec: TaskSpec) -> list[dict[str, Any]]:
             "board": s["board"],
             "total": len(s["rows"]),
             "scores": {m: _score(s, m) for m in s["results"]},
+            "same_family": same_family(s),
         }
         for s in test_sets(p, spec)
     ]

@@ -44,6 +44,9 @@ function Grid({ name, set, models, refs, version }: { name: string; set: TestSet
                 <TableHead key={m} className="text-right">
                   <ModelName model={refs.models[m === OURS ? (refs.promoted ?? "") : m]} shown={modelLabel(m)} />
                   <span className="text-muted-foreground ml-1 font-normal tabular-nums">{a.scored ? `${a.right}/${a.scored}` : "-"}</span>
+                  {set.same_family?.[m] && (
+                    <InfoTip>{`${set.same_family[m]} wrote this set, the same model family as this rival, so its score is not a fair bar.`}</InfoTip>
+                  )}
                 </TableHead>
               )
             })}

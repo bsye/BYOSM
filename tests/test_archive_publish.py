@@ -44,3 +44,13 @@ def test_a_card_edit_that_adds_a_number_is_refused(monkeypatch):
     monkeypatch.setattr(byosm.llm, "get_llm", lambda role, cfg=None: Writer(card + " Beats the LLM by 0.4."))
     out = edit(card, "say it beats the LLM")
     assert out["card"] == card and "0.4" in out["refused"]
+
+
+def test_a_rival_whose_family_wrote_a_test_set_is_flagged_on_that_set(monkeypatch):
+    import byosm.model_refs as refs
+    from byosm.evals.test_sets import same_family
+
+    models = {"llm:rival-claude-haiku-5-5": "claude-haiku-5-5", "llm:rival-gpt": "gpt-5"}
+    monkeypatch.setattr(refs, "llm_model", lambda pid, identity=None: models.get(pid))
+    s = {"rows": [{"source": "llm:claude-code:claude-opus-5-5"}], "results": {m: {} for m in [*models, "ours"]}}
+    assert same_family(s) == {"llm:rival-claude-haiku-5-5": "claude-opus-5-5"}

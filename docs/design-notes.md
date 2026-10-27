@@ -1434,6 +1434,10 @@ constraint, so it scores exactly 0 (`metrics.unreached`): on turn-completion eve
 livekit-turn-multilingual at 0.944 precision against the 0.98 required, scored 0, which the check read as a sure
 +0.895 lead.
 
+The same rule marks written test sets (`byosm/evals/test_sets.py` `same_family`): each set's rows record the model that
+wrote them, and an LLM rival of that family gets an info icon beside its score. On tool-choice, Haiku wrote one set
+and scored 27 of 27 on it.
+
 ## The strongest rival, measured
 
 Fine-tuned rivals are searched by the specialist's own task (text, token, audio and image classification), and up to

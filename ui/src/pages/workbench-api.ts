@@ -5,7 +5,7 @@ import { useLive } from "@/events"
 export type Row = { id: string; input: string; label: string; source?: string }
 export type Answer = { label: string; confidence: number }
 export type Score = { right: number; scored: number }
-export type TestSet = { suite: string; frozen: boolean; board: boolean; total: number; scores: Record<string, Score> }
+export type TestSet = { suite: string; frozen: boolean; board: boolean; total: number; scores: Record<string, Score>; same_family?: Record<string, string> }
 export type Results = Record<string, Record<string, Answer>>
 export type RowsPage = { total: number; rows: Row[]; results: Results }
 export type ModelChoice = { chosen: string[]; available: string[] }
