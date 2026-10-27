@@ -52,7 +52,7 @@ def health(report_: dict[str, Any]) -> dict[str, Any] | None:
     version = next((v for v in report_.get("versions", []) if v["name"] == report_.get("promoted")), None)
     if not version:
         return None
-    configs = version.get("configs") or report_.get("configs") or {}
+    configs = version.get("configs") or {}
     return report([_rival(report_), _naive(configs, version["recipe"]), _agreement(version), _certainty(version)])
 
 

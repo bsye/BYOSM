@@ -388,3 +388,55 @@ def test_the_next_lever_names_the_smallest_base_not_pretrained_yet(tmp_path, mon
     assert "--size large" in _lever()
     (tmp_path / "large.pt").write_bytes(b"")
     assert patch.missing_size() is None and "series corpus" in _lever()
+
+
+def _plateaued(ws, monkeypatch, upstream):
+    import byosm.series.run as run
+
+    efforts, naive = [], {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0]}
+
+    def one(configs, effort, log, progress):
+        efforts.append(effort)
+        ours = 0.85 - 0.001 * effort
+        return {
+            "a": {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
+        }, TRAINED
+
+    monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
+    monkeypatch.setattr(run, "fit_domain", one)
+    monkeypatch.setattr(run, "_upstream", lambda: upstream)
+    monkeypatch.setattr(run, "_lever", lambda: "the large base")
+    rival = {"Timestral-5M": {"mase": 0.5, "crps": 0.5, "published": True}}
+    monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: rival)
+    report = run.until_rival(ws, "demo", rounds=5, log=lambda _: None)
+    assert report[run.PLATEAU]["effort"] == 1
+    return run, efforts
+
+
+def test_keep_training_after_a_plateau_pretrains_the_missing_base_before_training_again(ws, monkeypatch):
+    import byosm.series.patch as patch
+    import byosm.series.pretrain as pretrain
+
+    run, efforts = _plateaued(ws, monkeypatch, {"base": "base", "corpus": 3})
+    pretrained = []
+    monkeypatch.setattr(patch, "missing_size", lambda: "large")
+    monkeypatch.setattr(pretrain, "pretrain", lambda log, steps, size: pretrained.append(size))
+    run.until_rival(ws, "demo", rounds=1, log=lambda _: None)
+    assert pretrained == ["large"] and efforts == [0, 1, 2]
+
+
+def test_keep_training_after_a_plateau_with_every_base_pretrained_trains_nothing(ws, monkeypatch):
+    import byosm.series.patch as patch
+
+    run, efforts = _plateaued(ws, monkeypatch, {"base": "large", "corpus": 3})
+    monkeypatch.setattr(patch, "missing_size", lambda: None)
+    run.until_rival(ws, "demo", rounds=3, log=lambda _: None)
+    assert efforts == [0, 1]
+
+
+def test_the_rival_is_not_compared_with_models_the_promoted_version_was_not_scored_with():
+    from byosm.series.specialist import best_rival
+
+    current = {"a": {"seasonal naive": {"mase": 1.0}, "ensemble": {"mase": 0.5}, "Timestral-5M": {"mase": 0.6}}}
+    report = {"promoted": "v1", "configs": current, "versions": [{"name": "v1", "recipe": "ensemble"}]}
+    assert best_rival(report) is None

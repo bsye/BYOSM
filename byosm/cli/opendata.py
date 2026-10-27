@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typer
 
+from ..series.corpus import CORPUS_GB, PRETRAIN_STEPS
 from .base import app, log
 
 opendata_app = typer.Typer(no_args_is_help=True, help="Open data: search portals, download and cache files.")
@@ -138,8 +139,6 @@ def options_rival(
 
 
 MAX_ROUNDS = 4
-CORPUS_GB = 50.0
-PRETRAIN_STEPS = 50_000
 series_app = typer.Typer(no_args_is_help=True, help="Time series: specialists against Timestral on GIFT-Eval.")
 app.add_typer(series_app, name="series")
 

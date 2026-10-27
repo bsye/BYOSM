@@ -11,6 +11,8 @@ ARROW = ".arrow"
 SEED = 0
 MANIFEST = "corpus.json"
 GB = 1e9
+CORPUS_GB = 50.0
+PRETRAIN_STEPS = 50_000
 
 
 def _manifest() -> Path:

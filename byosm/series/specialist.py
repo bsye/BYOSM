@@ -53,7 +53,7 @@ def best_rival(report: dict[str, Any]) -> dict[str, Any] | None:
     promoted = next((v for v in report.get("versions", []) if v["name"] == report.get("promoted")), None)
     if not promoted:
         return None
-    configs, ours = promoted.get("configs") or report.get("configs") or {}, promoted["recipe"]
+    configs, ours = promoted.get("configs") or {}, promoted["recipe"]
     names = {m for r in configs.values() for m in r if is_rival(m)}
     heads = []
     for name in names:

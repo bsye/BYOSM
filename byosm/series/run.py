@@ -18,6 +18,7 @@ from .specialist import summary as forecaster
 REPORT = "series:"
 SERIES_EVENT = "series"
 MIN_GAIN = 0.01
+PLATEAU = "plateau"
 SCORES = ("mase", "crps", "calib_mase", "calib_crps")
 
 
@@ -64,7 +65,8 @@ def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dic
         "promoted": previous.get("promoted"),
         "created": previous.get("created") or datetime.now(UTC).isoformat(),
     }
-    effort = len(kept["versions"])
+    best = next((v for v in kept["versions"] if v["name"] == kept["promoted"]), None)
+    effort = best["effort"] + 1 if best else 0
     log(f"  effort {effort}: {2**effort}x the base training steps")
 
     def progress(per: dict[str, dict[str, Any]], pending: list[str]) -> None:
@@ -143,6 +145,13 @@ def _gain(report: dict[str, Any]) -> float:
     return (before - versions[-1]["calib"]) / before
 
 
+def _upstream() -> dict[str, Any]:
+    from .corpus import files
+    from .patch import pretrained
+
+    return {"base": (pretrained() or (None,))[0], "corpus": len(files())}
+
+
 def _lever() -> str:
     from .patch import missing_size
 
@@ -150,15 +159,45 @@ def _lever() -> str:
     return f"the {size} base (series pretrain --size {size})" if size else "more pretraining data (series corpus --gb)"
 
 
+def _mark(ws: Path, report: dict[str, Any], plateau: dict[str, Any] | None) -> dict[str, Any]:
+    report = {**report, PLATEAU: plateau}
+    _save(ws, report)
+    return report
+
+
+def _escalate(ws: Path, previous: dict[str, Any], log: Callable[[str], None]) -> bool:
+    from .corpus import PRETRAIN_STEPS
+    from .patch import missing_size
+    from .pretrain import pretrain
+
+    plateau = previous[PLATEAU]
+    size = missing_size()
+    if not size:
+        log(
+            f"  more training stopped helping at effort {plateau['effort']} and every base size is pretrained: "
+            "the next lever is more pretraining data (series corpus --gb), so no new version is trained"
+        )
+        return False
+    log(f"  more training stopped helping at effort {plateau['effort']}: pretraining the {size} base first")
+    pretrain(log, PRETRAIN_STEPS, size)
+    return True
+
+
 def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] = print) -> dict[str, Any]:
+    previous = next((r for r in reports(ws) if r["domain"] == domain), {})
+    stuck = previous.get(PLATEAU)
+    if stuck and stuck["upstream"] == _upstream() and not _escalate(ws, previous, log):
+        return previous
+    report = previous
     for n in range(rounds):
         report = run_domain(ws, domain, log)
         rival = forecaster(_with_published(report))["rival"]
         if rival and rival["ours"] < rival["score"]:
             log(f"  beat {rival['name']} after {n + 1} round(s): {rival['ours']:.3f} vs {rival['score']:.3f}")
-            return report
+            return _mark(ws, report, None)
         log(f"  round {n + 1}: hardest rival {rival}")
         if _gain(report) < MIN_GAIN:
             log(f"  more training gained under {MIN_GAIN:.0%} on calib: stopping, the next lever is {_lever()}")
-            return report
+            effort = report["versions"][-1]["effort"]
+            return _mark(ws, report, {"effort": effort, "upstream": _upstream(), "lever": _lever()})
     return report

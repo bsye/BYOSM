@@ -1283,7 +1283,7 @@ calib MASE beats the promoted one. Lower is better, so the lead over a rival is 
 ## Keep training until a rival is beaten
 
 A forecaster's next version trains with twice the steps of the last (patch transformer steps and boosting
-iterations, `2**effort` where effort is the number of versions so far). `series run DOMAIN --until-rival`, which is
+iterations, `2**effort` where effort is one more than the promoted version's). `series run DOMAIN --until-rival`, which is
 what Keep training starts, adds versions until the promoted one beats the best rival or `--rounds` is spent.
 Promotion still decides on calib. The stop condition reads test, because the published rival scores exist only on
 test; stopping on the first win leans the reported number slightly optimistic, so every version stays on the page
@@ -1379,6 +1379,13 @@ Doubling a forecaster's training each round gained under 1% of calib MASE per ro
 0.849, 0.842, 0.838 on test) while doubling the CPU time. Keep training now stops when a round improves the best calib
 MASE by less than `MIN_GAIN` (1%) and names the next lever: the pretrained base model, or a bigger one once the base
 exists. The pretrained recipe joins every round automatically when its weights are on disk.
+
+The stop is remembered (`plateau` in the series report, with the effort and the pretrained base and corpus size at the
+time). The next Keep training does not double again while those are unchanged: it pretrains the missing base size
+first, or, when every size exists, trains nothing and names more pretraining data. Before, effort was the number of
+versions, unpromoted ones included, so every click doubled the steps after the plateau: sales went to 96,000 steps
+and energy to 192,000 with no calib gain. The rival is also compared only with the promoted version's own scores;
+when those were missing it fell back to the latest run's models, which had compared a different model with the rival.
 
 ## Admit trainings by the memory that is really free
 
