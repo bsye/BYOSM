@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useLive } from "@/events"
 import { rivalName, score, signed } from "@/format"
 import { openJob } from "@/job-sheet"
-import { ForecastTry } from "./ForecastTry"
+import { SeriesTry } from "./SeriesTry"
 import { Health, type HealthReport } from "./Health"
 import { RunningHere } from "./RunningHere"
 import { leadOf, rivalScope, titleOf } from "./specialist-groups"
@@ -130,7 +130,7 @@ function Board({ f, running }: { f: ForecasterView; running: boolean }) {
               {models.map(([name]) => (
                 <Cell key={name} fill={isRival(name) ? RIVAL_FILL : OURS_FILL} />
               ))}
-              <LabelList dataKey="mase" position="top" fontSize={11} formatter={(v: number) => score(v)} />
+              <LabelList dataKey="mase" position="top" fontSize={11} formatter={(v) => score(Number(v))} />
             </Bar>
           </BarChart>
         </ChartContainer>
@@ -320,7 +320,7 @@ export function Forecaster({ f }: { f: ForecasterView }) {
             <Board f={f} running={running} />
           </TabsContent>
           <TabsContent value="try">
-            <ForecastTry f={f} />
+            <SeriesTry f={f} />
           </TabsContent>
           <TabsContent value="versions">
             <Versions f={f} />
