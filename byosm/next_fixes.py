@@ -81,7 +81,9 @@ def less_overfit(p: Project, spec: TaskSpec, cs: list[dict]) -> dict[str, Any] |
 
 
 def faster(p: Project, spec: TaskSpec, cs: list[dict]) -> dict[str, Any] | None:
-    if not _check(cs, "speed"):
+    from .distill import student_name
+
+    if not _check(cs, "speed") or p.meta(student_name(str(p.promoted))):
         return None
     ms = p.board().get(str(p.promoted), {}).get(spec.primary_suite(), {}).get("latency_ms") or 0
     why = (

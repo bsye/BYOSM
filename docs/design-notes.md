@@ -1366,6 +1366,11 @@ with the largest gain, reads the health again and logs whether the checks that s
 the step list once and run every step in a fixed order, so a step ran even when an earlier one had already fixed, or
 could not fix, the check it was meant for.
 
+Every failing check has a step. A failing "Holds on new inputs" now offers Keep training (`continue --run`, titled
+"Train on varied inputs"), whose plan writes rows that vary phrasing and context; before, the check had a step only
+while a second suite was unscored, so tool-choice's -0.233 on llm-written was a blocker with nothing to run. "Make it
+faster" is not offered again once the promoted model's student (`distill.student_name`) has been built.
+
 ## Size against the rival is part of every result
 
 Accuracy alone made a 109M-parameter model built on its rival's own checkpoint look like a win over that rival. Health

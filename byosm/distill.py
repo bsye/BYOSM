@@ -5,6 +5,7 @@ from typing import Any
 from .project import Project
 from .spec import TaskSpec
 
+STUDENT_PREFIX = "distill-"
 TINY_TEXT = "hf:google/bert_uncased_L-4_H-256_A-4"
 TINY_VISION = "hf:facebook/deit-tiny-patch16-224"
 
@@ -36,6 +37,10 @@ def student_spec(teacher: TaskSpec, teacher_exp: str, overrides: dict[str, Any] 
     return apply_ops(teacher, [{"op": "set", "path": k, "value": v} for k, v in edits.items()])
 
 
+def student_name(teacher: str) -> str:
+    return f"{STUDENT_PREFIX}{teacher}"
+
+
 def create(
     name: str, teacher_exp: str | None = None, overrides: dict[str, Any] | None = None, exp: str | None = None
 ) -> str:
@@ -44,7 +49,7 @@ def create(
     if not teacher_exp:
         raise RuntimeError("no teacher: promote an experiment first")
     spec = student_spec(p.exp_spec(teacher_exp), teacher_exp, overrides)
-    exp = exp or f"distill-{teacher_exp}"
+    exp = exp or student_name(teacher_exp)
     why = f"distill {teacher_exp} into {STUDENTS[spec.modality][1]}"
     proposal = {"parent": teacher_exp, "applied": [{"id": "distill", "why": why, "ops": []}]}
     p.save_experiment(exp, spec=spec, proposal=proposal)

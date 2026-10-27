@@ -151,13 +151,16 @@ def _robustness(p: Project, spec: TaskSpec, board: dict, prim: str) -> dict:
     if found := [v for v in found if v is not None]:
         why = "On a test set written by an LLM every trained model drops, so it is judged against the best model fine-tuned on the benchmark."
         status = graded(worst - max(found), -DROP_OK, -DROP_WARN)
-        return check(
-            "robust", "Holds on new inputs", 2, status, f"{worst:.3f} vs {max(found):.3f} for rivals on {suite}", why
-        )
+        args = ["continue", p.name, "--run"] if status != OK else None
+        value = f"{worst:.3f} vs {max(found):.3f} for rivals on {suite}"
+        return check("robust", "Holds on new inputs", 2, status, value, why, args)
     drop = by_suite[prim]["objective"] - worst
     why = f"Drop from the primary benchmark to the hardest other suite ({len(others)} scored)."
     status = graded(drop, DROP_OK, DROP_WARN, False)
-    return check("robust", "Holds on new inputs", 2, status, f"{-drop:+.3f} on {suite}", why)
+    if status != OK:
+        why += " Keep training writes rows that vary phrasing and context, aimed at the dev errors."
+    args = ["continue", p.name, "--run"] if status != OK else None
+    return check("robust", "Holds on new inputs", 2, status, f"{-drop:+.3f} on {suite}", why, args)
 
 
 def _speed(spec: TaskSpec, mine: dict) -> dict:

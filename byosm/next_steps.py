@@ -39,6 +39,7 @@ FIX_TITLES = {
     "export": "Export the current model",
     "size": "Distill into a smaller model",
 }
+COMMAND_TITLES = {"continue": "Train on varied inputs"}
 
 
 def _step(sid: str, title: str, why: str, args: list[str]) -> dict[str, Any]:
@@ -108,7 +109,7 @@ def _experiments(p: Project) -> dict[str, Any]:
 
 def _from_checks(p: Project, spec: TaskSpec) -> list[dict[str, Any]]:
     return [
-        _step(c["id"], FIX_TITLES[c["id"]], c["why"], c["args"])
+        _step(c["id"], COMMAND_TITLES.get(c["args"][0], FIX_TITLES[c["id"]]), c["why"], c["args"])
         for c in checks(p, spec)
         if c["args"] and c["status"] != OK
     ]

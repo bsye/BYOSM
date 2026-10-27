@@ -48,3 +48,14 @@ def test_a_fix_whose_build_never_finished_is_offered_again_as_a_build():
     step = less_overfit(_project([gap], experiment={"meta": None}), _spec(), FAILING)
     assert step["args"] == ["build", "q", "--exp", "fit-v1"]
     assert less_overfit(_project([gap], experiment={"meta": {"dev": 1}}), _spec(), FAILING) is None
+
+
+def test_a_model_whose_student_already_ran_is_not_distilled_again():
+    from byosm.next_fixes import faster
+
+    def project(built):
+        return SimpleNamespace(name="q", promoted="v1", board=lambda: {}, meta=lambda e: {"dev": 1} if built else {})
+
+    slow = [{"id": "speed", "status": "fail"}]
+    assert faster(project(False), _spec(), slow)["args"] == ["distill", "q", "--run"]
+    assert faster(project(True), _spec(), slow) is None
