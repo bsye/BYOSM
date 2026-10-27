@@ -123,14 +123,14 @@ function Board({ f, running }: { f: ForecasterView; running: boolean }) {
           <BarChart data={models.map(([name, s]) => ({ name, mase: s.mase }))} margin={{ top: 20, left: 8, right: 8 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} fontSize={11} />
-            <YAxis tickLine={false} axisLine={false} width={36} tickFormatter={(v) => Number(v).toFixed(1)} />
+            <YAxis tickLine={false} axisLine={false} width={36} tickFormatter={(v) => Number(v).toFixed(2)} />
             <ReferenceLine y={1} strokeDasharray="4 4" />
             <ChartTooltip content={<ChartTooltipContent />} />
             <Bar dataKey="mase" radius={4}>
               {models.map(([name]) => (
                 <Cell key={name} fill={isRival(name) ? RIVAL_FILL : OURS_FILL} />
               ))}
-              <LabelList dataKey="mase" position="top" fontSize={11} formatter={(v) => score(Number(v))} />
+              <LabelList dataKey="mase" position="top" fontSize={11} className="fill-foreground" formatter={(v) => score(Number(v))} />
             </Bar>
           </BarChart>
         </ChartContainer>
