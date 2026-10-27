@@ -10,7 +10,7 @@ from . import evals
 from .config import load_config
 from .data import synth_text
 from .data.review import reviewed_labels
-from .data.store import Dataset, refine_split
+from .data.store import Dataset, refine_split, rounds_split
 from .events import stage
 from .held_out import adopt_data, bigger_held_out
 from .project import WEIGHTS, Project
@@ -50,7 +50,13 @@ def ensure_data(
 
 
 def refine(
-    spec: TaskSpec, cfg: dict, errors: list, data_dir: Path, exp: str, log: Callable[[str], None]
+    spec: TaskSpec,
+    cfg: dict,
+    errors: list,
+    data_dir: Path,
+    exp: str,
+    log: Callable[[str], None],
+    split: str | None = None,
 ) -> dict | None:
     if not errors:
         return None
@@ -59,9 +65,10 @@ def refine(
     for pat in analysis.get("patterns", []):
         log(f"  pattern: {pat['name']} - {pat['explanation'][:140]}")
     ds = Dataset(data_dir)
-    prior = ds.load("train") + ds.load(refine_split(exp)) + ds.load("dev") + ds.load("test")
+    written = ds.load(refine_split(exp)) + ds.load(rounds_split(exp))
+    prior = ds.load("train") + written + ds.load("dev") + ds.load("test")
     rows = synth_text.generate(spec, 0, "train", cfg, against=prior, jobs=jobs, log=log)
-    ds.add(refine_split(exp), rows)
+    ds.add(split or refine_split(exp), rows)
     log(f"  added {len(rows)} targeted training examples")
     return {**analysis, "added": len(rows)}
 
@@ -84,17 +91,21 @@ def build(
     dd = ensure_data(p, spec, cfg, log, force_data, data_seconds)
     spec = fitted_max_len(spec, dd, log)
     can_refine = spec.modality == "text" and spec.task_type == "classify"
+    Dataset(dd).save(rounds_split(exp), [])
     rounds, analyses, kept = [], [], None
     for r in range(spec.train.refine_rounds + 1):
         log(f"[train] round {r}")
-        meta, errors = fit(spec, dd, ed, log, splits=["train", refine_split(exp)])
+        meta, errors = fit(spec, dd, ed, log, splits=["train", refine_split(exp), rounds_split(exp)])
         rounds.append({"round": r, "dev_objective": meta["dev"]["objective"], "n_train": meta["n_train"]})
         if kept is None or meta["dev"]["objective"] > kept[0]["dev"]["objective"]:
             kept = (meta, errors, r)
             shutil.copyfile(ed / WEIGHTS, ed / KEPT_WEIGHTS)
         if meta["dev"]["objective"] >= spec.objective.target or not can_refine or r == spec.train.refine_rounds:
             break
-        analysis = refine(spec, cfg, errors, dd, exp, log)
+        if kept[2] != r:
+            log(f"[refine] stopping: round {r} did not beat round {kept[2]} on dev")
+            break
+        analysis = refine(spec, cfg, errors, dd, exp, log, rounds_split(exp))
         if not analysis or not analysis["added"]:
             break
         analyses.append(analysis)

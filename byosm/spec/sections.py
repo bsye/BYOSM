@@ -132,7 +132,7 @@ class TrainCfg(BaseModel):
     freeze_backbone: bool = False
     max_len: int = 128
     truncation: Literal["right", "head_tail"] = "right"
-    refine_rounds: int = 2
+    refine_rounds: int = 0
     refine_examples: int = 300
     pool: Literal["mean", "attention"] = "mean"
     layer_decay_floor: float = 0.5

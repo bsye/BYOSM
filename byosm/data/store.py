@@ -16,11 +16,16 @@ TEST_SHARE = 0.15
 SPLITS = ("train", "dev", "test")
 TRAIN_INPUTS = "train-inputs"
 REFINE_PREFIX = "refine-"
+ROUNDS_SUFFIX = "-rounds"
 BASE_TRAIN = ("train",)
 
 
 def refine_split(exp: str) -> str:
     return f"{REFINE_PREFIX}{exp}"
+
+
+def rounds_split(exp: str) -> str:
+    return f"{REFINE_PREFIX}{exp}{ROUNDS_SUFFIX}"
 
 
 NEAR_DUPLICATE = 0.7

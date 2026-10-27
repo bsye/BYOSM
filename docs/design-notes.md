@@ -116,6 +116,13 @@ and overwrites `model.pt` (`byosm/train/outputs.py` `save_run`), so `build` copi
 keeps the round with the best dev score, as epoch selection does within a round (`kept_round` in the experiment meta).
 A tool-call gate run showed why: round 0 reached dev 0.871, round 1 fell to 0.833 and would have replaced it.
 
+**Refinement is opt-in and stops at the first round that does not help.**
+`train.refine_rounds` defaults to 0, so a build writes no LLM rows unless its spec or a proposal (`refine-more`,
+`hard-pairs`) asks for rounds. Refinement used to run in every text classifier build below its target, whatever the
+build was for, and it rarely helped: on the tool-call gate dev went 0.633 to 0.467, 0.600 to 0.557 to 0.442 and 0.871 to
+0.833 to 0.798 across rounds, and a Banking77 ablation found it neutral. When rounds are on, `build` stops after a round
+that does not beat the kept one instead of writing more rows from a worse model's errors.
+
 **Text held-out sets are deduped against train.**
 `byosm/data/__init__.py`, `byosm/data/store.py` `dedupe`: for text, test is deduped against train+dev and dev against
 train. A row is dropped if it is an exact normalised duplicate of a reference row, or if its 5-gram Jaccard is above
@@ -971,7 +978,9 @@ Refinement used to append its targeted examples to the shared `train` split of a
 that key trained on them silently (turn-completion's v20 trained on v15's, v17's and v18's examples while its spec
 said nothing about them). Now `pipeline.refine` writes to `refine-<exp>`, `fit` trains on the splits it is given, and
 each experiment records them as `train_splits` in its meta; the overfitting check, the diagnosis and the model card read
-exactly those splits. The mixed turn-completion rows were split back by position, which the recorded round sizes and
+exactly those splits. The rows a build's own rounds write go to `refine-<exp>-rounds`, which `build` empties first, so a
+retried build no longer trains on the rows of the attempts before it: the gate's v1 had collected 2,878 such rows from
+six builds, five of which failed. Rows that Keep training writes before the build stay in `refine-<exp>`. The mixed turn-completion rows were split back by position, which the recorded round sizes and
 row sources confirm.
 
 ## Model cards: facts by code, prose by an LLM, numbers checked
