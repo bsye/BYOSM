@@ -35,9 +35,8 @@ def project(ws: Path, name: str) -> Project:
 
 def _result(o: Objective, r: dict) -> dict[str, Any]:
     m = r.get("metrics", {})
-    caught = (
-        {k: v.get("recall") for k, v in m.get("per_label", {}).items()} if len(m.get("per_label", {})) == 2 else None
-    )
+    per_label = m.get("per_label", {})
+    caught = {k: v.get("recall") for k, v in per_label.items()} if len(per_label) == 2 else None
     return {**{k: r.get(k) for k in RESULT_FIELDS}, "ci": m.get("ci95"), "unreached": unreached(o, m), "caught": caught}
 
 
