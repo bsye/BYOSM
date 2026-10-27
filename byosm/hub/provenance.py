@@ -6,7 +6,6 @@ from ..model_refs import model_ref
 from .facts import CardFacts
 
 DEFINE_STEP = "define"
-EXAMPLE_CHARS = 120
 LLM_NOTE = (
     "Everything in this section was written by **{by}** from the one-sentence task above, when the spec was compiled. "
     "It shapes what the model learns but was not checked by hand; the numbers above were computed by code."
@@ -60,10 +59,19 @@ def llm_section(f: CardFacts) -> str:
     return "\n".join(rows) + "\n"
 
 
-def example_input(f: CardFacts) -> str | None:
+def example_inputs(f: CardFacts) -> dict[str, str]:
     from ..data.store import Dataset
 
     if f.spec.modality != "text" or f.spec.task_type != "classify":
-        return None
-    rows = Dataset(f.p.data_dir_for(f.spec)).load("test")
-    return str(rows[0]["input"])[:EXAMPLE_CHARS] if rows else None
+        return {}
+    shortest: dict[str, str] = {}
+    for r in Dataset(f.p.data_dir_for(f.spec)).load("test"):
+        text, label = str(r["input"]), str(r["label"])
+        if label not in shortest or len(text) < len(shortest[label]):
+            shortest[label] = text
+    return {lab: shortest[lab] for lab in f.spec.label_names if lab in shortest}
+
+
+def example_input(f: CardFacts) -> str | None:
+    found = example_inputs(f)
+    return min(found.values(), key=len) if found else None

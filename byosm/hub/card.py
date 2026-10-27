@@ -55,7 +55,7 @@ m = load(path)
 {example}
 emb = m.encode(...)                # the learned representation (JEPA-style), for probes / retrieval / other heads
 ```
-{stream}
+{inputs}{stream}
 ### Local HTTP server
 
 ```bash
@@ -136,6 +136,7 @@ def blocks(f: CardFacts) -> dict[str, str]:
         repo_id=f.repo_id,
         example=sections.example(f),
         stream=sections.stream(f),
+        inputs=sections.input_format(f),
         name=spec.name,
     )
     return {

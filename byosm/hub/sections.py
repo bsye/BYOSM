@@ -107,6 +107,17 @@ def stream(f: CardFacts) -> str:
     return STREAM_SECTION if (f.p.root / "export" / "stream.onnx").exists() else ""
 
 
+def input_format(f: CardFacts) -> str:
+    from .provenance import example_inputs
+
+    found = example_inputs(f)
+    if not found:
+        return ""
+    described = f"{f.base.input_description}\n\n" if f.base.input_description else ""
+    shown = "\n\n".join(f"Labelled `{lab}`:\n\n```text\n{text}\n```" for lab, text in found.items())
+    return f"\n### Input format\n\n{described}Pass each input as one string laid out like these real test inputs, separators included.\n\n{shown}\n"
+
+
 def example(f: CardFacts) -> str:
     from .provenance import example_input
 
