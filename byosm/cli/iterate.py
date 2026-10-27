@@ -76,8 +76,8 @@ def improve(
         with stage(f"Try {pid}"):
             try:
                 exp = imp.apply(name, [pid], force=force)
-            except imp.AlreadyTriedError as e:
-                log(f"skipped: {e}")
+            except ValueError as e:
+                log(f"skipped {pid}: {str(e).splitlines()[0]}")
                 continue
             log(f"experiment {exp} from {pid}")
             _build_or_hint(name, exp, run)

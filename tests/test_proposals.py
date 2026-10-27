@@ -172,3 +172,17 @@ def test_emptying_the_sources_also_stops_the_search_that_would_pick_them_again(w
     _saved(p, {"id": "drop", "why": "", "ops": [{"op": "set", "path": "data.hf_sources", "value": []}]})
     data = p.exp_spec(improve.apply("t", ["drop"])).data
     assert data.hf_sources == [] and data.hf_queries == []
+
+
+def test_a_proposal_whose_edits_make_an_invalid_spec_is_skipped_and_the_rest_still_run(ws, monkeypatch):
+    from typer.testing import CliRunner
+
+    from byosm.cli import app
+
+    p, spec = make_project(ws)
+    bad = {"id": "bad", "why": "", "ops": [{"op": "set", "path": "train.pool", "value": "cls"}]}
+    good = {"id": "good", "why": "", "ops": [{"op": "set", "path": "train.epochs", "value": 9}]}
+    _saved(p, bad, good)
+    out = CliRunner().invoke(app, ["improve", "t", "--apply", "bad,good", "--each"])
+    assert out.exit_code == 0 and "skipped bad" in out.output
+    assert any(p.exp_spec(e).train.epochs == 9 for e in p.attempts())
