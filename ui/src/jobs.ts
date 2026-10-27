@@ -97,6 +97,7 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   const last = metrics.at(-1)
   if (last?.kind === "llm") return `${modelName(String(last.model))}: ${roleTask(last.role)}`
   if (last?.kind === "epoch") return `Training ${last.experiment}, epoch ${last.epoch}/${last.epochs}`
+  if (last?.kind === "fitting") return `Training ${last.recipe}, recipe ${last.index} of ${last.of}`
   if (last?.kind === "teacher") return `${last.teacher} labelling ${last.done}/${last.total}`
   if (last?.kind === "writing") return `Writing ${last.split} data ${last.done}/${last.total}`
   if (last?.kind === "scored") return `Scored ${last.predictor} on ${last.suite}`

@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from ..events import emit
 from .gifteval import horizon, load, season, splits, windows
 from .metrics import summary
 from .models import Boosted, Ensemble, Group, average, rivals
@@ -14,6 +15,7 @@ from .patch import PatchModel, PretrainedPatch, pretrained
 from .specialist import is_rival
 
 ENSEMBLE = Ensemble.name
+FITTING_EVENT = "fitting"
 Progress = Callable[[dict[str, dict[str, Any]], list[str]], None]
 
 
@@ -64,6 +66,8 @@ def fit_domain(
     groups = [Group(p.histories, p.season, p.horizon) for p in prepared]
     models, per, made = candidates(effort), {p.config: {} for p in prepared}, {}
     for i, model in enumerate(models):
+        log(f"  training {model.name}, recipe {i + 1} of {len(models)}")
+        emit(FITTING_EVENT, recipe=model.name, index=i + 1, of=len(models))
         t0 = time.perf_counter()
         model.fit(groups)
         trained = time.perf_counter() - t0

@@ -222,7 +222,10 @@ def test_one_model_per_recipe_is_trained_for_all_datasets_and_the_ensemble_avera
         "candidates",
         lambda effort: [SeasonalNaive(), Flat("gradient boosting", 1.0), Flat("patch transformer", -1.0)],
     )
+    events = []
+    monkeypatch.setattr(fit, "emit", lambda kind, **data: events.append((kind, data["recipe"], data["index"])))
     out, trained = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None)
+    assert [e[1:] for e in events] == [("seasonal naive", 1), ("gradient boosting", 2), ("patch transformer", 3)]
     assert set(trained) == {"gradient boosting", "patch transformer", fit.ENSEMBLE}
     assert fits == [("gradient boosting", 2), ("patch transformer", 2)]
     for row in out.values():
