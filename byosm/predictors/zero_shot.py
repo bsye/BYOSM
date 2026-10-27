@@ -93,23 +93,27 @@ class ZeroShotLLM(Predictor):
             ref = image_ref(first, len(images), len(imgs))
             items.append(f"Item {j + 1}{ref}:" + (f"\n{text}" if text else ""))
         body = "\n\n".join(items)
-        prompt = (
-            f"{_context(self.spec, self.label_space)}\n\n{body}\n\nReturn {len(chunk)} labels, one per item, in order."
-        )
+        prompt = f"{_context(self.spec, self.label_space)}\n\n{body}\n\nReturn one label for each of the {len(chunk)} items, each with its item number n."
         return prompt, images
 
     def _labels(self, chunk: list[dict], mod: Any, schema: dict) -> list[str]:
         prompt, images = self._prompt(chunk, mod)
         kw = {"images": images} if images else {}
-        labs = self.llm.json(SYSTEM, prompt, schema, **kw).get("labels", [])
-        return (labs + [(self.label_space or self.spec.label_names)[0]] * len(chunk))[: len(chunk)]
+        answers = self.llm.json(SYSTEM, prompt, schema, **kw).get("labels", [])
+        by_item = {a.get("n"): a.get("label") for a in answers if isinstance(a, dict)}
+        labels = [by_item.get(j + 1) for j in range(len(chunk))]
+        if len(chunk) > 1:
+            return [lab or self._labels([r], mod, schema)[0] for r, lab in zip(chunk, labels, strict=True)]
+        return [labels[0] or (self.label_space or self.spec.label_names)[0]]
 
     def probs_rows(self, rows: list[dict], mod: Any) -> np.ndarray:
         from ..llm import pmap
 
         names = self.spec.label_names
         allowed = self.label_space or names
-        label_list = {"type": "array", "items": {"type": "string", "enum": allowed}}
+        answer = {"n": {"type": "integer"}, "label": {"type": "string", "enum": allowed}}
+        item = {"type": "object", "properties": answer, "required": ["n", "label"]}
+        label_list = {"type": "array", "items": item}
         schema = {"type": "object", "properties": {"labels": label_list}}
         bs = self.batch[self.spec.modality]
         chunks = [rows[i : i + bs] for i in range(0, len(rows), bs)]
