@@ -1368,6 +1368,16 @@ autopilot applied the tolerance; a "Make it faster" step built the student throu
 sure calib win, so the step could never pass the speed check it was chosen for. tool-choice's 11M student (10 ms,
 calib 0.956) still stays out: the 163 ms teacher's calib is 0.978, 0.022 ahead.
 
+## A rival score must be a fair bar
+
+`byosm/health.py` `_rival` marks the rival check unknown, with the reason, in two cases where the number cannot be
+trusted. When the rival is an LLM and the builtin test set was written by a model of the same family
+(`model_refs.family`, the first word of the model id): tool-call-gate's 834 test rows were written by Claude Opus and
+kept only where Claude Haiku agreed, and the rival is Claude Haiku at 0.98. And when the rival misses the metric's
+constraint, so it scores exactly 0 (`metrics.unreached`): on turn-completion every rival, including
+livekit-turn-multilingual at 0.944 precision against the 0.98 required, scored 0, which the check read as a sure
++0.895 lead.
+
 ## The strongest rival, measured
 
 Fine-tuned rivals are searched by the specialist's own task (text, token, audio and image classification), and up to

@@ -89,3 +89,28 @@ def test_a_drop_on_an_llm_written_suite_is_judged_against_fine_tuned_rivals_on_t
     spec = p.spec()
     robust = next(c for c in health(p, spec)["checks"] if c["id"] == "robust")
     assert robust["status"] == "ok" and "vs 0.530 for rivals" in robust["value"]
+
+
+def test_an_llm_rival_on_a_test_set_its_own_family_wrote_is_not_a_fair_bar(ws):
+    from byosm.data.store import Dataset
+
+    llm = _result(0.99, kind="baseline", identity='{"model": "claude-haiku-5-5"}')
+    p, spec = _specialist(ws, {"v1": {"builtin": _result(0.8)}, "llm": {"builtin": llm}})
+    spec.baselines = ["llm"]
+    p.save_spec(spec)
+    Dataset(p.data_dir_for(spec)).save(
+        "test", [{"input": "q?", "label": "question", "source": "llm:x:claude-opus-5-5"}]
+    )
+    rival = next(c for c in health(p, spec)["checks"] if c["id"] == "rival")
+    assert rival["status"] == "unknown" and "claude-opus-5-5 wrote this test set" in rival["why"]
+
+
+def test_a_rival_that_misses_the_metric_constraint_is_not_counted_as_beaten(ws):
+    rows = {
+        "v1": {"builtin": _result(0.9)},
+        "jev": {"builtin": _result(0.0, kind="baseline", metrics={"precision": 0.94, "recall": 0.73})},
+    }
+    p, spec = _specialist(ws, rows)
+    spec.objective.metric, spec.objective.constraint = "recall_at_precision", 0.98
+    rival = next(c for c in health(p, spec)["checks"] if c["id"] == "rival")
+    assert rival["status"] == "unknown" and "0.940" in rival["why"]

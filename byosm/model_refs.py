@@ -36,6 +36,18 @@ def _json(f: Path) -> Any:
     return json.loads(f.read_text()) if f.exists() else None
 
 
+def llm_model(pid: str, identity: str | None = None) -> str | None:
+    from .evals.identity import baseline_identity
+
+    if pid != LLM_PREFIX and not pid.startswith(f"{LLM_PREFIX}:"):
+        return None
+    return json.loads(identity or baseline_identity(pid) or "{}").get("model")
+
+
+def family(model: str) -> str:
+    return model.partition(":")[0].partition("-")[0].lower()
+
+
 def _llm(pid: str, identity: str | None) -> dict[str, Any]:
     from .evals.identity import baseline_identity
 

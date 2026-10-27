@@ -8,7 +8,8 @@ from .evals.overfit import OVERFIT
 from .evals.selection import SURE_LEAD, compare
 from .export.bundle import exported_current
 from .health_score import FAIL, OK, UNKNOWN, WARN, check, graded, report
-from .model_refs import model_ref
+from .metrics import CONSTRAINED, unreached
+from .model_refs import family, llm_model, model_ref
 from .project import Project
 from .spec import TaskSpec
 
@@ -46,7 +47,28 @@ def _rival(p: Project, spec: TaskSpec, board: dict, prim: str, mine: dict) -> di
         f", {sure:.0%} sure" if sure is not None else ""
     )
     why = "Paired bootstrap on the test split: the lead counts when at least 95% of resamples keep it."
+    if (missed := unreached(spec.objective, theirs.get("metrics") or {})) is not None:
+        o = spec.objective
+        why = f"The rival's {CONSTRAINED[o.metric][1]} is {missed:.3f}, under the {o.constraint:g} the metric requires, so it scores 0 and any lead over it is empty."
+        return check("rival", "Beats the best rival", 3, UNKNOWN, value + ", rival misses the constraint", why)
+    if writer := _written_by_rival(p, spec, prim, best[0], theirs):
+        why = f"{writer} wrote this test set, the same model family as the rival, so its score is not a fair bar."
+        return check("rival", "Beats the best rival", 3, UNKNOWN, value + ", same family wrote the test", why)
     return check("rival", "Beats the best rival", 3, status, value, why)
+
+
+def _written_by_rival(p: Project, spec: TaskSpec, prim: str, pid: str, theirs: dict) -> str | None:
+    from .data.budget import LLM_SOURCE
+    from .data.store import Dataset
+
+    model = llm_model(pid, theirs.get("identity"))
+    suite = next((e for e in spec.evals if e.name == prim), None)
+    if not model or suite is None or suite.kind != "builtin":
+        return None
+    rows = Dataset(p.data_dir_for(p.exp_spec(p.promoted))).load("test")
+    sources = {str(r.get("source", "")) for r in rows}
+    writers = {s.rpartition(":")[2] for s in sources if s.startswith(LLM_SOURCE)}
+    return next((w for w in sorted(writers) if family(w) == family(model)), None)
 
 
 def _size(p: Project, board: dict, prim: str, mine: dict) -> dict | None:
