@@ -440,3 +440,22 @@ def test_the_rival_is_not_compared_with_models_the_promoted_version_was_not_scor
     current = {"a": {"seasonal naive": {"mase": 1.0}, "ensemble": {"mase": 0.5}, "Timestral-5M": {"mase": 0.6}}}
     report = {"promoted": "v1", "configs": current, "versions": [{"name": "v1", "recipe": "ensemble"}]}
     assert best_rival(report) is None
+
+
+@pytest.mark.parametrize(("used", "fits"), [(50, 1), (300, 2)])
+def test_boosting_that_stopped_early_is_reused_when_more_iterations_are_allowed(tmp_path, monkeypatch, used, fits):
+    import byosm.series.models as models
+
+    monkeypatch.setenv("BYOSM_CACHE", str(tmp_path))
+    calls = []
+
+    def fake(self, x, y, late, iterations, longest):
+        calls.append(iterations)
+        self.model, self.spread, self.used = "model", np.zeros((len(QUANTILES), longest)), [used, used]
+
+    monkeypatch.setattr(models.Boosted, "_fit", fake)
+    groups = [Group([_wave()], 24, 48)]
+    models.Boosted(effort=0).fit(groups)
+    again = models.Boosted(effort=1)
+    again.fit(groups)
+    assert len(calls) == fits and again.model == "model"

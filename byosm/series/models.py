@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -14,6 +15,7 @@ CALIB_SHARE = 0.1
 ITERATIONS = 300
 SCALE_SEASONS = 7
 SEED = 0
+BOOSTED_FOLDER = "boosted"
 MIN_NOISE = 1e-3
 SEASONAL_COLUMN = -3
 STEP_COLUMN = -2
@@ -78,6 +80,12 @@ class SeasonalNaive:
         return np.nan_to_num(point[None] + spread[:, None])
 
 
+def _boosted_path(name: str) -> Path:
+    from ..config import cache_root
+
+    return cache_root() / "series" / BOOSTED_FOLDER / f"{name}.joblib"
+
+
 class Boosted:
     name = "gradient boosting"
 
@@ -123,23 +131,43 @@ class Boosted:
         return np.vstack(xs), np.concatenate(ys), np.concatenate(late)
 
     def fit(self, groups: list[Group]) -> None:
-        from sklearn.ensemble import HistGradientBoostingRegressor
+        import joblib
+
+        from .checkpoint import key
 
         x, y, late = self._table(groups)
         known = ~np.isnan(y)
         x, y, late = x[known], y[known], late[known]
         iterations = ITERATIONS * 2**self.effort
+        cached = _boosted_path(key(self.name, SEED, arrays=[x, y, late]))
+        kept = joblib.load(cached) if cached.exists() else None
+        if kept and kept["converged"] and iterations >= kept["iterations"]:
+            print(
+                f"  {self.name}: converged at {kept['used']} of {kept['iterations']} iterations last time, reusing it"
+            )
+            self.model, self.spread = kept["model"], kept["spread"]
+            return
+        self._fit(x, y, late, iterations, max(g.horizon for g in groups))
+        used = max(self.used)
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        state = {"model": self.model, "spread": self.spread, "used": used, "iterations": iterations}
+        joblib.dump({**state, "converged": used < iterations}, cached)
+
+    def _fit(self, x: np.ndarray, y: np.ndarray, late: np.ndarray, iterations: int, longest: int) -> None:
+        from sklearn.ensemble import HistGradientBoostingRegressor
+
         model = HistGradientBoostingRegressor(loss="squared_error", max_iter=iterations, random_state=SEED)
         self.model = model.fit(x[~late], y[~late])
+        self.used = [self.model.n_iter_]
         steps = x[late][:, STEP_COLUMN].astype(int)
         errors = y[late] - self.model.predict(x[late])
-        longest = max(g.horizon for g in groups)
         spread = [
             np.quantile(errors[steps == k], QUANTILES) if (steps == k).sum() > 2 else np.zeros(len(QUANTILES))
             for k in range(longest)
         ]
         self.spread = np.asarray(spread).T
         self.model.fit(x, y)
+        self.used.append(self.model.n_iter_)
 
     def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
         scales = [_scale(h, season) for h in histories]

@@ -1256,6 +1256,15 @@ instead of queueing. The time series patch transformer (0.6M parameters) uses it
 can last hours. Keep training doubles the steps each round, and past that limit the CPU loses: an energy run at 192,000
 steps went at 500 steps per 110 s on the CPU, about 12 hours, against about 3 hours on the GPU after a wait of minutes.
 
+## Converged boosting is not trained again
+
+`byosm/series/models.py` `Boosted.fit`: Keep training doubles boosting's `max_iter` each round, but on these tables
+scikit-learn stops early once the validation score stops improving, so a larger `max_iter` with the same data and
+seed gives the same model. Each fit is cached under a key of its training table, with the iterations it used; a later
+round with at least as many allowed iterations reuses a fit that stopped before its limit. Energy's boosting took
+8,787 s and then 11,434 s for rounds whose extra iterations were not used. Not yet measured on a real run: the next
+Keep training of a domain shows the time saved.
+
 ## Boosting predicts a correction to seasonal naive
 
 The boosted forecaster predicts how far each step will be from the seasonal naive value, in units of that series'
