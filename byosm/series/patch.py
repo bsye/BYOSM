@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from . import checkpoint
 from .models import Group
 from .patch_net import BASE, SIZES, SMALL, PatchNet, Size, picker, train, window
 
@@ -67,7 +68,8 @@ class PatchModel:
         with gpu_slot(_device(), print, fallback="cpu" if self.size == SMALL else None) as device:
             series, total = [(h, g.horizon) for g in groups for h in g.histories], steps * 2**self.effort
             report = reporter(self.name, total)
-            train(self.net, picker(series, self.size.patch), total, lr, BATCH, device, SEED, report)
+            resume = checkpoint.path(checkpoint.key(self.name, self.size, total, lr, arrays=[h for h, _ in series]))
+            train(self.net, picker(series, self.size.patch), total, lr, BATCH, device, SEED, report, resume)
 
     def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
         windows = [window(h, self.size.context) for h in histories]

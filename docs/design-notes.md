@@ -863,6 +863,12 @@ one `@event <json>` line, and only when the app sets `BYOSM_EVENTS=1`. Plain CLI
 needs no import of the app, and the runner publishes each line as a `metric` event and stores it next to the job's log
 in `.byosm/app.sqlite`, so history and charts survive a restart.
 
+**Forecaster training resumes after a restart.**
+`byosm/series/checkpoint.py`: the patch transformer saves its weights, optimiser, schedule and random state every 5000
+steps to the cache, under a key made from the recipe, the step count and the training series. Retrying an interrupted
+job finds the checkpoint and continues from that step with the same result as an uninterrupted run; the checkpoint is
+deleted when training ends. A reboot once cost a sales run at step 87,000 of 96,000 its whole night of GPU time.
+
 **App jobs outlive the server.**
 `byosm/app/detached.py`, `byosm/app/jobs.py`: each job starts in its own session with its output in
 `.byosm/jobs/<id>.log`, and a small wrapper writes the exit code to `<id>.exit` when it ends; the pid is stored with the

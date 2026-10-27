@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from . import checkpoint
 from .patch import BATCH, LR, SEED, _device, reporter, weights_path
 from .patch_net import MAX_HORIZON, SIZES, PatchNet, Pick, picker, train
 
@@ -74,7 +75,8 @@ def pretrain(log: Callable[[str], None], steps: int, size_name: str = "base") ->
     log(f"  {sum(p.numel() for p in net.parameters()) / 1e6:.1f}M parameters, {steps} steps on {device}")
 
     with gpu_slot(device, log):
-        train(net, pick, steps, LR, BATCH, device, SEED, reporter("pretraining", steps, log))
+        resume = checkpoint.path(checkpoint.key("pretraining", size_name, steps, sorted(paths)))
+        train(net, pick, steps, LR, BATCH, device, SEED, reporter("pretraining", steps, log), resume)
     path = weights_path(size_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(net.state_dict(), path)

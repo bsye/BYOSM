@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import torch
 from torch import nn
 
 from ..train.gpu_memory import release_cache
+from . import checkpoint
 from .metrics import QUANTILES
 
 MAX_HORIZON = 60
@@ -99,12 +101,16 @@ def train(
     device: str,
     seed: int,
     report: Callable[[int, float], None] | None = None,
+    resume: Path | None = None,
 ) -> None:
     rng = np.random.default_rng(seed)
+    net.to(device).train()
     opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, lr, total_steps=steps)
-    net.to(device).train()
-    for step in range(1, steps + 1):
+    done = checkpoint.restore(resume, net, opt, sched, rng, device) if resume else 0
+    if done:
+        print(f"  resuming from step {done}/{steps}")
+    for step in range(done + 1, steps + 1):
         values, seen, targets, known = batch(pick(rng, size), net.size, rng, device)
         loss = pinball(net(values, seen), targets, known)
         opt.zero_grad()
@@ -114,5 +120,9 @@ def train(
         sched.step()
         if report and step % REPORT_EVERY == 0:
             report(step, loss.item())
+        if resume and step % checkpoint.EVERY == 0 and step < steps:
+            checkpoint.save(resume, step, net, opt, sched, rng)
+    if resume:
+        resume.unlink(missing_ok=True)
     net.to("cpu").eval()
     release_cache()
