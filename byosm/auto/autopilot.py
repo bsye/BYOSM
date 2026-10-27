@@ -10,6 +10,7 @@ from ..events import TARGET, emit
 from ..llm import role_model
 from ..pipeline import DISTILL_TOLERANCE
 from ..project import Project
+from .escalate import escalate
 from .loop import improve_until_stop
 from .report import _report
 from .standing import standing
@@ -177,6 +178,8 @@ def run(
     if p.promoted is None:
         _build_v1(s)
     reason = improve_until_stop(s, max_experiments, use_llm)
+    if not standing(name, margin)["won"]:
+        reason = escalate(s, reason)
     log("stop", reason, "")
     _finish(s, distill, max_params_m, publish, license)
     final = standing(name, margin)

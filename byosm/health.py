@@ -84,11 +84,18 @@ def _size(p: Project, board: dict, prim: str, mine: dict) -> dict | None:
     return check("size", "Smaller than the rival", 1, status, value, why, args)
 
 
-def _target(spec: TaskSpec, mine: dict) -> dict:
+def _target(p: Project, spec: TaskSpec, mine: dict) -> dict:
+    from .auto.escalate import UNREACHABLE
+
     t = spec.objective.target
     status = graded(mine["objective"], t, t - TARGET_NEAR)
     why = f"The spec asks for {spec.objective.metric} of at least {t} on test."
-    return check("target", "Meets the target", 2, status, f"{mine['objective']:.3f} of {t}", why)
+    value = f"{mine['objective']:.3f} of {t}"
+    stuck = p.report(UNREACHABLE) or {}
+    if status != OK and stuck.get("model") == p.promoted:
+        why += f" Unreachable at this budget: the autopilot tried every larger backbone ({', '.join(stuck['tried'])})."
+        value += ", unreachable at this budget"
+    return check("target", "Meets the target", 2, status, value, why)
 
 
 def _overfit(p: Project) -> dict:
@@ -193,7 +200,7 @@ def checks(p: Project, spec: TaskSpec) -> list[dict]:
         return []
     found = [
         _rival(p, spec, board, prim, mine),
-        _target(spec, mine),
+        _target(p, spec, mine),
         _overfit(p),
         _robustness(p, spec, board, prim),
         _data(p, spec),

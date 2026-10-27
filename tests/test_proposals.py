@@ -66,6 +66,7 @@ def test_every_model_is_distilled_but_only_a_winner_is_published(ws, monkeypatch
     p, spec = make_project(ws)
     calls = []
     monkeypatch.setattr(autopilot, "improve_until_stop", lambda s, n, use_llm: "plateau")
+    monkeypatch.setattr(autopilot, "escalate", lambda s, reason: reason)
     monkeypatch.setattr(autopilot, "standing", lambda name, margin: {**LOST, "won": won})
     monkeypatch.setattr(autopilot, "_distill", lambda s, m: calls.append("distill"))
     monkeypatch.setattr(export, "export", lambda name, log: calls.append("export") or p.root / "export")
@@ -83,6 +84,7 @@ def test_won_is_rechecked_after_distill(ws, monkeypatch):
     calls = []
     wins = iter([False])
     monkeypatch.setattr(autopilot, "improve_until_stop", lambda s, n, use_llm: "won")
+    monkeypatch.setattr(autopilot, "escalate", lambda s, reason: reason)
     monkeypatch.setattr(autopilot, "standing", lambda name, margin: {**LOST, "won": next(wins, False)})
     monkeypatch.setattr(autopilot, "_distill", lambda s, m: calls.append("distill"))
     monkeypatch.setattr(export, "export", lambda name, log: calls.append("export") or p.root / "export")
@@ -119,6 +121,7 @@ def test_an_experiment_that_never_finished_is_built_before_improving(ws, monkeyp
     monkeypatch.setattr(autopilot, "missing_labels", lambda spec: False)
     monkeypatch.setattr(autopilot, "_build_v1", lambda s: calls.append("build"))
     monkeypatch.setattr(autopilot, "improve_until_stop", lambda s, n, use_llm: calls.append("improve") or "plateau")
+    monkeypatch.setattr(autopilot, "escalate", lambda s, reason: reason)
     monkeypatch.setattr(autopilot, "standing", lambda name, margin: LOST)
     monkeypatch.setattr(autopilot, "_finish", lambda *a: None)
     monkeypatch.setattr(autopilot, "_report", lambda p, decisions, final: None)

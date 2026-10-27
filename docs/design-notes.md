@@ -617,6 +617,12 @@ The time budget counts the session's own work: its deadline moves out by every s
 (`train.gpu.waited_seconds`), the per-experiment estimate leaves those waits out, and the experiment budget counts this
 session's experiments, not every experiment the specialist ever had. Before, the tool-call gate's autopilot spent its
 6 hours building v1, 3.1 of them queued, and stopped without trying a single proposal.
+
+When the loop stops without a win, the autopilot climbs one rung (`byosm/auto/escalate.py`): the smallest larger
+backbone in `spec/backbones.py` that it has not tried and that speaks the spec's languages, built as an ordinary
+`bigger-backbone` proposal so it never runs twice. With no larger backbone left it saves an `unreachable` report with
+the score, the target and every backbone tried, and the "Meets the target" check says "unreachable at this budget".
+Before, a stalled run just distilled and exported, and the next run started the same cheap fixes again.
 `_finish` distills only a winner above `max_params_m`. The student is promoted and `standing` is asked again; if the
 student does not win, the teacher is promoted back, so `standing` is the only win rule. A winning student stays
 promoted even when its calib value is below the teacher's. The promoted model is always exported, but published only
