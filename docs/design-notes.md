@@ -611,6 +611,10 @@ read the test column, not calib, for how good the kept model is.
 **Autopilot stops for a reason and says so.**
 `byosm/auto/autopilot.py`: define, build v1, loop, then stop when it has won (`standing`: beats every baseline by
 `margin` on calib and meets the target), hits the experiment or time budget, plateaus, or runs out of proposals.
+The time budget counts the session's own work: its deadline moves out by every second spent queued for the GPU
+(`train.gpu.waited_seconds`), the per-experiment estimate leaves those waits out, and the experiment budget counts this
+session's experiments, not every experiment the specialist ever had. Before, the tool-call gate's autopilot spent its
+6 hours building v1, 3.1 of them queued, and stopped without trying a single proposal.
 `_finish` distills only a winner above `max_params_m`. The student is promoted and `standing` is asked again; if the
 student does not win, the teacher is promoted back, so `standing` is the only win rule. A winning student stays
 promoted even when its calib value is below the teacher's. The promoted model is always exported, but published only

@@ -38,9 +38,18 @@ class Session:
     log: Log
     base: Any
     margin: float
-    deadline: float
+    ends: float
     echo: Callable[[str], None]
     durations: list[float] = field(default_factory=list)
+
+    @property
+    def deadline(self) -> float:
+        from ..train.gpu import waited_seconds
+
+        return self.ends + waited_seconds()
+
+    def experiments_run(self) -> int:
+        return sum(d["step"] == "experiment" for d in self.log.decisions)
 
     def mean_duration(self) -> float:
         return sum(self.durations) / max(1, len(self.durations))

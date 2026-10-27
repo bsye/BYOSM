@@ -27,6 +27,13 @@ WAIT_S = 5
 HEARTBEAT_S = 300
 
 
+_WAITED: list[float] = []
+
+
+def waited_seconds() -> float:
+    return sum(_WAITED)
+
+
 def auto_slots() -> int:
     import psutil
 
@@ -154,6 +161,7 @@ def gpu_slot(
         ticket.unlink(missing_ok=True)
     if waited:
         log(f"  got the GPU after {waited:.0f} s")
+        _WAITED.append(waited)
     os.environ[SHARE_ENV] = f"{share:.3f}"
     _cap_memory(device, log, share)
     ran_out = None

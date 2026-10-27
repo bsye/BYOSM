@@ -20,7 +20,7 @@ class FakeLog:
 
 
 def _session() -> Session:
-    p = SimpleNamespace(experiments=lambda: [], board=lambda: {})
+    p = SimpleNamespace(experiments=lambda: [], attempts=lambda: [], board=lambda: {})
     return Session("t", p, FakeLog(), None, 0.0, time.time() + 3600, lambda _m: None)
 
 
@@ -49,3 +49,12 @@ def test_log_result_without_scores():
     s = _session()
     loop._log_result(s, STANDING, "e1", _proposal(1), [_proposal(1)], False, None, None)
     assert f"calib {MISSING} vs {MISSING}" in s.log.decisions[-1]["why"]
+
+
+def test_time_spent_waiting_for_the_gpu_does_not_count_against_the_budget(monkeypatch):
+    import byosm.train.gpu as gpu
+
+    s = _session()
+    ends = s.deadline
+    monkeypatch.setattr(gpu, "_WAITED", [1800.0, 600.0])
+    assert s.deadline == ends + 2400.0

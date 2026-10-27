@@ -39,7 +39,7 @@ def _won_reason(st: dict) -> str:
 def _budget_stop(s: Session, st: dict, max_experiments: int) -> str:
     if st["won"]:
         return _won_reason(st)
-    n_exp = len(s.p.experiments())
+    n_exp = s.experiments_run()
     if n_exp >= max_experiments:
         return f"experiment budget reached ({n_exp}/{max_experiments})"
     est = s.mean_duration()
@@ -84,15 +84,16 @@ def _log_result(s: Session, st: dict, exp: str, pick: dict, fresh: list[dict], k
 def _experiment(s: Session, st: dict, pick: dict, fresh: list[dict]) -> bool | None:
     from .. import evals, improve
     from ..pipeline import build
+    from ..train.gpu import waited_seconds
 
     exp = improve.apply(s.name, [pick["id"]])
-    ts = time.time()
+    ts, queued = time.time(), waited_seconds()
     try:
         build(s.name, exp, s.echo, data_seconds=s.data_seconds())
     except Exception as e:
         s.log("experiment", exp, f"{pick['id']} failed: {type(e).__name__}: {str(e)[:200]}", proposal=pick)
         return None
-    s.durations.append(time.time() - ts)
+    s.durations.append(time.time() - ts - (waited_seconds() - queued))
     kept = standing(s.name, s.margin)["exp"] == exp
     b = s.p.board()
     res = b.get(exp, {}).get(st["suite"])
