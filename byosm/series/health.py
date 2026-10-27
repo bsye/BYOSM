@@ -21,11 +21,24 @@ def _naive(configs: dict[str, Any], ours: str) -> dict:
     return check("robust", "Beats seasonal naive everywhere", 2, status, f"{wins} of {len(rows)} datasets", why)
 
 
+def _gaps(version: dict[str, Any]) -> dict[str, float]:
+    ours, out = version["recipe"], {}
+    for config, r in (version.get("configs") or {}).items():
+        if ours in r and NAIVE in r and r[ours].get("calib_mase") and r[NAIVE].get("calib_mase"):
+            calib = r[ours]["calib_mase"] / r[NAIVE]["calib_mase"]
+            out[config] = abs(r[ours]["mase"] / r[NAIVE]["mase"] - calib) / calib
+    return out
+
+
 def _agreement(version: dict[str, Any]) -> dict:
     gap = abs(version["test"] - version["calib"]) / version["calib"]
+    worst = max(_gaps(version).items(), key=lambda kv: kv[1], default=None)
+    where = ""
+    if worst and worst[1] > gap:
+        where, gap = f" on {worst[0]}", worst[1]
     status = OK if gap <= AGREE_OK else WARN if gap <= AGREE_WARN else FAIL
-    why = "The recipe is picked on the calib windows; a large gap to test means the pick does not carry over."
-    return check("overfit", "Calib and test agree", 1, status, f"{gap:.0%} apart", why)
+    why = "The recipe is picked on the calib windows; a large gap to test on any dataset means the pick does not carry over there."
+    return check("overfit", "Calib and test agree", 1, status, f"{gap:.0%} apart{where}", why)
 
 
 def _certainty(version: dict[str, Any]) -> dict:

@@ -1449,6 +1449,8 @@ A forecaster's health uses the same scoring as a classifier's (`health.report`: 
 80 with no blocking check failed or unknown) with checks that fit forecasting: it beats seasonal naive on every
 dataset, its calib and test scores agree, its test interval is narrow, and, advisory, it beats the hardest rival on
 the datasets both were scored on. It is served by the same `/api/health/{name}` and shown on its page.
+Calib and test must agree on every dataset, each relative to seasonal naive, and the check names the worst one: the
+domain geomean showed energy 4% apart while solar went from 0.82 of naive on calib to 1.10 on test, 34% apart.
 
 ## The GPU goes to whoever waited longest
 

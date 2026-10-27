@@ -459,3 +459,17 @@ def test_boosting_that_stopped_early_is_reused_when_more_iterations_are_allowed(
     again = models.Boosted(effort=1)
     again.fit(groups)
     assert len(calls) == fits and again.model == "model"
+
+
+def test_calib_and_test_must_agree_on_every_dataset_not_only_on_average():
+    from byosm.series.health import health
+
+    def row(calib, test):
+        naive = {"mase": 1.0, "calib_mase": 1.0}
+        return {"seasonal naive": naive, "patch transformer": {"mase": test, "calib_mase": calib}}
+
+    configs = {"electricity": row(0.70, 0.66), "solar": row(0.82, 1.10)}
+    version = {"name": "v1", "recipe": "patch transformer", "calib": 0.76, "test": 0.80, "ci": [0.7, 0.9]}
+    h = health({"promoted": "v1", "versions": [{**version, "configs": configs}]})
+    agree = next(c for c in h["checks"] if c["id"] == "overfit")
+    assert agree["status"] == "fail" and agree["value"] == "34% apart on solar"
