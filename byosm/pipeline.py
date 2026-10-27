@@ -154,7 +154,7 @@ def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> d
     if mine > cur and evals.sure_lead(cmp):
         p.promote(exp)
         log(f"  promoted {exp}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{sig}){test}")
-    elif b and fixes_speed(base, board.get(exp, {}), board.get(p.promoted, {}), mine, cur):
+    elif a and b and fixes_speed(base, a, b, mine, cur):
         was = p.promoted
         p.promote(exp)
         log(

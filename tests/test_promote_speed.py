@@ -29,3 +29,34 @@ def test_a_specialist_can_trade_more_accuracy_for_meeting_its_latency_budget():
     assert not fixes_speed(spec, FAST, SLOW, 0.956, 0.978)
     spec.speed_tolerance = 0.025
     assert fixes_speed(spec, FAST, SLOW, 0.956, 0.978)
+
+
+def test_a_faster_student_is_promoted_from_the_board_when_it_is_within_the_tolerance(ws):
+    from conftest import save_board
+
+    from byosm.pipeline import maybe_promote
+    from byosm.project import Project
+
+    p = Project("tc").ensure()
+    labels = [Label(name="a", definition=""), Label(name="b", definition="")]
+    spec = TaskSpec(
+        name="tc", description="", modality="text", labels=labels, latency_budget_ms=100, speed_tolerance=0.025
+    )
+    p.save_spec(spec)
+    for exp in ("v1", "distill-v1"):
+        p.save_experiment(exp, meta={})
+    p.promote("v1")
+
+    def result(calib, ms):
+        return {
+            "kind": "experiment",
+            "objective": calib,
+            "calib_objective": calib,
+            "n_test": 500,
+            "n_calib": 200,
+            "latency_ms": ms,
+        }
+
+    save_board(p, {"v1": {"builtin": result(0.978, 163.0)}, "distill-v1": {"builtin": result(0.956, 10.3)}})
+    maybe_promote(p, "distill-v1", lambda _: None)
+    assert p.promoted == "distill-v1"
