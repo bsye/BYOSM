@@ -141,3 +141,15 @@ def test_a_spec_edit_made_while_the_inputs_are_written_survives(qa, monkeypatch)
     write_testset(p, spec, PER_LABEL, "llm-written")
     saved = p.spec()
     assert "jev" in saved.baselines and "llm-written" in [e.name for e in saved.evals]
+
+
+def test_a_spec_without_an_input_description_shows_the_writer_real_inputs_as_the_layout():
+    from byosm.evals.testset import with_layout
+    from byosm.spec import Label, TaskSpec
+
+    spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="fits", definition="")])
+    rows = [{"input": "find flights\n\nOption: search_flights: Finds flights. (from, to)"}]
+    shown = with_layout(spec, rows).input_description
+    assert "Option: search_flights" in shown and spec.input_description == ""
+    described = spec.model_copy(update={"input_description": "a request and one tool"})
+    assert with_layout(described, rows) is described

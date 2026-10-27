@@ -515,6 +515,14 @@ halves the learning rate and stops at the best epoch; calib/test drift alone get
 model does not make the two splits alike. A fix whose build never finished is offered again as a build of the same
 experiment instead of disappearing: tool-choice's fit-v1 was interrupted and its step was never shown again.
 
+**A written test set keeps the inputs' layout.**
+`byosm/evals/testset.py` `with_layout`: when the spec has no `input_description` (a specialist trained from a file),
+the writer is shown three real inputs and told to keep their separators and field order. Without them each writer made
+up its own layout: tool-choice trains on "request, then `Option: name: description. (params)`", and two written sets used
+"`Option: ...` then `Request: ...`" and "`Offered tool: ... — ...` then `Request: ...`". On those rows the 11M model
+answered no_fit to nearly every fitting tool at 0.98 confidence (0.44 and 0.52 accuracy), a test of a format it never
+sees in use rather than of the task.
+
 **An LLM-written test set is a check, never the benchmark.**
 `byosm/evals/testset.py`, `byosm testset NAME`: the `eval` role writes `--per-label` examples per label with the same
 adversarial prompts as the builtin test split (`synth_text.generate`, now with a `labels` filter so top-up rounds ask

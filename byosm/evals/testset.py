@@ -21,6 +21,8 @@ OVERSAMPLE = 2
 MAX_ROUNDS = 4
 WRITTEN_MARK = ".written"
 WRITTEN_SUFFIX = f"{WRITTEN_MARK}.jsonl"
+LAYOUT_EXAMPLES = 3
+LAYOUT_CHARS = 500
 
 
 def written_path(p: Project, suite: str) -> Path:
@@ -52,6 +54,14 @@ def _resumed(spec: TaskSpec, path: Path, against: list[dict], cfg: dict, log: Ca
 def existing_rows(p: Project, spec: TaskSpec) -> list[dict]:
     ds = Dataset(p.data_dir_for(spec))
     return [r for split in SPLITS for r in ds.load(split)]
+
+
+def with_layout(spec: TaskSpec, rows: list[dict]) -> TaskSpec:
+    if spec.input_description or not rows:
+        return spec
+    shown = "\n---\n".join(str(r["input"])[:LAYOUT_CHARS] for r in rows[:LAYOUT_EXAMPLES])
+    layout = f"Write every input in exactly the layout of these real ones, with the same separators and field order:\n{shown}"
+    return spec.model_copy(update={"input_description": layout})
 
 
 def _short(spec: TaskSpec, rows: list[dict], per_label: int) -> dict[str, int]:
@@ -99,7 +109,8 @@ def write_testset(
 ) -> EvalSuite:
     _check(spec, suite)
     cfg = cfg or load_config()
-    rows = _collect(spec, per_label, existing_rows(p, spec), cfg, log, written_path(p, suite))
+    known = existing_rows(p, spec)
+    rows = _collect(with_layout(spec, known), per_label, known, cfg, log, written_path(p, suite))
     calib, test = _calib_test(spec, rows, per_label)
     if not test:
         raise ValueError(f"the LLM wrote no usable examples for {spec.name}")
