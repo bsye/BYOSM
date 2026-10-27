@@ -8,7 +8,6 @@ from ..config import PUBLISH_LICENSE, load_config
 from ..data.request import missing_labels
 from ..events import TARGET, emit
 from ..llm import role_model
-from ..pipeline import DISTILL_TOLERANCE
 from ..project import Project
 from .escalate import escalate
 from .loop import improve_until_stop
@@ -86,7 +85,7 @@ def _distill_student(s: Session, st: dict, meta: dict) -> None:
     smeta = s.p.meta(exp)
     s.p.promote(exp)
     stu = standing(s.name, s.margin)
-    close = stu["ours"] is not None and stu["ours"] >= st["ours"] - DISTILL_TOLERANCE
+    close = stu["ours"] is not None and stu["ours"] >= st["ours"] - s.base.speed_tolerance
     if not close:
         s.p.promote(teacher)
     outcome = "student within tolerance -> promoted" if close else "student too far behind -> keep the teacher"

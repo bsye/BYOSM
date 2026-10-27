@@ -110,7 +110,7 @@ def test_a_student_is_kept_when_it_scores_within_the_tolerance_of_its_teacher(ws
     monkeypatch.setattr(autopilot, "standing", lambda name, margin: {**LOST, "ours": student})
     s = session(p, spec)
     autopilot._distill_student(s, {**LOST, "ours": 0.905}, {"params": 50e6})
-    assert p.promoted == ("v2" if student >= 0.905 - autopilot.DISTILL_TOLERANCE else "v1")
+    assert p.promoted == ("v2" if student >= 0.905 - spec.speed_tolerance else "v1")
 
 
 def test_an_experiment_that_never_finished_is_built_before_improving(ws, monkeypatch):

@@ -44,6 +44,7 @@ class TaskSpec(BaseModel):
     hard_cases: list[str] = Field(default_factory=list)
     backbone: str = MINILM
     latency_budget_ms: float = 10.0
+    speed_tolerance: float = 0.01
     frame_hop_ms: float = 10.0
     data: DataPlan = Field(default_factory=DataPlan)
     train: TrainCfg = Field(default_factory=TrainCfg)

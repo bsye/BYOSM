@@ -1389,14 +1389,16 @@ whether it is built on the rival's checkpoint. The card's headline must state bo
 ## Distill by default
 
 The autopilot distills its promoted model whenever it is above the size target, whether or not it beat its rival,
-and ships the student when its calib score is within `DISTILL_TOLERANCE` (0.01) of the teacher's. A specialist that
+and ships the student when its calib score is within the spec's `speed_tolerance` (0.01 by default) of the teacher's. A specialist that
 is not at least 4x smaller than its rival gets a "Distill into a smaller model" next step from its health.
 
-Any build is promoted for speed by the same rule (`byosm/pipeline.py` `fixes_speed`, the one `DISTILL_TOLERANCE`): it
+Any build is promoted for speed by the same rule (`byosm/pipeline.py` `fixes_speed`, the same `speed_tolerance`): it
 meets the latency budget that the promoted model misses and its calib score is within the tolerance. Before, only the
 autopilot applied the tolerance; a "Make it faster" step built the student through `maybe_promote`, which asked for a
 sure calib win, so the step could never pass the speed check it was chosen for. tool-choice's 11M student (10 ms,
-calib 0.956) still stays out: the 163 ms teacher's calib is 0.978, 0.022 ahead.
+calib 0.956) stayed out at the default: the 163 ms teacher's calib is 0.978, 0.022 ahead. The tolerance is the
+spec's `speed_tolerance`, how much calib a specialist gives up for meeting its latency budget; tool-choice sets 0.025,
+since its student keeps 97.4% of fits caught at 16x the speed and 1/35 of the size.
 
 ## A rival score must be a fair bar
 

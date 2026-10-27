@@ -19,7 +19,6 @@ from .train import fit
 from .train.input_length import fitted_max_len
 
 KEPT_WEIGHTS = "model.kept.pt"
-DISTILL_TOLERANCE = 0.01
 MISLABELLED_SHARE = 0.5
 
 
@@ -138,7 +137,7 @@ def build(
 def fixes_speed(spec: TaskSpec, mine: dict, cur: dict, mine_value: float, cur_value: float) -> bool:
     ms, was, budget = mine.get("latency_ms"), cur.get("latency_ms"), spec.latency_budget_ms
     in_budget = ms is not None and was is not None and ms <= budget < was
-    return in_budget and mine_value >= cur_value - DISTILL_TOLERANCE
+    return in_budget and mine_value >= cur_value - spec.speed_tolerance
 
 
 def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> dict[str, Any]:
@@ -159,7 +158,7 @@ def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> d
         was = p.promoted
         p.promote(exp)
         log(
-            f"  promoted {exp}: within {DISTILL_TOLERANCE} of {was} on {prim} calib ({mine:.4f} vs {cur:.4f}) "
+            f"  promoted {exp}: within {base.speed_tolerance} of {was} on {prim} calib ({mine:.4f} vs {cur:.4f}) "
             f"and inside the {base.latency_budget_ms:g} ms budget that {was} misses{test}"
         )
     elif mine > cur:
