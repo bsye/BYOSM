@@ -127,7 +127,9 @@ The rules that ask for more data read their own evidence (`byosm/improve/registr
 `more-data` is proposed only while dev is still rising or noisy, not after it plateaued: its text used to say "dev
 plateaued at 0.86, so more of the same data may help less" and propose doubling the data anyway. `refine-more` and
 `hard-pairs` are dropped once the last build's refine rounds left dev no higher than round 0 (`refine_gain` in the
-diagnosis).
+diagnosis). The analyst also flags dev rows whose gold label looks wrong (`suspect_gold_ids`); when at least half the
+errors are flagged (`MISLABELLED_SHARE`), refine writes nothing and says to check the label definitions, since new
+training rows cannot fix a disagreement about the labels. Before, the flags were requested and then ignored.
 
 **Text held-out sets are deduped against train.**
 `byosm/data/__init__.py`, `byosm/data/store.py` `dedupe`: for text, test is deduped against train+dev and dev against

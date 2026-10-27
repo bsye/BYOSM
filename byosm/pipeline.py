@@ -20,6 +20,7 @@ from .train.input_length import fitted_max_len
 
 KEPT_WEIGHTS = "model.kept.pt"
 DISTILL_TOLERANCE = 0.01
+MISLABELLED_SHARE = 0.5
 
 
 def next_exp(p: Project) -> str:
@@ -65,6 +66,13 @@ def refine(
     jobs, analysis = synth_text.refine_jobs(spec, errors, spec.train.refine_examples, cfg)
     for pat in analysis.get("patterns", []):
         log(f"  pattern: {pat['name']} - {pat['explanation'][:140]}")
+    suspects = {str(i) for i in analysis.get("suspect_gold_ids", [])} & {str(e["id"]) for e in errors}
+    if len(suspects) >= len(errors) * MISLABELLED_SHARE:
+        log(
+            f"[refine] stopping: {len(suspects)} of {len(errors)} dev errors look mislabelled, "
+            "so more training rows will not fix them; check the label definitions"
+        )
+        return {**analysis, "added": 0, "suspects": len(suspects)}
     ds = Dataset(data_dir)
     written = ds.load(refine_split(exp)) + ds.load(rounds_split(exp))
     prior = ds.load("train") + written + ds.load("dev") + ds.load("test")

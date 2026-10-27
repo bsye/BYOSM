@@ -54,3 +54,13 @@ def test_a_retried_build_drops_the_rows_its_earlier_rounds_wrote_but_keeps_the_p
     _build(ws, monkeypatch, [0.5, 0.6], rounds=1, seen=seen)
     assert seen[0] == {"train": 0, refine_split("v1"): 1, rounds_split("v1"): 0}
     assert seen[1][rounds_split("v1")] == 1
+
+
+def test_refine_writes_nothing_when_most_dev_errors_look_mislabelled(ws, monkeypatch):
+    spec = compile_spec("isq", "detect questions")
+    errors = [{"id": i, "gold": "yes", "pred": "no", "confidence": 0.9, "input": "q"} for i in range(4)]
+    analysis = {"patterns": [], "suspect_gold_ids": ["0", "1", "3"]}
+    monkeypatch.setattr(pipeline.synth_text, "refine_jobs", lambda *a: ([], analysis))
+    monkeypatch.setattr(pipeline.synth_text, "generate", lambda *a, **k: [{"text": "x"}])
+    out = pipeline.refine(spec, {}, errors, ws, "v1", lambda _: None)
+    assert out["added"] == 0 and out["suspects"] == 3 and not Dataset(ws).load(rounds_split("v1"))
