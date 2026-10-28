@@ -339,8 +339,7 @@
   title: Lab method
   effect: "A training method an LLM wrote as code and a person approved, run through the same seed-averaged vote."
   paths: [train.lab_method]
-  modalities: [text]
-  task_types: [classify]
+  modalities: [text, audio, image, document]
   cost: 1.0
   prior: 0.3
   evidence: []

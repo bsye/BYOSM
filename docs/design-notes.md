@@ -2487,3 +2487,12 @@ or ships code:
 
 Shipped methods load from the repository and still pass the static checks before they run. Nothing changes the
 repository on its own: the patch is a file in `.byosm/lab/patches/`.
+
+## The lab writes code for every specialist on the shared trainer
+
+The lab began with text classifiers. Its hooks act on the shared trainer, so every specialist built on it can use
+them: text, audio, image and document classifiers and taggers. The loss hook of a tagger receives one row per token
+or frame, with targets of -100 where the trainer ignores a position (`_task_loss` in `byosm/train/trainer.py`), and
+the rows hook may reorder, filter or duplicate file inputs but not invent them. The Lab tab, the `lab-method` family
+and the scout's "Try it" now cover these kinds. Forecasters train elsewhere and get their own contract; event-risk
+specialists come after.

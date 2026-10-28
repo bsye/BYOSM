@@ -125,7 +125,7 @@ def decide(ws: Path | None, pid: str, status: str) -> dict[str, Any]:
     return found
 
 
-LAB_KINDS = ("text",)
+LAB_KINDS = ("text", "audio", "image", "document")
 MAX_TRIES = 2
 
 
@@ -142,7 +142,7 @@ def chosen(ws: Path | None, proposal: dict[str, Any]) -> list[str]:
     for name in sorted(set(list_projects(ws)) - archived(ws)):
         p = Project(name, ws)
         spec = p.spec()
-        if p.promoted and spec.task_type == "classify" and spec.modality in (proposal.get("kinds") or []):
+        if p.promoted and spec.modality in LAB_KINDS and spec.modality in (proposal.get("kinds") or []):
             found.append(((health(p, spec) or {}).get("score", 0), name))
     return [name for _, name in sorted(found)[:MAX_TRIES]]
 

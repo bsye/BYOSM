@@ -144,3 +144,22 @@ def test_the_app_lists_methods_and_only_a_person_s_decision_approves_one(ws):
             c.post(f"/api/specialists/tc/lab/{bad['id']}", headers=auth, json={"status": "approved"}).status_code == 422
         )
         assert c.post(url, json={"status": "approved"}).status_code == 401
+
+
+def test_a_loss_hook_on_a_tagger_gets_one_row_per_token_with_padding_ignored():
+    import torch
+
+    from byosm.train.trainer import Trainer
+
+    seen = {}
+
+    def loss(logits, targets, weight, step):
+        seen["shape"], seen["targets"] = tuple(logits.shape), targets.tolist()
+        return logits.sum() * 0
+
+    t = Trainer.__new__(Trainer)
+    t.hooks, t.weight, t.steps = {"loss": loss}, None, 0
+    logits = torch.zeros(2, 3, 4)
+    mask = torch.tensor([[True, True, False], [True, False, False]])
+    t._task_loss(logits, torch.tensor([[1, 2, 0], [3, 0, 0]]), mask)
+    assert seen["shape"] == (6, 4) and seen["targets"] == [1, 2, -100, 3, -100, -100]

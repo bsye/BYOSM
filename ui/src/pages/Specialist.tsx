@@ -51,7 +51,8 @@ const FOCUS_OTHERS = 5
 
 const display = (d: Detail, model: string) => (d.baselines.includes(model) ? rivalName(model) : model)
 
-const canLab = (d: Detail) => d.modality === "text" && d.task_type === "classify"
+const LAB_MODALITIES = ["text", "audio", "image", "document"]
+const canLab = (d: Detail) => LAB_MODALITIES.includes(d.modality)
 
 function Board({ d }: { d: Detail }) {
   const [all, setAll] = useState(false)

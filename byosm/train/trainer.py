@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from ..modalities import IGNORE, Modality
-from ..model import SpecialistModel, distill_loss, task_loss, warmup_cosine
+from ..model import SpecialistModel, align_targets, distill_loss, task_loss, warmup_cosine
 from ..spec import TaskSpec
 from ..text import prefix
 from .common import amp_dtype, autocast, batches, param_groups, pretrained_encoders, to_device
@@ -103,8 +103,14 @@ class Trainer:
         return loss
 
     def _task_loss(self, logits: torch.Tensor, y: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        custom = self.hooks.get("loss") if self.spec.task_type == "classify" else None
-        return custom(logits, y, self.weight, self.steps) if custom else task_loss(logits, y, mask, self.weight)
+        custom = self.hooks.get("loss")
+        if not custom:
+            return task_loss(logits, y, mask, self.weight)
+        if logits.dim() == 2:
+            return custom(logits, y, self.weight, self.steps)
+        t = align_targets(y, logits.shape[1]).clone()
+        t[~mask] = IGNORE
+        return custom(logits.flatten(0, 1), t.flatten(), self.weight, self.steps)
 
     def _rdrop(self, inputs: dict, logits: torch.Tensor) -> torch.Tensor:
         with autocast(self.dev, self.amp):

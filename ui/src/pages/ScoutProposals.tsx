@@ -25,7 +25,7 @@ type Proposal = {
 type Scan = { read: number; proposed: number; kept: number }
 type Scouted = { last_run: number | null; due: boolean; every_days: number; proposals: Proposal[]; last_scan?: Scan | null }
 
-const LAB_KINDS = ["text"]
+const LAB_KINDS = ["text", "audio", "image", "document"]
 const KIND_NAMES: Record<string, string> = { text: "text classifiers", series: "forecasters", audio: "audio", image: "images", document: "documents" }
 const kindNames = (kinds: string[] | null) => (kinds ?? []).map((k) => KIND_NAMES[k] ?? k).join(", ") || "this kind"
 const dayOf = (t: number) => new Date(t * 1000).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
@@ -42,7 +42,7 @@ function TryIt({ p, refresh }: { p: Proposal; refresh: () => void }) {
     return (
       <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
         No lab for {kindNames(p.kinds)} yet
-        <InfoTip>The lab writes training code for text classifiers so far; forecasters and other kinds are next.</InfoTip>
+        <InfoTip>The lab writes training code for text, audio, image and document specialists so far; forecasters are next.</InfoTip>
       </span>
     )
   const run = () => {
