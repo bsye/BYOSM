@@ -110,3 +110,18 @@ def test_a_step_gains_the_health_its_checks_are_missing():
     ]
     step = _with_gain({"id": "find-data", "title": "t", "why": "w", "args": []}, cs)
     assert step["gain"] == 38 and step["unblocks"] == ["Enough data"]
+
+
+def test_a_tool_choice_specialist_is_offered_the_hard_public_benchmarks_it_does_not_have(ws):
+    from byosm.spec import EvalSuite
+
+    p = _specialist(ws, n_test=500, n_calib=200)
+    spec = p.spec()
+    spec.labels = [Label(name="no_fit", definition="no"), Label(name="fits", definition="yes")]
+    spec.positive_label = "fits"
+    p.save_spec(spec)
+    step = next(s for s in suggestions("qa") if s["id"] == "public-suites")
+    assert step["args"] == ["suite", "public", "qa"] and "bfcl" in step["why"] and "when2call" in step["why"]
+    spec.evals += [EvalSuite(name=n, kind="local") for n in ("bfcl", "bfcl-live", "when2call")]
+    p.save_spec(spec)
+    assert all(s["id"] != "public-suites" for s in suggestions("qa"))

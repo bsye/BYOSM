@@ -36,6 +36,7 @@ STEP_CHECKS = {
     "export": ("export",),
     "seeds": ("seeds",),
     "curve": ("data",),
+    "public-suites": ("rival", "robust"),
 }
 FIX_TITLES = {
     "overfit": "Check for overfitting",
@@ -87,6 +88,16 @@ def _finetuned(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
         return None
     why = f"Models fine-tuned on {benchmarks(spec)[0]} are the fairest rival. Searches Hugging Face, adds the best ones whose labels map onto ours, and scores them."
     return _step("finetuned", "Score fine-tuned rivals", why, ["rivals", p.name])
+
+
+def _public(p: Project) -> dict[str, Any] | None:
+    from .benchmarks.add import chosen
+
+    missing = [b.name for b in chosen(p, [])]
+    if not missing:
+        return None
+    why = f"{', '.join(missing)}: public sets where strong models score below ceiling. Each is added after a protocol check, then every model and rival is scored on it."
+    return _step("public-suites", "Score on hard public benchmarks", why, ["suite", "public", p.name])
 
 
 def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
@@ -156,6 +167,7 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         _more_data(p, check),
         _finetuned(p, spec),
         _rivals(p, spec, prim),
+        _public(p),
         less_overfit(p, spec, cs),
         faster(p, spec, cs),
         _experiments(p),

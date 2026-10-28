@@ -2224,3 +2224,10 @@ frozen rows and leaves the spec unchanged.
 The training-data search (`find_datasets` in `byosm/dataset_search.py`) already skipped the datasets behind `hf`
 suites. It now skips every suite's `origin`, so the BFCL, When2Call and eot-bench files a `local` public suite was
 written from are never offered to the picker as training rows for the same specialist.
+
+## The hard public benchmarks are a next step
+
+Adding BFCL, When2Call or eot-bench took a command nobody would know to type. The next steps now offer "Score on hard
+public benchmarks" (`suite public <name>`) whenever a public benchmark fits the specialist's labels and language and is
+not one of its suites yet (`_public` in `byosm/next_steps.py`), so the ready loop adds them, after their protocol
+check, before it judges the rival and robustness checks.
