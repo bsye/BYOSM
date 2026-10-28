@@ -147,11 +147,13 @@ app.add_typer(series_app, name="series")
 def series_run(
     domain: str = typer.Argument(..., help="energy, sales, operations, or one GIFT-Eval dataset such as solar/H"),
     until_rival: bool = typer.Option(
-        False, "--until-rival", help="Keep adding versions until one beats the best rival"
+        False,
+        "--until-rival",
+        help="Keep adding versions until one beats the best rival, trying untried prediction-time techniques on the promoted models before training more",
     ),
     rounds: int = typer.Option(MAX_ROUNDS, help="Most versions to add with --until-rival"),
 ) -> None:
-    """Train a new version of a forecasting specialist, each one with twice the training of the last, and score it against seasonal naive and Timestral."""
+    """Train a new version of a forecasting specialist with twice the training of the promoted one and its prediction options, and score it against seasonal naive and Timestral."""
     from ..config import find_workspace
     from ..series.run import run_domain
     from ..series.run import until_rival as loop

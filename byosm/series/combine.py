@@ -8,7 +8,7 @@ from .multirate import MultiRate, twin_name
 from .prediction import PredictCfg
 from .routing import Routed, route
 from .scoring import Scored, score_model
-from .specialist import NAIVE, ROUTE, ROUTED
+from .specialist import NAIVE, ROUTE, ROUTED, is_rival
 
 TIMING = ("train_s", "ms_per_forecast")
 
@@ -49,3 +49,18 @@ def combine(s: Scored, ours: list[Any], cfg: PredictCfg, log: Callable[[str], No
     if cfg.routing and ours:
         trained[ROUTED] = _routed(s, {**trained, NAIVE: SeasonalNaive()})
     return trained
+
+
+def _inner(model: Any) -> list[Any]:
+    if isinstance(model, Routed):
+        return list(model.models.values())
+    if isinstance(model, Ensemble):
+        return model.models
+    return [model.model] if isinstance(model, MultiRate) else []
+
+
+def members(model: Any) -> list[Any]:
+    inner = _inner(model)
+    if not inner:
+        return [] if is_rival(model.name) else [model]
+    return list({m.name: m for i in inner for m in members(i)}.values())

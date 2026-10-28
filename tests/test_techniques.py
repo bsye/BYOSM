@@ -22,6 +22,8 @@ EDITABLE = [
     "train.precision",
     "document.route",
     "document.image_backbone",
+    "predict.rates",
+    "predict.routing",
 ]
 RANKED = [
     "multi-rate-forecast",

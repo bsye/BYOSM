@@ -29,7 +29,18 @@ type Score = {
   datasets?: number
   ours_on_shared?: number
 }
-type Version = { name: string; recipe: string; effort?: number; calib: number; test: number; crps: number; ci: [number, number] | null; at: number }
+type Predict = { rates?: number[]; routing?: boolean }
+type Version = {
+  name: string
+  recipe: string
+  effort?: number
+  predict?: Predict
+  calib: number
+  test: number
+  crps: number
+  ci: [number, number] | null
+  at: number
+}
 export type ForecasterView = Summary & {
   configs?: Record<string, Record<string, Score>>
   overall?: Record<string, Score>
@@ -81,6 +92,8 @@ export function useForecaster(name: string): ForecasterView | null | undefined {
   }, [name, progress])
   return view
 }
+
+const options = (p?: Predict) => [(p?.rates ?? []).some((r) => r !== 1) ? "multi-rate" : "", p?.routing ? "routing" : ""].filter((o) => o).join(", ") || "-"
 
 const seconds = (s?: number) => (s == null ? "-" : `${s.toFixed(1)} s`)
 const millis = (s?: number) => (s == null ? "-" : `${s.toFixed(1)} ms`)
@@ -219,6 +232,7 @@ function Versions({ f }: { f: ForecasterView }) {
             <TableRow>
               <TableHead>Version</TableHead>
               <TableHead>Recipe</TableHead>
+              <TableHead>Options</TableHead>
               <TableHead className="text-right">Training</TableHead>
               <TableHead className="text-right">Calib MASE</TableHead>
               <TableHead className="text-right">Test MASE</TableHead>
@@ -234,6 +248,7 @@ function Versions({ f }: { f: ForecasterView }) {
                   {v.name === f.promoted && <Badge className="ml-2">promoted</Badge>}
                 </TableCell>
                 <TableCell>{v.recipe}</TableCell>
+                <TableCell>{options(v.predict)}</TableCell>
                 <TableCell className="text-right tabular-nums">{2 ** (v.effort ?? 0)}x</TableCell>
                 <TableCell className="text-right tabular-nums">{score(v.calib)}</TableCell>
                 <TableCell className="text-right tabular-nums">{score(v.test)}</TableCell>

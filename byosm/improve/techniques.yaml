@@ -119,22 +119,22 @@
 - id: multi-rate-forecast
   title: Multi-rate forecasting
   effect: "Forecasts at several sampling rates and mixes the results per quantile, weighted by recent accuracy."
-  paths: []
+  paths: [predict.rates]
   modalities: [series]
   cost: 0.1
   prior: 0.7
   evidence: [https://huggingface.co/IUseAMouse/timessm-2.5m]
-  status: planned
+  status: available
 
 - id: forecast-routing
   title: Model per configuration
   effect: "Picks the patch, boosted, ensemble or seasonal naive model per dataset configuration on calib windows."
-  paths: []
+  paths: [predict.routing]
   modalities: [series]
   cost: 0.1
   prior: 0.7
   evidence: [https://github.com/SalesforceAIResearch/gift-eval]
-  status: planned
+  status: available
 
 - id: input-layouts
   title: Varied input layouts

@@ -1650,9 +1650,10 @@ proposal and every past experiment is tagged with the family of the paths it edi
 families that fit the specialist with how often each was tried, and is asked to spread its proposals over them.
 `train.seed` left the editable paths: seeds are trained by the replicas, not proposed.
 
-Planned families (multi-rate forecasting, routing, input layouts, near-miss negatives, an embedding-model head,
-SetFit, label-noise cleaning, weight averaging, learning curves, forecaster pretraining v2, re-initialised layers, a
-small search, R-Drop and mixup, quantile boosting, self-training) become available as each one lands in the pipeline.
+Planned families (input layouts, near-miss negatives, an embedding-model head, SetFit, label-noise cleaning, weight
+averaging, learning curves, forecaster pretraining v2, re-initialised layers, a small search, R-Drop and mixup,
+quantile boosting, self-training) become available as each one lands in the pipeline. Multi-rate forecasting and
+routing are available to forecasters through Keep training (below).
 
 ## A bandit shares the trials out over technique families
 
@@ -1748,3 +1749,23 @@ Each dataset's pick is stored as `route` in its routed row. The board (`promoted
 with the model of the dataset it names, or with the model most datasets were routed to for a pasted series. A dataset
 routed to seasonal naive counts as not beating seasonal naive on the health check. GIFT-Eval entries that combine or
 route models gain 8% to 12% CRPS over their base model; it has not been measured on our forecasters yet.
+
+## Keep training tries prediction-time techniques first
+
+Forecasters live outside `TaskSpec`, so the proposer never reaches them; their search is Keep training
+(`until_rival` in `byosm/series/run.py`). Each round now first asks `next_technique` (`byosm/series/prediction.py`)
+for the catalogue families that fit the `series` modality and whose paths name a field of the version's prediction
+options (`predict.rates` for `multi-rate-forecast`, `predict.routing` for `forecast-routing`), best prior per cost
+first. A family is tried when turning its option on over the promoted version's options gives options that no version
+at the promoted effort has had. That round loads the promoted version's saved models (`members` in
+`byosm/series/combine.py` unwraps ensembles, twins and routed models), scores them again on the same calib and test
+windows with the new options (`rescore` in `byosm/series/fit.py`, no training), and adds a version at the same effort
+that is promoted only if its calib MASE is better. Rival rows the round does not score again are kept from the parent
+version, and so are the models' training times.
+
+Only when every family has been tried at the promoted effort does a round train, with twice the steps and the
+promoted version's options, so a technique that won stays on and one that lost is tried again on the next promoted
+models. Technique rounds never count towards the plateau stop and keep a stored plateau, and they run even when the
+plateau would stop training, since they cost no training. A promoted version without a saved model trains instead.
+`series run DOMAIN --until-rival --rounds 2` applies both techniques to the promoted models; neither has been run on
+the GIFT-Eval forecasters yet.

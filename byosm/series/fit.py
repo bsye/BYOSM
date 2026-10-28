@@ -6,7 +6,7 @@ from typing import Any
 
 from ..events import emit
 from .combine import combine
-from .models import Boosted, Group, rivals
+from .models import Boosted, Group, SeasonalNaive, rivals
 from .patch import PatchModel, PretrainedPatch, pretrained
 from .prediction import PredictCfg
 from .scoring import Progress, score_model, scored
@@ -36,3 +36,26 @@ def fit_domain(
         score_model(model, s, took, log)
         progress(s.per, [m.name for m in models[i + 1 :]])
     return s.per, combine(s, [m for m in models if not is_rival(m.name)], cfg, log)
+
+
+def _train_s(parent: dict[str, dict[str, Any]], name: str) -> float:
+    return next((r[name]["train_s"] for r in parent.values() if "train_s" in r.get(name, {})), 0.0)
+
+
+def rescore(
+    configs: list[str],
+    models: list[Any],
+    parent: dict[str, dict[str, Any]],
+    log: Callable[[str], None],
+    progress: Progress,
+    cfg: PredictCfg,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    s = scored(configs, log)
+    every = [SeasonalNaive(), *models]
+    for i, model in enumerate(every):
+        score_model(model, s, _train_s(parent, model.name), log)
+        progress(s.per, [m.name for m in every[i + 1 :]])
+    for config, row in s.per.items():
+        kept = parent.get(config, {}).items()
+        row |= {m: r for m, r in kept if is_rival(m) and m not in row and not r.get("published")}
+    return s.per, combine(s, models, cfg, log)

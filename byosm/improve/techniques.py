@@ -27,8 +27,8 @@ class Technique(BaseModel):
     status: Literal["available", "built-in", "planned"] = "planned"
     transferable: bool = False
 
-    def fits(self, spec: TaskSpec) -> bool:
-        return self.status == AVAILABLE and (not self.modalities or spec.modality in self.modalities)
+    def fits(self, modality: str) -> bool:
+        return self.status == AVAILABLE and (not self.modalities or modality in self.modalities)
 
 
 @cache
@@ -41,7 +41,7 @@ def allowed_paths() -> list[str]:
 
 
 def eligible(spec: TaskSpec) -> list[Technique]:
-    return [t for t in techniques() if t.fits(spec)]
+    return [t for t in techniques() if t.fits(spec.modality)]
 
 
 def family_of_path(path: str) -> str:
