@@ -229,13 +229,14 @@
 
 - id: reinit-top
   title: Re-initialised top layers
-  effect: "Re-initialises the top encoder layers or starts pair tasks from an NLI or reranker checkpoint."
-  paths: []
+  effect: "Re-initialises the top encoder layers so they relearn for the task; pair tasks can also start from the NLI or reranker backbones."
+  paths: [train.reinit_layers]
   modalities: [text]
+  task_types: [classify]
   cost: 1.0
   prior: 0.3
   evidence: [https://arxiv.org/abs/2006.05987]
-  status: planned
+  status: available
 
 - id: small-search
   title: Small hyperparameter search
@@ -248,13 +249,14 @@
 
 - id: consistency
   title: R-Drop and mixup
-  effect: "Adds a dropout-consistency loss or mixes hidden states of two rows."
-  paths: []
+  effect: "Adds a loss that keeps two dropout passes consistent, or mixes the pooled hidden states of two rows and their labels."
+  paths: ["train.rdrop|mixup"]
   modalities: [text]
+  task_types: [classify]
   cost: 1.5
   prior: 0.2
   evidence: [https://arxiv.org/abs/2106.14448, https://arxiv.org/abs/2010.02394]
-  status: planned
+  status: available
 
 - id: quantile-boosting
   title: Quantile boosting with covariates

@@ -14,6 +14,7 @@ from ..model import SpecialistModel, distill_loss, task_loss, warmup_cosine
 from ..spec import TaskSpec
 from ..text import prefix
 from .common import amp_dtype, autocast, batches, param_groups, pretrained_encoders, to_device
+from .regularise import mixed_logits, symmetric_kl
 from .teacher import soft_batch
 
 
@@ -87,12 +88,29 @@ class Trainer:
         has_gold = bool((y != IGNORE).any())
         alpha = tc.distill_alpha if self.soft is not None else 1.0
         loss = task_loss(logits, y, mask, self.weight) * alpha if has_gold else logits.sum() * 0
+        pooled_task = self.spec.task_type == "classify" and self.soft is None and has_gold
+        if pooled_task and tc.rdrop > 0:
+            loss = loss + tc.rdrop * self._rdrop(inputs, logits)
+        if pooled_task and tc.mixup > 0:
+            loss = loss + self._mixup(inputs, y)
         if self.soft is not None:
             tp, valid = soft_batch(self.spec, self.soft, b, logits, mask, dev)
             loss = loss + (1 - tc.distill_alpha) * distill_loss(
                 logits.float(), tp.float(), valid, tc.distill_temperature
             )
         return loss
+
+    def _rdrop(self, inputs: dict, logits: torch.Tensor) -> torch.Tensor:
+        with autocast(self.dev, self.amp):
+            again, _ = self.model(to_device(inputs, self.dev))
+        return symmetric_kl(logits, again.float())
+
+    def _mixup(self, inputs: dict, y: torch.Tensor) -> torch.Tensor:
+        with autocast(self.dev, self.amp):
+            mixed, perm, lam = mixed_logits(self.model, to_device(inputs, self.dev), self.spec.train.mixup, self.rng)
+        mixed = mixed.float()
+        none = torch.ones(1, dtype=torch.bool, device=self.dev)
+        return lam * task_loss(mixed, y, none, self.weight) + (1 - lam) * task_loss(mixed, y[perm], none, self.weight)
 
     def _step(self, loss: torch.Tensor) -> None:
         self.opt.zero_grad(set_to_none=True)

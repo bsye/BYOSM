@@ -20,6 +20,7 @@ from .gpu_memory import release_cache
 from .outputs import build_meta, finish, snapshot
 from .pretraining import pretrain_backbone
 from .recovery import DivergedError, recover
+from .regularise import reinit_top
 from .rows import prepare
 from .teacher import _teacher_targets, row_soft_targets
 from .trainer import Trainer, class_weight
@@ -111,6 +112,8 @@ def _fit(
     model, n_params = sized_model(spec, s.mod, dev, log)
     if spec.train.init_from:
         warm_start(model, spec, log)
+    if spec.train.reinit_layers:
+        reinit_top(model, spec.train.reinit_layers, log)
     tc = spec.train
     t0 = time.time()
     jepa_hist = pretrain_backbone(spec, model, s.mod, s.ds, train_raw, dev, log, s.seed)

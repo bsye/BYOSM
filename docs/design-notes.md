@@ -1919,3 +1919,18 @@ Configure `judge` as the strongest model available; its verdicts are kept by con
 paraphrases, keyed by its model, the task's labels and the pair, so a rebuild asks it only about new pairs. The kept
 rows carry `near-miss:<judge model>` as source and their kind in `meta.kind`, and are written in the plan's layouts
 and masking like every training pair.
+
+## R-Drop, mixup and re-initialised top layers are options
+
+Three second-tier regularisers are now `train` settings the proposer can choose (families `consistency` and
+`reinit-top`), all off by default and applied to classification batches with gold labels only
+(`byosm/train/regularise.py`):
+
+| Setting | What it does |
+|---|---|
+| `train.rdrop` | runs each batch twice through the dropout-on model and adds this weight times the symmetric KL between the two predictions |
+| `train.mixup` | Beta(alpha, alpha) mixes the pooled hidden states of each row with another row of the batch and adds the label-mixed loss |
+| `train.reinit_layers` | re-initialises the top N encoder layers before training (normal with the model's `initializer_range`, LayerNorm reset), since recent transformers skip modules already flagged as initialised |
+
+Distillation batches skip R-Drop and mixup. The evidence is from 2019 to 2021 BERT-sized models and the gains are
+small, so both families carry low priors. Not measured on a specialist yet.

@@ -173,5 +173,8 @@ class TrainCfg(BaseModel):
     distill_temperature: float = 2.0
     distill_unlabeled: int = 20000
     prefix_rate: float = 0.0
+    rdrop: float = 0.0
+    mixup: float = 0.0
+    reinit_layers: int = 0
     pairs_per_row: int = 40
     lr_pairs: float = 2e-5
