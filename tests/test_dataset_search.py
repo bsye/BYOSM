@@ -33,6 +33,19 @@ def test_the_extra_search_adds_only_picks_that_map_and_offers_the_rest_as_paths(
     assert data["choice"] == "real rows only"
 
 
+def test_a_public_benchmark_suite_is_never_offered_as_training_data(monkeypatch):
+    from byosm.spec import EvalSuite
+
+    offered = []
+    monkeypatch.setattr(ds.hf_source, "search", lambda q: HITS)
+    monkeypatch.setattr(ds, "pick_sources", lambda spec, hits, cfg: offered.extend(h["id"] for h in hits) or [])
+    monkeypatch.setattr(ds.hf_source, "resolve", lambda spec, cfg, log: [])
+    spec = _spec()
+    spec.evals.append(EvalSuite(name="bench", kind="local", path="b.jsonl", dataset="org/set0", licence="cc-by-4.0"))
+    ds.find_datasets(spec, None, print)
+    assert offered and "org/set0" not in offered
+
+
 def test_a_failing_search_is_recorded_not_raised(monkeypatch):
     def broken(q):
         raise ConnectionError("offline")

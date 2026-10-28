@@ -19,7 +19,7 @@ UNMAPPED = "picked, but its columns or labels do not map onto ours"
 
 
 def find_datasets(spec: TaskSpec, cfg: dict | None, log: Callable[[str], None]) -> dict[str, Any]:
-    have = {s.dataset for s in spec.data.hf_sources} | {e.source.dataset for e in spec.evals if e.source}
+    have = {s.dataset for s in spec.data.hf_sources} | {e.origin for e in spec.evals if e.origin}
     queries = [*spec.data.hf_queries, *spec.search.get("benchmark", []), *([spec.title] if spec.title else [])]
     found = [*research(spec, cfg or load_config(), log), *hf_source.search(queries)]
     hits = [h for h in {h["id"]: h for h in reversed(found)}.values() if h["id"] not in have][::-1]

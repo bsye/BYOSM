@@ -2218,3 +2218,9 @@ frozen rows and leaves the spec unchanged.
 - **Not added.** The Smart Turn v3.2 test set (`pipecat-ai/smart-turn-data-v3.2-test`, CC-BY-4.0) is audio only: its
   `spoken_text` column is empty and it has no word timing, so a text specialist cannot read it without a speech
   recogniser.
+
+## A public suite's dataset is never searched as training data
+
+The training-data search (`find_datasets` in `byosm/dataset_search.py`) already skipped the datasets behind `hf`
+suites. It now skips every suite's `origin`, so the BFCL, When2Call and eot-bench files a `local` public suite was
+written from are never offered to the picker as training rows for the same specialist.
