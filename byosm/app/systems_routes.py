@@ -15,9 +15,19 @@ class Typed(BaseModel):
 
 def systems_router(ws: Path, auth: Any) -> APIRouter:
     from ..rt import System, is_system
+    from . import catalog
+    from .errors import missing
 
     router = APIRouter(dependencies=[auth])
     loaded: dict[str, System] = {}
+
+    @router.get("/api/systems")
+    def systems() -> list[dict]:
+        return catalog.systems(ws)
+
+    @router.get("/api/systems/{name}")
+    def system(name: str) -> dict:
+        return missing(catalog.system, ws, name)
 
     @router.post("/api/systems/{name}/type")
     def typed(name: str, body: Typed) -> dict:

@@ -23,6 +23,7 @@ import { Datasets } from "@/pages/Datasets"
 import { Deployments } from "@/pages/Deployments"
 import { Specialist } from "@/pages/Specialist"
 import { Specialists } from "@/pages/Specialists"
+import { Techniques } from "@/pages/Techniques"
 import { useRoute } from "@/route"
 import { LimitBanner } from "@/components/limit-banner"
 import { MemoryBanner } from "@/components/memory-banner"
@@ -36,6 +37,7 @@ function Page({ route }: { route: string[] }) {
   if (section === "costs") return <CostsPage />
   if (section === "deployments") return <Deployments />
   if (section === "datasets") return <Datasets />
+  if (section === "techniques") return <Techniques />
   if (section === "keys") return <Settings />
   if (section === "settings") return <Settings />
   return <Specialists />

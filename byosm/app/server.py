@@ -27,6 +27,7 @@ from .opendata_routes import opendata_router
 from .publish_routes import publish_router
 from .resources_routes import resources_router
 from .systems_routes import systems_router
+from .techniques_routes import techniques_router
 from .try_routes import try_router
 from .workbench_routes import workbench_router
 
@@ -102,14 +103,6 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
             raise HTTPException(404, f"{name} is not exported: run the export job first")
         models[name] = models.get(name) or load(bundle)
         return models[name].predict(body.input)
-
-    @app.get("/api/systems", dependencies=[auth])
-    def systems() -> list[dict]:
-        return catalog.systems(ws)
-
-    @app.get("/api/systems/{name}", dependencies=[auth])
-    def system(name: str) -> dict:
-        return missing(catalog.system, ws, name)
 
     @app.get("/api/jobs", dependencies=[auth])
     def jobs() -> list[dict]:
@@ -192,8 +185,8 @@ def create_app(
         app.include_router(r, dependencies=[Depends(check)])
     for r in (resources_router(ws), opendata_router(ws), forecast_router(ws), publish_router(ws), archive_router(ws)):
         app.include_router(r, dependencies=[Depends(check)])
-    app.include_router(data_router(ws), dependencies=[Depends(check)])
-    app.include_router(panel_routes.router(ws), dependencies=[Depends(check)])
+    for r in (data_router(ws), panel_routes.router(ws), techniques_router(ws)):
+        app.include_router(r, dependencies=[Depends(check)])
     if STATIC_DIR.exists():
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
     return app

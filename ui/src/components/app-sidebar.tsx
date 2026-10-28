@@ -1,4 +1,4 @@
-import { Activity, Boxes, CircleDollarSign, Container, Database, Cpu, Github, House, Settings, Smile } from "lucide-react"
+import { Activity, Boxes, CircleDollarSign, Container, Cpu, Database, FlaskConical, Github, House, Settings, Smile } from "lucide-react"
 import type { ComponentProps } from "react"
 import {
   Sidebar,
@@ -22,6 +22,7 @@ const GROUPS = [
     items: [
       { key: "specialists", label: "Specialists", icon: Boxes },
       { key: "datasets", label: "Datasets", icon: Database },
+      { key: "techniques", label: "Techniques", icon: FlaskConical },
     ],
   },
   {

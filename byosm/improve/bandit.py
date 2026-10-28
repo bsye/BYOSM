@@ -115,3 +115,28 @@ def search_summary(p: Project) -> dict[str, Any]:
         "gpu_hours_per_sure_lead": round(hours / wins, 3) if wins else None,
         "repeats": len(keys) - len(set(keys)),
     }
+
+
+def catalogue_board(ws: Any = None) -> list[dict[str, Any]]:
+    from .techniques import techniques
+
+    tally: dict[str, dict[str, Any]] = {}
+    for name in list_projects(ws):
+        for r in outcomes(Project(name, ws)):
+            t = tally.setdefault(r["family"], {"tries": 0, "wins": 0, "gpu_hours": 0.0, "specialists": set()})
+            t["tries"] += 1
+            t["wins"] += r["won"]
+            t["gpu_hours"] += r["gpu_hours"] or 0
+            t["specialists"].add(name)
+    out = []
+    for t in techniques():
+        seen = tally.get(t.id, {"tries": 0, "wins": 0, "gpu_hours": 0.0, "specialists": set()})
+        out.append(
+            {
+                **t.model_dump(),
+                **seen,
+                "gpu_hours": round(seen["gpu_hours"], 3),
+                "specialists": len(seen["specialists"]),
+            }
+        )
+    return out

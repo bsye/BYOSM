@@ -1952,3 +1952,12 @@ positive, with a bandwidth of the value span divided by the number of tries; of 
 with the highest good-to-bad density ratio is proposed (`tpe-<path>`, source `tpe`), rounded to a whole number for
 integer settings. It is written by hand because Optuna is not a dependency. Data-size settings are left out, since
 they change the data rather than the training. The bandit decides whether a TPE proposal runs, like any other.
+
+## The Techniques page shows the catalogue and what each family did
+
+The research behind the catalogue only helps if it can be seen. The Techniques page (sidebar, under Build) lists every
+family of `byosm/improve/techniques.yaml` with its status (available, built-in or planned), the kinds it fits, its
+evidence links, and, across every specialist, how many experiments it ran, how many ended in a sure lead and their
+GPU time (`catalogue_board` in `byosm/improve/bandit.py`, `GET /api/techniques`). A bar chart compares tries with sure
+leads for the families that have run, and tabs filter by status. The two systems endpoints moved from
+`byosm/app/server.py` into `byosm/app/systems_routes.py` with the rest of the systems routes.

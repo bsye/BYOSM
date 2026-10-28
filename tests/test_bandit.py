@@ -107,3 +107,19 @@ def test_proposals_that_change_nothing_or_restate_an_earlier_idea_are_dropped(ws
     monkeypatch.setattr(props, "llm_proposals", lambda dg, log: llm)
     _, kept = props.propose("a", log=lambda _: None)
     assert [pr["id"] for pr in kept] == ["llm-b"] and kept[0]["family"] == "head"
+
+
+def test_the_techniques_page_lists_every_family_with_its_tries_and_sure_leads_across_specialists(ws):
+    from fastapi.testclient import TestClient
+
+    from byosm.app import create_app
+
+    a, b = _specialist("a"), _specialist("b")
+    _tried(a, "v2", [EPOCHS], True, 1.0)
+    _tried(b, "v2", [EPOCHS], False, 0.5)
+    with TestClient(create_app(ws, "t"), base_url="http://127.0.0.1") as c:
+        rows = c.get("/api/techniques", headers={"Authorization": "Bearer t"}).json()
+    by_id = {r["id"]: r for r in rows}
+    assert by_id["schedule"]["tries"] == 2 and by_id["schedule"]["wins"] == 1 and by_id["schedule"]["specialists"] == 2
+    assert by_id["schedule"]["gpu_hours"] == 1.5 and by_id["setfit"]["tries"] == 0
+    assert {r["status"] for r in rows} == {"available", "built-in", "planned"}
