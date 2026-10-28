@@ -121,7 +121,7 @@ def test_the_author_saves_what_the_llm_wrote_as_a_pending_draft(ws, monkeypatch)
             return {"name": "focal", "hypothesis": "hard rows", "code": "```python\n" + FOCAL + "```"}
 
     monkeypatch.setattr("byosm.llm.get_llm", lambda role: Writer())
-    monkeypatch.setattr(author, "_prompt", lambda p, instruction: "Methods written before: []")
+    monkeypatch.setattr(author, "_prompt", lambda p, instruction, paper, log: "Methods written before: []")
     d = author.write("tc", "", lambda _: None)
     assert d["status"] == PENDING and d["code"] == FOCAL.strip() and not d["problems"]
     assert unfenced("plain") == "plain"

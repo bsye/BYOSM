@@ -57,7 +57,7 @@ def scout_router(ws: Path, runner: Any, schedule: bool = True) -> APIRouter:
         if not names:
             raise HTTPException(422, "no promoted text classifier fits this technique")
         for name in names:
-            runner.submit(["lab", "write", name, "--ask", ask(found)])
+            runner.submit(["lab", "write", name, "--ask", ask(found), "--paper", found["paper"]])
         return mark_sent(ws, pid, names)
 
     return router

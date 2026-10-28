@@ -8,12 +8,16 @@ from .base import _spec, lab_app, log
 
 
 @lab_app.command("write")
-def lab_write(name: str, ask: Annotated[str, typer.Option(help="what the method should try")] = "") -> None:
+def lab_write(
+    name: str,
+    ask: Annotated[str, typer.Option(help="what the method should try")] = "",
+    paper: Annotated[str, typer.Option(help="arXiv link of a paper whose method sections the LLM reads")] = "",
+) -> None:
     """Have the LLM write a new training method for the specialist; it waits for approval before it can run."""
     from ..lab.author import write
 
     _spec(name)
-    write(name, ask, log)
+    write(name, ask, log, paper)
 
 
 @lab_app.command("ls")

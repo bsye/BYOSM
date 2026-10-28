@@ -103,4 +103,4 @@ def test_trying_a_technique_sends_it_to_the_labs_of_the_specialists_that_need_it
         sent = c.post("/api/scout/t1/try").json()["sent"]
         assert c.post("/api/scout/s1/try").status_code == 422
     assert len(sent) == 2 and "b" in sent and [a[:3] for a in submitted] == [["lab", "write", n] for n in sorted(sent)]
-    assert all('Implement "Head"' in a[4] for a in submitted)
+    assert all('Implement "Head"' in a[4] and a[5:] == ["--paper", "https://arxiv.org/abs/1"] for a in submitted)

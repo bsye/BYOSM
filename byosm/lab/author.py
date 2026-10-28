@@ -6,7 +6,7 @@ from typing import Any
 
 from ..project import Project
 from .contract import CONTRACT
-from .drafts import drafts, save_draft
+from .drafts import drafts, save_draft, update
 
 ROLE = "lab"
 ERROR_CHARS = 800
@@ -27,7 +27,18 @@ def _earlier(p: Project) -> list[dict[str, Any]]:
     return [{**{k: d.get(k) for k in keep}, "error": (d.get("error") or "")[-ERROR_CHARS:]} for d in drafts(p)]
 
 
-def _prompt(p: Project, instruction: str) -> str:
+def _paper(paper: str, log: Callable[[str], None]) -> list[str]:
+    from ..scout.fulltext import paper_method
+
+    text = paper_method(paper, log) if paper else ""
+    return (
+        [f"Method sections of the paper to implement ({paper}); follow it where the contract allows:\n{text}"]
+        if text
+        else []
+    )
+
+
+def _prompt(p: Project, instruction: str, paper: str = "", log: Callable[[str], None] = print) -> str:
     from ..improve.diagnosis import diagnose
 
     dg = diagnose(p.name)
@@ -41,6 +52,7 @@ def _prompt(p: Project, instruction: str) -> str:
         f"Experiments tried so far:\n{json.dumps(tried, default=str)}",
         f"Methods written before, with their outcome or error; fix or avoid what failed:\n{json.dumps(_earlier(p))}",
     ]
+    parts += _paper(paper, log)
     return "\n\n".join(parts + ([f"The owner asks: {instruction}"] if instruction else []))
 
 
@@ -51,14 +63,17 @@ def unfenced(code: str) -> str:
     return body.rpartition(FENCE)[0].strip() if body.endswith(FENCE) else body
 
 
-def write(name: str, instruction: str = "", log: Callable[[str], None] = print) -> dict[str, Any]:
+def write(
+    name: str, instruction: str = "", log: Callable[[str], None] = print, paper: str = "", parent: str | None = None
+) -> dict[str, Any]:
     from ..llm import get_llm, role_model
 
     p = Project(name)
-    out = get_llm(ROLE).json(SYSTEM, _prompt(p, instruction), SCHEMA)
-    draft = save_draft(
-        p, out.get("name") or "method", out.get("hypothesis") or "", unfenced(out.get("code") or ""), role_model(ROLE)
-    )
+    out = get_llm(ROLE).json(SYSTEM, _prompt(p, instruction, paper, log), SCHEMA)
+    code, title = unfenced(out.get("code") or ""), out.get("name") or "method"
+    draft = save_draft(p, title, out.get("hypothesis") or "", code, role_model(ROLE), parent)
+    if paper:
+        draft = update(p, draft["id"], paper=paper)
     state = "fails its checks: " + "; ".join(draft["problems"]) if draft["problems"] else "waits for approval"
     log(f"[lab] {draft['id']} {draft['name']}: {draft['hypothesis']} ({state})")
     return draft

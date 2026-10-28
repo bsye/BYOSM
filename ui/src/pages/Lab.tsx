@@ -21,6 +21,8 @@ type Method = {
   experiment: string | null
   error: string | null
   result?: { experiment: string; won: boolean | null; calib: number | null } | null
+  parent?: string | null
+  paper?: string | null
 }
 
 const STATUS = { pending: "outline", approved: "default", rejected: "secondary" } as const
@@ -42,8 +44,16 @@ function MethodCard({ name, m, refresh }: { name: string; m: Method; refresh: ()
           {m.name}
           <Badge variant={STATUS[m.status]}>{m.status}</Badge>
           {result?.won && <Badge>sure lead</Badge>}
+          {m.parent && <Badge variant="outline">revision of {m.parent}</Badge>}
         </CardTitle>
-        <CardDescription>{m.hypothesis}</CardDescription>
+        <CardDescription>
+          {m.hypothesis}
+          {m.paper && (
+            <a href={m.paper} target="_blank" rel="noreferrer" className="hover:text-foreground ml-1 underline">
+              paper
+            </a>
+          )}
+        </CardDescription>
         <CardAction className="flex gap-2">
           {m.status === "pending" && (
             <>
