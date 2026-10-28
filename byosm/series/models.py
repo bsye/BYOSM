@@ -87,6 +87,7 @@ class Boosted:
             for name in self.fitted:
                 setattr(self, name, kept[name])
             return
+        print(f"  {self.name}: fitting {len(y):,} rows of {x.shape[1]} features, at most {iterations} iterations")
         self._fit(x, y, late, iterations, max(g.horizon for g in groups))
         used = max(self.used)
         cached.parent.mkdir(parents=True, exist_ok=True)
