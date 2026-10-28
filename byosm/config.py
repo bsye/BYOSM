@@ -29,6 +29,15 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 
 PUBLISH_LICENSE = "cc-by-nc-4.0"
+JOBS_KEY = "jobs"
+PROCESS = "process"
+JOB_DEFAULTS: dict[str, Any] = {
+    "cpus": None,
+    "memory_gb": None,
+    "gpus": "all",
+    "nice": 10,
+    "cpu_hours": None,
+}
 
 
 def find_workspace(start: Path | None = None) -> Path:
@@ -80,6 +89,10 @@ def load_config(ws: Path | None = None) -> dict[str, Any]:
     if os.environ.get(LLM_OVERRIDE_ENV):
         merged["llm"] = {"default": json.loads(os.environ[LLM_OVERRIDE_ENV])}
     return merged
+
+
+def job_settings(ws: Path | None = None) -> dict[str, Any]:
+    return {**JOB_DEFAULTS, **(load_config(ws).get(JOBS_KEY) or {})}
 
 
 def write_default_config(ws: Path) -> Path:

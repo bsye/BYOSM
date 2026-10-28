@@ -2366,3 +2366,18 @@ when there are several. Families that ran but have fewer than two measured exper
 "Not enough runs", and the table repeats the mean and interval in a Calib effect column. The marks use `--chart-2`:
 `--chart-1` is a light grey that gives a 2 px line about 1.5:1 contrast on the light card. The marks do not animate
 in. The row height and label width of the horizontal charts now come from `ui/src/chart-size.ts`.
+
+## Every job runs isolated: a limited process, or its own container
+
+`jobs:` in `byosm.yaml` (`job_settings` in `byosm/config.py`, limits in `byosm/sandbox/limits.py`) sets how
+`start` in `byosm/sandbox/launch.py` launches a job. Limits are applied once, at start: changing them never touches a
+running job, and nothing is cancelled to apply them.
+
+**Process mode** (`byosm/sandbox/process.py`, the default). The job starts as before, in its own session and process
+group, and the app then sets its `nice` level (10), so the app and other jobs stay responsive when one job takes every
+core. On Linux it also caps the address space (`RLIMIT_AS`) at `memory_gb` (default 75% of RAM), except for CUDA jobs,
+whose driver reserves far more virtual memory than it uses, and the CPU time when `cpu_hours` is set (off by default,
+since long trainings must finish). macOS enforces neither rlimit, so a Mac job gets the nice level on top of the GPU
+memory share it already had (`byosm/train/gpu.py`). The applied limits are the job's `isolation` field in the Jobs
+API, kept in the `job_isolation` table. Not measured: the nice level should cost nothing on an idle machine, but no
+training was timed before and after it.

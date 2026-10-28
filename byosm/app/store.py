@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import func, select
 
 from ..db import session
-from ..db.models import Job, JobEvent, JobLine, Specialist
+from ..db.models import Job, JobEvent, JobIsolation, JobLine, Specialist
 from ..events import TARGET
 
 JOB_FIELDS = ("id", "args", "status", "created", "started", "ended", "code", "pid")
@@ -51,6 +51,14 @@ class JobStore:
     def save(self, job: dict[str, Any]) -> None:
         with session(self.ws) as s:
             s.merge(Job(**{k: job[k] for k in JOB_FIELDS}))
+
+    def isolate(self, job_id: str, data: dict[str, Any]) -> None:
+        with session(self.ws) as s:
+            s.merge(JobIsolation(job=job_id, data=data))
+
+    def isolations(self) -> dict[str, dict[str, Any]]:
+        with session(self.ws) as s:
+            return dict(s.execute(select(JobIsolation.job, JobIsolation.data)).all())
 
     def line(self, job_id: str, line: str) -> None:
         with session(self.ws) as s:

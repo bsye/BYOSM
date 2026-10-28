@@ -1,12 +1,13 @@
 import time
 
-from byosm.app.detached import LOG_SUFFIX, exit_code, job_file, spawn
+from byosm.app.detached import EXIT_SUFFIX, LOG_SUFFIX, exit_code, job_file, spawn, wrapped
 
 SLOW_HOOK = "import sys, time\nsys.excepthook = lambda *a: (time.sleep(1), sys.__excepthook__(*a))\n"
 
 
 def test_a_crash_is_logged_before_its_exit_code(tmp_path):
-    proc = spawn(tmp_path, "j", SLOW_HOOK + "raise RuntimeError('boom')", [], {})
+    command = wrapped(job_file(tmp_path, "j", EXIT_SUFFIX), SLOW_HOOK + "raise RuntimeError('boom')", [])
+    proc = spawn(tmp_path, "j", command, {})
     deadline = time.time() + 10
     while exit_code(tmp_path, "j") is None and time.time() < deadline:
         time.sleep(0.001)

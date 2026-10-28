@@ -11,10 +11,11 @@ from typing import Any
 
 from ..events import TARGET, parse
 from ..resources import can_start_job, keeps_awake, max_jobs, stall_seconds
+from ..sandbox.launch import start, worker_cpu
 from .allowed import ALLOWED_COMMANDS
-from .detached import LOG_SUFFIX, Tail, ending, exit_code, forget, job_file, keep_awake, kill_group, owned, spawn
+from .detached import LOG_SUFFIX, Tail, ending, exit_code, forget, job_file, keep_awake, kill_group, owned
 from .hub import Hub
-from .job import Job, job_env
+from .job import Job
 from .store import JobStore
 from .watchdog import Watch
 
@@ -28,8 +29,10 @@ FAILED = "failed"
 class Runner:
     def __init__(self, ws: Path, hub: Hub, parallel: int | None = None) -> None:
         self.ws, self.hub, self.store = ws, hub, JobStore(ws)
-        targets = self.store.targets()
-        self.jobs = {row["id"]: Job(**row, target=targets.get(row["id"])) for row in self.store.jobs()}
+        targets, boxes = self.store.targets(), self.store.isolations()
+        self.jobs = {
+            r["id"]: Job(**r, target=targets.get(r["id"]), isolation=boxes.get(r["id"])) for r in self.store.jobs()
+        }
         self.todo: queue.Queue[Job] = queue.Queue()
         self.procs: dict[str, subprocess.Popen] = {}
         self.lock = threading.Lock()
@@ -134,7 +137,8 @@ class Runner:
 
     def _run(self, job: Job) -> None:
         forget(self.ws, job.id)
-        proc = spawn(self.ws, job.id, ENTRY, job.args, job_env(self.ws, job))
+        proc = start(self.ws, job, ENTRY)
+        self.store.isolate(job.id, job.isolation)
         if keeps_awake(self.ws):
             keep_awake(proc.pid)
         with self.lock:
@@ -150,7 +154,7 @@ class Runner:
         return Tail(job_file(self.ws, job.id, LOG_SUFFIX), self.store.seen(job.id))
 
     def _follow(self, job: Job) -> None:
-        tail, watch, killed = self._tail(job), Watch(job.pid, stall_seconds(self.ws)), False
+        tail, watch, killed = self._tail(job), Watch(worker_cpu(job), stall_seconds(self.ws)), False
         while not self.stopped and not self._settled(job, tail, watch.heard):
             if not killed and watch.stuck():
                 minutes = watch.limit // 60

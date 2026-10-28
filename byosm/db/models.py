@@ -108,6 +108,12 @@ class JobEvent(Base):
     data: Mapped[dict[str, Any]]
 
 
+class JobIsolation(Base):
+    __tablename__ = "job_isolation"
+    job: Mapped[str] = mapped_column(String(40), primary_key=True)
+    data: Mapped[dict[str, Any]]
+
+
 class System(Base):
     __tablename__ = "systems"
     id: Mapped[int] = mapped_column(primary_key=True)

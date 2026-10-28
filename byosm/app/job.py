@@ -13,6 +13,7 @@ from .store import JOB_FIELDS
 
 PYTHONPATH = "PYTHONPATH"
 TERMINAL_COLUMNS = "160"
+ISOLATION = "isolation"
 
 
 @dataclass
@@ -29,20 +30,16 @@ class Job:
     llm: dict[str, Any] | None = None
     target: str | None = None
     stalled: bool = False
+    isolation: dict[str, Any] | None = None
 
     def public(self) -> dict[str, Any]:
-        return {k: getattr(self, k) for k in (*JOB_FIELDS, TARGET)}
+        return {k: getattr(self, k) for k in (*JOB_FIELDS, TARGET, ISOLATION)}
 
 
-def job_env(ws: Path, job: Job) -> dict[str, str]:
-    from ..config import LLM_OVERRIDE_ENV, env_file
-    from .snapshot import frozen
+def job_vars(job: Job) -> dict[str, str]:
+    from ..config import LLM_OVERRIDE_ENV
 
-    code = [str(frozen()), *filter(None, [os.environ.get(PYTHONPATH)])]
     return {
-        **os.environ,
-        **env_file(ws),
-        PYTHONPATH: os.pathsep.join(code),
         "PYTHONUNBUFFERED": "1",
         "COLUMNS": TERMINAL_COLUMNS,
         "NO_COLOR": "1",
@@ -50,3 +47,11 @@ def job_env(ws: Path, job: Job) -> dict[str, str]:
         JOB_ENV: job.id,
         **({LLM_OVERRIDE_ENV: json.dumps(job.llm)} if job.llm else {}),
     }
+
+
+def job_env(ws: Path, job: Job) -> dict[str, str]:
+    from ..config import env_file
+    from .snapshot import frozen
+
+    code = [str(frozen()), *filter(None, [os.environ.get(PYTHONPATH)])]
+    return {**os.environ, **env_file(ws), PYTHONPATH: os.pathsep.join(code), **job_vars(job)}

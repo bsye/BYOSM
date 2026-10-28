@@ -24,7 +24,7 @@ def wait_for(check):
 
 def test_a_worker_survives_an_error_and_runs_the_next_job(ws, monkeypatch):
     monkeypatch.setattr(jobs, "ENTRY", QUICK)
-    real = jobs.spawn
+    real = jobs.start
     calls = []
 
     def flaky(*args):
@@ -33,7 +33,7 @@ def test_a_worker_survives_an_error_and_runs_the_next_job(ws, monkeypatch):
             raise OSError("no more processes")
         return real(*args)
 
-    monkeypatch.setattr(jobs, "spawn", flaky)
+    monkeypatch.setattr(jobs, "start", flaky)
     runner = Runner(ws, Hub(), parallel=1)
     broken, fine = runner.submit(["report"]), runner.submit(["report"])
     wait_for(lambda: fine.status == "done")
@@ -66,7 +66,7 @@ def test_a_job_cancelled_while_waiting_for_admission_never_starts(ws, monkeypatc
     gate, asked, spawned = [False], [], []
     monkeypatch.setattr(jobs, "ADMIT_POLL_S", POLL_SECONDS)
     monkeypatch.setattr(jobs, "can_start_job", lambda running: asked.append(running) or gate[0])
-    monkeypatch.setattr(jobs, "spawn", lambda *args: spawned.append(args))
+    monkeypatch.setattr(jobs, "start", lambda *args: spawned.append(args))
     runner = Runner(ws, Hub(), parallel=1)
     job = runner.submit(["report"])
     wait_for(lambda: asked)
@@ -124,12 +124,11 @@ def test_jobs_keep_the_mac_awake_unless_switched_off(ws):
     assert not keeps_awake(ws)
 
 
-def test_a_silent_job_that_keeps_the_cpu_busy_is_not_stopped(monkeypatch):
+def test_a_silent_job_that_keeps_the_cpu_busy_is_not_stopped():
     import byosm.app.watchdog as watchdog
 
     cpu = iter([0.0, 120.0, 120.0])
-    monkeypatch.setattr(watchdog, "cpu_seconds", lambda pid: next(cpu))
-    watch = watchdog.Watch(pid=1, limit=10)
+    watch = watchdog.Watch(cpu=lambda: next(cpu), limit=10)
     watch.heard[0] = watch.last = __import__("time").time() - 20
     assert not watch.stuck()
     watch.heard[0] -= 20

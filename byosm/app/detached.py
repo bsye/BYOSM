@@ -62,13 +62,25 @@ def job_file(ws: Path, job_id: str, suffix: str) -> Path:
     return ws / JOBS_DIR / f"{job_id}{suffix}"
 
 
-def spawn(ws: Path, job_id: str, entry: str, args: list[str], env: dict[str, str]) -> subprocess.Popen:
+def wrapped(done: Path, entry: str, args: list[str], python: str = sys.executable) -> list[str]:
+    return [python, "-P", "-c", WRAPPER, str(done), entry, *args]
+
+
+def _log(ws: Path, job_id: str) -> Path:
     log = job_file(ws, job_id, LOG_SUFFIX)
     log.parent.mkdir(parents=True, exist_ok=True)
-    done = job_file(ws, job_id, EXIT_SUFFIX)
-    with log.open("ab") as out:
+    return log
+
+
+def note(ws: Path, job_id: str, line: str) -> None:
+    with _log(ws, job_id).open("a") as out:
+        out.write(line + "\n")
+
+
+def spawn(ws: Path, job_id: str, command: list[str], env: dict[str, str]) -> subprocess.Popen:
+    with _log(ws, job_id).open("ab") as out:
         return subprocess.Popen(
-            [sys.executable, "-P", "-c", WRAPPER, str(done), entry, *args],
+            command,
             cwd=ws,
             env=env,
             stdin=subprocess.DEVNULL,
