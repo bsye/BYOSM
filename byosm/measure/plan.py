@@ -21,7 +21,7 @@ MEASUREMENTS = {
     m.id: m
     for m in (
         Measurement("overfit", "Overfitting", CPU),
-        Measurement("public-suites", "Public benchmarks", CPU),
+        Measurement("real", "Real inputs", CPU),
         Measurement("seeds", "Seed noise", GPU),
         Measurement("curve", "Learning curve", GPU),
         Measurement(PRETRAINING, "Pretraining v2", GPU),

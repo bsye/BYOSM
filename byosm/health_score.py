@@ -6,6 +6,21 @@ OK, WARN, FAIL, UNKNOWN = "ok", "warn", "fail", "unknown"
 CREDIT = {OK: 1.0, WARN: 0.5, FAIL: 0.0, UNKNOWN: 0.0}
 READY_SCORE = 80
 ADVISORY = {"rival", "size"}
+DROP_OK, DROP_WARN = 0.05, 0.15
+CHECK_TITLES = {
+    "rival": "Beats the best rival",
+    "target": "Meets the target",
+    "overfit": "No overfitting",
+    "robust": "Holds on new inputs",
+    "real": "Tested on real inputs",
+    "data": "Enough data",
+    "certainty": "Precise score",
+    "seeds": "Seed noise measured",
+    "weakest": "No weak label",
+    "speed": "Fast enough",
+    "size": "Smaller than the rival",
+    "export": "Exported",
+}
 
 
 def check(cid: str, title: str, weight: int, status: str, value: str, why: str, args: list[str] | None = None):

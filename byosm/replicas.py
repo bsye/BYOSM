@@ -5,7 +5,7 @@ from collections.abc import Callable
 from statistics import mean, variance
 
 from .evals.selection import clean_selection, selection_value
-from .health_score import OK, WARN, check
+from .health_score import CHECK_TITLES, OK, WARN, check
 from .project import Project
 
 SEED_SEP = "-s"
@@ -103,6 +103,6 @@ def seeds_check(p: Project, prim: str) -> dict:
         why = (
             "Spread of calib scores when the promoted recipe is trained again on other seeds: a smaller lead is noise."
         )
-        return check("seeds", "Seed noise measured", 1, OK, f"sd {sd:.4f} over {have} seeds", why)
+        return check("seeds", CHECK_TITLES["seeds"], 1, OK, f"sd {sd:.4f} over {have} seeds", why)
     why = f"The promoted model was trained once, so a lead smaller than its seed noise looks like a win. Trains it on {n} seeds."
-    return check("seeds", "Seed noise measured", 1, WARN, f"{have} of {n} seeds", why, [SEEDS_COMMAND, p.name])
+    return check("seeds", CHECK_TITLES["seeds"], 1, WARN, f"{have} of {n} seeds", why, [SEEDS_COMMAND, p.name])

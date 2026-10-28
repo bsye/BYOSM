@@ -2,17 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..health_score import UNKNOWN, check
+from ..health_score import CHECK_TITLES, DROP_OK, DROP_WARN, UNKNOWN, check
 from ..project import Project
 from ..spec import TaskSpec
 from . import overfit_checks as checks
 
 FRESH = "fresh"
-FRESH_WARN = 0.05
-FRESH_FAIL = 0.15
 WRITTEN = "generated"
 CHECK_WEIGHT = 2
-TITLE = "No overfitting"
+TITLE = CHECK_TITLES["overfit"]
 
 
 def required(spec: TaskSpec) -> bool:
@@ -31,7 +29,7 @@ def finding(base: TaskSpec, results: dict[str, dict]) -> list[dict[str, Any]]:
     suite = max(written, key=lambda s: results[s].get("n_test") or 0)
     test, new = results[base.primary_suite()]["objective"], results[suite]["objective"]
     drop = test - new
-    sev = "fail" if drop > FRESH_FAIL else "warn" if drop > FRESH_WARN else "ok"
+    sev = "fail" if drop > DROP_WARN else "warn" if drop > DROP_OK else "ok"
     text = {
         "ok": "On test cases written after training the model scores about as on its own test set.",
         "warn": "On test cases written after training the model scores clearly lower: part of its score comes from quirks of its own benchmark.",
@@ -42,7 +40,7 @@ def finding(base: TaskSpec, results: dict[str, dict]) -> list[dict[str, Any]]:
         "new_cases": new,
         "drop": drop,
         "rows": results[suite].get("n_test"),
-        "warn_above": FRESH_WARN,
+        "warn_above": DROP_OK,
     }
     return [checks.finding(FRESH, sev, text, nums, suite=suite)]
 

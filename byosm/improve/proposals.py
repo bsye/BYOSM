@@ -16,7 +16,7 @@ from .keys import proposal_key
 from .paths import apply_ops
 from .portfolio import recipes
 from .registry import rule_proposals, unique
-from .techniques import family
+from .techniques import family, techniques
 from .tpe import tpe_proposals
 
 PROPOSALS = "proposals"
@@ -47,6 +47,13 @@ def _novel(p: Project, props: list[dict], log: Callable[[str], None]) -> list[di
     return out
 
 
+def failing_checks(p: Project) -> set[str]:
+    from ..health import checks
+    from ..health_score import OK
+
+    return {c["id"] for c in checks(p, p.spec()) if c["status"] != OK} if p.promoted else set()
+
+
 @stage("Find what to try next")
 def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print) -> tuple[dict, list[dict]]:
     dg = diagnose(name)
@@ -58,7 +65,11 @@ def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print)
     for pr in props:
         pr["cost"] = estimate(dg, pr)
         pr["family"] = family(pr["ops"])
-    props = rank(p, base, props)
+    failing = failing_checks(p)
+    targets = {t.id: set(t.targets) for t in techniques()}
+    for pr in props:
+        pr["aims"] = sorted(failing & targets.get(pr["family"], set()))
+    props = rank(p, base, props, failing=failing)
     p.save_report(PROPOSALS, {"from": dg["experiment"], "proposals": props})
     return dg, props
 

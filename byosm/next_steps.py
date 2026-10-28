@@ -17,7 +17,7 @@ from .next_fixes import faster, less_overfit
 from .project import Project
 from .spec import TaskSpec
 
-WHY_CHARS = 300
+WHY_CHARS = 420
 EXPERIMENT_CHECKS = ("target", "rival", "weakest")
 STEP_CHECKS = {
     "adopt-data": ("certainty",),
@@ -36,7 +36,7 @@ STEP_CHECKS = {
     "export": ("export",),
     "seeds": ("seeds",),
     "curve": ("data",),
-    "public-suites": ("rival", "robust"),
+    "real": ("real", "rival"),
 }
 FIX_TITLES = {
     "overfit": "Check for overfitting",
@@ -44,6 +44,7 @@ FIX_TITLES = {
     "export": "Export the current model",
     "size": "Distill into a smaller model",
     "seeds": "Measure seed noise",
+    "real": "Test on real inputs",
 }
 COMMAND_TITLES = {"continue": "Train on varied inputs", "testset": "Write new test cases"}
 
@@ -90,22 +91,6 @@ def _finetuned(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
     return _step("finetuned", "Score fine-tuned rivals", why, ["rivals", p.name])
 
 
-def _public(p: Project) -> dict[str, Any] | None:
-    from .benchmarks.add import chosen
-    from .benchmarks.catalog import BENCHMARKS
-
-    if missing := [b.name for b in chosen(p, [])]:
-        why = f"{', '.join(missing)}: public sets where strong models score below ceiling. Each is added after a protocol check, then every model and rival is scored on it."
-        return _step("public-suites", "Score on hard public benchmarks", why, ["suite", "public", p.name])
-    scored = p.board().get(p.promoted or "", {})
-    unscored = [e.name for e in p.spec().evals if e.name in BENCHMARKS and e.name not in scored]
-    if not unscored:
-        return None
-    why = f"{', '.join(unscored)} passed the protocol check but the current model is not scored on it yet."
-    args = ["eval", p.name, *(a for s in unscored for a in ("--suite", s))]
-    return _step("public-suites", "Score on hard public benchmarks", why, args)
-
-
 def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
     mine = set(p.experiments())
     scored = {k for k, r in p.board().items() if prim in r and k not in mine}
@@ -119,14 +104,26 @@ def tried_proposals(p: Project) -> set[str]:
     return {proposal_key(a) for exp in p.attempts() for a in (p.proposal(exp) or {}).get("applied", [])}
 
 
-def _experiments(p: Project) -> dict[str, Any]:
+def _aims(spec: TaskSpec, cs: list[dict]) -> str:
+    from .improve.techniques import aimed_at
+
+    parts = [
+        f"{c['title']} with {', '.join(t.title for t in found[:2])}"
+        for c in cs
+        if c["status"] != OK and (found := aimed_at(spec, c["id"]))
+    ]
+    return f" Aims first at {'; '.join(parts[:3])}." if parts else ""
+
+
+def _experiments(p: Project, spec: TaskSpec, cs: list[dict]) -> dict[str, Any]:
     saved = p.report(PROPOSALS) or {}
     tried = tried_proposals(p)
     fresh = [pr["id"] for pr in saved.get("proposals", []) if proposal_key(pr) not in tried]
     if saved.get("from") != p.promoted or not fresh:
-        why = "Every lined-up experiment has run. The LLM reads the board and the errors and lines up new ones."
-        return _step("propose", "Find more experiments", why, ["improve", p.name])
+        why = "Every lined-up experiment has run. The LLM reads the board, the errors and the health and lines up new ones."
+        return _step("propose", "Find more experiments", why + _aims(spec, cs), ["improve", p.name])
     why = "Each one builds a new model, scores it against the rivals and is promoted only if it wins on calib."
+    why += _aims(spec, cs)
     step = _step(
         "experiments",
         f"Run {len(fresh)} experiments",
@@ -173,10 +170,9 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         _more_data(p, check),
         _finetuned(p, spec),
         _rivals(p, spec, prim),
-        _public(p),
         less_overfit(p, spec, cs),
         faster(p, spec, cs),
-        _experiments(p),
+        _experiments(p, spec, cs),
     ]
     return [_with_gain(s, cs) for s in unique([s for s in steps if s] + _from_checks(p, spec))]
 

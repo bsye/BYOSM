@@ -104,15 +104,27 @@ def diagnose(name: str) -> dict[str, Any]:
     history = tried(p, board, base.primary_suite())
     curve = p.report(CURVE) or {}
     head["learning_curve"] = curve if curve.get("experiment") == exp else None
+    head["health"], head["next_steps"] = _health_and_steps(p)
     return {**head, **training_summary(meta, spec), "board": board, "primary": base.primary_suite(), "history": history}
 
 
 VALUE_CHARS = 80
+HEALTH_FIELDS = ("id", "title", "status", "value", "why")
+STEP_FIELDS = ("id", "title", "why")
 NOT_BUILT = "never finished training (failed or interrupted)"
 
 
 def _change(op: dict) -> str:
     return f"{op['path']}={json.dumps(op.get('value'), default=str)[:VALUE_CHARS]}"
+
+
+def _health_and_steps(p: Project) -> tuple[list[dict], list[dict]]:
+    from ..health import checks
+    from ..next_steps import suggestions
+
+    found = [{k: c.get(k) for k in HEALTH_FIELDS} for c in checks(p, p.spec())]
+    steps = [{k: s.get(k) for k in STEP_FIELDS} for s in suggestions(p.name, p.ws)] if p.promoted else []
+    return found, steps
 
 
 def tried(p: Project, board: dict, prim: str) -> list[dict]:

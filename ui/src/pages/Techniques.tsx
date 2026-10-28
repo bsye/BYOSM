@@ -30,6 +30,7 @@ type Technique = {
   gpu_hours: number
   specialists: number
   calib_effect: Effect
+  target_titles?: string[]
 }
 
 const FILTERS = ["all", "available", "built-in", "planned"] as const
@@ -76,6 +77,7 @@ function Catalogue({ rows }: { rows: Technique[] }) {
               <TableHead>Family</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Kinds</TableHead>
+              <TableHead>Targets</TableHead>
               <TableHead className="text-right">Tries</TableHead>
               <TableHead className="text-right">Sure leads</TableHead>
               <TableHead className="text-right">Calib effect</TableHead>
@@ -94,6 +96,15 @@ function Catalogue({ rows }: { rows: Technique[] }) {
                   <Badge variant={t.status === "available" ? "default" : t.status === "built-in" ? "secondary" : "outline"}>{t.status}</Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{t.modalities.join(", ") || "all"}</TableCell>
+                <TableCell>
+                  <div className="flex max-w-56 flex-wrap gap-1">
+                    {(t.target_titles ?? []).map((c) => (
+                      <Badge key={c} variant="outline" className="font-normal">
+                        {c}
+                      </Badge>
+                    ))}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right tabular-nums">{t.tries}</TableCell>
                 <TableCell className="text-right tabular-nums">{t.wins}</TableCell>
                 <TableCell className="text-right tabular-nums">

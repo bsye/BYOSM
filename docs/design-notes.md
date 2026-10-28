@@ -2424,3 +2424,25 @@ written as the first log line and kept in the job's `isolation.fallback`:
 
 Every job counts as a GPU job, because commands like `auto` decide at run time whether they train. Not verified: all
 of this is tested with Docker mocked; no container job has run on a Linux machine with an NVIDIA GPU yet.
+
+## Health, next steps and techniques form one loop
+
+Health graded the model, next steps measured it and the catalogue proposed experiments, but none of them read the
+others: a failing "Holds on new inputs" did not make the proposer try the families aimed at it. They are now one loop,
+and AGENTS.md makes it the rule for every feature:
+
+| Link | Where |
+|---|---|
+| Each family names the checks it `targets` | `byosm/improve/techniques.yaml`, shown as a Targets column on the Techniques page |
+| A check that is not ok lists the families aimed at it ("Try ...") | `with_techniques` in `byosm/improve/techniques.py`, Health card |
+| The bandit draws a family aimed at a failing check with 1.5 times its score | `BLOCKER_BOOST` in `byosm/improve/bandit.py`; each proposal records its `aims` |
+| "Find more experiments" says which failing checks it aims at first, and with which families | `_aims` in `byosm/next_steps.py` |
+| The proposer and the lab author read the health checks and the next steps, with the goal of raising the primary score and clearing what is not ok | `diagnose` adds `health` and `next_steps`; prompts in `analyst.py` and `lab/author.py` |
+
+A new check, "Tested on real inputs" (`byosm/evals/real.py`), joins Health: a classifier passes once it is scored on a
+public set of real inputs it never trained on (a suite of real data other than its training sources, or a real primary
+benchmark), graded by the drop from its own test score with the same 0.05 and 0.15 bounds as the other drops
+(`DROP_OK`, `DROP_WARN`, now in `byosm/health_score.py`). Until then it is unknown, which blocks readiness, and its
+step adds the public benchmarks that fit or scores the ones added; that step replaces the separate public benchmark
+step, and Measure everything lists it as "Real inputs". Check titles live in one map, `CHECK_TITLES`, and the
+"Holds on new inputs" check moved to `byosm/evals/robust.py`.

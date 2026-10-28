@@ -12,7 +12,7 @@ ROLE = "lab"
 ERROR_CHARS = 800
 FENCE = "```"
 SYSTEM = f"""You are a machine-learning researcher. Write one new training method for a small fine-tuned classifier,
-aimed at the weakness the diagnosis shows and different from what was tried. Return a short name, the hypothesis it
+aimed at the weakness the diagnosis and the failing health checks show, and different from what was tried. Return a short name, the hypothesis it
 tests, and the code of the module.
 
 {CONTRACT}"""
@@ -37,6 +37,7 @@ def _prompt(p: Project, instruction: str) -> str:
         f"Task: {dg['spec'].description}\nLabels: {', '.join(dg['spec'].label_names)}",
         f"Promoted model {dg['experiment']} per suite (test objective, weakest labels, confusions):\n{json.dumps(suites)}",
         f"Dev curve per epoch: {dg['curve']}",
+        f"Health of the promoted model; the method should clear what is not ok:\n{json.dumps(dg.get('health', []))}",
         f"Experiments tried so far:\n{json.dumps(tried, default=str)}",
         f"Methods written before, with their outcome or error; fix or avoid what failed:\n{json.dumps(_earlier(p))}",
     ]

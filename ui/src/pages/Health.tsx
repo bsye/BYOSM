@@ -5,7 +5,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Progress } from "@/components/ui/progress"
 
 export type Status = "ok" | "warn" | "fail" | "unknown"
-export type Check = { id: string; title: string; weight: number; status: Status; value: string; why: string }
+export type Check = { id: string; title: string; weight: number; status: Status; value: string; why: string; techniques?: string[] }
 export type HealthReport = { score: number; ready: boolean; ready_score: number; blockers: string[]; checks: Check[] }
 
 const ICON: Record<Status, { icon: LucideIcon; tone: string; label: string }> = {
@@ -20,8 +20,13 @@ function Row({ c }: { c: Check }) {
   return (
     <li className="flex items-center gap-2 py-2">
       <s.icon className={`size-4 shrink-0 ${s.tone}`} aria-label={s.label} />
-      <span className="font-medium">{c.title}</span>
-      <InfoTip>{c.why}</InfoTip>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{c.title}</span>
+          <InfoTip>{c.why}</InfoTip>
+        </div>
+        {c.status !== "ok" && c.techniques?.length ? <div className="text-muted-foreground truncate text-xs">Try {c.techniques.join(", ")}</div> : null}
+      </div>
       <span className={`ml-auto truncate text-right text-sm tabular-nums ${c.status === "ok" ? "text-muted-foreground" : s.tone}`}>{c.value}</span>
     </li>
   )

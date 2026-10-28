@@ -4,6 +4,7 @@ import random
 from collections import defaultdict
 from typing import Any
 
+from ..health_score import CHECK_TITLES
 from ..project import Project, list_projects
 from ..spec import TaskSpec
 from .registry import RULE
@@ -15,6 +16,7 @@ POOL_WEIGHT = 0.5
 MAX_FAILS = 3
 ROUND_ONE_PRIOR = 0.3
 RULE_BOOST = 1.5
+BLOCKER_BOOST = 1.5
 
 Tally = dict[str, list[float]]
 
@@ -76,20 +78,28 @@ def _sample(t: Technique, own: Tally, pooled: Tally, rng: random.Random) -> floa
     return rng.betavariate(a, b) / max(t.cost, 0.1)
 
 
-def family_order(p: Project, spec: TaskSpec, boosted: set[str] = frozenset(), seed: int = 0) -> list[str]:
+def _boost(t: Technique, boosted: set[str], failing: set[str]) -> float:
+    return (RULE_BOOST if t.id in boosted else 1) * (BLOCKER_BOOST if failing & set(t.targets) else 1)
+
+
+def family_order(
+    p: Project, spec: TaskSpec, boosted: set[str] = frozenset(), seed: int = 0, failing: set[str] = frozenset()
+) -> list[str]:
     own, pooled = family_stats(p)
     rng = random.Random(f"{p.name}:{len(p.attempts())}:{seed}")
     live = [t for t in eligible(spec) if not _dropped(t, own)] or eligible(spec)
-    score = {t.id: _sample(t, own, pooled, rng) * (RULE_BOOST if t.id in boosted else 1) for t in live}
+    score = {t.id: _sample(t, own, pooled, rng) * _boost(t, boosted, failing) for t in live}
     fresh = {t.id for t in live if t.id not in own and t.prior >= ROUND_ONE_PRIOR}
     return sorted(score, key=lambda f: (f not in fresh, -score[f]))
 
 
-def rank(p: Project, spec: TaskSpec, proposals: list[dict], seed: int = 0) -> list[dict]:
+def rank(
+    p: Project, spec: TaskSpec, proposals: list[dict], seed: int = 0, failing: set[str] = frozenset()
+) -> list[dict]:
     by_family: dict[str, list[dict]] = defaultdict(list)
     for pr in sorted(proposals, key=lambda pr: -(pr.get("probability") or 0)):
         by_family[pr["family"]].append(pr)
-    ranked = family_order(p, spec, {pr["family"] for pr in proposals if pr.get("source") == RULE}, seed)
+    ranked = family_order(p, spec, {pr["family"] for pr in proposals if pr.get("source") == RULE}, seed, failing)
     order = [f for f in ranked if f in by_family] + [f for f in by_family if f not in ranked]
     out: list[dict] = []
     while any(by_family[f] for f in order):
@@ -149,6 +159,7 @@ def catalogue_board(ws: Any = None) -> list[dict[str, Any]]:
         out.append(
             {
                 **t.model_dump(),
+                "target_titles": [CHECK_TITLES.get(c, c) for c in t.targets],
                 **seen,
                 "gpu_hours": round(seen["gpu_hours"], 3),
                 "specialists": len(seen["specialists"]),

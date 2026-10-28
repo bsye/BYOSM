@@ -47,9 +47,9 @@ def test_public_benchmarks_and_the_learning_curve_join_when_they_fit(ws):
     p = promoted_specialist(labels=("no_fit", "fits"), positive="fits")
     with_train_rows(p, 10)
     found = {c["measurement"]: c for c in plan(ws)}
-    assert found["public-suites"]["args"] == ["suite", "public", "qa"] and found["public-suites"]["lane"] == CPU
+    assert found["real"]["args"] == ["suite", "public", "qa"] and found["real"]["lane"] == CPU
     assert found["curve"]["args"] == ["curve", "qa"]
-    assert [c["measurement"] for c in plan(ws)] == ["overfit", "public-suites", "seeds", "curve"]
+    assert [c["measurement"] for c in plan(ws)] == ["overfit", "real", "seeds", "curve"]
 
 
 def test_a_forecaster_that_never_tried_v2_pretrains_its_base_then_runs_until_it_beats_the_rival(ws, monkeypatch):

@@ -112,7 +112,7 @@ def test_the_board_shows_what_is_missing_then_each_cell_as_its_job_moves(ws):
     runner = FakeRunner()
     before = board(ws, runner.jobs)
     assert before["progress"] == {"done": 0, "failed": 0, "todo": 2, "total": 2}
-    assert [m["id"] for m in before["measurements"]][:2] == ["overfit", "public-suites"]
+    assert [m["id"] for m in before["measurements"]][:2] == ["overfit", "real"]
     assert set(_statuses(ws, runner).values()) == {TODO}
     queue(ws)
     tick(ws, runner)

@@ -87,7 +87,8 @@ def test_a_step_gains_the_health_its_checks_are_missing():
     assert step["gain"] == 38 and step["unblocks"] == ["Enough data"]
 
 
-def test_a_tool_choice_specialist_is_offered_the_hard_public_benchmarks_it_does_not_have(ws):
+def test_a_tool_choice_specialist_is_tested_on_real_inputs_through_the_public_benchmarks_that_fit(ws):
+    from byosm.health import checks
     from byosm.spec import EvalSuite
 
     p = promoted_specialist(n_test=500, n_calib=200)
@@ -95,11 +96,14 @@ def test_a_tool_choice_specialist_is_offered_the_hard_public_benchmarks_it_does_
     spec.labels = [Label(name="no_fit", definition="no"), Label(name="fits", definition="yes")]
     spec.positive_label = "fits"
     p.save_spec(spec)
-    step = next(s for s in suggestions("qa") if s["id"] == "public-suites")
+    step = next(s for s in suggestions("qa") if s["id"] == "real")
     assert step["args"] == ["suite", "public", "qa"] and "bfcl" in step["why"] and "when2call" in step["why"]
-    spec.evals += [EvalSuite(name=n, kind="local") for n in ("bfcl", "bfcl-live", "when2call")]
+    names = ("bfcl", "bfcl-live", "when2call")
+    spec.evals += [EvalSuite(name=n, kind="local", dataset=f"org/{n}") for n in names]
     p.save_spec(spec)
-    step = next(s for s in suggestions("qa") if s["id"] == "public-suites")
+    step = next(s for s in suggestions("qa") if s["id"] == "real")
     assert step["args"] == ["eval", "qa", "--suite", "bfcl", "--suite", "bfcl-live", "--suite", "when2call"]
-    save_board(p, {"v1": {n: {"kind": "experiment", "objective": 0.5} for n in ("bfcl", "bfcl-live", "when2call")}})
-    assert all(s["id"] != "public-suites" for s in suggestions("qa"))
+    save_board(p, {"v1": {n: {"kind": "experiment", "objective": 0.5} for n in names}})
+    assert all(s["id"] != "real" for s in suggestions("qa"))
+    real = next(c for c in checks(p, p.spec()) if c["id"] == "real")
+    assert real["status"] == "fail" and "on bfcl" in real["value"]

@@ -6,6 +6,7 @@
   prior: 0.6
   evidence: [https://arxiv.org/abs/2209.06640]
   status: available
+  targets: [rival, target, data, real]
 
 - id: data-size
   title: Split sizes
@@ -15,6 +16,7 @@
   prior: 0.4
   evidence: [https://arxiv.org/abs/2103.03098]
   status: available
+  targets: [certainty]
 
 - id: synthetic-data
   title: LLM-written data
@@ -25,6 +27,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/abs/2311.06102, https://arxiv.org/abs/2310.07849]
   status: available
+  targets: [data, weakest]
 
 - id: targeted-data
   title: Rows aimed at errors
@@ -35,6 +38,7 @@
   prior: 0.5
   evidence: [https://arxiv.org/abs/2310.13671]
   status: available
+  targets: [weakest, robust]
 
 - id: audio-mix
   title: Audio mixing
@@ -45,6 +49,7 @@
   prior: 0.5
   evidence: []
   status: available
+  targets: [robust, target]
 
 - id: backbone
   title: Backbone
@@ -55,6 +60,7 @@
   evidence: [https://arxiv.org/abs/2507.11412]
   transferable: true
   status: available
+  targets: [rival, target]
 
 - id: schedule
   title: Training schedule
@@ -65,6 +71,7 @@
   evidence: [https://arxiv.org/abs/2006.05987, https://arxiv.org/abs/2106.09204]
   transferable: true
   status: available
+  targets: [target, overfit]
 
 - id: pretraining
   title: In-domain pretraining
@@ -75,6 +82,7 @@
   evidence: [https://arxiv.org/abs/2010.02194]
   transferable: true
   status: available
+  targets: [rival, target]
 
 - id: head
   title: Head and freezing
@@ -85,6 +93,7 @@
   evidence: [https://arxiv.org/abs/2202.10054]
   transferable: true
   status: available
+  targets: [overfit, target]
 
 - id: regularisation
   title: Regularisation
@@ -95,6 +104,7 @@
   evidence: [https://arxiv.org/abs/2006.05987]
   transferable: true
   status: available
+  targets: [overfit]
 
 - id: precision
   title: Numeric precision
@@ -105,6 +115,7 @@
   evidence: []
   transferable: true
   status: available
+  targets: [speed, size]
 
 - id: document-views
   title: Document views
@@ -115,6 +126,7 @@
   prior: 0.5
   evidence: []
   status: available
+  targets: [target, rival]
 
 - id: multi-rate-forecast
   title: Multi-rate forecasting
@@ -125,6 +137,7 @@
   prior: 0.7
   evidence: [https://huggingface.co/IUseAMouse/timessm-2.5m]
   status: available
+  targets: [rival, target]
 
 - id: forecast-routing
   title: Model per configuration
@@ -135,6 +148,7 @@
   prior: 0.7
   evidence: [https://github.com/SalesforceAIResearch/gift-eval]
   status: available
+  targets: [rival, target]
 
 - id: input-layouts
   title: Varied input layouts
@@ -146,6 +160,7 @@
   prior: 0.6
   evidence: [https://arxiv.org/abs/2608.16502]
   status: available
+  targets: [robust, real]
 
 - id: near-miss-negatives
   title: Near-miss negatives
@@ -157,6 +172,7 @@
   prior: 0.6
   evidence: [https://arxiv.org/abs/2310.14192]
   status: available
+  targets: [weakest, robust, real]
 
 - id: embedding-head
   title: Embedding-model head
@@ -168,6 +184,7 @@
   prior: 0.5
   evidence: [https://arxiv.org/abs/2209.11055, https://arxiv.org/abs/2003.04807]
   status: available
+  targets: [speed, target]
 
 - id: setfit
   title: Contrastive few-shot
@@ -179,6 +196,7 @@
   prior: 0.5
   evidence: [https://arxiv.org/abs/2209.11055]
   status: available
+  targets: [data, target]
 
 - id: label-noise
   title: Label-noise cleaning
@@ -189,6 +207,7 @@
   prior: 0.4
   evidence: [https://arxiv.org/abs/2205.12702]
   status: available
+  targets: [overfit, weakest]
 
 - id: weight-averaging
   title: Seed soups
@@ -198,6 +217,7 @@
   prior: 0.4
   evidence: [https://arxiv.org/abs/2203.05482, https://arxiv.org/abs/2212.05956]
   status: built-in
+  targets: [certainty, robust]
 
 - id: ensemble-distillation
   title: Ensemble distillation
@@ -207,6 +227,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/html/2506.15692]
   status: built-in
+  targets: [size, speed]
 
 - id: learning-curve
   title: Learning-curve check
@@ -216,6 +237,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/abs/2209.06640]
   status: built-in
+  targets: [data]
 
 - id: forecaster-pretraining
   title: Forecaster pretraining v2
@@ -226,6 +248,7 @@
   prior: 0.5
   evidence: [https://arxiv.org/abs/2505.23719]
   status: available
+  targets: [rival, target]
 
 - id: reinit-top
   title: Re-initialised top layers
@@ -237,6 +260,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/abs/2006.05987]
   status: available
+  targets: [target, overfit]
 
 - id: small-search
   title: Small hyperparameter search
@@ -246,6 +270,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/abs/1810.05934, https://arxiv.org/html/2402.03921]
   status: built-in
+  targets: [target]
 
 - id: consistency
   title: R-Drop and mixup
@@ -257,6 +282,7 @@
   prior: 0.2
   evidence: [https://arxiv.org/abs/2106.14448, https://arxiv.org/abs/2010.02394]
   status: available
+  targets: [overfit, robust]
 
 - id: quantile-boosting
   title: Quantile boosting with covariates
@@ -267,6 +293,7 @@
   prior: 0.3
   evidence: [https://github.com/autogluon/fev]
   status: available
+  targets: [rival, target]
 
 - id: self-training
   title: Self-training
@@ -278,6 +305,7 @@
   prior: 0.2
   evidence: [https://arxiv.org/abs/2210.17541, https://arxiv.org/abs/2010.02194]
   status: available
+  targets: [data, robust, real]
 
 - id: lab-method
   title: Lab method
@@ -289,3 +317,4 @@
   prior: 0.3
   evidence: []
   status: manual
+  targets: []

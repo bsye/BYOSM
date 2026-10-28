@@ -28,6 +28,7 @@ class Technique(BaseModel):
     evidence: list[str] = Field(default_factory=list)
     status: Literal["available", "built-in", "manual", "planned"] = "planned"
     transferable: bool = False
+    targets: list[str] = Field(default_factory=list)
 
     def fits(self, modality: str, task_type: str | None = None) -> bool:
         kind = not self.modalities or modality in self.modalities
@@ -76,3 +77,11 @@ def transferable(op: dict) -> bool:
 
 def tried_counts(history: list[dict]) -> Counter:
     return Counter(h["family"] for h in history if h.get("family"))
+
+
+def aimed_at(spec: TaskSpec, check: str) -> list[Technique]:
+    return sorted((t for t in eligible(spec) if check in t.targets), key=lambda t: -t.prior / max(t.cost, 0.1))
+
+
+def with_techniques(spec: TaskSpec, checks: list[dict], shown: int = 2) -> list[dict]:
+    return [{**c, "techniques": [t.title for t in aimed_at(spec, c["id"])[:shown]]} for c in checks]

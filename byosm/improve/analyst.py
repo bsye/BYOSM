@@ -8,14 +8,16 @@ from .paths import allowed, untrainable
 from .techniques import eligible, tried_counts
 
 LLM_SYSTEM = """You are the research lead improving a tiny single-purpose model. Given its spec, the board (our experiment \
-vs baselines on several frozen eval suites), the training curve and the most confused label pairs, propose 5 to 10 \
-concrete next experiments. Each proposal is a list of edits to the spec at the paths of one technique family from the \
-catalogue (dotted; list items by index). For each, state the diagnosis it answers, the hypothesis it tests, and your \
-probability (0 to 1) that it beats the promoted model with a sure lead on calib. Spread the proposals over different \
-families: favour the families that fit the diagnosis and have been tried least, try a family again only with a reason \
-its earlier tries did not cover, and include at least two less likely ideas (probability below 0.2) that differ from \
-the obvious ones. Never propose training on an eval suite's calib/test data. Be specific: exact Hugging Face ids you \
-are confident exist, exact values."""
+vs baselines on several frozen eval suites), the training curve, the most confused label pairs, its health checks and \
+the next steps the system lines up, propose 5 to 10 concrete next experiments. Your goal is to raise the primary score \
+and to clear every health check that is not ok: each catalogue family lists the checks it targets, so aim proposals at \
+the failing ones. Each proposal is a list of edits to the spec at the paths of one technique family from the catalogue \
+(dotted; list items by index). For each, state the diagnosis it answers, the hypothesis it tests, and your probability \
+(0 to 1) that it beats the promoted model with a sure lead on calib. Spread the proposals over different families: \
+favour the families that fit the diagnosis and have been tried least, try a family again only with a reason its \
+earlier tries did not cover, and include at least two less likely ideas (probability below 0.2) that differ from the \
+obvious ones. Never propose training on an eval suite's calib/test data. Be specific: exact Hugging Face ids you are \
+confident exist, exact values."""
 
 _OP = {
     "op": {"type": "string", "enum": ["set", "append"]},
@@ -58,6 +60,8 @@ def _prompt(dg: dict[str, Any]) -> str:
         f"Experiments tried so far, what each changed from its parent and how it scored on the primary suite "
         f"(calib picks, test is only reported). Do not repeat a change that did not help; combine and build on "
         f"what helped:\n{json.dumps(dg.get('history', []), indent=1)}\n\n"
+        f"Health of the promoted model (checks that are not ok are what to fix):\n{json.dumps(dg.get('health', []))}\n\n"
+        f"Next steps the system lines up on its own:\n{json.dumps(dg.get('next_steps', []))}\n\n"
         f"Technique catalogue (paths: dotted, | separates alternatives for one segment, * is a list index, "
         f"=v means set that path to exactly v; "
         f"tried: experiments of this specialist in that family):\n{json.dumps(_catalogue(dg), indent=1)}"
@@ -67,7 +71,14 @@ def _prompt(dg: dict[str, Any]) -> str:
 def _catalogue(dg: dict[str, Any]) -> list[dict[str, Any]]:
     tried = tried_counts(dg.get("history", []))
     return [
-        {"family": t.id, "effect": t.effect, "paths": t.paths, "prior": t.prior, "tried": tried[t.id]}
+        {
+            "family": t.id,
+            "effect": t.effect,
+            "paths": t.paths,
+            "targets": t.targets,
+            "prior": t.prior,
+            "tried": tried[t.id],
+        }
         for t in eligible(dg["spec"])
     ]
 
