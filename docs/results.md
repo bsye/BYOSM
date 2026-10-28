@@ -16,14 +16,14 @@ Rivals and benchmarks: [methodology](methodology.md).
 | Categorise a card or bank transaction description into one of 17 spending categories | card-spend-builtin (accuracy) | v1 (22.72M) | 0.999 [0.999, 1.000] | llm (-) | 0.886 [0.877, 0.894] | +0.114, P(better) = 1.00 | 0.998 vs 0.877 (ahead) |
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
 | Classify the primary emotion expressed in a short English text (single sentence, tweet-style or short social media string) into one of six named emotions (sadness, joy, love, anger, fear, surprise). Any text that does not clearly express one of these dominates falls into a catch-all neutral-other class (including neutral statements, irony/sarcasm without a dominant named emotion, ambiguity, or non-English). | dair-ai/emotion (accuracy) | v1 (22.72M) | 0.898 [0.883, 0.913] | hf:j-hartmann/emotion-english-distilroberta-base (82.12M) | 0.838 [0.819, 0.856] | +0.060, P(better) = 1.00 | 0.904 vs 0.813 (ahead) |
-| Decide whether an excerpt from a company's financial disclosure (annual/quarterly report MD&A, notes to the financial statements, auditor or risk-factor sections, earnings releases) shows elevated risk of financial-reporting fraud or accounting misconduct, or reads as ordinary, low-risk disclosure. | fraud-risk-builtin (recall_at_precision) | v1 (149.02M) | 0.000 [0.000, 0.000] | no outside baseline scored yet | - | - | - |
 | 77-way banking intent classification | mteb/banking77 (accuracy) | final-s1 (22.74M) | 0.937 [0.928, 0.948] | hf:DarioFrK/sift-banking77-modernbert (149.66M) | 0.937 [0.927, 0.947] | +0.000, P(better) = 0.54 | 0.948 vs 0.929 (ahead) |
 | ASSUMPTION, NOT VERIFIED: I could not look up convaiinnovations/laya, so its exact label set is unconfirmed. This spec guesses it is a 3-way sentiment classifier (negative / neutral / positive) for short user text in English, Hindi and romanized Hindi-English (Hinglish), which fits the publisher's Indic focus. Check the model card's id2label and replace the labels if they differ. The goal is a much smaller student model that matches or beats laya's macro-F1 on a held-out multilingual sentiment test set, with laya itself as the main baseline. | laya-sentiment-builtin (macro_f1) | v1 (117.66M) | 0.788 [0.760, 0.818] | hf:cardiffnlp/twitter-xlm-roberta-base-sentiment (278.05M) | 0.700 [0.665, 0.733] | +0.089, P(better) = 1.00 | 0.789 vs 0.693 (ahead) |
 | Token-tag every token in a lease-agreement text to identify spans of DATE, AMOUNT, and PARTY (landlord, tenant, guarantor, or other named signatory) using BIO tagging. | lease-entities-builtin (span_f1) | v1 (70.69M) | 0.514 [0.389, 0.651] | hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 (183.92M) | 0.301 [0.178, 0.432] | +0.213, P(better) = 1.00 | 0.632 vs 0.370 (ahead) |
 | Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
-| Decide whether one offered tool should be used for a request; the chosen tools are the ones that fit. | tool-choice-builtin (f1) | v1 (394.79M) | 0.974 [0.967, 0.981] | no outside baseline scored yet | - | - | - |
+| Decide whether one offered tool should be used for a request; the chosen tools are the ones that fit. | tool-choice-builtin (f1) | v3 (22.71M) | 0.960 [0.951, 0.969] | llm:rival-claude-haiku-5-5 (-) | 0.995 [0.991, 0.998] | -0.034, P(better) = 0.00 | 0.971 vs 0.975 (behind) |
+| Decide whether one offered tool should be used for a request; the chosen tools are the ones that fit. | tool-choice-held-builtin (f1) | v1 (394.79M) | 0.924 [0.912, 0.935] | no outside baseline scored yet | - | - | - |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
-| From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification of a partial-utterance. | turn-completion-builtin (recall_at_precision) | v15 (22.71M) | 0.895 [0.861, 0.924] | llm:rival-claude-haiku-5-5 (-) | 0.000 [0.000, 0.000] | +0.895, P(better) = 0.99 | 0.753 vs 0.965 (behind) |
+| From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification of a partial-utterance. | turn-completion-builtin (recall_at_precision) | v15 (22.71M) | 0.895 [0.861, 0.924] | livekit-turn-multilingual (-) | 0.000 [0.000, 0.000] | +0.895, P(better) = 1.00 | 0.753 vs 0.722 (ahead) |
 | Per-10ms-frame speech vs non-speech on 16kHz mic audio | nccratliri/vad-human-ava-speech (f1) | v3 (0.10M) | 0.882 [0.863, 0.899] | silero (0.55M) | 0.865 [0.839, 0.887] | +0.016, P(better) = 1.00 | 0.814 vs 0.772 (ahead) |
 <!-- /report:summary -->
 
@@ -219,6 +219,7 @@ Suite `bench` (fancyzhx/ag_news): 2560 test and 640 calib items. Selection uses 
 | hf:dslim/bert-base-NER | outside baseline | - | 107.73M | 11.33ms | 0.910 [0.900, 0.918] | 0.925 |
 | v2 | v1 + new-split, train-longer | 15181 (+2214 builtin test) | 65.20M | 5.37ms | 0.894 [0.883, 0.904] | 0.922 |
 | v1 | no recorded parent | 12320 (+1790 builtin test) | 65.20M | 5.92ms | 0.890 [0.878, 0.900] | 0.907 |
+| hf:asanka25/xlm-roberta-base-finetuned-conll03-english-finetuned-sinhala | outside baseline | - | 277.46M | 144.25ms | 0.593 [0.581, 0.605] | 0.593 |
 | llm | outside baseline | - | - | - | 0.577 [0.560, 0.596] | 0.572 |
 
 Suite `conll` (BramVanroy/conll2003): 2762 test and 691 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
@@ -302,10 +303,14 @@ Suite `builtin` (lease-entities-builtin): 50 test and 10 calib items. Selection 
 |---|---|---|---|---|---|---|
 | **v15** (promoted) | no recorded parent | 6086 | 22.71M | 6.17ms | 0.895 [0.861, 0.924] | 0.753 |
 | v18 | v15 + llm-early-stop-regularize | 7921 | 22.71M | 5.11ms | 0.881 [0.000, 0.912] | 0.808 |
+| distill-v15 | v15 + distill | 6103 | 11.17M | 4.64ms | 0.857 [0.000, 0.888] | 0.788 |
 | v30 | v15 + llm-electra-small-gentle-lr-bigger-calib | 5703 | 13.48M | 11.23ms | 0.824 [0.000, 0.860] | 0.753 |
 | v28 | v15 + llm-electra-small-gentle-lr-bigger-calib | 5723 | 13.48M | 15.27ms | 0.819 [0.778, 0.855] | 0.000 |
 | v16 | v15 + hard-pairs | 5679 | 22.71M | 3.32ms | 0.816 [0.000, 0.851] | 0.000 |
 | v23 | v15 + llm-v23-downweight-hf-source | 5878 | 22.71M | 15.75ms | 0.816 [0.000, 0.855] | 0.000 |
+| v32 | v15 + llm-v18-recipe-stable-calib | 6134 | 22.71M | 14.30ms | 0.681 [0.000, 0.729] | 0.510 |
+| fit-v15 | v15 + `train.lr_backbone=2.5e-05 train.epochs=4` | 6191 | 22.71M | 14.11ms | 0.670 [0.000, 0.714] | 0.000 |
+| v34 | v15 + llm-precision-tail-hard-negatives | 6245 | 22.71M | 17.47ms | 0.622 [0.574, 0.673] | 0.000 |
 | v21 | v15 + llm-more-real-turn-data | 5709 | 22.71M | 18.33ms | 0.324 [0.280, 0.372] | 0.000 |
 | v1 | no recorded parent | 642 | 22.71M | 3.83ms | 0.000 [0.000, 0.000] | 0.000 |
 | v10 | v1 + llm-exp-1-hard-negatives-encoding | 639 | 22.71M | 5.24ms | 0.000 [0.000, 0.000] | 0.000 |
@@ -323,7 +328,7 @@ Suite `builtin` (lease-entities-builtin): 50 test and 10 calib items. Selection 
 | livekit-turn | outside baseline | - | - | 3.07ms | 0.000 [0.000, 0.636] | 0.000 |
 | llm | outside baseline | - | - | - | 0.000 [0.000, 0.000] | 0.000 |
 | hf:videosdk-live/Namo-Turn-Detector-v1-English#LABEL_1=finished,LABEL_0=unfinished | outside baseline | - | 135.33M | 3.96ms | 0.000 [0.000, 0.000] | 0.323 |
-| llm:rival-claude-haiku-5-5 | outside baseline | - | - | - | 0.000 [0.000, 0.000] | 0.965 |
+| llm:rival-claude-haiku-5-5 | outside baseline | - | - | - | 0.000 [0.000, 0.000] | 0.000 |
 | v17 | v15 + refine-more | 7377 | 22.71M | 2.84ms | 0.000 [0.000, 0.922] | 0.924 |
 | v19 | v15 + llm-finished-recall-hard-cases | 9400 | 22.71M | 15.69ms | 0.000 [0.000, 0.924] | 0.495 |
 | v20 | v15 + llm-electra-small-backbone | 7921 | 13.48M | 67.70ms | 0.000 [0.000, 0.970] | 0.000 |
@@ -398,20 +403,40 @@ Experiments named `<recipe>-s<seed>` on suite `bench`, mean ± sample sd over se
 Suite `builtin` (laya-sentiment-builtin): 773 test and 515 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
 <!-- /report:laya-sentiment -->
 
-<!-- report:fraud-risk -->
-| model | built from | train rows | params | CPU | test recall_at_precision [95% CI] | calib recall_at_precision |
-|---|---|---|---|---|---|---|
-| **v1** (promoted) | no recorded parent | 128 | 149.02M | 193.88ms | 0.000 [0.000, 0.000] | 0.909 |
-| distill-v1 | v1 + distill | 128 | 11.17M | 167.85ms | 0.000 [0.000, 0.000] | 0.000 |
-| llm | outside baseline | - | - | - | - | - |
 
-Suite `builtin` (fraud-risk-builtin): 26 test and 16 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
-<!-- /report:fraud-risk -->
+## Tool choice ([bsye/byosm-tool-choice](https://huggingface.co/bsye/byosm-tool-choice))
 
 <!-- report:tool-choice -->
 | model | built from | train rows | params | CPU | test f1 [95% CI] | calib f1 |
 |---|---|---|---|---|---|---|
-| **v1** (promoted) | no recorded parent | 13433 | 394.79M | 163.02ms | 0.974 [0.967, 0.981] | 0.978 |
+| llm:rival-claude-haiku-5-5 | outside baseline | - | - | - | 0.995 [0.991, 0.998] | 0.975 |
+| v1 | no recorded parent | 13433 | 394.79M | 163.02ms | 0.974 [0.967, 0.981] | 0.978 |
+| v9 | v3 + continue | 13732 | 22.71M | 7.61ms | 0.966 [0.959, 0.974] | 0.971 |
+| v6 | v3 + hard-pairs | 13433 | 22.71M | 5.33ms | 0.962 [0.954, 0.970] | 0.971 |
+| distill-v1 | v1 + distill | 13433 | 11.17M | 10.29ms | 0.962 [0.954, 0.970] | 0.956 |
+| v5 | distill-v1 + llm-minilm-hardneg-refine | 13433 | 22.71M | 7.17ms | 0.961 [0.953, 0.969] | 0.970 |
+| v2 | distill-v1 + train-longer | 13433 | 11.17M | 4.17ms | 0.961 [0.952, 0.969] | 0.959 |
+| **v3** (promoted) | distill-v1 + llm-cross-encoder-backbone | 13433 | 22.71M | 15.66ms | 0.960 [0.951, 0.969] | 0.971 |
+| v7 | v3 + llm-bge-reranker | 13433 | 278.05M | 35.05ms | 0.960 [0.952, 0.968] | 0.972 |
+| v4 | distill-v1 + llm-real-function-calling-data | 13433 | 11.17M | 3.72ms | 0.952 [0.943, 0.962] | 0.957 |
+| v8 | v3 + llm-early-stop-lowlr | 13433 | 22.71M | 7.93ms | 0.952 [0.942, 0.961] | 0.969 |
 
 Suite `builtin` (tool-choice-builtin): 2535 test and 1447 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
 <!-- /report:tool-choice -->
+
+## Tool choice on held-out tools
+
+The same task with whole tool families and option layouts held out of training, so the test measures tools the model never saw.
+
+<!-- report:tool-choice-held -->
+| model | built from | train rows | params | CPU | test f1 [95% CI] | calib f1 |
+|---|---|---|---|---|---|---|
+| v2-r1 | v2 + rung | 16622 | 394.79M | 677.13ms | 0.967 [0.958, 0.975] | 0.958 |
+| near-miss | v1 + `data.pairs.near_misses=[nearest, same_category, missing_parameter, removed]` | 16622 | 394.79M | 596.28ms | 0.958 [0.949, 0.967] | 0.959 |
+| v3-r1 | v3 + rung | 8263 | 394.79M | 938.70ms | 0.955 [0.946, 0.964] | 0.943 |
+| **v1** (promoted) | no recorded parent | 8263 | 394.79M | 625.02ms | 0.924 [0.912, 0.935] | 0.913 |
+
+Suite `builtin` (tool-choice-held-builtin): 1616 test and 1624 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+<!-- /report:tool-choice-held -->
+
+<p align="center"><a href="../README.md">Tour</a> · <a href="assumptions.md">Goal and bet</a> · <a href="methodology.md">Methodology</a> · <b>Results</b> · <a href="details.md">Details</a></p>
