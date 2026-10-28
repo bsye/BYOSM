@@ -8,7 +8,8 @@ import torch
 
 from . import checkpoint
 from .models import Group
-from .patch_net import BASE, SIZES, SMALL, PatchNet, Size, picker, train, window
+from .patch_net import SIZES, SMALL, PatchNet, Size, picker, train, window
+from .recipe import V1, Recipe
 
 STEPS = 3000
 FINETUNE_STEPS = 800
@@ -25,12 +26,13 @@ def weights_path(name: str = "base") -> Path:
     return cache_root() / "series" / f"patch-{name}.pt"
 
 
-def pretrained() -> tuple[str, Size] | None:
-    return next(((n, s) for n, s in reversed(SIZES.items()) if weights_path(n).exists()), None)
+def pretrained(recipe: Recipe = V1) -> tuple[str, Size] | None:
+    found = (n for n in reversed(recipe.sizes) if weights_path(recipe.weights(n)).exists())
+    return next(((recipe.weights(n), SIZES[n]) for n in found), None)
 
 
-def missing_size() -> str | None:
-    return next((n for n in SIZES if not weights_path(n).exists()), None)
+def missing_size(recipe: Recipe = V1) -> str | None:
+    return next((n for n in recipe.sizes if not weights_path(recipe.weights(n)).exists()), None)
 
 
 def reporter(label: str, steps: int, log: Callable[[str], None] = print) -> Callable[[int, float], None]:
@@ -53,6 +55,7 @@ class PatchModel:
     name = "patch transformer"
     size: Size = SMALL
     pretrained = False
+    recipe: Recipe = V1
 
     def __init__(self, effort: int = 0) -> None:
         self.effort = effort
@@ -61,7 +64,7 @@ class PatchModel:
         from ..train.gpu import gpu_slot
 
         torch.manual_seed(SEED)
-        self.net = PatchNet(self.size)
+        self.net = PatchNet(self.size, len(self.recipe.quantiles))
         steps, lr = STEPS, LR
         if self.pretrained:
             self.net.load_state_dict(torch.load(weights_path(self.weights), map_location="cpu"))
@@ -71,7 +74,8 @@ class PatchModel:
         with gpu_slot(_device(), print, fallback="cpu" if quick else None) as device:
             report = reporter(self.name, total)
             resume = checkpoint.path(checkpoint.key(self.name, self.size, total, lr, arrays=[h for h, _ in series]))
-            train(self.net, picker(series, self.size.patch), total, lr, BATCH, device, SEED, report, resume)
+            pick = picker(series, self.size.patch)
+            train(self.net, pick, total, lr, BATCH, device, SEED, report, resume, self.recipe)
 
     def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
         windows = [window(h, self.size.context) for h in histories]
@@ -79,10 +83,10 @@ class PatchModel:
         with torch.no_grad():
             for start in range(0, len(windows), BATCH):
                 part = windows[start : start + BATCH]
-                v = torch.tensor(np.asarray([w[0] for w in part]), dtype=torch.float32)
+                v = torch.tensor(self.recipe.scale(np.asarray([w[0] for w in part])), dtype=torch.float32)
                 m = torch.tensor(np.asarray([w[1] for w in part]), dtype=torch.float32)
-                pred = self.net(v, m).numpy()[:, :, :horizon]
-                out += [np.sort(p * w[3] + w[2], axis=0) for p, w in zip(pred, part, strict=True)]
+                pred = self.net(v, m).numpy()[:, self.recipe.served, :horizon]
+                out += [np.sort(self.recipe.unscale(p) * w[3] + w[2], axis=0) for p, w in zip(pred, part, strict=True)]
         return out
 
 
@@ -90,6 +94,7 @@ class PretrainedPatch(PatchModel):
     name = "patch transformer, pretrained"
     pretrained = True
 
-    def __init__(self, effort: int = 0) -> None:
+    def __init__(self, effort: int = 0, recipe: Recipe = V1) -> None:
         super().__init__(effort)
-        self.weights, self.size = pretrained() or ("base", BASE)
+        self.recipe, self.name, first = recipe, recipe.named(PretrainedPatch.name), recipe.sizes[0]
+        self.weights, self.size = pretrained(recipe) or (recipe.weights(first), SIZES[first])

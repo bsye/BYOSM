@@ -6,6 +6,7 @@ from byosm.series.board import reports
 from byosm.series.gifteval import Series, horizon, season, splits, unit, windows
 from byosm.series.metrics import QUANTILES, crps, geomean, mase
 from byosm.series.models import Boosted, Ensemble, Group, SeasonalNaive
+from byosm.series.patch_net import BASE
 from byosm.series.prediction import PredictCfg
 from byosm.series.specialist import NAIVE
 
@@ -85,7 +86,7 @@ def test_a_pretrained_patch_model_starts_from_the_saved_weights(tmp_path, monkey
     import byosm.series.patch as patch
     from byosm.series.patch_net import PatchNet
 
-    saved = PatchNet(patch.BASE)
+    saved = PatchNet(BASE)
     torch.save(saved.state_dict(), tmp_path / "base.pt")
     monkeypatch.setattr(patch, "weights_path", lambda name="base": tmp_path / f"{name}.pt")
     monkeypatch.setattr(patch, "FINETUNE_STEPS", 1)
@@ -350,7 +351,7 @@ def test_only_a_short_small_forecaster_training_falls_back_to_the_cpu_and_the_re
     monkeypatch.setattr(gpu, "gpu_slot", slot)
     monkeypatch.setattr(patch, "weights_path", lambda name="base": tmp_path / f"{name}.pt")
     monkeypatch.setattr(patch, "train", lambda *a, **k: None)
-    monkeypatch.setattr(patch.torch, "load", lambda *a, **k: patch.PatchNet(patch.BASE).state_dict())
+    monkeypatch.setattr(patch.torch, "load", lambda *a, **k: patch.PatchNet(BASE).state_dict())
     for model in (patch.PatchModel(), patch.PretrainedPatch(), patch.PatchModel(effort=3)):
         model.fit([Group([_wave()], 24, 30)])
     assert asked == ["cpu", None, None]

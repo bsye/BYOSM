@@ -8,7 +8,9 @@ import torch
 
 from . import checkpoint
 from .patch import BATCH, LR, SEED, _device, reporter, weights_path
-from .patch_net import MAX_HORIZON, SIZES, PatchNet, Pick, picker, train
+from .patch_net import MAX_HORIZON, SIZES, PatchNet, Pick, Size, picker, train
+from .recipe import V1, Recipe
+from .synthetic import Synthetic
 
 CORPUS_SHARE = 0.8
 
@@ -34,11 +36,11 @@ class Corpus:
         return series[start : start + self.length]
 
 
-def mixed(corpus: Corpus, own: Pick) -> Pick:
+def mixed(source: Corpus | Synthetic, own: Pick, share: float) -> Pick:
     def pick(rng: np.random.Generator, n: int) -> list[tuple[np.ndarray, int]]:
         drawn: list[tuple[np.ndarray, int]] = []
-        while len(drawn) < rng.binomial(n, CORPUS_SHARE):
-            segment = corpus.draw(rng)
+        while len(drawn) < rng.binomial(n, share):
+            segment = source.draw(rng)
             if segment is not None:
                 drawn.append((segment, MAX_HORIZON))
         return drawn + own(rng, n - len(drawn))
@@ -61,23 +63,31 @@ def _training_portions(log: Callable[[str], None]) -> list[tuple[np.ndarray, int
     return out
 
 
-def pretrain(log: Callable[[str], None], steps: int, size_name: str = "base") -> Path:
+def _sources(size: Size, paths: list[str], recipe: Recipe, log: Callable[[str], None]) -> Pick:
+    own, length = picker(_training_portions(log), size.patch), size.context + MAX_HORIZON
+    pick = mixed(Corpus(paths, length, size.patch), own, CORPUS_SHARE) if paths else own
+    log(f"  GIFT-Eval training portions plus {len(paths)} pretraining corpus files")
+    if not recipe.synthetic:
+        return pick
+    log(f"  {recipe.synthetic:.0%} of every batch drawn from synthetic series")
+    return mixed(Synthetic(length), pick, recipe.synthetic)
+
+
+def pretrain(log: Callable[[str], None], steps: int, size_name: str = "base", recipe: Recipe = V1) -> Path:
     from ..train.gpu import gpu_slot
     from .corpus import files
 
-    size = SIZES[size_name]
-    own = picker(_training_portions(log), size.patch)
-    paths = files()
-    pick = mixed(Corpus(paths, size.context + MAX_HORIZON, size.patch), own) if paths else own
-    log(f"  GIFT-Eval training portions plus {len(paths)} pretraining corpus files")
+    size, paths, name = SIZES[size_name], files(), recipe.weights(size_name)
+    pick = _sources(size, paths, recipe, log)
     torch.manual_seed(SEED)
-    net, device = PatchNet(size), _device()
-    log(f"  {sum(p.numel() for p in net.parameters()) / 1e6:.1f}M parameters, {steps} steps on {device}")
+    net, device = PatchNet(size, len(recipe.quantiles)), _device()
+    millions = sum(p.numel() for p in net.parameters()) / 1e6
+    log(f"  recipe {recipe.name}: {millions:.1f}M parameters, {steps} steps on {device}")
 
     with gpu_slot(device, log):
-        resume = checkpoint.path(checkpoint.key("pretraining", size_name, steps, sorted(paths)))
-        train(net, pick, steps, LR, BATCH, device, SEED, reporter("pretraining", steps, log), resume)
-    path = weights_path(size_name)
+        resume = checkpoint.path(checkpoint.key("pretraining", name, steps, sorted(paths)))
+        train(net, pick, steps, LR, BATCH, device, SEED, reporter("pretraining", steps, log), resume, recipe)
+    path = weights_path(name)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(net.state_dict(), path)
     log(f"  saved {path}")

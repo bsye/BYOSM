@@ -1961,3 +1961,35 @@ evidence links, and, across every specialist, how many experiments it ran, how m
 GPU time (`catalogue_board` in `byosm/improve/bandit.py`, `GET /api/techniques`). A bar chart compares tries with sure
 leads for the families that have run, and tabs filter by status. The two systems endpoints moved from
 `byosm/app/server.py` into `byosm/app/systems_routes.py` with the rest of the systems routes.
+
+## Forecaster pretraining v2 is a recipe
+
+The patch transformer is trained by a named, frozen recipe (`Recipe` in `byosm/series/recipe.py`), so a new way of
+pretraining is a new entry in `RECIPES`, not a change to the old one. `v1` is the recipe every base so far was built
+with, and it is reproducible bit for bit: same windows, targets and random draws (a test rebuilds its batches the old
+way), same weights files (`patch-base.pt`, `patch-large.pt`), same model name and the same resume key. `v2` gathers
+what the published ablations rank highest (TiRex, Chronos-2, Moirai 2.0; see the experiment search report):
+
+| Field | v2 | Why |
+|---|---|---|
+| `quantiles` | 21 levels, 0.01, 0.05 to 0.95 in steps of 0.05, 0.99 | Moirai 2.0's largest single gain; scoring and served forecasts stay on the 9 standard levels, taken as a subset (`served`) |
+| `mask_rate` | `MASK_RATE` 0.15 | One contiguous span of whole input patches is hidden per window, its length uniform between 0 and twice the rate, so 15% of patches on average; TiRex reports -7.6% CRPS |
+| `amplitude`, `censor`, `mixup` | chances 0.3, 0.1, 0.3 | Amplitude modulation (the deviation from the context mean times a piecewise-linear gain between 0.5 and 1.5), censoring (clipped from below or above at a quantile of the context up to 0.3), and TSMixup of two series of the batch, each scaled by its mean absolute context value, with a Beta(1.5, 1.5) weight; TiRex reports a further -4.4% |
+| `arcsinh` | on | After the window's z-score, inputs and targets go through arcsinh, and forecasts back through sinh, which is monotone, so quantiles stay ordered (they are still sorted) |
+| `synthetic` | `SYNTHETIC_SHARE` 0.2 | A share of every pretraining batch comes from `byosm/series/synthetic.py`, so pretraining runs with no downloaded corpus |
+| `sizes` | base, then long | The base size first, so v2 is compared with v1 at the same size; the 2048-point `long` size is v2's next step |
+
+The augmentations act on the whole window, context and target together, before scaling, and masking acts on the
+context only, before the window's mean and spread are taken, as missing values would. They also run when a v2 base is
+fine-tuned on a domain; synthetic series are pretraining only. A v2 base is saved as `patch-<size>-v2.pt` and its
+fine-tuned model is named `patch transformer, pretrained v2`, so both recipes can sit side by side on the board.
+
+The synthetic generator draws a sampling frequency (5 and 15 minutes, hourly, daily, weekly, monthly, quarterly) and
+its natural seasonal periods, then adds up to three harmonics per period, a linear and quadratic trend, AR(1) noise,
+a random walk (30% of series), Poisson level shifts and a random level and scale, and floors 20% of series at zero.
+Lengths are uniform from 128 points to the context plus the horizon, so short histories are seen too. It is seeded by
+the training generator, so a pretraining run is reproducible.
+
+Cost, measured on the CPU at batch 256: one v1 base step takes 524 ms forward and backward and 8 ms to build its batch;
+a v2 base step 483 ms and 19 ms (10.4M parameters, most of the extra in the 21-level head); a v2 long step 1,012 ms
+and 25 ms (18.2M). `series pretrain --recipe v2` pretrains it; nothing has been measured on GIFT-Eval yet.

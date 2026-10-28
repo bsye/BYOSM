@@ -10,7 +10,9 @@ from torch import nn
 
 from ..train.gpu_memory import release_cache
 from . import checkpoint
+from .augment import augmented, hidden
 from .metrics import QUANTILES
+from .recipe import V1, Recipe
 
 MAX_HORIZON = 60
 REPORT_EVERY = 500
@@ -31,11 +33,12 @@ class Size:
 SMALL = Size(context=512, patch=16, width=128, layers=3, heads=4)
 BASE = Size(context=1024, patch=32, width=192, layers=6, heads=6)
 LARGE = Size(context=1024, patch=32, width=384, layers=8, heads=8)
-SIZES = {"base": BASE, "large": LARGE}
+LONG = Size(context=2048, patch=32, width=192, layers=6, heads=6)
+SIZES = {"base": BASE, "large": LARGE, "long": LONG}
 
 
 class PatchNet(nn.Module):
-    def __init__(self, size: Size = SMALL) -> None:
+    def __init__(self, size: Size = SMALL, levels: int = len(QUANTILES)) -> None:
         super().__init__()
         self.size = size
         patches = size.context // size.patch
@@ -45,13 +48,13 @@ class PatchNet(nn.Module):
             size.width, size.heads, 4 * size.width, dropout=0.1, batch_first=True, norm_first=True
         )
         self.encoder = nn.TransformerEncoder(layer, size.layers)
-        self.head = nn.Linear(patches * size.width, MAX_HORIZON * len(QUANTILES))
+        self.head = nn.Linear(patches * size.width, MAX_HORIZON * levels)
 
     def forward(self, values: torch.Tensor, seen: torch.Tensor) -> torch.Tensor:
         p = self.size.patch
         v, m = values.unfold(1, p, p), seen.unfold(1, p, p)
         x = self.encoder(self.embed(torch.cat([v, m], -1)) + self.position)
-        return self.head(x.flatten(1)).view(-1, len(QUANTILES), MAX_HORIZON)
+        return self.head(x.flatten(1)).view(-1, self.head.out_features // MAX_HORIZON, MAX_HORIZON)
 
 
 def window(history: np.ndarray, context: int) -> tuple[np.ndarray, np.ndarray, float, float]:
@@ -64,8 +67,10 @@ def window(history: np.ndarray, context: int) -> tuple[np.ndarray, np.ndarray, f
     return np.where(seen, (ctx - mean) / std, 0.0), seen.astype(float), mean, std
 
 
-def pinball(pred: torch.Tensor, target: torch.Tensor, known: torch.Tensor) -> torch.Tensor:
-    levels = torch.tensor(QUANTILES, device=pred.device).view(1, -1, 1)
+def pinball(
+    pred: torch.Tensor, target: torch.Tensor, known: torch.Tensor, quantiles: tuple[float, ...] = QUANTILES
+) -> torch.Tensor:
+    levels = torch.tensor(quantiles, device=pred.device).view(1, -1, 1)
     diff = target.unsqueeze(1) - pred
     loss = torch.maximum(levels * diff, (levels - 1) * diff) * known.unsqueeze(1)
     return loss.sum() / known.sum().clamp(min=1)
@@ -76,16 +81,25 @@ def picker(series: list[tuple[np.ndarray, int]], patch: int) -> Pick:
     return lambda rng, n: [usable[i] for i in rng.integers(0, len(usable), n)]
 
 
+def _segment(h: np.ndarray, horizon: int, size: Size, rng: np.random.Generator) -> np.ndarray:
+    end = int(rng.integers(size.patch, len(h) - horizon + 1))
+    past = h[max(0, end - size.context) : end]
+    out = np.full(size.context + MAX_HORIZON, np.nan)
+    out[size.context - len(past) : size.context] = past
+    out[size.context : size.context + horizon] = h[end : end + horizon]
+    return out
+
+
 def batch(
-    chosen: list[tuple[np.ndarray, int]], size: Size, rng: np.random.Generator, device: str
+    chosen: list[tuple[np.ndarray, int]], size: Size, rng: np.random.Generator, device: str, recipe: Recipe = V1
 ) -> list[torch.Tensor]:
+    segments = augmented([_segment(h, horizon, size, rng) for h, horizon in chosen], size.context, recipe, rng)
     values, seen, targets, known = [], [], [], []
-    for h, horizon in chosen:
-        end = int(rng.integers(size.patch, len(h) - horizon + 1))
-        v, m, mean, std = window(h[:end], size.context)
-        future = np.full(MAX_HORIZON, np.nan)
-        future[:horizon] = np.clip((h[end : end + horizon] - mean) / std, -TARGET_CAP, TARGET_CAP)
-        values.append(v)
+    for segment in segments:
+        past = hidden(segment[: size.context], size.patch, recipe.mask_rate, rng)
+        v, m, mean, std = window(past, size.context)
+        future = recipe.scale(np.clip((segment[size.context :] - mean) / std, -TARGET_CAP, TARGET_CAP))
+        values.append(recipe.scale(v))
         seen.append(m)
         targets.append(np.nan_to_num(future))
         known.append(~np.isnan(future))
@@ -102,6 +116,7 @@ def train(
     seed: int,
     report: Callable[[int, float], None] | None = None,
     resume: Path | None = None,
+    recipe: Recipe = V1,
 ) -> None:
     rng = np.random.default_rng(seed)
     net.to(device).train()
@@ -111,8 +126,8 @@ def train(
     if done:
         print(f"  resuming from step {done}/{steps}")
     for step in range(done + 1, steps + 1):
-        values, seen, targets, known = batch(pick(rng, size), net.size, rng, device)
-        loss = pinball(net(values, seen), targets, known)
+        values, seen, targets, known = batch(pick(rng, size), net.size, rng, device, recipe)
+        loss = pinball(net(values, seen), targets, known, recipe.quantiles)
         opt.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm_(net.parameters(), 1.0)

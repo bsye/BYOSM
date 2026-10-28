@@ -179,9 +179,17 @@ def series_corpus(
 @series_app.command("pretrain")
 def series_pretrain(
     steps: int = typer.Option(PRETRAIN_STEPS, help="Training steps on the GPU"),
-    size: str = typer.Option("base", help="base (6M parameters) or large (21M)"),
+    size: str = typer.Option("base", help="base (1024-point context), large (wider, deeper) or long (2048 points)"),
+    recipe: str = typer.Option(
+        "v1",
+        help="v1 (9 quantiles, z-score) or v2 (21 quantiles, patch masking, augmentation, arcsinh scaling, synthetic series)",
+    ),
 ) -> None:
     """Pretrain the base forecaster on GIFT-Eval's pretraining corpus and the training portions of its datasets, never their test windows."""
+    from ..series.patch_net import SIZES
     from ..series.pretrain import pretrain
+    from ..series.recipe import RECIPES
 
-    pretrain(log, steps, size)
+    if recipe not in RECIPES or size not in SIZES:
+        raise typer.BadParameter(f"recipe is one of {', '.join(RECIPES)} and size one of {', '.join(SIZES)}")
+    pretrain(log, steps, size, RECIPES[recipe])
