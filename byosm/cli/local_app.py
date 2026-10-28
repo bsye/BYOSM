@@ -86,8 +86,14 @@ def _reloading(ws: Path, secret: str, hosts: list[str], parallel: int | None, se
     import byosm
 
     from ..app.factory import settings_env
+    from ..app.ui_build import watch
 
     os.environ.update(settings_env(ws, secret, hosts, parallel, serve["port"]))
     code = str(Path(byosm.__file__).parent)
     log(f"reloading on changes in {code}")
-    uvicorn.run("byosm.app.factory:from_env", factory=True, reload=True, reload_dirs=[code], **serve)
+    builder = watch(log)
+    try:
+        uvicorn.run("byosm.app.factory:from_env", factory=True, reload=True, reload_dirs=[code], **serve)
+    finally:
+        if builder:
+            builder.terminate()

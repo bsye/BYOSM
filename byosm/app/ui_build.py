@@ -32,3 +32,14 @@ def ensure_built(log: Callable[[str], None]) -> None:
         return
     log("the UI changed since the last build: rebuilding it")
     subprocess.run([npm, "run", "build"], cwd=UI_DIR, check=True, capture_output=True)
+
+
+def watch(log: Callable[[str], None]) -> subprocess.Popen | None:
+    npx = shutil.which("npx")
+    if not npx or not UI_DIR.exists():
+        log("the UI is not rebuilt on changes: npx or the ui folder is missing")
+        return None
+    log(f"rebuilding the UI on changes in {UI_DIR / 'src'}")
+    return subprocess.Popen(
+        [npx, "vite", "build", "--watch"], cwd=UI_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )

@@ -2453,8 +2453,9 @@ Every backend change needed the owner to stop and start `byosm app`. `byosm app 
 uvicorn's reloader, which restarts it when a file under `byosm/` changes. The command hands its settings (workspace,
 token, hosts, parallel jobs, port) to the worker through one environment variable, and `byosm/app/factory.py` builds
 the app from them. Running jobs are detached processes, so a reload leaves them running; the workspace lock records the
-app's process id, and the reloader stops the old worker before the new one claims the lock. Reloading is for local
-development: a deployed app runs without it.
+app's process id, and the reloader stops the old worker before the new one claims the lock. In the same mode `vite build --watch` keeps the UI the
+app serves in step with `ui/src` (`watch` in `byosm/app/ui_build.py`), so port 8765 shows UI changes after a page
+refresh. Reloading is for local development: a deployed app runs without it.
 
 ## A proposed technique goes to the labs that need it, and proposals are grouped by day
 
