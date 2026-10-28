@@ -1,5 +1,6 @@
 import { CircleCheck, CircleX, Loader2, Play, Swords } from "lucide-react"
 import { useEffect, useState } from "react"
+import { PageTry } from "./PageTry"
 import { ReadingView } from "./ReadingView"
 import { TaggingView } from "./TaggingView"
 import { api, post, type Detail } from "@/api"
@@ -197,10 +198,16 @@ function TryIt({ d }: { d: Detail }) {
   )
 }
 
+function TryFor({ d }: { d: Detail }) {
+  if (d.exported && d.modality === "audio") return <LiveVad name={d.name} />
+  if (d.exported && d.modality === "document" && d.task_type === "classify") return <PageTry name={d.name} />
+  return <TryIt d={d} />
+}
+
 export function Playground({ d }: { d: Detail }) {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
-      {d.modality === "audio" && d.exported ? <LiveVad name={d.name} /> : <TryIt d={d} />}
+      <TryFor d={d} />
       <HfRivals name={d.name} ours={(d.spec.labels as { name: string }[]).map((l) => l.name)} />
       {d.task_type === "classify" && <TestSets name={d.name} labels={d.labels} models={d.models} promoted={d.promoted} />}
     </div>

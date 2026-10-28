@@ -26,6 +26,7 @@ from .lock import claim, release
 from .measure_routes import measure_router
 from .models_routes import models_router
 from .opendata_routes import opendata_router
+from .page_routes import page_router
 from .publish_routes import publish_router
 from .resources_routes import resources_router
 from .systems_routes import systems_router
@@ -178,7 +179,13 @@ def create_app(
     _routes(app, ws, runner, hub, Depends(check))
     app.include_router(systems_router(ws, Depends(check)))
     app.include_router(config_router(ws, Depends(check)))
-    for r in (try_router(ws), workbench_router(ws), live_router(ws, runner), models_router(ws, runner)):
+    for r in (
+        try_router(ws),
+        page_router(ws),
+        workbench_router(ws),
+        live_router(ws, runner),
+        models_router(ws, runner),
+    ):
         app.include_router(r, dependencies=[Depends(check)])
     for r in (resources_router(ws), opendata_router(ws), forecast_router(ws), publish_router(ws), archive_router(ws)):
         app.include_router(r, dependencies=[Depends(check)])

@@ -2508,6 +2508,7 @@ reference line, and parts of the input that can be switched off to see the line 
 | Text classifier | probability of the answer after each word (word prefixes, at most `MAX_STEPS` points) | a word: the input is read again without it, and the line keeps following the first answer so the two curves compare | `byosm/app/explain.py`, `ReadingView.tsx` |
 | Tagger | confidence of the tag given to each word, with each found span shaded and named by its kind | a word: the input is tagged again without it, and the line breaks where the word was | `confidence` in `rt.py`, `TaggingView.tsx` |
 | Event risk | the chance, with each feature's signed effect: the change in chance when that feature takes its typical value | a feature: it is scored with the typical value, and the chance shows what it was | `effects` in `byosm/tabular/reasons.py`, `RiskDrivers.tsx` |
+| Document classifier | the first page as the model sees it, with a 6 x 6 heatmap: the drop in the answer when one square is covered in grey and the same text is read again | a file: upload a PDF or a scan, kept once by its content hash; the rows arrive one request each | `byosm/app/occlusion.py`, `PageTry.tsx` |
 | Forecaster | history, the forecast with its 80% interval and the now line (already on the Test tab) | not yet: univariate forecasters have no covariates to switch | `SeriesTry.tsx` |
 
 Word drivers come from occlusion: the drop in the answer's probability when one word is left out. It costs one
