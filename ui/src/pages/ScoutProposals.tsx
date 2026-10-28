@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
+import { href } from "@/route"
+import { MethodActions, type MethodStatus } from "./MethodActions"
 import { toast } from "sonner"
 
 type Proposal = {
@@ -22,7 +24,9 @@ type Proposal = {
   found: number
   published?: string
   sent?: string[]
+  methods: Method[]
 }
+type Method = { owner: string; id: string; name: string; status: MethodStatus; problems: string[]; result: unknown; failed: boolean }
 type Scan = { read: number; proposed: number; kept: number }
 type Scouted = { last_run: number | null; due: boolean; every_days: number; proposals: Proposal[]; last_scan?: Scan | null }
 
@@ -63,7 +67,16 @@ function TryIt({ p, refresh }: { p: Proposal; refresh: () => void }) {
         {busy ? <Loader2 className="animate-spin" /> : <FlaskConical />}
         Try it
       </Button>
-      {p.sent?.length ? <span className="text-muted-foreground text-xs">Sent to {p.sent.join(", ")}</span> : null}
+      {p.methods.map((m) => (
+        <div key={`${m.owner}-${m.id}`} className="flex items-center gap-2 text-xs">
+          <a className="hover:text-foreground text-muted-foreground underline-offset-4 hover:underline" href={href("specialists", m.owner, "lab")}>
+            {m.owner} · {m.name}
+          </a>
+          <Badge variant="outline">{m.status}</Badge>
+          <MethodActions owner={m.owner} id={m.id} status={m.status} problems={m.problems} ran={m.result != null || m.failed} onDecided={refresh} />
+        </div>
+      ))}
+      {p.sent?.length && !p.methods.length ? <span className="text-muted-foreground text-xs">Sent to {p.sent.join(", ")}, writing</span> : null}
     </div>
   )
 }

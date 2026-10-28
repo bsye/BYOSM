@@ -12,7 +12,7 @@ from typing import Any
 from ..events import TARGET, parse
 from ..resources import can_start_job, keeps_awake, max_jobs, stall_seconds
 from ..sandbox.launch import start, worker_cpu
-from .allowed import ALLOWED_COMMANDS
+from .allowed import ALLOWED_COMMANDS, PERSON_ONLY
 from .detached import LOG_SUFFIX, Tail, ending, exit_code, forget, job_file, keep_awake, kill_group, owned
 from .hub import Hub
 from .job import Job
@@ -47,6 +47,8 @@ class Runner:
     def submit(self, args: list[str], llm: dict[str, Any] | None = None) -> Job:
         if not args or args[0] not in ALLOWED_COMMANDS:
             raise ValueError(f"command must be one of {', '.join(ALLOWED_COMMANDS)}")
+        if tuple(args[: len(PERSON_ONLY[0])]) in PERSON_ONLY:
+            raise ValueError("approving lab code is a person's decision: use the Lab tab, not a job")
         job = Job(id=uuid.uuid4().hex[:10], args=[str(a) for a in args], llm=llm)
         with self.lock:
             self.jobs[job.id] = job

@@ -187,15 +187,15 @@ function SpecEditor({ d, onSaved }: { d: Detail; onSaved: () => void }) {
   )
 }
 
-export function Specialist({ name }: { name: string }) {
+export function Specialist({ name, tab }: { name: string; tab?: string }) {
   const team = useTeam(name)
   const forecaster = useForecaster(name)
   const [risks] = useForecasts()
   if (team === undefined || forecaster === undefined || risks == null) return <PageSkeleton />
   if (team) return <Team view={team} />
-  if (forecaster) return <Forecaster f={forecaster} />
+  if (forecaster) return <Forecaster f={forecaster} tab={tab} />
   if (risks.some((r) => r.name === name)) return <ForecastPage name={name} />
-  return <Model key={name} name={name} />
+  return <Model key={name} name={name} tab={tab} />
 }
 
 function ModelStats({ d }: { d: Detail }) {
@@ -216,7 +216,7 @@ function ModelStats({ d }: { d: Detail }) {
   )
 }
 
-function Model({ name }: { name: string }) {
+function Model({ name, tab }: { name: string; tab?: string }) {
   const repo = useExamples(name)?.repos[0]
   const [d, setD] = useState<Detail | null>(null)
   const [error, setError] = useState("")
@@ -289,7 +289,7 @@ function Model({ name }: { name: string }) {
         <NextSteps d={d} />
       </div>
       <ModelStats d={d} />
-      <Tabs defaultValue="board">
+      <Tabs defaultValue={tab ?? "board"}>
         <TabsList>
           <TabsTrigger value="board">Board</TabsTrigger>
           <TabsTrigger value="runs">Experiments</TabsTrigger>

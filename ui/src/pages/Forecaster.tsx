@@ -319,7 +319,7 @@ function Datasets({ f }: { f: ForecasterView }) {
   )
 }
 
-export function Forecaster({ f }: { f: ForecasterView }) {
+export function Forecaster({ f, tab }: { f: ForecasterView; tab?: string }) {
   const running = Object.values(useLive().jobs).some((j) => j.args[0] === "series" && j.args[2] === f.name && (j.status === "running" || j.status === "queued"))
   const train = () => void runJob(["series", "run", f.name, "--until-rival"]).then((j) => openJob(j.id))
   return (
@@ -348,7 +348,7 @@ export function Forecaster({ f }: { f: ForecasterView }) {
       </div>
       <Stats f={f} />
       {f.overall && Object.keys(f.overall).length ? (
-        <Tabs defaultValue="board">
+        <Tabs defaultValue={tab ?? "board"}>
           <TabsList>
             <TabsTrigger value="board">Board</TabsTrigger>
             <TabsTrigger value="try">Try it</TabsTrigger>

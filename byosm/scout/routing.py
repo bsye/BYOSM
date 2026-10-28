@@ -53,3 +53,22 @@ def mark_sent(ws: Path | None, pid: str, names: list[str]) -> dict[str, Any]:
     found["sent"] = sorted({*found.get("sent", []), *names})
     save_workspace_report(ws, SCOUT, st)
     return found
+
+
+def _method(name: str, d: dict[str, Any]) -> dict[str, Any]:
+    keep = {k: d.get(k) for k in ("id", "name", "status", "problems", "result")}
+    return {"owner": name, **keep, "failed": bool(d.get("error"))}
+
+
+def methods(ws: Path | None, proposal: dict[str, Any]) -> list[dict[str, Any]]:
+    from ..lab.drafts import drafts
+    from ..lab.owners import owner
+
+    out = []
+    for name in proposal.get("sent") or []:
+        try:
+            found = owner(name, ws)
+        except KeyError:
+            continue
+        out += [_method(name, d) for d in drafts(found) if d.get("paper") == proposal["paper"]]
+    return out

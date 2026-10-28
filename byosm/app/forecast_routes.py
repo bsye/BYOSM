@@ -72,7 +72,7 @@ def forecast_router(ws: Path) -> APIRouter:
 
         live = live_version(ws, domain, found)
         board = {**promoted_board(found), **summary(found)}
-        return {**found, **board, "health": health(found), "next": next_steps(found), "live": live}
+        return {**found, **board, "health": health(found), "next": next_steps(ws, found), "live": live}
 
     @router.get("/api/series/{domain}/example")
     def example(domain: str, config: str, index: int = 0) -> dict[str, Any]:

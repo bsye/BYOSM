@@ -1,5 +1,5 @@
 import { ArrowRight, Loader2, Play } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { api, runJob, type Summary } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { useShowMore } from "@/components/show-more"
@@ -10,9 +10,22 @@ import { useLive } from "@/events"
 import { openJob } from "@/job-sheet"
 import { href } from "@/route"
 import type { Healths } from "./HealthList"
-import type { NextStep } from "./NextSteps"
+import { MethodActions } from "./MethodActions"
+import { runnable, type NextStep } from "./NextSteps"
 
-export const best = (found: NextStep[]) => [...found].sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0))[0] ?? null
+type Pending = NextStep & { owner: string; approve: string }
+
+export const best = (found: NextStep[]) => found.filter(runnable).sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0))[0] ?? null
+
+function usePending(): [Pending[], () => void] {
+  const finished = Object.values(useLive().jobs).filter((j) => j.args[0] === "lab" && j.status === "done").length
+  const [found, setFound] = useState<Pending[]>([])
+  const load = useCallback(() => void api<Pending[]>("/lab/pending").then(setFound, () => setFound([])), [])
+  useEffect(() => {
+    load()
+  }, [load, finished])
+  return [found, load]
+}
 
 function useSteps(items: Summary[]): Record<string, NextStep | null> {
   const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
@@ -59,13 +72,18 @@ export function NextActions({ items, healths }: { items: Summary[]; healths: Hea
   const { shown, footer } = useShowMore(items)
   const steps = useSteps(shown)
   const rows = shown.filter((s) => steps[s.name] !== null)
+  const [pending, reload] = usePending()
+  const titles = Object.fromEntries(items.map((s) => [s.name, s.title || s.name]))
   if (!items.length) return null
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Next actions
-          <InfoTip>The step with the most health to gain for each model. Health shows the score now and at most after the step.</InfoTip>
+          <InfoTip>
+            Lab methods waiting for your approval first, then the step with the most health to gain for each model. Health shows the score now and at most after
+            the step.
+          </InfoTip>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -75,10 +93,28 @@ export function NextActions({ items, healths }: { items: Summary[]; healths: Hea
               <TableHead className="w-[38%]">Model</TableHead>
               <TableHead className="w-20 text-right">Health</TableHead>
               <TableHead>Next action</TableHead>
-              <TableHead className="w-20" />
+              <TableHead className="w-28" />
             </TableRow>
           </TableHeader>
           <TableBody>
+            {pending.map((a) => (
+              <TableRow key={`${a.owner}-${a.id}`}>
+                <TableCell className="truncate font-medium">
+                  <a className="hover:underline" href={href("specialists", a.owner, "lab")}>
+                    {titles[a.owner] ?? a.owner}
+                  </a>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Change now={healths[a.owner]?.score} step={a} />
+                </TableCell>
+                <TableCell>
+                  <Step step={a} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <MethodActions owner={a.owner} id={a.approve} status="pending" compact onDecided={reload} />
+                </TableCell>
+              </TableRow>
+            ))}
             {rows.map((s) => {
               const step = steps[s.name]
               return (

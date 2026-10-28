@@ -48,3 +48,5 @@ ALLOWED_COMMANDS = (
     "datasets",
     "system",
 )
+
+PERSON_ONLY = (("lab", "approve"),)

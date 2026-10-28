@@ -1,7 +1,7 @@
 import { toast } from "sonner"
 import { api, runJob } from "@/api"
 import { openJob } from "@/job-sheet"
-import type { NextStep } from "./NextSteps"
+import { runnable, type NextStep } from "./NextSteps"
 import { best } from "./NextActions"
 
 type Llm = Record<string, unknown> | null
@@ -49,7 +49,7 @@ export const unblock = (names: string[], check: string, llm: Llm, progress?: Pro
   startAll(
     names.map((n) =>
       steps(n).then((found) => {
-        const step = found.find((s) => s.unblocks?.includes(check))
+        const step = found.filter(runnable).find((s) => s.unblocks?.includes(check))
         return step ? runJob(step.args, llm) : null
       }),
     ),

@@ -108,6 +108,9 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   return openStage(metrics) ?? (lines.findLast((l) => l.trim() && !l.startsWith(EVENT_PREFIX))?.trim() || "Starting")
 }
 
+export const jobRunning = (jobs: Record<string, Job>, args: string[]) =>
+  Object.values(jobs).some((j) => args.every((a, i) => j.args[i] === a) && (j.status === "running" || j.status === "queued"))
+
 export const retryArgs = (j: Pick<Job, "args" | "target">): string[] => (j.args[0] === "auto" && j.target ? ["auto", j.target] : j.args)
 
 export function unretried(jobs: Job[], status: Job["status"]): Job[] {

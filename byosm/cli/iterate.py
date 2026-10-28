@@ -88,7 +88,8 @@ def next_(
 
     steps = suggestions(name)
     for s in steps:
-        log(f"- {s['title']}: {s['why']}  (byosm {' '.join(s['args'])})")
+        command = s["args"] or ["lab", "approve", name, s["approve"]]
+        log(f"- {s['title']}: {s['why']}  (byosm {' '.join(command)})")
     if not steps:
         log(f"{name}: nothing to do")
     if run_all and steps:

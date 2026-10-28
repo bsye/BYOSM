@@ -88,7 +88,7 @@ def test_a_failing_rival_check_points_at_the_next_technique_then_at_the_lab(ws, 
     assert rival(behind)["techniques"] == ["Multi-rate forecasting"] and rival(behind)["args"][:2] == ["series", "run"]
     monkeypatch.setattr("byosm.series.prediction.next_technique", lambda report: None)
     assert rival(behind)["techniques"] == ["Lab method"] and rival(behind)["args"] == ["lab", "write", "demo"]
-    steps = next_steps(behind)
+    steps = next_steps(ws, behind)
     assert steps[0]["args"] == ["lab", "write", "demo"] and steps[-1]["id"] == "pretraining-v2"
     ahead = save_forecaster(ws, "ahead", ours=0.7, rival=0.8)
     assert rival(ahead)["args"] is None and "techniques" not in rival(ahead)

@@ -1,6 +1,6 @@
-import { Check, ChevronDown, FlaskConical, Loader2, Play, Sparkles, X } from "lucide-react"
+import { ChevronDown, FlaskConical, Loader2, Sparkles } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
-import { api, post, runJob } from "@/api"
+import { api, runJob } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 import { useLive } from "@/events"
+import { jobRunning } from "@/jobs"
+import { MethodActions, type MethodStatus } from "./MethodActions"
 
 type Method = {
   id: string
@@ -16,10 +18,11 @@ type Method = {
   hypothesis: string
   code: string
   author: string
-  status: "pending" | "approved" | "rejected"
+  status: MethodStatus
   problems: string[]
   experiment: string | null
   error: string | null
+  refused?: string | null
   result?: { experiment: string; won: boolean | null; calib: number | null } | null
   parent?: string | null
   paper?: string | null
@@ -34,14 +37,7 @@ const PROMOTION: Record<LabKind, { rule: string; badge: string; score: string }>
 }
 const ERROR_TAIL = 400
 
-function busy(jobs: ReturnType<typeof useLive>["jobs"], args: string[]) {
-  return Object.values(jobs).some((j) => args.every((a, i) => j.args[i] === a) && (j.status === "running" || j.status === "queued"))
-}
-
 function MethodCard({ name, kind, m, refresh }: { name: string; kind: LabKind; m: Method; refresh: () => void }) {
-  const jobs = useLive().jobs
-  const running = busy(jobs, ["lab", "run", name, m.id])
-  const decide = (status: "approved" | "rejected") => post(`/specialists/${name}/lab/${m.id}`, { status }).then(refresh)
   const result = m.result
   return (
     <Card>
@@ -60,25 +56,8 @@ function MethodCard({ name, kind, m, refresh }: { name: string; kind: LabKind; m
             </a>
           )}
         </CardDescription>
-        <CardAction className="flex gap-2">
-          {m.status === "pending" && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => decide("rejected")}>
-                <X />
-                Reject
-              </Button>
-              <Button size="sm" disabled={m.problems.length > 0} onClick={() => decide("approved")}>
-                <Check />
-                Approve
-              </Button>
-            </>
-          )}
-          {m.status === "approved" && (
-            <Button size="sm" variant="outline" disabled={running} onClick={() => runJob(["lab", "run", name, m.id])}>
-              {running ? <Loader2 className="animate-spin" /> : <Play />}
-              Run
-            </Button>
-          )}
+        <CardAction>
+          <MethodActions owner={name} id={m.id} status={m.status} problems={m.problems} onDecided={refresh} />
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -88,6 +67,7 @@ function MethodCard({ name, kind, m, refresh }: { name: string; kind: LabKind; m
             {result.experiment}: {PROMOTION[kind].score} {result.calib == null ? "-" : result.calib.toFixed(4)}, {result.won ? "promoted" : "not promoted"}
           </p>
         )}
+        {m.refused && <p className="text-muted-foreground">Refused: {m.refused}</p>}
         {m.error && <p className="text-destructive font-mono text-xs whitespace-pre-wrap">{m.error.slice(-ERROR_TAIL)}</p>}
         <Collapsible>
           <CollapsibleTrigger asChild>
@@ -109,7 +89,7 @@ export function Lab({ name, kind }: { name: string; kind: LabKind }) {
   const [methods, setMethods] = useState<Method[] | null>(null)
   const [ask, setAsk] = useState("")
   const jobs = useLive().jobs
-  const writing = busy(jobs, ["lab", "write", name])
+  const writing = jobRunning(jobs, ["lab", "write", name])
   const finished = Object.values(jobs).filter((j) => j.args[0] === "lab" && j.args[2] === name && j.status !== "running" && j.status !== "queued").length
   const refresh = useCallback(() => api<Method[]>(`/specialists/${name}/lab`).then(setMethods, () => setMethods([])), [name])
   useEffect(() => {

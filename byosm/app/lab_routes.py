@@ -28,6 +28,12 @@ def lab_router(ws: Path) -> APIRouter:
 
         return sorted(registry(ws).values(), key=lambda e: (-len(e["won_on"]), e["name"]))
 
+    @router.get("/api/lab/pending")
+    def pending() -> list[dict]:
+        from ..lab.steps import pending_approvals
+
+        return pending_approvals(ws)
+
     @router.get("/api/specialists/{name}/lab")
     def methods(name: str) -> list[dict]:
         from ..lab.drafts import drafts

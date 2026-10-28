@@ -11,7 +11,7 @@ BUDGET_H = 6.0
 def _next(name: str, tried: set[tuple], model: str | None = None, blockers: list[str] = ()) -> dict[str, Any] | None:
     from ..next_steps import suggestions
 
-    fresh = [s for s in suggestions(name) if (model, s["id"], *s["args"]) not in tried]
+    fresh = [s for s in suggestions(name) if s["args"] and (model, s["id"], *s["args"]) not in tried]
     clears = {s["id"]: bool(set(s.get("unblocks") or []) & set(blockers)) for s in fresh}
     return max(fresh, key=lambda s: (clears[s["id"]], bool(s.get("unblocks")), s.get("gain") or 0), default=None)
 

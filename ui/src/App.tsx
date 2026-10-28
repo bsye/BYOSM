@@ -29,9 +29,9 @@ import { LimitBanner } from "@/components/limit-banner"
 import { MemoryBanner } from "@/components/memory-banner"
 
 function Page({ route }: { route: string[] }) {
-  const [section = "home", id] = route
+  const [section = "home", id, tab] = route
   if (section === "home") return <Home />
-  if (section === "specialists") return id ? <Specialist name={id} /> : <Specialists />
+  if (section === "specialists") return id ? <Specialist name={id} tab={tab} /> : <Specialists />
   if (section === "jobs") return <Jobs id={id} />
   if (section === "trainers") return <Trainers />
   if (section === "costs") return <CostsPage />

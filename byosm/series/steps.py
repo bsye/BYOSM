@@ -37,14 +37,16 @@ def of_domain(ws: Path, name: str) -> list[dict[str, Any]] | None:
     from .board import report_of
 
     found = report_of(ws, name)
-    return next_steps(found) if found and found["at"] else None
+    return next_steps(ws, found) if found and found["at"] else None
 
 
 def _why(check: dict[str, Any]) -> str:
     return f"{check['title']} is not ok: {check['value']}. {check['why']}"
 
 
-def next_steps(report: dict[str, Any]) -> list[dict[str, Any]]:
+def next_steps(ws: Path, report: dict[str, Any]) -> list[dict[str, Any]]:
+    from ..lab.owners import Forecaster
+    from ..lab.steps import lab_steps
     from .health import health
 
     checks = (health(report) or {}).get("checks", [])
@@ -53,4 +55,4 @@ def next_steps(report: dict[str, Any]) -> list[dict[str, Any]]:
         for c in checks
         if c["status"] != OK and c.get("args")
     ]
-    return [*fixes, *filter(None, [pretraining_step(report)])]
+    return [*fixes, *filter(None, [pretraining_step(report)]), *lab_steps(Forecaster(ws, report["domain"]))]

@@ -3,7 +3,7 @@ import { runJob, type Summary } from "@/api"
 import type { Health } from "./HealthList"
 import { Button } from "@/components/ui/button"
 import { openJob } from "@/job-sheet"
-import type { NextStep } from "./NextSteps"
+import { runnable, type NextStep } from "./NextSteps"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { rivalName, score, signed } from "@/format"
@@ -116,7 +116,7 @@ export function SpecialistCard({
               </>
             )}
           </span>
-          {steps && steps.length > 0 && <Step steps={steps} />}
+          {steps && steps.some(runnable) && <Step steps={steps.filter(runnable)} />}
         </CardFooter>
       </Card>
     </div>

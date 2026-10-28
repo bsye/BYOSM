@@ -31,6 +31,6 @@ def diagnose(ws: Path, domain: str) -> dict[str, Any]:
         "rival": best_rival(report),
         "board": {c: {m: _scores(s) for m, s in row.items()} for c, row in configs.items()},
         "health": [{k: c.get(k) for k in HEALTH_FIELDS} for c in (health(report) or {}).get("checks", [])],
-        "next_steps": [{k: s.get(k) for k in STEP_FIELDS} for s in next_steps(report)],
+        "next_steps": [{k: s.get(k) for k in STEP_FIELDS} for s in next_steps(ws, report)],
         "versions": [{k: v.get(k) for k in VERSION_FIELDS} for v in report.get("versions", [])],
     }

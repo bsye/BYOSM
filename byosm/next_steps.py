@@ -13,6 +13,7 @@ from .health_score import CREDIT, FAIL, OK, UNKNOWN
 from .held_out import bigger_held_out
 from .improve.keys import proposal_key
 from .improve.proposals import PROPOSALS
+from .lab.steps import lab_steps
 from .next_fixes import faster, less_overfit
 from .project import Project
 from .spec import TaskSpec
@@ -148,9 +149,13 @@ def _with_gain(step: dict[str, Any], cs: list[dict]) -> dict[str, Any]:
     return {**step, "gain": gain, "unblocks": [c["title"] for c in hit if c["status"] in (FAIL, UNKNOWN)]}
 
 
+def _key(step: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(step["args"]) or (step["id"],)
+
+
 def unique(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
     seen: set[tuple[str, ...]] = set()
-    return [s for s in steps if not (tuple(s["args"]) in seen or seen.add(tuple(s["args"])))]
+    return [s for s in steps if not (_key(s) in seen or seen.add(_key(s)))]
 
 
 def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
@@ -174,7 +179,8 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         faster(p, spec, cs),
         _experiments(p, spec, cs),
     ]
-    return [_with_gain(s, cs) for s in unique([s for s in steps if s] + _from_checks(p, spec))]
+    found = [s for s in steps if s] + _from_checks(p, spec) + lab_steps(p)
+    return [_with_gain(s, cs) for s in unique(found)]
 
 
 def suggestions_or_none(name: str, ws: Path) -> list[dict[str, Any]]:

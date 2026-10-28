@@ -7,8 +7,20 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { LlmPicker, useLlmChoice } from "@/components/llm-picker"
 import { openJob } from "@/job-sheet"
+import { MethodActions } from "./MethodActions"
 
-export type NextStep = { id: string; title: string; why: string; args: string[]; experiments?: string[]; gain?: number | null; unblocks?: string[] }
+export type NextStep = {
+  id: string
+  title: string
+  why: string
+  args: string[]
+  experiments?: string[]
+  gain?: number | null
+  unblocks?: string[]
+  approve?: string
+}
+
+export const runnable = (s: NextStep) => s.args.length > 0
 
 const VALUE_CHARS = 60
 const EXPERIMENTS = "experiments"
@@ -66,10 +78,14 @@ function StepRow({ i, s, name, proposals, start }: { i: number; s: NextStep; nam
               </Button>
             </CollapsibleTrigger>
           )}
-          <Button size="sm" variant="outline" onClick={() => start(s.args)}>
-            <Play />
-            {s.id === EXPERIMENTS ? "Run all" : "Run"}
-          </Button>
+          {s.approve ? (
+            <MethodActions owner={name} id={s.approve} status="pending" />
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => start(s.args)}>
+              <Play />
+              {s.id === EXPERIMENTS ? "Run all" : "Run"}
+            </Button>
+          )}
         </div>
         <CollapsibleContent>
           <ul className="mt-2 ml-7 divide-y border-t">
@@ -105,10 +121,10 @@ export function StepsCard({ name, steps, proposals, ask, batch }: Steps) {
             <Sparkles />
             Ask the LLM
           </Button>
-          {batch && steps.length > 1 && (
+          {batch && steps.filter(runnable).length > 1 && (
             <Button size="sm" onClick={() => start(["next", name, "--all"])}>
               <Play />
-              Do all {steps.length}
+              Do all {steps.filter(runnable).length}
             </Button>
           )}
         </CardAction>

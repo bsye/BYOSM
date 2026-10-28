@@ -24,7 +24,7 @@ def scout_router(ws: Path, runner: Any, schedule: bool = True) -> APIRouter:
     def scouted() -> dict:
         from ..config import load_config
         from ..scout.proposals import due, every_days, state
-        from ..scout.routing import lab_fits
+        from ..scout.routing import lab_fits, methods
 
         cfg = load_config(ws)
         st = state(ws)
@@ -32,7 +32,7 @@ def scout_router(ws: Path, runner: Any, schedule: bool = True) -> APIRouter:
             "last_run": st["last_run"],
             "due": due(ws, cfg, time.time()),
             "every_days": every_days(cfg),
-            "proposals": [{**p, "lab": lab_fits(p)} for p in st["proposals"]],
+            "proposals": [{**p, "lab": lab_fits(p), "methods": methods(ws, p)} for p in st["proposals"]],
             "last_scan": st.get("last_scan"),
         }
 
