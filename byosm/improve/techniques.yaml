@@ -53,6 +53,7 @@
   cost: 2.0
   prior: 0.5
   evidence: [https://arxiv.org/abs/2507.11412]
+  transferable: true
   status: available
 
 - id: schedule
@@ -62,6 +63,7 @@
   cost: 1.0
   prior: 0.4
   evidence: [https://arxiv.org/abs/2006.05987, https://arxiv.org/abs/2106.09204]
+  transferable: true
   status: available
 
 - id: pretraining
@@ -71,6 +73,7 @@
   cost: 1.5
   prior: 0.3
   evidence: [https://arxiv.org/abs/2010.02194]
+  transferable: true
   status: available
 
 - id: head
@@ -80,6 +83,7 @@
   cost: 0.8
   prior: 0.4
   evidence: [https://arxiv.org/abs/2202.10054]
+  transferable: true
   status: available
 
 - id: regularisation
@@ -89,6 +93,7 @@
   cost: 1.0
   prior: 0.15
   evidence: [https://arxiv.org/abs/2006.05987]
+  transferable: true
   status: available
 
 - id: precision
@@ -98,6 +103,7 @@
   cost: 0.8
   prior: 0.1
   evidence: []
+  transferable: true
   status: available
 
 - id: document-views

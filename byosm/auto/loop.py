@@ -6,28 +6,12 @@ from typing import Any
 
 from ..evals.selection import sure_lead
 from ..format import fmt
-from ..improve.proposals import proposal_key
+from ..improve.keys import proposal_key
 from .standing import standing
 from .state import Session
 
-PRIORS = {
-    "real-data": 3.0,
-    "domain-encoder": 3.0,
-    "utterance-labels": 2.5,
-    "new-split": 2.0,
-    "more-data": 2.0,
-    "regularize": 1.5,
-    "hard-pairs": 1.5,
-    "llm-": 1.5,
-    "train-longer": 1.0,
-    "refine-more": 1.0,
-}
 MIN_GAIN_WITHOUT_BOOTSTRAP = 0.002
 PLATEAU_ROUNDS = 2
-
-
-def _prior(pid: str) -> float:
-    return next((v for k, v in PRIORS.items() if pid.startswith(k)), 1.0)
 
 
 def _won_reason(st: dict) -> str:
@@ -54,8 +38,7 @@ def _pick(fresh: list[dict], deadline: float) -> tuple[dict | None, str]:
     if not fits:
         cheapest = min(pr["cost"]["minutes"] for pr in fresh)
         return None, f"time budget: {left_min:.0f} min left, cheapest untried proposal needs ~{cheapest:.0f} min"
-    pick = max(fits, key=lambda pr: (_prior(pr["id"]), -pr["cost"]["minutes"], -fits.index(pr)))
-    return pick, ""
+    return fits[0], ""
 
 
 def _is_real_gain(kept: bool, cmp: dict | None, mine: float | None, before: float | None) -> bool:

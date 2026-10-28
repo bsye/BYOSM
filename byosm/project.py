@@ -186,7 +186,7 @@ class Project:
     def reports(self, prefix: str) -> dict[str, Any]:
         with session(self.ws) as s:
             found = select(Report.kind, Report.data).filter_by(specialist_id=self._id(s))
-            return dict(s.execute(found.where(Report.kind.startswith(prefix))).tuples().all())
+            return dict(s.execute(found.where(Report.kind.startswith(prefix))).all())
 
     def save_report(self, kind: str, data: Any) -> None:
         with session(self.ws) as s:

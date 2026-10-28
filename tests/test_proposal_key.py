@@ -1,4 +1,4 @@
-from byosm.improve.proposals import proposal_key
+from byosm.improve.keys import proposal_key
 
 
 def _key(*ops):

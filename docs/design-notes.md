@@ -1653,3 +1653,25 @@ families that fit the specialist with how often each was tried, and is asked to 
 Planned families (multi-rate forecasting, routing, input layouts, near-miss negatives, an embedding-model head,
 SetFit, label-noise cleaning, weight averaging, learning curves, forecaster pretraining v2, re-initialised layers, a
 small search, R-Drop and mixup, quantile boosting, self-training) become available as each one lands in the pipeline.
+
+## A bandit shares the trials out over technique families
+
+The autopilot picked proposals from a fixed table of priors keyed by rule name, so the same rules won every round.
+Proposing is now a search over the families of `byosm/improve/techniques.yaml`:
+
+| Piece | Where | What it does |
+|---|---|---|
+| Verdicts | `byosm/promotion.py` `_record` | every promotion vote stores `verdict:<exp>`: won, P(better), seeds, family, GPU hours |
+| Bandit | `byosm/improve/bandit.py` | Thompson sampling over families: Beta(1 + prior x 2 + wins, 1 + (1 - prior) x 2 + losses), wins and tries of other specialists of the same kind counted at half weight, the draw divided by the family's cost |
+| Round one | `family_order` | families never tried on this specialist (prior at least 0.3) come first |
+| Dropped branch | `_dropped` | a family with three tries and no win on this specialist is skipped while others remain |
+| Rules as priors | `RULE_BOOST` | a family a diagnosis rule proposed is drawn with 1.5 times its score, instead of the rule deciding |
+| Portfolio | `byosm/improve/portfolio.py` | up to three transferable edits (backbone, schedule, head, pretraining, regularisation, precision) that won on other specialists of the same kind are proposed first |
+| Candidates | `byosm/improve/analyst.py` | the LLM writes 5 to 10 proposals, each with a diagnosis, a hypothesis and its probability of a sure lead, at least two of them unlikely ones |
+| Novelty | `_novel` in `proposals.py` | an LLM idea whose text is a near copy (5-word shingles, 0.9) of an earlier experiment's is dropped, as is any proposal that leaves the spec unchanged |
+| Order | `rank` | one proposal per family in bandit order, the most probable first, before a second from any family |
+
+The Runs tab shows the search: families tried, sure leads, GPU time per sure lead, repeated edits, and tries against
+sure leads per family. Experiments from before verdicts were recorded count as a win only if they are the promoted
+model. Numeric values inside a family are still the proposer's choice; a TPE sampler is left for the short-run rungs
+of step 5, since it needs Optuna or a hand-written sampler.

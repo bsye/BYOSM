@@ -9,6 +9,7 @@ import { params, score, seconds } from "@/format"
 import { Ablations } from "./Ablations"
 import { Lineage } from "./Lineage"
 import { Progress } from "./Progress"
+import { Search } from "./Search"
 
 const COLORS = 5
 const DEFAULT_SHOWN = 4
@@ -100,6 +101,7 @@ export function Runs({ d }: { d: Detail }) {
           </Table>
         </CardContent>
       </Card>
+      <Search s={d.search} />
       <Ablations items={d.ablations} />
     </div>
   )

@@ -141,6 +141,16 @@ export type Detail = Summary & {
   data: Record<string, SplitSummary> | null
   proposals: { from: string; proposals: Proposal[] } | null
   overfit: OverfitReport | null
+  search?: Search
+}
+
+export type Search = {
+  experiments: number
+  families: { family: string; tries: number; wins: number; gpu_hours: number }[]
+  sure_leads: number
+  gpu_hours: number
+  gpu_hours_per_sure_lead: number | null
+  repeats: number
 }
 
 export type Severity = "ok" | "warn" | "fail"

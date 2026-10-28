@@ -10,7 +10,8 @@ from .finetuned_rivals import benchmarks
 from .health import checks
 from .health_score import CREDIT, FAIL, OK, UNKNOWN
 from .held_out import bigger_held_out
-from .improve.proposals import PROPOSALS, proposal_key
+from .improve.keys import proposal_key
+from .improve.proposals import PROPOSALS
 from .next_fixes import faster, less_overfit
 from .project import Project
 from .spec import TaskSpec

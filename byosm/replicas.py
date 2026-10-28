@@ -23,7 +23,7 @@ def replica(exp: str, k: int) -> str:
     return f"{exp}{SEED_SEP}{k}"
 
 
-def _family(p: Project, exp: str) -> list[str]:
+def recipe_runs(p: Project, exp: str) -> list[str]:
     recipe = recipe_of(exp) or exp
     return [e for e in p.experiments() if e == recipe or recipe_of(e) == recipe]
 
@@ -33,7 +33,9 @@ def clean_runs(p: Project, exp: str, suite: str) -> list[str]:
     own = board.get(exp, {}).get(suite)
     if not own:
         return []
-    same = [e for e in _family(p, exp) if board.get(e, {}).get(suite, {}).get("fingerprint") == own.get("fingerprint")]
+    same = [
+        e for e in recipe_runs(p, exp) if board.get(e, {}).get(suite, {}).get("fingerprint") == own.get("fingerprint")
+    ]
     return [e for e in same if clean_selection(p, spec, e)]
 
 

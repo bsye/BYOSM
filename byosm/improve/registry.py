@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 PLATEAU_SPREAD = 0.01
+RULE = "rule"
 RULES: list[Callable[[dict], list[dict]]] = []
 
 
@@ -35,4 +36,4 @@ def unique(props: list[dict]) -> list[dict]:
 
 
 def rule_proposals(dg: dict) -> list[dict]:
-    return unique([pr for r in RULES for pr in r(dg)])
+    return unique([{**pr, "source": RULE} for r in RULES for pr in r(dg)])

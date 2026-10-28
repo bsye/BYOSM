@@ -8,12 +8,14 @@ from .paths import allowed, untrainable
 from .techniques import eligible, tried_counts
 
 LLM_SYSTEM = """You are the research lead improving a tiny single-purpose model. Given its spec, the board (our experiment \
-vs baselines on several frozen eval suites), the training curve and the most confused label pairs, propose at most 4 \
+vs baselines on several frozen eval suites), the training curve and the most confused label pairs, propose 5 to 10 \
 concrete next experiments. Each proposal is a list of edits to the spec at the paths of one technique family from the \
-catalogue (dotted; list items by index). Spread the proposals over different families: favour the families that fit \
-the diagnosis and have been tried least, and try a family again only with a reason its earlier tries did not cover. \
-Never propose training on an eval suite's calib/test data. Be specific: exact Hugging Face ids you are confident exist, \
-exact values."""
+catalogue (dotted; list items by index). For each, state the diagnosis it answers, the hypothesis it tests, and your \
+probability (0 to 1) that it beats the promoted model with a sure lead on calib. Spread the proposals over different \
+families: favour the families that fit the diagnosis and have been tried least, try a family again only with a reason \
+its earlier tries did not cover, and include at least two less likely ideas (probability below 0.2) that differ from \
+the obvious ones. Never propose training on an eval suite's calib/test data. Be specific: exact Hugging Face ids you \
+are confident exist, exact values."""
 
 _OP = {
     "op": {"type": "string", "enum": ["set", "append"]},
@@ -22,13 +24,17 @@ _OP = {
 }
 _PROPOSAL = {
     "id": {"type": "string"},
-    "why": {"type": "string"},
+    "diagnosis": {"type": "string"},
+    "hypothesis": {"type": "string"},
+    "probability": {"type": "number"},
     "ops": {"type": "array", "items": {"type": "object", "properties": _OP}},
 }
 _SCHEMA = {
     "type": "object",
     "properties": {"proposals": {"type": "array", "items": {"type": "object", "properties": _PROPOSAL}}},
 }
+LLM_PREFIX = "llm-"
+LLM = "llm"
 _BOARD_METRICS = ("accuracy", "macro_f1", "precision", "recall", "threshold", "roc_auc")
 
 
@@ -77,7 +83,9 @@ def _parse(out: dict) -> list[dict]:
         except (json.JSONDecodeError, KeyError):
             continue
         if ops:
-            props.append({"id": "llm-" + pr["id"], "why": pr["why"], "ops": ops})
+            why = " ".join(x for x in (pr.get("diagnosis"), pr.get("hypothesis")) if x)
+            chance = min(1.0, max(0.0, float(pr.get("probability") or 0)))
+            props.append({"id": LLM_PREFIX + pr["id"], "why": why, "ops": ops, "probability": chance, "source": LLM})
     return props
 
 

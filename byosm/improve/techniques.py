@@ -25,6 +25,7 @@ class Technique(BaseModel):
     prior: float = 0.5
     evidence: list[str] = Field(default_factory=list)
     status: Literal["available", "planned"] = "planned"
+    transferable: bool = False
 
     def fits(self, spec: TaskSpec) -> bool:
         return self.status == AVAILABLE and (not self.modalities or spec.modality in self.modalities)
@@ -52,6 +53,11 @@ def family_of_path(path: str) -> str:
 def family(ops: list[dict]) -> str:
     found = Counter(family_of_path(o["path"]) for o in ops)
     return found.most_common(1)[0][0] if found else OTHER
+
+
+def transferable(path: str) -> bool:
+    fid = family_of_path(path)
+    return any(t.id == fid and t.transferable for t in techniques())
 
 
 def tried_counts(history: list[dict]) -> Counter:

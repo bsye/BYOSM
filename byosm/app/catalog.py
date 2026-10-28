@@ -14,6 +14,7 @@ from ..dataset_search import saved_suggestions
 from ..evals.overfit import OVERFIT
 from ..health import health
 from ..hub.facts import suite_dataset
+from ..improve.bandit import search_summary
 from ..improve.proposals import PROPOSALS
 from ..metrics import metric_label, unreached
 from ..model_refs import model_refs
@@ -115,7 +116,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
     p = project(ws, name)
     spec = p.spec()
     board = {pid: {suite: _result(spec.objective, r) for suite, r in by.items()} for pid, by in p.board().items()}
-    dd = p.data_dir_for(spec)
+    data = Dataset(p.data_dir_for(spec))
     return {
         **summary(ws, name),
         "spec": spec.model_dump(mode="json"),
@@ -125,7 +126,8 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "baselines": spec.baselines,
         "runs": [_run(p, e) for e in p.experiments()],
         "proposals": p.report(PROPOSALS),
-        "data": Dataset(dd).summary() if Dataset(dd).built() else None,
+        "search": search_summary(p),
+        "data": data.summary() if data.built() else None,
         "overfit": p.report(OVERFIT),
         "next": suggestions(name, ws),
         "data_check": data_check(p, spec),
@@ -172,8 +174,7 @@ def delete(ws: Path, name: str) -> None:
 def rows(ws: Path, name: str, split: str, offset: int, limit: int) -> dict[str, Any]:
     if split not in STORED_SPLITS:
         raise KeyError(f"split must be one of {', '.join(STORED_SPLITS)}")
-    p = project(ws, name)
-    data = Dataset(p.data_dir_for(p.spec())).load(split)
+    data = Dataset((p := project(ws, name)).data_dir_for(p.spec())).load(split)
     return {"total": len(data), "rows": data[offset : offset + min(limit, MAX_PAGE)]}
 
 

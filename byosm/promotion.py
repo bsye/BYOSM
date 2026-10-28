@@ -6,7 +6,7 @@ from typing import Any
 
 from . import evals
 from .project import Project
-from .replicas import beyond_seed_noise, clean_runs, replicate, runs, seed_sd
+from .replicas import beyond_seed_noise, clean_runs, recipe_runs, replicate, runs, seed_sd
 from .spec import TaskSpec
 
 Log = Callable[[str], None]
@@ -40,6 +40,22 @@ def _leads(p: Project, exp: str, prim: str) -> bool:
     return bool(a and b and exp != p.promoted and _seed_mean([a]) > _seed_mean([b]))
 
 
+def _record(p: Project, exp: str, won: bool, cmp: dict | None, runs_: tuple[list, list]) -> None:
+    from .improve.bandit import VERDICT
+    from .improve.techniques import family
+
+    ops = [o for a in (p.proposal(exp) or {}).get("applied", []) for o in a.get("ops", [])]
+    hours = sum(p.meta(e).get("gpu_hours") or 0 for e in recipe_runs(p, exp))
+    verdict = {
+        "won": won,
+        "p_better": cmp["p_better"] if cmp else None,
+        "seeds": [len(runs_[0]), len(runs_[1])],
+        "family": family(ops) if ops else None,
+        "gpu_hours": round(hours, 4),
+    }
+    p.save_report(VERDICT + exp, verdict)
+
+
 def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:
     base = p.spec()
     prim = base.primary_suite()
@@ -61,6 +77,8 @@ def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:
     sig = f", P(better)={cmp['p_better']:.2f}" if cmp else ""
     sig += f", seed sd {noise:.4f}" if noise is not None else ""
     test = f"; test {a['objective']:.4f}" if a else ""
+    won = (mine > cur and sure) or bool(a and b and fixes_speed(base, a, b, mine, cur))
+    _record(p, exp, won, cmp, (mine_runs, cur_runs))
     if mine > cur and sure:
         p.promote(exp)
         log(f"  promoted {exp}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{seeds}{sig}){test}")
