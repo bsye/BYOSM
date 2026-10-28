@@ -31,7 +31,7 @@ class Reader:
     def json(self, system, prompt, schema):
         self.prompts.append(prompt)
         good = {
-            "paper": "https://arxiv.org/abs/2610.00001v1",
+            "paper": "http://arxiv.org/abs/2610.00001",
             "title": "Contrastive head",
             "effect": "e",
             "kinds": ["text"],
@@ -63,3 +63,10 @@ def test_the_schedule_queues_one_scan_when_the_last_is_older_than_the_setting(ws
         snapshot=lambda: [SimpleNamespace(args=["scout"], status="running")], submit=submitted.append
     )
     assert not tick(ws, busy, cfg, last + 8 * DAY_S)
+
+
+def test_a_citation_matches_its_paper_without_scheme_or_version():
+    from byosm.scout.proposals import paper_key
+
+    assert paper_key("https://arxiv.org/abs/2610.00001v2") == paper_key("http://www.arxiv.org/abs/2610.00001/")
+    assert paper_key("https://huggingface.co/papers/2610.00001") != paper_key("https://arxiv.org/abs/2610.00001")

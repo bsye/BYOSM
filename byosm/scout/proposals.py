@@ -16,6 +16,7 @@ PROPOSED, ACCEPTED, REJECTED = "proposed", "accepted", "rejected"
 EVERY_DAYS = 7
 DAY_S = 86_400
 MAX_SEEN = 5000
+ARXIV_ABS = "arxiv.org/abs/"
 KINDS = ["text", "audio", "image", "document", "series"]
 SYSTEM = """You read recent machine-learning papers for a system that builds small specialist models (encoders of 4M to
 400M parameters, small forecasters, gradient boosting) that must beat large reference models on public benchmarks.
@@ -59,12 +60,20 @@ def _prompt(papers: list[Paper]) -> str:
     return f"Catalogue:\n{json.dumps(catalogue)}\n\nPapers:\n{json.dumps(listing)}"
 
 
+def paper_key(url: str) -> str:
+    bare = url.strip().lower().removeprefix("https://").removeprefix("http://").removeprefix("www.").rstrip("/")
+    head, sep, version = bare.rpartition("v")
+    return head if ARXIV_ABS in bare and sep and version.isdigit() and head[-1:].isdigit() else bare
+
+
 def _kept(raw: list[dict], papers: list[Paper]) -> list[dict[str, Any]]:
-    urls = {p.url for p in papers}
+    urls = {paper_key(p.url): p.url for p in papers}
     out = []
     for r in raw:
-        if r.get("paper") not in urls or r.get("overlaps") or not r.get("title"):
+        cited = urls.get(paper_key(str(r.get("paper") or "")))
+        if not cited or r.get("overlaps") or not r.get("title"):
             continue
+        r = {**r, "paper": cited}
         pid = hashlib.sha1(f"{r['paper']}{r['title']}".encode()).hexdigest()[:10]
         out.append(
             {**{k: r.get(k) for k in ITEM if k != "overlaps"}, "id": pid, "status": PROPOSED, "found": time.time()}
@@ -83,7 +92,7 @@ def scan(ws: Path | None, log: Callable[[str], None] = print, llm: Any = None, g
     new = _kept(raw, papers)
     st = {"last_run": time.time(), "seen": [*st["seen"], *(p.url for p in papers)][-MAX_SEEN:]}
     save_workspace_report(ws, SCOUT, {**st, "proposals": state(ws)["proposals"] + new})
-    log(f"[scout] {len(papers)} new papers read, {len(new)} techniques proposed")
+    log(f"[scout] {len(papers)} new papers read; the LLM proposed {len(raw)}, {len(new)} kept as new techniques")
     return new
 
 
