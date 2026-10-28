@@ -16,7 +16,7 @@ def test_running_containers_are_read_from_docker_with_their_port_and_usage(monke
     stats = {"Name": "byosm-q", "CPUPerc": "1.2%", "MemUsage": "500MiB / 1GiB"}
     outputs = {"ps": json.dumps(ps), "stats": json.dumps(stats)}
     monkeypatch.setattr(deploy.shutil, "which", lambda _: "/bin/docker")
-    monkeypatch.setattr(deploy, "_run", lambda *a, **k: SimpleNamespace(stdout=outputs[a[0]], returncode=0))
+    monkeypatch.setattr(deploy, "docker", lambda *a, **k: SimpleNamespace(stdout=outputs[a[0]], returncode=0))
     [d] = deploy.deployments()
     assert (d["name"], d["port"], d["cpu"], d["memory"]) == ("q", 57228, "1.2%", "500MiB / 1GiB")
     assert "cpu" not in deploy.deployments(with_stats=False)[0]
@@ -24,7 +24,7 @@ def test_running_containers_are_read_from_docker_with_their_port_and_usage(monke
 
 def test_a_container_runs_read_only_with_limits_on_a_local_port(monkeypatch):
     calls = []
-    monkeypatch.setattr(deploy, "_run", lambda *a, **k: calls.append(a) or SimpleNamespace(returncode=0, stderr=""))
+    monkeypatch.setattr(deploy, "docker", lambda *a, **k: calls.append(a) or SimpleNamespace(returncode=0, stderr=""))
     monkeypatch.setattr(
         deploy.urllib.request,
         "urlopen",

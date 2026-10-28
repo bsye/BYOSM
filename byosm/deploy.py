@@ -12,7 +12,8 @@ from typing import Any
 
 LABEL = "byosm.specialist"
 MODEL_PORT = 8800
-DOCKERFILE = Path(__file__).resolve().parents[1] / "docker" / "model.Dockerfile"
+DOCKER_DIR = Path(__file__).resolve().parents[1] / "docker"
+DOCKERFILE = DOCKER_DIR / "model.Dockerfile"
 CPUS = "1"
 MEMORY = "1g"
 TMPFS = "/tmp:size=256m"
@@ -22,15 +23,15 @@ TIMEOUT_S = 30
 READY_S = 60
 
 
-def _docker() -> str:
+def docker_cli() -> str:
     found = shutil.which("docker")
     if not found:
         raise RuntimeError("needs the docker CLI on PATH (Docker Desktop, OrbStack or Colima)")
     return found
 
 
-def _run(*args: str, timeout: int = TIMEOUT_S) -> subprocess.CompletedProcess:
-    return subprocess.run([_docker(), *args], capture_output=True, text=True, timeout=timeout)
+def docker(*args: str, timeout: int = TIMEOUT_S) -> subprocess.CompletedProcess:
+    return subprocess.run([docker_cli(), *args], capture_output=True, text=True, timeout=timeout)
 
 
 def image_of(name: str) -> str:
@@ -66,27 +67,33 @@ def _requirements(bundle: Path) -> None:
     own.write_text("\n".join(sorted(lines)) + "\n")
 
 
+def build_image(
+    dockerfile: Path, context: Path, image: str, log: Callable[[str], None], args: dict[str, str] | None = None
+) -> str:
+    if not dockerfile.exists():
+        raise RuntimeError(f"needs {dockerfile} (a source checkout of byosm)")
+    log(f"  building {image} from {context}")
+    flags = [f"--build-arg={k}={v}" for k, v in (args or {}).items()]
+    built = subprocess.run([docker_cli(), "build", "-f", str(dockerfile), "-t", image, *flags, str(context)])
+    if built.returncode:
+        raise RuntimeError(f"docker build failed with exit {built.returncode}")
+    return image
+
+
 def build(name: str, bundle: Path, log: Callable[[str], None] = print, tag: str | None = None) -> str:
-    if not DOCKERFILE.exists():
-        raise RuntimeError(f"needs {DOCKERFILE} (a source checkout of byosm)")
     from .export.bundle import RT_SOURCE
     from .system.bundle import RT_NAME
 
     _requirements(bundle)
     shutil.copy(RT_SOURCE, bundle / RT_NAME)
-    image = tag or image_of(name)
-    log(f"  building {image} from {bundle}")
-    built = subprocess.run([_docker(), "build", "-f", str(DOCKERFILE), "-t", image, str(bundle)])
-    if built.returncode:
-        raise RuntimeError(f"docker build failed with exit {built.returncode}")
-    return image
+    return build_image(DOCKERFILE, bundle, tag or image_of(name), log)
 
 
 def deploy(name: str, log: Callable[[str], None] = print) -> dict[str, Any]:
     stop(name)
     port = _free_port()
     flags = ["--rm", "--read-only", "--tmpfs", TMPFS, "--cpus", CPUS, "--memory", MEMORY, "--label", f"{LABEL}={name}"]
-    started = _run(
+    started = docker(
         "run", "-d", "--name", image_of(name), "-p", f"127.0.0.1:{port}:{MODEL_PORT}", *flags, image_of(name)
     )
     if started.returncode:
@@ -105,11 +112,11 @@ def deploy(name: str, log: Callable[[str], None] = print) -> dict[str, Any]:
 
 
 def stop(name: str) -> None:
-    _run("rm", "-f", image_of(name))
+    docker("rm", "-f", image_of(name))
 
 
 def _stats() -> dict[str, dict[str, str]]:
-    out = _run("stats", "--no-stream", "--format", "{{json .}}")
+    out = docker("stats", "--no-stream", "--format", "{{json .}}")
     rows = [json.loads(line) for line in out.stdout.splitlines() if line.strip()]
     return {r["Name"]: {"cpu": r.get("CPUPerc", ""), "memory": r.get("MemUsage", "")} for r in rows}
 
@@ -123,7 +130,7 @@ def _host_port(ports: str) -> int | None:
 def deployments(with_stats: bool = True) -> list[dict[str, Any]]:
     if not shutil.which("docker"):
         return []
-    out = _run("ps", "--filter", f"label={LABEL}", "--format", "{{json .}}")
+    out = docker("ps", "--filter", f"label={LABEL}", "--format", "{{json .}}")
     rows = [json.loads(line) for line in out.stdout.splitlines() if line.strip()]
     stats = _stats() if rows and with_stats else {}
     return [
