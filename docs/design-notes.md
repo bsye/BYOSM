@@ -2085,3 +2085,12 @@ the promoted model label the specialist's unlabelled in-domain pool (the same po
 as ordinary training rows with source `pseudo` (`pseudo_labels` in `byosm/train/teacher.py`). The gains reported are
 largest when a model starts with few labels. With this, every family in the catalogue is available or built in: the
 small hyperparameter search is the TPE proposals together with short-run screening. Not measured on a specialist yet.
+
+## A floor baseline that answers the positive label for everything
+
+`always-positive` (`byosm/predictors/constant.py`) gives every input the positive label with certainty and has no
+parameters. Its score follows from the labels alone: on a pair suite it chooses every offered tool, on a turn suite it
+ends the turn at the first moment allowed, which is a plain silence timeout. That makes it the shared trivial baseline
+of the protocol check that every public suite passes before it is added: our conversion and scoring must give it the
+value the labels imply, or the benchmark's own published number for the same baseline. It is not added to a spec's
+baselines, so it never becomes a specialist's "best outside baseline".

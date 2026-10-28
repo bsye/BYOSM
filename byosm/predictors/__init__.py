@@ -3,6 +3,7 @@ from __future__ import annotations
 from ..spec import TaskSpec
 from .audio import EnergyVAD, SileroVAD
 from .base import BASELINES, Predictor, register_baseline
+from .constant import ALWAYS_POSITIVE, AlwaysPositive
 from .experiment import ExperimentPredictor
 from .hf import HFClassifier, HFTagger
 from .jev import Jev
@@ -11,7 +12,9 @@ from .turn import LiveKitTurn
 from .zero_shot import ZeroShotLLM
 
 __all__ = [
+    "ALWAYS_POSITIVE",
     "BASELINES",
+    "AlwaysPositive",
     "EnergyVAD",
     "ExperimentPredictor",
     "HFClassifier",
