@@ -79,6 +79,7 @@ def _kept(raw: list[dict], papers: list[Paper], log: Callable[[str], None]) -> l
     from ..improve.techniques import techniques
 
     urls, known = {paper_key(p.url): p.url for p in papers}, {t.id for t in techniques()}
+    dates = {p.url: p.published for p in papers}
     out = []
     for r in raw:
         cited = urls.get(paper_key(str(r.get("paper") or "")))
@@ -86,7 +87,7 @@ def _kept(raw: list[dict], papers: list[Paper], log: Callable[[str], None]) -> l
             log(f"  dropped {r.get('title') or 'a proposal'}: {why}")
             continue
         pid = hashlib.sha1(f"{cited}{r['title']}".encode()).hexdigest()[:10]
-        fields = {k: r.get(k) for k in ITEM if k != "overlaps"} | {"paper": cited}
+        fields = {k: r.get(k) for k in ITEM if k != "overlaps"} | {"paper": cited, "published": dates.get(cited, "")}
         out.append({**fields, "id": pid, "status": PROPOSED, "found": time.time()})
     return out
 
@@ -120,5 +121,39 @@ def decide(ws: Path | None, pid: str, status: str) -> dict[str, Any]:
     if found is None:
         raise KeyError(f"no proposed technique {pid}")
     found["status"] = status
+    save_workspace_report(ws, SCOUT, st)
+    return found
+
+
+LAB_KINDS = ("text",)
+MAX_TRIES = 2
+
+
+def lab_fits(proposal: dict[str, Any]) -> bool:
+    return bool(set(proposal.get("kinds") or []) & set(LAB_KINDS))
+
+
+def chosen(ws: Path | None, proposal: dict[str, Any]) -> list[str]:
+    from ..archive import archived
+    from ..health import health
+    from ..project import Project, list_projects
+
+    found = []
+    for name in sorted(set(list_projects(ws)) - archived(ws)):
+        p = Project(name, ws)
+        spec = p.spec()
+        if p.promoted and spec.task_type == "classify" and spec.modality in (proposal.get("kinds") or []):
+            found.append(((health(p, spec) or {}).get("score", 0), name))
+    return [name for _, name in sorted(found)[:MAX_TRIES]]
+
+
+def ask(proposal: dict[str, Any]) -> str:
+    return f'Implement "{proposal["title"]}" from {proposal["paper"]}: {proposal.get("how") or proposal["effect"]}'
+
+
+def mark_sent(ws: Path | None, pid: str, names: list[str]) -> dict[str, Any]:
+    st = state(ws)
+    found = next(p for p in st["proposals"] if p["id"] == pid)
+    found["sent"] = sorted({*found.get("sent", []), *names})
     save_workspace_report(ws, SCOUT, st)
     return found

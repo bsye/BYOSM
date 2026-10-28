@@ -2455,3 +2455,12 @@ token, hosts, parallel jobs, port) to the worker through one environment variabl
 the app from them. Running jobs are detached processes, so a reload leaves them running; the workspace lock records the
 app's process id, and the reloader stops the old worker before the new one claims the lock. Reloading is for local
 development: a deployed app runs without it.
+
+## A proposed technique goes to the labs that need it, and proposals are grouped by day
+
+Sending an accepted technique to the lab asked the owner to pick a specialist, against the rule that the app fills
+every setting, and it offered text classifiers even for a forecasting technique the lab cannot write yet. "Try it"
+(`POST /api/scout/<id>/try`, `chosen` in `byosm/scout/proposals.py`) now sends it to the labs of the two promoted
+classifiers of a kind it fits with the lowest health score, records where it went (`sent`), and refuses a kind the lab
+does not write code for, which the card says instead of offering the button. Proposals are grouped under the day the
+scout found them, newest first, and each shows the date of its paper (`published`, read from arXiv and Hugging Face).

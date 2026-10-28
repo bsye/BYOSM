@@ -6,7 +6,7 @@ from byosm.scout.proposals import ACCEPTED, DAY_S, decide, due, scan, state
 from byosm.scout.schedule import tick
 
 ATOM = """<feed xmlns="http://www.w3.org/2005/Atom">
-<entry><id>http://arxiv.org/abs/2610.00001v1</id><title>Contrastive  heads for tiny encoders</title>
+<entry><id>http://arxiv.org/abs/2610.00001v1</id><published>2026-10-21T17:00:00Z</published><title>Contrastive  heads for tiny encoders</title>
 <summary>We show a 4 point gain on Banking77 at 8 rows per label.</summary></entry>
 <entry><id>http://arxiv.org/abs/2610.00002v1</id><title>Another paper</title><summary>Text.</summary></entry>
 </feed>"""
@@ -20,7 +20,7 @@ def fake_get(url):
 def test_papers_are_read_from_arxiv_and_the_hugging_face_daily_list():
     found = arxiv("text", "q", fake_get)
     assert [p.url for p in found] == ["https://arxiv.org/abs/2610.00001v1", "https://arxiv.org/abs/2610.00002v1"]
-    assert found[0].title == "Contrastive heads for tiny encoders"
+    assert found[0].title == "Contrastive heads for tiny encoders" and found[0].published == "2026-10-21"
     assert daily(fake_get)[0].url == "https://arxiv.org/abs/2610.00003"
 
 
@@ -51,6 +51,7 @@ def test_a_scan_keeps_only_new_techniques_that_cite_a_paper_it_read_and_reads_ea
     llm = Reader()
     new = scan(ws, lambda _: None, llm, fake_get)
     assert [p["title"] for p in new] == ["Contrastive head", "Another idea"] and new[0]["status"] == "proposed"
+    assert new[0]["published"] == "2026-10-21"
     assert state(ws)["last_scan"] == {"read": 3, "proposed": 8, "kept": 2}
     assert '"id": "setfit"' in llm.prompts[0]
     said = []
@@ -80,3 +81,26 @@ def test_a_citation_matches_its_paper_without_scheme_or_version():
 
     assert paper_key("https://arxiv.org/abs/2610.00001v2") == paper_key("http://www.arxiv.org/abs/2610.00001/")
     assert paper_key("https://huggingface.co/papers/2610.00001") != paper_key("https://arxiv.org/abs/2610.00001")
+
+
+def test_trying_a_technique_sends_it_to_the_labs_of_the_specialists_that_need_it_most(ws):
+    from conftest import promoted_specialist, save_board
+    from fastapi.testclient import TestClient
+
+    from byosm.app import create_app
+    from byosm.db.workspace import save_workspace_report
+
+    for name, score in (("a", 0.95), ("b", 0.5), ("c", 0.9)):
+        p = promoted_specialist(name=name)
+        save_board(p, {"v1": {"builtin": {"kind": "experiment", "objective": score, "n_test": 500, "n_calib": 200}}})
+    text = {"id": "t1", "title": "Head", "paper": "https://arxiv.org/abs/1", "effect": "e", "kinds": ["text"]}
+    series = {"id": "s1", "title": "DHF", "paper": "https://arxiv.org/abs/2", "effect": "e", "kinds": ["series"]}
+    save_workspace_report(ws, "scout", {"last_run": 1, "seen": [], "proposals": [text, series]})
+    submitted = []
+    app = create_app(ws, "")
+    app.state.runner.submit = lambda args: submitted.append(args)
+    with TestClient(app, base_url="http://127.0.0.1") as c:
+        sent = c.post("/api/scout/t1/try").json()["sent"]
+        assert c.post("/api/scout/s1/try").status_code == 422
+    assert len(sent) == 2 and "b" in sent and [a[:3] for a in submitted] == [["lab", "write", n] for n in sorted(sent)]
+    assert all('Implement "Head"' in a[4] for a in submitted)

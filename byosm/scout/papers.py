@@ -14,6 +14,9 @@ PER_QUERY = 15
 HF_LIMIT = 50
 TIMEOUT_S = 30
 SUMMARY_CHARS = 700
+DAY_CHARS = 10
+DAILY = "daily"
+ARXIV_ABS_URL = "https://arxiv.org/abs/"
 AREAS = {
     "text": 'abs:"text classification" AND (abs:"small" OR abs:"few-shot" OR abs:"encoder") AND cat:cs.CL',
     "tools": '(abs:"function calling" OR abs:"tool selection" OR abs:"tool use") AND cat:cs.CL',
@@ -28,6 +31,7 @@ class Paper:
     title: str
     summary: str
     area: str
+    published: str = ""
 
 
 def _get(url: str) -> bytes:
@@ -45,9 +49,8 @@ def arxiv(area: str, query: str, get: Callable[[str], bytes] = _get) -> list[Pap
     out = []
     for e in root.iter(f"{ATOM}entry"):
         url = (e.findtext(f"{ATOM}id") or "").strip().replace("http://", "https://")
-        out.append(
-            Paper(url, _clean(e.findtext(f"{ATOM}title") or ""), _clean(e.findtext(f"{ATOM}summary") or ""), area)
-        )
+        title, summary = _clean(e.findtext(f"{ATOM}title") or ""), _clean(e.findtext(f"{ATOM}summary") or "")
+        out.append(Paper(url, title, summary, area, (e.findtext(f"{ATOM}published") or "")[:DAY_CHARS]))
     return out
 
 
@@ -55,10 +58,14 @@ def daily(get: Callable[[str], bytes] = _get) -> list[Paper]:
     rows = json.loads(get(f"{HF_DAILY}?limit={HF_LIMIT}"))
     papers = [r.get("paper") or {} for r in rows]
     return [
-        Paper(f"https://arxiv.org/abs/{p['id']}", _clean(p.get("title", "")), _clean(p.get("summary", "")), "daily")
+        Paper(ARXIV_ABS_URL + p["id"], _clean(p.get("title", "")), _clean(p.get("summary", "")), DAILY, _day(p))
         for p in papers
         if p.get("id")
     ]
+
+
+def _day(paper: dict) -> str:
+    return str(paper.get("publishedAt") or "")[:DAY_CHARS]
 
 
 def fetch(log: Callable[[str], None], get: Callable[[str], bytes] = _get) -> list[Paper]:
