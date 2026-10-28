@@ -1,5 +1,7 @@
 import { CircleCheck, CircleX, Loader2, Play, Swords } from "lucide-react"
 import { useEffect, useState } from "react"
+import { ReadingView } from "./ReadingView"
+import { TaggingView } from "./TaggingView"
 import { api, post, type Detail } from "@/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -100,6 +102,7 @@ function TryIt({ d }: { d: Detail }) {
   const ex = useExamples(d.name)
   const [text, setText] = useState("")
   const [out, setOut] = useState<Prediction | null>(null)
+  const [ran, setRan] = useState("")
   const [ms, setMs] = useState<number | null>(null)
   const [rivals, setRivals] = useState<Record<string, Rival | null> | null>(null)
   const [error, setError] = useState("")
@@ -111,6 +114,7 @@ function TryIt({ d }: { d: Detail }) {
     post<Prediction>(`/specialists/${d.name}/predict`, { input })
       .then((p) => {
         setOut(p)
+        setRan(input)
         setMs(performance.now() - t0)
         setError("")
       })
@@ -152,7 +156,7 @@ function TryIt({ d }: { d: Detail }) {
         <div className="grid gap-4 @3xl/main:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-3xl font-semibold">{out.label ?? "-"}</CardTitle>
+              <CardTitle className="text-3xl font-semibold">{out.label ?? `${out.entities?.length ?? 0} spans`}</CardTitle>
               <CardAction className="text-muted-foreground text-sm tabular-nums">{ms == null ? "" : `${Math.round(ms)} ms`}</CardAction>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -187,6 +191,8 @@ function TryIt({ d }: { d: Detail }) {
           </Card>
         </div>
       )}
+      {out && d.task_type === "classify" && ran && <ReadingView name={d.name} text={ran} />}
+      {out && d.task_type === "frame" && ran && <TaggingView name={d.name} text={ran} />}
     </div>
   )
 }

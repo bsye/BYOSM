@@ -57,8 +57,6 @@ def allowed_origin(origin: str, hosts: list[str]) -> bool:
 
 
 def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None:
-    models: dict[str, Any] = {}
-
     @app.get("/api/specialists", dependencies=[auth])
     def specialists() -> list[dict]:
         return catalog.specialists(ws)
@@ -88,7 +86,6 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
         if confirm != name:
             raise HTTPException(422, "pass confirm=<name> to delete a specialist and everything it built")
         missing(catalog.delete, ws, name)
-        models.pop(name, None)
         return {"deleted": name}
 
     @app.get("/api/specialists/{name}/rows", dependencies=[auth])
@@ -97,13 +94,12 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
 
     @app.post("/api/specialists/{name}/predict", dependencies=[auth])
     def predict(name: str, body: PredictRequest) -> dict:
-        from ..rt import load
+        from .bundles import bundle
 
-        bundle = ws / "specialists" / name / "export"
-        if not (bundle / "manifest.json").exists():
-            raise HTTPException(404, f"{name} is not exported: run the export job first")
-        models[name] = models.get(name) or load(bundle)
-        return models[name].predict(body.input)
+        try:
+            return bundle(ws, name).predict(body.input)
+        except FileNotFoundError as e:
+            raise HTTPException(404, str(e)) from e
 
     @app.get("/api/jobs", dependencies=[auth])
     def jobs() -> list[dict]:

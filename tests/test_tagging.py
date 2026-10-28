@@ -88,3 +88,4 @@ def test_tagging_pipeline_end_to_end(ws, load_runtime):
     assert p.board()["v1"]["builtin"]["objective"] > 0.9
     out = load_runtime(export("ner", log=lambda _: None)).predict("carol smith flew to new york today")
     assert [(e["label"], e["text"]) for e in out["entities"]] == [("PER", "carol smith"), ("LOC", "new york")]
+    assert len(out["confidence"]) == len(out["words"]) and all(0 < c <= 1 for c in out["confidence"])

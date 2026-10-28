@@ -15,6 +15,11 @@ EXAMPLES_PER_LABEL = 3
 COMPARE_WORKERS = 4
 
 
+class ExplainRequest(BaseModel):
+    input: str
+    follow: str | None = None
+
+
 class CompareRequest(BaseModel):
     input: str
     rival: str | None = None
@@ -107,6 +112,22 @@ def try_router(ws: Path) -> APIRouter:
     @router.get("/api/specialists/{name}/rivals/suggest-map")
     def suggest_map(name: str, repo: str) -> dict:
         return missing(_suggest_map, ws, name, repo)
+
+    @router.post("/api/specialists/{name}/explain")
+    def explained(name: str, body: ExplainRequest) -> dict:
+        from .bundles import bundle
+        from .explain import explain
+
+        try:
+            model = bundle(ws, name)
+        except FileNotFoundError as e:
+            raise HTTPException(404, str(e)) from e
+        if model.m["task_type"] != "classify" or model.m["modality"] != "text":
+            raise HTTPException(422, "the reading view works for text classifiers")
+        try:
+            return explain(model, body.input, body.follow)
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
 
     @router.post("/api/specialists/{name}/compare")
     def compare(name: str, body: CompareRequest) -> dict:

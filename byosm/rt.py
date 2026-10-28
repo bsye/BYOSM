@@ -346,7 +346,8 @@ class Specialist:
         first = first_subtokens(self._encode_text(x).word_ids)
         tags = [self.labels[i] for i in p[first].argmax(-1)]
         found = [{"label": k, "text": " ".join(words[a:b]), "start": a, "end": b} for k, a, b in spans(tags)]
-        return {"entities": found, "tags": tags, "words": words[: len(tags)]}
+        sure = p[first].max(-1).round(4).tolist()
+        return {"entities": found, "tags": tags, "words": words[: len(tags)], "confidence": sure}
 
     def stream(self) -> StreamSession:
         if self.stream_sess is None:
