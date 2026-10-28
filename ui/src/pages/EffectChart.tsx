@@ -74,7 +74,8 @@ function Forest({ rows }: { rows: Row[] }) {
   )
 }
 
-export function EffectChart({ families }: { families: Family[] }) {
+export function EffectChart({ families: all }: { families: Family[] }) {
+  const families = all.filter((f) => f.calib_effect)
   const rows = families
     .map(rowOf)
     .filter((r): r is Row => r != null)
