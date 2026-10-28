@@ -11,8 +11,10 @@ import yaml
 from byosm.app import jobs
 from byosm.app.hub import Hub
 from byosm.app.jobs import Runner
+from byosm.config import job_settings
 from byosm.resources import GB
-from byosm.sandbox import limits, process
+from byosm.sandbox import choose, launch, limits, process
+from byosm.sandbox.launch import FALLBACK, FALLBACK_LINE
 
 QUICK = "print('ok', flush=True)"
 TIMEOUT_SECONDS = 20
@@ -48,12 +50,17 @@ class FakeProc:
 def test_jobs_run_as_processes_with_limits_taken_from_the_machine(ws, monkeypatch):
     monkeypatch.setattr(limits.os, "cpu_count", lambda: 8)
     monkeypatch.setattr(limits.psutil, "virtual_memory", lambda: SimpleNamespace(total=64 * GB))
+    assert job_settings(ws)["isolation"] == "process"
     assert limits.job_limits(ws) == {"cpus": 7.0, "memory_gb": 48.0, "gpus": "all", "nice": 10, "cpu_hours": None}
 
 
-def test_byosm_yaml_sets_every_limit(ws):
-    set_jobs(ws, cpus=2, memory_gb=8, gpus="0,1", nice=5, cpu_hours=12)
+def test_byosm_yaml_sets_the_isolation_and_every_limit(ws):
+    set_jobs(ws, isolation="container", cpus=2, memory_gb=8, gpus="0,1", nice=5, cpu_hours=12)
+    assert job_settings(ws)["isolation"] == "container"
     assert limits.job_limits(ws) == {"cpus": 2.0, "memory_gb": 8.0, "gpus": "0,1", "nice": 5, "cpu_hours": 12}
+    set_jobs(ws, isolation="vm")
+    with pytest.raises(ValueError, match="jobs.isolation"):
+        job_settings(ws)
 
 
 @pytest.mark.parametrize(("device", "capped"), [("cpu", True), ("cuda", False)])
@@ -95,3 +102,15 @@ def test_a_job_shows_its_isolation_and_keeps_it_after_a_restart(ws, monkeypatch)
         10,
     )
     assert Runner(ws, Hub(), parallel=1).jobs[job.id].public()["isolation"] == job.isolation
+
+
+def test_container_mode_on_a_mac_gpu_runs_the_job_as_a_process_and_says_why(ws, monkeypatch):
+    monkeypatch.setattr(jobs, "ENTRY", QUICK)
+    monkeypatch.setattr(launch, "device", lambda: "mps")
+    monkeypatch.setattr(choose, "daemon", lambda: pytest.fail("docker must not be asked on a Mac GPU"))
+    set_jobs(ws, isolation="container")
+    runner = Runner(ws, Hub(), parallel=1)
+    job = runner.submit(["report"])
+    wait_for(lambda: job.status == "done")
+    assert runner.detail(job.id)["lines"] == [FALLBACK_LINE.format(choose.APPLE_GPU), "ok"]
+    assert job.isolation["mode"] == "process" and job.isolation[FALLBACK] == choose.APPLE_GPU

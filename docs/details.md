@@ -77,6 +77,29 @@ llm:
 
 `provider: openai` means any OpenAI-compatible server (Ollama, vLLM, LM Studio, OpenAI, OpenRouter).
 
+## Job isolation
+
+Every job the app runs is isolated, as a limited process or in its own container:
+
+```yaml
+jobs:
+  isolation: process   # or container (Linux with Docker; NVIDIA runtime for CUDA)
+  cpus: null           # container --cpus; default all cores but one
+  memory_gb: null      # default 75% of RAM
+  gpus: all            # container --gpus: all, a count, device ids "0,1", or none
+  nice: 10             # process priority
+  cpu_hours: null      # process CPU-time cap on Linux; off by default
+  network: []          # hosts a container may reach besides the Hugging Face Hub and the LLM endpoints
+```
+
+| mode | CPU | memory | GPU | network |
+|---|---|---|---|---|
+| `process` | `nice` | address-space cap on Linux, except CUDA jobs | shared through GPU slots | the machine's |
+| `container` | `--cpus` | `--memory` | `--gpus`, shared through GPU slots | allow-list proxy only |
+
+A container job that cannot run in a container (Apple GPU, Docker in a VM, no Docker or NVIDIA runtime, a database
+server, a command-line LLM) runs as a process and says why in its log. The Jobs API shows each job's `isolation`.
+
 ## Extending
 
 A modality is a class in `byosm/modalities/` with `@register`. A rival is a `Predictor` with
@@ -102,6 +125,7 @@ byosm/
   bench/        specialists vs generalist
   report/       result tables in docs/results.md
   db/           SQLAlchemy schema: SQLite by default, Postgres via DATABASE_URL
+  sandbox/      job isolation: process limits, training containers, egress proxy
 specialists/<name>/   local weights and exports only; everything else is in the database
 docs/design-notes.md  why things are the way they are
 ```

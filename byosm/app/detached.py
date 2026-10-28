@@ -15,6 +15,7 @@ from ..config import STATE_DIR
 JOBS_DIR = STATE_DIR / "jobs"
 LOG_SUFFIX = ".log"
 EXIT_SUFFIX = ".exit"
+INNER_SUFFIX = ".inner"
 KILL_GRACE_S = 10
 INTERRUPTED = "interrupted"
 PID_CLOCK_SLACK_S = 1.0
@@ -145,7 +146,7 @@ def exit_code(ws: Path, job_id: str) -> int | None:
 
 
 def forget(ws: Path, job_id: str) -> None:
-    for suffix in (LOG_SUFFIX, EXIT_SUFFIX):
+    for suffix in (LOG_SUFFIX, EXIT_SUFFIX, INNER_SUFFIX):
         job_file(ws, job_id, suffix).unlink(missing_ok=True)
 
 

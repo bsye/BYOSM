@@ -2381,3 +2381,43 @@ since long trainings must finish). macOS enforces neither rlimit, so a Mac job g
 memory share it already had (`byosm/train/gpu.py`). The applied limits are the job's `isolation` field in the Jobs
 API, kept in the `job_isolation` table. Not measured: the nice level should cost nothing on an idle machine, but no
 training was timed before and after it.
+
+**Container mode** (`isolation: container`). The runner still sees one detached process: `start` spawns
+`byosm/sandbox/supervise.py` under the usual exit-code wrapper, with a plan holding the image, the network rules and
+the `docker run` arguments. So the log, restarts and cancel work as for any job. The supervisor builds the image if it
+is missing (its output goes into the job log), starts the job's network and proxy, runs `docker run` attached with
+the job's output into the log, and always stops and removes the containers and the network at the end. Cancel sends
+SIGTERM to the supervisor, which stops the container with a 5 s grace (`STOP_GRACE_S`).
+
+| piece | what it is |
+|---|---|
+| image | `docker/train.Dockerfile` built by the same `build_image` as served models, from the frozen code snapshot plus `pyproject.toml`; tag `byosm-train:<snapshot>-<hash of flavour, pyproject, Dockerfile>`, so one build per code version, and the dependency layer sits below the code layer. CPU torch, or PyPI's CUDA wheels for CUDA jobs |
+| container | `--init`, read-only root, `/tmp` tmpfs (exec allowed: Triton and Inductor load compiled kernels from it), no capabilities, `no-new-privileges`, `--cpus`, `--memory`, `--shm-size 2g` for DataLoader workers, `--pids-limit 16384`, the host user's uid, `--gpus` only for CUDA jobs, `--log-driver none` since the job log is the record |
+| files | the workspace, the BYOSM cache and the Hugging Face cache, mounted at their host paths, so paths in the database stay valid and GPU slot locks (`byosm/train/gpu.py`) are shared with every other job |
+| environment | job variables and keys pass by name (`--env NAME`), so no secret is on a command line |
+| exit code | the wrapper inside writes the job's code to `<id>.inner`; a container killed for memory has none, so the supervisor reports 137 and says the job used all of its memory |
+| watchdog | reads the CPU of the container's processes (`docker inspect` pid), not the idle supervisor's |
+
+**The network is an allow-list** (`byosm/sandbox/egress.py`, `allow.py`, `containers.py`). Each job gets its own
+`--internal` Docker network, which has no route out, and a proxy container on that network and the default bridge.
+The job's `HTTP(S)_PROXY` point at it; it tunnels CONNECT and forwards plain HTTP only to `huggingface.co` and `hf.co`
+with their subdomains, the host and port of every LLM role (its `base_url`, or the provider's API), and the hosts in
+`jobs.network`. `localhost` in a rule means the machine (`host.docker.internal`), so a local Ollama keeps working.
+Refused hosts are listed in the job log at the end. Gotcha: on Linux the local LLM server must listen on the Docker
+bridge, not only on 127.0.0.1 (for Ollama, `OLLAMA_HOST=0.0.0.0`). Gotcha: open-data portals, GitHub (Silero, GIFT-Eval
+results, model prices) and datasets hosted outside the Hub are not on the default list.
+
+**A container job falls back to a process, and says why.** `blocker` in `byosm/sandbox/choose.py` returns the reason,
+written as the first log line and kept in the job's `isolation.fallback`:
+
+| reason | why it blocks |
+|---|---|
+| the job would train on the Apple GPU | Docker on macOS runs Linux in a VM that cannot reach MPS |
+| Docker runs in a VM (macOS, Docker Desktop on Linux) | SQLite's WAL shares memory between processes on one kernel; across the VM boundary that is unsafe |
+| no Docker CLI or daemon | nothing to run it in |
+| a CUDA job and no NVIDIA runtime or hook | `--gpus` would fail |
+| `DATABASE_URL` is a server | the internal network cannot reach it |
+| an LLM role is `claude-code` or `codex` | they are command-line tools on the host |
+
+Every job counts as a GPU job, because commands like `auto` decide at run time whether they train. Not verified: all
+of this is tested with Docker mocked; no container job has run on a Linux machine with an NVIDIA GPU yet.

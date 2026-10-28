@@ -30,13 +30,15 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 PUBLISH_LICENSE = "cc-by-nc-4.0"
 JOBS_KEY = "jobs"
-PROCESS = "process"
+PROCESS, CONTAINER = "process", "container"
 JOB_DEFAULTS: dict[str, Any] = {
+    "isolation": PROCESS,
     "cpus": None,
     "memory_gb": None,
     "gpus": "all",
     "nice": 10,
     "cpu_hours": None,
+    "network": [],
 }
 
 
@@ -92,7 +94,10 @@ def load_config(ws: Path | None = None) -> dict[str, Any]:
 
 
 def job_settings(ws: Path | None = None) -> dict[str, Any]:
-    return {**JOB_DEFAULTS, **(load_config(ws).get(JOBS_KEY) or {})}
+    settings = {**JOB_DEFAULTS, **(load_config(ws).get(JOBS_KEY) or {})}
+    if settings["isolation"] not in (PROCESS, CONTAINER):
+        raise ValueError(f"{JOBS_KEY}.isolation must be {PROCESS} or {CONTAINER}, not {settings['isolation']!r}")
+    return settings
 
 
 def write_default_config(ws: Path) -> Path:
