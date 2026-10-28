@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import secrets
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -43,6 +44,9 @@ def app_(
         list[str] | None,
         typer.Option(help=f"extra Host header to accept besides localhost (repeatable; or {HOSTS_ENV}=a,b)"),
     ] = None,
+    reload: Annotated[
+        bool, typer.Option("--reload/--no-reload", help="restart the app when its code changes; running jobs carry on")
+    ] = False,
 ) -> None:
     """Local web app and API: manage specialists, run jobs and watch them live (REST + WebSocket, token protected)."""
     import webbrowser
@@ -64,9 +68,26 @@ def app_(
     from ..app.lock import WorkspaceBusyError
 
     hosts = [host, *allowed_hosts(allow_host)]
+    serve = {"host": host, "port": port, "log_level": "warning", "timeout_graceful_shutdown": SHUTDOWN_GRACE_S}
+    if reload:
+        _reloading(find_workspace(), secret, hosts, parallel, serve)
+        return
     try:
         api = create_app(find_workspace(), secret, hosts, parallel, port)
     except WorkspaceBusyError as e:
         log(str(e))
         raise typer.Exit(1) from e
-    uvicorn.run(api, host=host, port=port, log_level="warning", timeout_graceful_shutdown=SHUTDOWN_GRACE_S)
+    uvicorn.run(api, **serve)
+
+
+def _reloading(ws: Path, secret: str, hosts: list[str], parallel: int | None, serve: dict) -> None:
+    import uvicorn
+
+    import byosm
+
+    from ..app.factory import settings_env
+
+    os.environ.update(settings_env(ws, secret, hosts, parallel, serve["port"]))
+    code = str(Path(byosm.__file__).parent)
+    log(f"reloading on changes in {code}")
+    uvicorn.run("byosm.app.factory:from_env", factory=True, reload=True, reload_dirs=[code], **serve)

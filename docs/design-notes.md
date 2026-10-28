@@ -2446,3 +2446,12 @@ benchmark), graded by the drop from its own test score with the same 0.05 and 0.
 step adds the public benchmarks that fit or scores the ones added; that step replaces the separate public benchmark
 step, and Measure everything lists it as "Real inputs". Check titles live in one map, `CHECK_TITLES`, and the
 "Holds on new inputs" check moved to `byosm/evals/robust.py`.
+
+## The local app can reload its own code
+
+Every backend change needed the owner to stop and start `byosm app`. `byosm app --reload` now serves the app through
+uvicorn's reloader, which restarts it when a file under `byosm/` changes. The command hands its settings (workspace,
+token, hosts, parallel jobs, port) to the worker through one environment variable, and `byosm/app/factory.py` builds
+the app from them. Running jobs are detached processes, so a reload leaves them running; the workspace lock records the
+app's process id, and the reloader stops the old worker before the new one claims the lock. Reloading is for local
+development: a deployed app runs without it.
