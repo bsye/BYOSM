@@ -91,6 +91,12 @@ class FakeLLM:
         if "patterns" in props:
             pattern = {"name": "short", "explanation": "short inputs", "data_recipe": "very short inputs", "share": 1.0}
             return {"patterns": [pattern], "suspect_gold_ids": []}
+        if "rewrites" in props:
+            k = requested_count(prompt)
+            items = numbered_items(prompt)
+            return {
+                "rewrites": [{"n": i, "texts": [f"{s} (take {j})" for j in range(k)]} for i, s in enumerate(items, 1)]
+            }
         return {"examples": [self.example() for _ in range(requested_count(prompt))]}
 
     def label(self, prompt):

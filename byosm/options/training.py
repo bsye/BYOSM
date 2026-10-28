@@ -4,12 +4,14 @@ import json
 from collections import Counter
 from collections.abc import Callable
 
+from ..data.budget import LLM_SOURCE
 from ..data.store import STORED_SPLITS, record
 from ..spec import PairPlan, TaskSpec
 from .pairs import Pair, pairs_of, rendered
 from .situations import FITS, Situation
 
 Log = Callable[[str], None]
+PARAPHRASE_KIND = "paraphrase"
 
 
 def situations_of(rows: list[dict[str, str]]) -> list[tuple[str, str, Situation]]:
@@ -37,9 +39,23 @@ def train_record(pair: Pair, plan: PairPlan) -> dict:
     return record(text, pair.label, pair.source, group=pair.group, layout=layout, kind=pair.kind)
 
 
+def paraphrased(train: list[tuple[str, Situation]], k: int, cfg: dict | None, log: Log) -> list[Pair]:
+    from .rewrite import paraphrases, writer
+
+    found = paraphrases([s.text for _, s in train], k, cfg, log)
+    source = f"{LLM_SOURCE}{writer(cfg)}"
+    return [
+        p
+        for (g, s), texts in zip(train, found, strict=True)
+        for text in texts
+        for p in pairs_of(g, Situation(text, s.options, s.chosen), source, PARAPHRASE_KIND)
+    ]
+
+
 def train_pairs(spec: TaskSpec, train: list[tuple[str, Situation]], cfg: dict | None, log: Log) -> list[Pair]:
-    source = spec.data.local_source
-    return [p for g, s in train for p in pairs_of(g, s, source)]
+    plan = spec.data.pairs or PairPlan()
+    pairs = [p for g, s in train for p in pairs_of(g, s, spec.data.local_source)]
+    return pairs + (paraphrased(train, plan.paraphrases, cfg, log) if plan.paraphrases else [])
 
 
 def pair_splits(spec: TaskSpec, rows: list[dict[str, str]], cfg: dict | None, log: Log) -> dict[str, list[dict]]:

@@ -1884,3 +1884,13 @@ When the table marks calib itself, `carve_calib` keeps it and leaves dev whole; 
 keeping every pair of one request (`meta.group`) on one side. The `options rival` LLM now reads the same rendered
 pairs as the model, one item per pair, and answers with item numbers, so it is compared on the same input in every
 layout instead of a clean listing only it saw.
+
+## Paraphrased requests are written once per machine
+
+`data.pairs.paraphrases` (0 to 5) adds that many rewrites of every training request, written by the `generate` role
+in batches of 20 (`byosm/options/rewrite.py`): other wording, order and tone, the same meaning and every value. Each
+rewrite is paired with the request's offered tools and keeps their labels; its rows carry `llm:<model>` as source and
+`paraphrase` as kind, and never reach dev, calib or test. Answers are kept by content in `llm-memo.sqlite` under the
+cache folder (`byosm/llm/memo.py`), keyed by the prompt version, the writer's model, the instruction and the request,
+and saved batch by batch, so a rebuild, a seed replica or another experiment with the same plan asks the LLM only for
+requests it has not rewritten, and an interrupted run keeps what it got. A failed batch is logged and not kept.
