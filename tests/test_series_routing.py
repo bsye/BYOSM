@@ -4,7 +4,7 @@ from conftest import Flat
 from byosm.series.gifteval import Series
 from byosm.series.metrics import QUANTILES, summary
 from byosm.series.models import SeasonalNaive
-from byosm.series.prediction import PredictCfg
+from byosm.series.prediction import Options, PredictCfg
 from byosm.series.routing import Routed, route
 from byosm.series.scoring import Prepared
 from byosm.series.specialist import ROUTE, ROUTED
@@ -50,8 +50,10 @@ def test_each_dataset_is_forecast_by_the_model_that_was_best_on_its_calib_window
     monkeypatch.setattr("byosm.series.scoring.load", data.get)
     monkeypatch.setattr(fit, "emit", lambda kind, **data: None)
     models = [SeasonalNaive(), KnowsSeason(OURS[0], 24), KnowsSeason(OURS[1], 7)]
-    monkeypatch.setattr(fit, "candidates", lambda effort: models)
-    per, trained = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None, PredictCfg(routing=True))
+    monkeypatch.setattr(fit, "candidates", lambda effort, fit: models)
+    per, trained = fit.fit_domain(
+        ["a", "b"], 0, lambda _: None, lambda per, pending: None, Options(predict=PredictCfg(routing=True))
+    )
     assert [per[c][ROUTED][ROUTE] for c in "ab"] == OURS
     assert all(per[c][ROUTED]["calib_mase"] == per[c][r]["calib_mase"] for c, r in zip("ab", OURS, strict=True))
     assert trained[ROUTED].for_config("b") is models[2]
@@ -65,8 +67,8 @@ def test_without_routing_no_dataset_records_a_route(monkeypatch):
 
     monkeypatch.setattr("byosm.series.scoring.load", lambda config: [Series("s", "H", np.arange(400.0))])
     monkeypatch.setattr(fit, "emit", lambda kind, **data: None)
-    monkeypatch.setattr(fit, "candidates", lambda effort: [SeasonalNaive(), KnowsSeason(OURS[0], 24)])
-    per, trained = fit.fit_domain(["a"], 0, lambda _: None, lambda per, pending: None, PredictCfg())
+    monkeypatch.setattr(fit, "candidates", lambda effort, fit: [SeasonalNaive(), KnowsSeason(OURS[0], 24)])
+    per, trained = fit.fit_domain(["a"], 0, lambda _: None, lambda per, pending: None, Options())
     assert ROUTED not in per["a"] and ROUTED not in trained
 
 

@@ -30,11 +30,13 @@ type Score = {
   ours_on_shared?: number
 }
 type Predict = { rates?: number[]; routing?: boolean }
+type Fit = { pretraining?: string; quantile_boosting?: boolean }
 type Version = {
   name: string
   recipe: string
   effort?: number
   predict?: Predict
+  fit?: Fit
   calib: number
   test: number
   crps: number
@@ -93,7 +95,17 @@ export function useForecaster(name: string): ForecasterView | null | undefined {
   return view
 }
 
-const options = (p?: Predict) => [(p?.rates ?? []).some((r) => r !== 1) ? "multi-rate" : "", p?.routing ? "routing" : ""].filter((o) => o).join(", ") || "-"
+const DEFAULT_PRETRAINING = "v1"
+
+const options = (v: Version) =>
+  [
+    (v.predict?.rates ?? []).some((r) => r !== 1) ? "multi-rate" : "",
+    v.predict?.routing ? "routing" : "",
+    v.fit?.quantile_boosting ? "quantile boosting" : "",
+    v.fit?.pretraining && v.fit.pretraining !== DEFAULT_PRETRAINING ? `pretraining ${v.fit.pretraining}` : "",
+  ]
+    .filter((o) => o)
+    .join(", ") || "-"
 
 const seconds = (s?: number) => (s == null ? "-" : `${s.toFixed(1)} s`)
 const millis = (s?: number) => (s == null ? "-" : `${s.toFixed(1)} ms`)
@@ -248,7 +260,7 @@ function Versions({ f }: { f: ForecasterView }) {
                   {v.name === f.promoted && <Badge className="ml-2">promoted</Badge>}
                 </TableCell>
                 <TableCell>{v.recipe}</TableCell>
-                <TableCell>{options(v.predict)}</TableCell>
+                <TableCell>{options(v)}</TableCell>
                 <TableCell className="text-right tabular-nums">{2 ** (v.effort ?? 0)}x</TableCell>
                 <TableCell className="text-right tabular-nums">{score(v.calib)}</TableCell>
                 <TableCell className="text-right tabular-nums">{score(v.test)}</TableCell>

@@ -151,11 +151,11 @@ def series_run(
     until_rival: bool = typer.Option(
         False,
         "--until-rival",
-        help="Keep adding versions until one beats the best rival, trying untried prediction-time techniques on the promoted models before training more",
+        help="Keep adding versions until one beats the best rival, trying untried techniques on the promoted models (refitting only the model each changes) before training more, and the v2 pretraining recipe once more training stops helping",
     ),
     rounds: int = typer.Option(MAX_ROUNDS, help="Most versions to add with --until-rival"),
 ) -> None:
-    """Train a new version of a forecasting specialist with twice the training of the promoted one and its prediction options, and score it against seasonal naive and Timestral."""
+    """Train a new version of a forecasting specialist with twice the training of the promoted one and its options, and score it against seasonal naive and Timestral."""
     from ..config import find_workspace
     from ..series.run import run_domain
     from ..series.run import until_rival as loop

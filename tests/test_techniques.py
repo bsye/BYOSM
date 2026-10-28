@@ -34,6 +34,8 @@ EDITABLE = [
     "data.pairs.mask_names",
     "data.pairs.paraphrases",
     "data.pairs.near_misses",
+    "fit.pretraining",
+    "fit.quantile_boosting",
 ]
 RANKED = [
     "multi-rate-forecast",

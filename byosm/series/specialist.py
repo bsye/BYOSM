@@ -14,6 +14,8 @@ RIVAL_NAMES = (NAIVE, "Timestral")
 CI_DRAWS = 500
 CI_SEED = 0
 PREDICT = "predict"
+FIT = "fit"
+PLATEAU = "plateau"
 ROUTED = "routed per dataset"
 ROUTE = "route"
 
@@ -38,7 +40,7 @@ def choose(overall: dict[str, dict[str, Any]]) -> str | None:
 
 
 def add_version(
-    report: dict[str, Any], interval: list[float] | None, effort: int = 0, predict: dict[str, Any] | None = None
+    report: dict[str, Any], interval: list[float] | None, effort: int = 0, options: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     recipe = choose(report["overall"])
     if recipe is None:
@@ -49,7 +51,8 @@ def add_version(
         "name": f"v{len(versions) + 1}",
         "recipe": recipe,
         "effort": effort,
-        PREDICT: predict or {},
+        PREDICT: {},
+        **(options or {}),
         "calib": scores["calib_mase"],
         "test": scores["mase"],
         "crps": scores["crps"],

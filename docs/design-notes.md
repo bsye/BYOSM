@@ -1661,6 +1661,11 @@ it to fit (`eligible`): both pair families require `data.pairs`, so they are off
 `byosm options new`, whose pair table they rewrite. The held-out fields (`held_out_apis`, `held_out_layouts`) are in no
 family, because they decide calib and test.
 
+Planned families (input layouts, near-miss negatives, an embedding-model head, SetFit, label-noise cleaning, weight
+averaging, learning curves, re-initialised layers, a small search, R-Drop and mixup, self-training) become available
+as each one lands in the pipeline. Multi-rate forecasting, routing, quantile boosting and forecaster pretraining v2 are
+available to forecasters through Keep training (below).
+
 ## A bandit shares the trials out over technique families
 
 The autopilot picked proposals from a fixed table of priors keyed by rule name, so the same rules won every round.
@@ -2019,3 +2024,34 @@ A sanity check, not a benchmark: on 4 hourly series with a weekend drop whose st
 iterations, the median's error is 0.595 with dates, 0.865 for the same model without them and 0.842 for squared-error
 boosting. fev-bench's tuned LightGBM beats Chronos-2 on 17 of 100 tasks with quantile objectives and covariates; it has
 not been run on the GIFT-Eval forecasters yet.
+
+## Keep training escalates the recipe, not only the steps
+
+A forecaster version records two sets of options: `predict` (multi-rate, routing), which only change how saved models
+forecast, and `fit` (`FitCfg` in `byosm/series/prediction.py`: `pretraining`, the recipe of the pretrained base, `v1`
+by default, and `quantile_boosting`, off), which change which models are trained. The catalogue maps
+`fit.quantile_boosting` to `quantile-boosting` and `fit.pretraining` to `forecaster-pretraining` (turned on as `v2`),
+next to `predict.rates` and `predict.routing`, and `next_technique` picks among all four, best prior per cost first.
+The board's Options column lists both sets.
+
+A technique round now refits only what its option changes and reuses every other saved model. `candidates` builds the
+models a training round would fit under some fit options (`QuantileBoosted` instead of `Boosted`, the pretrained
+model of the options' recipe), and `refreshed` (`byosm/series/fit.py`) compares the candidates under the promoted
+version's options with those under the new ones: models whose name disappears are dropped from the saved ones, models
+whose name appears are trained at the promoted effort, and the rest are only scored again. A prediction-time
+technique changes no name, so its round trains nothing, as before. When a technique turns on a recipe whose base has
+no weights yet, the round pretrains it first (`base_for` in `byosm/series/escalation.py`).
+
+A technique that costs more than a doubling of the training (`PLATEAU_COST`, 2 in the catalogue's units) is tried only
+once a plateau is stored, that is when the existing escalation would pretrain a missing base or double the steps.
+Forecaster pretraining v2 costs 5, so after a plateau the next Keep training pretrains the v2 base (when missing),
+fine-tunes it on the domain at the promoted effort and scores it beside the reused models, once per plateau: the
+version records `fit.pretraining: v2`, so the round is not repeated at that effort. Only then does the old escalation
+run. Quantile boosting costs 0.5 and is tried right after multi-rate and routing, before any doubling.
+
+The plateau's upstream (the largest pretrained base and the corpus size) and the next lever are now read for the
+promoted version's recipe (`recipe_of`). If v2 wins on calib, its base differs from the one stored with the plateau,
+so the next round doubles the steps on top of v2 instead of pretraining a bigger v1 base nobody would use; if it
+loses, the upstream is unchanged and the old escalation pretrains the next v1 size. A recipe has its own size ladder:
+v1 goes base then large, v2 base then long, and the lever names `--recipe`. None of this has been run on the GIFT-Eval
+forecasters yet.

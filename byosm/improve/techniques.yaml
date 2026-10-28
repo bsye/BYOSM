@@ -220,12 +220,12 @@
 - id: forecaster-pretraining
   title: Forecaster pretraining v2
   effect: "More training quantiles, contiguous patch masking, augmentation, arcsinh scaling and a synthetic corpus."
-  paths: []
+  paths: [fit.pretraining]
   modalities: [series]
   cost: 5.0
   prior: 0.5
   evidence: [https://arxiv.org/abs/2505.23719]
-  status: planned
+  status: available
 
 - id: reinit-top
   title: Re-initialised top layers
@@ -260,13 +260,13 @@
 
 - id: quantile-boosting
   title: Quantile boosting with covariates
-  effect: "Fits LightGBM quantile objectives with known-future covariates."
-  paths: []
+  effect: "Fits one gradient-boosting model per quantile level, with the calendar of each forecast step as covariates."
+  paths: [fit.quantile_boosting]
   modalities: [series]
   cost: 0.5
   prior: 0.3
   evidence: [https://github.com/autogluon/fev]
-  status: planned
+  status: available
 
 - id: self-training
   title: Self-training

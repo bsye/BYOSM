@@ -5,7 +5,7 @@ from byosm.series.gifteval import Series
 from byosm.series.metrics import QUANTILES
 from byosm.series.models import Ensemble, SeasonalNaive
 from byosm.series.multirate import MultiRate, coarse, native, twin_name
-from byosm.series.prediction import MULTI_RATES, PredictCfg
+from byosm.series.prediction import MULTI_RATES, Options, PredictCfg
 
 MEDIAN = QUANTILES.index(0.5)
 
@@ -72,8 +72,10 @@ def test_with_multi_rate_on_every_model_and_the_ensemble_get_a_twin_scored_on_th
     monkeypatch.setattr("byosm.series.scoring.load", lambda config: series)
     monkeypatch.setattr(fit, "emit", lambda kind, **data: None)
     ours = ["gradient boosting", "patch transformer"]
-    monkeypatch.setattr(fit, "candidates", lambda effort: [SeasonalNaive(), Flat(ours[0], 1.0), Flat(ours[1], -1.0)])
-    cfg = PredictCfg(rates=MULTI_RATES)
+    monkeypatch.setattr(
+        fit, "candidates", lambda effort, fit: [SeasonalNaive(), Flat(ours[0], 1.0), Flat(ours[1], -1.0)]
+    )
+    cfg = Options(predict=PredictCfg(rates=MULTI_RATES))
     per, trained = fit.fit_domain(["a"], 0, lambda _: None, lambda per, pending: None, cfg)
     twins = [twin_name(n) for n in [*ours, Ensemble.name]]
     assert set(twins) <= set(per["a"]) and set(twins) <= set(trained)
@@ -105,5 +107,5 @@ def test_each_version_records_its_prediction_options_and_the_next_training_start
     first["versions"][0][PREDICT] = PredictCfg(rates=MULTI_RATES).model_dump()
     save_report(ws, first)
     run.run_domain(ws, "demo", log=lambda _: None)
-    assert asked == [PredictCfg(), PredictCfg(rates=MULTI_RATES)]
+    assert [a.predict for a in asked] == [PredictCfg(), PredictCfg(rates=MULTI_RATES)]
     assert next(r for r in reports(ws) if r["domain"] == "demo")["versions"][1][PREDICT]["rates"] == MULTI_RATES

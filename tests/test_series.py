@@ -7,7 +7,7 @@ from byosm.series.gifteval import Series, horizon, season, splits, unit, windows
 from byosm.series.metrics import QUANTILES, crps, geomean, mase
 from byosm.series.models import Boosted, Ensemble, Group, SeasonalNaive
 from byosm.series.patch_net import BASE
-from byosm.series.prediction import PredictCfg
+from byosm.series.prediction import Options
 from byosm.series.specialist import NAIVE
 
 TRAINED = {"gradient boosting": SeasonalNaive()}
@@ -211,10 +211,10 @@ def test_one_model_per_recipe_is_trained_for_all_datasets_and_the_ensemble_avera
 
     ours = [Flat("gradient boosting", 1.0), Flat("patch transformer", -1.0)]
     monkeypatch.setattr("byosm.series.scoring.load", lambda config: series)
-    monkeypatch.setattr(fit, "candidates", lambda effort: [SeasonalNaive(), *ours])
+    monkeypatch.setattr(fit, "candidates", lambda effort, options: [SeasonalNaive(), *ours])
     events = []
     monkeypatch.setattr(fit, "emit", lambda kind, **data: events.append((kind, data["recipe"], data["index"])))
-    out, trained = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None, PredictCfg())
+    out, trained = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None, Options())
     assert [e[1:] for e in events] == [("seasonal naive", 1), ("gradient boosting", 2), ("patch transformer", 3)]
     assert set(trained) == {"gradient boosting", "patch transformer", Ensemble.name}
     assert [m.fits for m in ours] == [[2], [2]]
@@ -370,14 +370,14 @@ def test_the_pretrained_recipe_uses_the_largest_base_that_has_been_pretrained(tm
 
 def test_the_next_lever_names_the_smallest_base_not_pretrained_yet(tmp_path, monkeypatch):
     import byosm.series.patch as patch
-    from byosm.series.run import _lever
+    from byosm.series.escalation import lever
 
     monkeypatch.setattr(patch, "weights_path", lambda name="base": tmp_path / f"{name}.pt")
-    assert patch.missing_size() == "base" and "--size base" in _lever()
+    assert patch.missing_size() == "base" and "--size base --recipe v1" in lever()
     (tmp_path / "base.pt").write_bytes(b"")
-    assert "--size large" in _lever()
+    assert "--size large" in lever()
     (tmp_path / "large.pt").write_bytes(b"")
-    assert patch.missing_size() is None and "series corpus" in _lever()
+    assert patch.missing_size() is None and "series corpus" in lever()
 
 
 def _plateaued(ws, monkeypatch, upstream):
@@ -394,8 +394,8 @@ def _plateaued(ws, monkeypatch, upstream):
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
     monkeypatch.setattr(run, "fit_domain", one)
-    monkeypatch.setattr(run, "_upstream", lambda: upstream)
-    monkeypatch.setattr(run, "_lever", lambda: "the large base")
+    monkeypatch.setattr(run, "upstream", lambda recipe=None: upstream)
+    monkeypatch.setattr(run, "lever", lambda recipe=None: "the large base")
     rival = {"Timestral-5M": {"mase": 0.5, "crps": 0.5, "published": True}}
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: rival)
     report = run.until_rival(ws, "demo", rounds=5, log=lambda _: None)
@@ -409,8 +409,8 @@ def test_keep_training_after_a_plateau_pretrains_the_missing_base_before_trainin
 
     run, efforts = _plateaued(ws, monkeypatch, {"base": "base", "corpus": 3})
     pretrained = []
-    monkeypatch.setattr(patch, "missing_size", lambda: "large")
-    monkeypatch.setattr(pretrain, "pretrain", lambda log, steps, size: pretrained.append(size))
+    monkeypatch.setattr(patch, "missing_size", lambda recipe=None: "large")
+    monkeypatch.setattr(pretrain, "pretrain", lambda log, steps, size, recipe: pretrained.append(size))
     run.until_rival(ws, "demo", rounds=1, log=lambda _: None)
     assert pretrained == ["large"] and efforts == [0, 1, 2]
 
@@ -419,7 +419,7 @@ def test_keep_training_after_a_plateau_with_every_base_pretrained_trains_nothing
     import byosm.series.patch as patch
 
     run, efforts = _plateaued(ws, monkeypatch, {"base": "large", "corpus": 3})
-    monkeypatch.setattr(patch, "missing_size", lambda: None)
+    monkeypatch.setattr(patch, "missing_size", lambda recipe=None: None)
     run.until_rival(ws, "demo", rounds=3, log=lambda _: None)
     assert efforts == [0, 1]
 
