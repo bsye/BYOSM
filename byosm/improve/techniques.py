@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import date
 from functools import cache, reduce
 from pathlib import Path
 from typing import Any, Literal
@@ -29,6 +30,7 @@ class Technique(BaseModel):
     status: Literal["available", "built-in", "manual", "planned"] = "planned"
     transferable: bool = False
     targets: list[str] = Field(default_factory=list)
+    added: date
 
     def fits(self, modality: str, task_type: str | None = None) -> bool:
         kind = not self.modalities or modality in self.modalities
@@ -85,3 +87,15 @@ def aimed_at(spec: TaskSpec, check: str) -> list[Technique]:
 
 def with_techniques(spec: TaskSpec, checks: list[dict], shown: int = 2) -> list[dict]:
     return [{**c, "techniques": [t.title for t in aimed_at(spec, c["id"])[:shown]]} for c in checks]
+
+
+ARXIV_HOSTS = ("arxiv.org/abs/", "arxiv.org/html/", "arxiv.org/pdf/")
+NEW_STYLE_SINCE = 7
+
+
+def published(url: str) -> str | None:
+    tail = next((url.partition(h)[2] for h in ARXIV_HOSTS if h in url), "")
+    yymm = tail.partition(".")[0]
+    if len(yymm) != 4 or not yymm.isdigit() or int(yymm[:2]) < NEW_STYLE_SINCE:
+        return None
+    return f"20{yymm[:2]}-{yymm[2:]}"

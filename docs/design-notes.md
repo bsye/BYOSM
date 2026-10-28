@@ -2465,3 +2465,10 @@ every setting, and it offered text classifiers even for a forecasting technique 
 classifiers of a kind it fits with the lowest health score, records where it went (`sent`), and refuses a kind the lab
 does not write code for, which the card says instead of offering the button. Proposals are grouped under the day the
 scout found them, newest first, and each shows the date of its paper (`published`, read from arXiv and Hugging Face).
+
+## Catalogue families carry dates
+
+Every family in `byosm/improve/techniques.yaml` records the day it joined the catalogue (`added`), and the Techniques
+page shows it next to each evidence link's publication month. The month comes from the arXiv identifier itself
+(`2006.05987` is June 2020; `published` in `byosm/improve/techniques.py`), so no lookup is needed; other links show no
+date. Proposed techniques show the paper's date and the day the scout found them.

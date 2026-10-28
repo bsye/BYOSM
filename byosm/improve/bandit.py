@@ -8,7 +8,7 @@ from ..health_score import CHECK_TITLES
 from ..project import Project, list_projects
 from ..spec import TaskSpec
 from .registry import RULE
-from .techniques import Technique, eligible, family
+from .techniques import Technique, eligible, family, published
 
 VERDICT = "verdict:"
 PRIOR_STRENGTH = 2.0
@@ -160,6 +160,7 @@ def catalogue_board(ws: Any = None) -> list[dict[str, Any]]:
             {
                 **t.model_dump(),
                 "target_titles": [CHECK_TITLES.get(c, c) for c in t.targets],
+                "evidence_dates": [published(u) for u in t.evidence],
                 **seen,
                 "gpu_hours": round(seen["gpu_hours"], 3),
                 "specialists": len(seen["specialists"]),

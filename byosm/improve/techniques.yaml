@@ -6,6 +6,7 @@
   prior: 0.6
   evidence: [https://arxiv.org/abs/2209.06640]
   status: available
+  added: 2026-10-28
   targets: [rival, target, data, real]
 
 - id: data-size
@@ -16,6 +17,7 @@
   prior: 0.4
   evidence: [https://arxiv.org/abs/2103.03098]
   status: available
+  added: 2026-10-28
   targets: [certainty]
 
 - id: synthetic-data
@@ -27,6 +29,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/abs/2311.06102, https://arxiv.org/abs/2310.07849]
   status: available
+  added: 2026-10-28
   targets: [data, weakest]
 
 - id: targeted-data
@@ -38,6 +41,7 @@
   prior: 0.5
   evidence: [https://arxiv.org/abs/2310.13671]
   status: available
+  added: 2026-10-28
   targets: [weakest, robust]
 
 - id: audio-mix
@@ -49,6 +53,7 @@
   prior: 0.5
   evidence: []
   status: available
+  added: 2026-10-28
   targets: [robust, target]
 
 - id: backbone
@@ -60,6 +65,7 @@
   evidence: [https://arxiv.org/abs/2507.11412]
   transferable: true
   status: available
+  added: 2026-10-28
   targets: [rival, target]
 
 - id: schedule
@@ -71,6 +77,7 @@
   evidence: [https://arxiv.org/abs/2006.05987, https://arxiv.org/abs/2106.09204]
   transferable: true
   status: available
+  added: 2026-10-28
   targets: [target, overfit]
 
 - id: pretraining
@@ -82,6 +89,7 @@
   evidence: [https://arxiv.org/abs/2010.02194]
   transferable: true
   status: available
+  added: 2026-10-28
   targets: [rival, target]
 
 - id: head
@@ -93,6 +101,7 @@
   evidence: [https://arxiv.org/abs/2202.10054]
   transferable: true
   status: available
+  added: 2026-10-28
   targets: [overfit, target]
 
 - id: regularisation
@@ -104,6 +113,7 @@
   evidence: [https://arxiv.org/abs/2006.05987]
   transferable: true
   status: available
+  added: 2026-10-28
   targets: [overfit]
 
 - id: precision
@@ -115,6 +125,7 @@
   evidence: []
   transferable: true
   status: available
+  added: 2026-10-28
   targets: [speed, size]
 
 - id: document-views
@@ -126,6 +137,7 @@
   prior: 0.5
   evidence: []
   status: available
+  added: 2026-10-28
   targets: [target, rival]
 
 - id: multi-rate-forecast
@@ -137,6 +149,7 @@
   prior: 0.7
   evidence: [https://huggingface.co/IUseAMouse/timessm-2.5m]
   status: available
+  added: 2026-10-28
   targets: [rival, target]
 
 - id: forecast-routing
@@ -148,6 +161,7 @@
   prior: 0.7
   evidence: [https://github.com/SalesforceAIResearch/gift-eval]
   status: available
+  added: 2026-10-28
   targets: [rival, target]
 
 - id: input-layouts
@@ -160,6 +174,7 @@
   prior: 0.6
   evidence: [https://arxiv.org/abs/2608.16502]
   status: available
+  added: 2026-10-28
   targets: [robust, real]
 
 - id: near-miss-negatives
@@ -172,6 +187,7 @@
   prior: 0.6
   evidence: [https://arxiv.org/abs/2310.14192]
   status: available
+  added: 2026-10-28
   targets: [weakest, robust, real]
 
 - id: embedding-head
@@ -184,6 +200,7 @@
   prior: 0.5
   evidence: [https://arxiv.org/abs/2209.11055, https://arxiv.org/abs/2003.04807]
   status: available
+  added: 2026-10-28
   targets: [speed, target]
 
 - id: setfit
@@ -196,6 +213,7 @@
   prior: 0.5
   evidence: [https://arxiv.org/abs/2209.11055]
   status: available
+  added: 2026-10-28
   targets: [data, target]
 
 - id: label-noise
@@ -207,6 +225,7 @@
   prior: 0.4
   evidence: [https://arxiv.org/abs/2205.12702]
   status: available
+  added: 2026-10-28
   targets: [overfit, weakest]
 
 - id: weight-averaging
@@ -217,6 +236,7 @@
   prior: 0.4
   evidence: [https://arxiv.org/abs/2203.05482, https://arxiv.org/abs/2212.05956]
   status: built-in
+  added: 2026-10-28
   targets: [certainty, robust]
 
 - id: ensemble-distillation
@@ -227,6 +247,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/html/2506.15692]
   status: built-in
+  added: 2026-10-28
   targets: [size, speed]
 
 - id: learning-curve
@@ -237,6 +258,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/abs/2209.06640]
   status: built-in
+  added: 2026-10-28
   targets: [data]
 
 - id: forecaster-pretraining
@@ -248,6 +270,7 @@
   prior: 0.5
   evidence: [https://arxiv.org/abs/2505.23719]
   status: available
+  added: 2026-10-28
   targets: [rival, target]
 
 - id: reinit-top
@@ -260,6 +283,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/abs/2006.05987]
   status: available
+  added: 2026-10-28
   targets: [target, overfit]
 
 - id: small-search
@@ -270,6 +294,7 @@
   prior: 0.3
   evidence: [https://arxiv.org/abs/1810.05934, https://arxiv.org/html/2402.03921]
   status: built-in
+  added: 2026-10-28
   targets: [target]
 
 - id: consistency
@@ -282,6 +307,7 @@
   prior: 0.2
   evidence: [https://arxiv.org/abs/2106.14448, https://arxiv.org/abs/2010.02394]
   status: available
+  added: 2026-10-28
   targets: [overfit, robust]
 
 - id: quantile-boosting
@@ -293,6 +319,7 @@
   prior: 0.3
   evidence: [https://github.com/autogluon/fev]
   status: available
+  added: 2026-10-28
   targets: [rival, target]
 
 - id: self-training
@@ -305,6 +332,7 @@
   prior: 0.2
   evidence: [https://arxiv.org/abs/2210.17541, https://arxiv.org/abs/2010.02194]
   status: available
+  added: 2026-10-28
   targets: [data, robust, real]
 
 - id: lab-method
@@ -317,4 +345,5 @@
   prior: 0.3
   evidence: []
   status: manual
+  added: 2026-10-28
   targets: []

@@ -147,3 +147,12 @@ def test_pair_families_are_offered_only_to_a_specialist_with_a_pair_plan_and_the
     edited = apply_ops(pairs, ops).data.pairs
     assert (edited.layouts, edited.mask_names, edited.paraphrases) == (["marked", "json", "openai"], 0.3, 2)
     assert edited.near_misses == ["nearest", "removed"]
+
+
+def test_every_family_has_the_day_it_joined_and_arxiv_evidence_gives_its_month():
+    from byosm.improve.techniques import published
+
+    assert all(t.added for t in techniques())
+    assert published("https://arxiv.org/abs/2006.05987") == "2020-06"
+    assert published("https://arxiv.org/html/2507.02554") == "2025-07"
+    assert published("https://github.com/autogluon/fev") is None

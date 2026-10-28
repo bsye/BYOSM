@@ -25,6 +25,8 @@ type Technique = {
   cost: number
   prior: number
   evidence: string[]
+  evidence_dates?: (string | null)[]
+  added?: string
   tries: number
   wins: number
   gpu_hours: number
@@ -41,6 +43,8 @@ const config = {
 } satisfies ChartConfig
 
 const host = (url: string) => new URL(url).hostname.replace("www.", "")
+const month = (ym: string | null) => (ym ? new Date(`${ym}-01T00:00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : "")
+const day = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
 
 function Tried({ rows }: { rows: Technique[] }) {
   const tried = rows.filter((t) => t.tries).sort((a, b) => b.tries - a.tries)
@@ -83,6 +87,7 @@ function Catalogue({ rows }: { rows: Technique[] }) {
               <TableHead className="text-right">Calib effect</TableHead>
               <TableHead className="text-right">GPU time</TableHead>
               <TableHead>Evidence</TableHead>
+              <TableHead>Added</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -114,7 +119,7 @@ function Catalogue({ rows }: { rows: Technique[] }) {
                 <TableCell className="text-right tabular-nums">{t.gpu_hours ? seconds(t.gpu_hours * 3600) : "-"}</TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
-                    {t.evidence.map((url) => (
+                    {t.evidence.map((url, i) => (
                       <a
                         key={url}
                         href={url}
@@ -123,11 +128,13 @@ function Catalogue({ rows }: { rows: Technique[] }) {
                         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
                       >
                         {host(url)}
+                        {t.evidence_dates?.[i] && <span className="text-muted-foreground/70">{month(t.evidence_dates[i])}</span>}
                         <ExternalLink className="size-3" />
                       </a>
                     ))}
                   </div>
                 </TableCell>
+                <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{t.added ? day(t.added) : "-"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
