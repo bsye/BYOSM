@@ -96,13 +96,15 @@ def _promoted_models(ws: Path, domain: str, report: dict[str, Any]) -> list[Any]
 
 
 def try_lab_method(ws: Path, domain: str, did: str, log: Log = print) -> dict[str, Any]:
+    from ..lab.drafts import RefusedError
+
     report = _previous(ws, domain)
     models = _promoted_models(ws, domain, report)
     if not models:
-        raise ValueError(f"{domain} has no saved promoted version to try a lab method on: Keep training builds one")
+        raise RefusedError(f"{domain} has no saved promoted version to try a lab method on: Keep training builds one")
     options = of(promoted_version(report))
     if options.fit.lab_method == did:
-        raise ValueError(f"{report['promoted']} of {domain} already trains with lab method {did}")
+        raise RefusedError(f"{report['promoted']} of {domain} already trains with lab method {did}")
     options = options.model_copy(update={"fit": options.fit.model_copy(update={"lab_method": did})})
     log(f"  lab method {did}: refitting the patch transformers of {report['promoted']} with it")
     return apply_technique(ws, domain, options, models, log)

@@ -12,6 +12,10 @@ PENDING, APPROVED, REJECTED = "pending", "approved", "rejected"
 STATUSES = (PENDING, APPROVED, REJECTED)
 
 
+class RefusedError(ValueError):
+    pass
+
+
 def draft_id(code: str) -> str:
     return hashlib.sha1(code.encode()).hexdigest()[:10]
 

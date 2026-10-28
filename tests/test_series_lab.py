@@ -135,8 +135,19 @@ def domain(ws, monkeypatch):
     return trained, lab
 
 
+@pytest.fixture
+def revisions(monkeypatch):
+    asked = []
+    monkeypatch.setattr(
+        "byosm.lab.author.write", lambda name, ask, log, paper, parent: asked.append((name, ask, parent))
+    )
+    return asked
+
+
 @pytest.mark.parametrize("better", [True, False])
-def test_a_lab_run_refits_only_the_patch_transformer_and_promotes_only_a_better_calib_score(ws, domain, better):
+def test_a_lab_run_refits_only_the_patch_transformer_and_promotes_only_a_better_calib_score(
+    ws, domain, revisions, better
+):
     from byosm.lab.run import run
     from byosm.series.board import reports
 
@@ -150,20 +161,26 @@ def test_a_lab_run_refits_only_the_patch_transformer_and_promotes_only_a_better_
     assert trained == [f"{PATCH}, lab {did}"] and newest[FIT]["lab_method"] == did and newest["name"] == "v2"
     assert draft(f, did)["result"] == {"experiment": "v2", "won": better, "calib": newest["calib"]}
     assert (report["promoted"] == "v2") is better
+    assert [(n, parent) for n, _, parent in revisions] == ([] if better else [("demo", did)])
 
 
-def test_a_method_the_promoted_version_already_trains_with_is_not_run_again(ws, domain):
+def test_a_method_the_promoted_version_already_trains_with_is_refused_without_an_error_or_a_revision(
+    ws, domain, revisions
+):
+    from byosm.lab.drafts import RefusedError
     from byosm.lab.run import run
 
     _, lab = domain
     lab |= {"seasonal": True}
-    did = _approved(owner("demo"))
+    f = owner("demo")
+    did = _approved(f)
     run("demo", did, lambda _: None)
-    with pytest.raises(ValueError):
+    with pytest.raises(RefusedError):
         run("demo", did, lambda _: None)
+    assert draft(f, did)["error"] is None and revisions == []
 
 
-def test_a_lab_run_that_fails_keeps_its_error_on_the_draft(ws, domain):
+def test_a_lab_run_that_fails_keeps_its_error_on_the_draft_and_asks_for_a_revision(ws, domain, revisions):
     from byosm.lab.run import run
 
     _, lab = domain
@@ -175,3 +192,4 @@ def test_a_lab_run_that_fails_keeps_its_error_on_the_draft(ws, domain):
     with pytest.raises(RuntimeError):
         run("demo", did, lambda _: None)
     assert "loss is nan" in draft(f, did)["error"]
+    assert len(revisions) == 1 and "loss is nan" in revisions[0][1] and revisions[0][2] == did

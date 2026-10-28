@@ -5,7 +5,7 @@ from typing import Any
 
 from ..project import Project
 from .contract import FORECASTER
-from .drafts import APPROVED, draft, update
+from .drafts import APPROVED, RefusedError, draft, update
 from .owners import Forecaster, Owner, kind_of, owner
 
 MAX_REVISIONS = 2
@@ -77,6 +77,8 @@ def run(name: str, did: str, log: Log = print) -> dict[str, Any]:
     trained = _forecaster if kind_of(found_owner) == FORECASTER else _classifier
     try:
         result = trained(found_owner, found, log)
+    except RefusedError:
+        raise
     except Exception as e:
         update(found_owner, did, error=f"{type(e).__name__}: {e}"[:ERROR_CHARS])
         revise(name, found, f"its run failed with {type(e).__name__}: {str(e)[:ERROR_CHARS]}", log)
