@@ -19,6 +19,10 @@ export type Result = {
 }
 export type Forecast = { name: string; spec: Spec; result: Result | null }
 
+const NEVER_DAYS = 9999
+export const featureValue = (v: string | number | null) =>
+  v == null ? "missing" : v === NEVER_DAYS ? "never" : typeof v === "number" ? String(Math.round(v * 10) / 10) : v
+
 export const runForecast = (name: string) => runJob(["forecast", "run", name]).then((j) => openJob(j.id))
 export const within = (years: number) => (years === 1 ? "within a year" : `within ${years} years`)
 export const best = (f: Forecast) => f.result?.scores["gradient boosting"]

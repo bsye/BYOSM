@@ -2496,3 +2496,26 @@ or frame, with targets of -100 where the trainer ignores a position (`_task_loss
 the rows hook may reorder, filter or duplicate file inputs but not invent them. The Lab tab, the `lab-method` family
 and the scout's "Try it" now cover these kinds. Forecasters train elsewhere and get their own contract; event-risk
 specialists come after.
+
+## Every kind gets a picture of how it decides
+
+A score says how good a specialist is; it does not show how it reaches one answer. Each kind gets a view on its Test
+tab that draws the decision on the input it just ran, in the style of a forecast chart: one line over the input, a
+reference line, and parts of the input that can be switched off to see the line move.
+
+| Kind | Line | Switch off | Where |
+|---|---|---|---|
+| Text classifier | probability of the answer after each word (word prefixes, at most `MAX_STEPS` points) | a word: the input is read again without it, and the line keeps following the first answer so the two curves compare | `byosm/app/explain.py`, `ReadingView.tsx` |
+| Tagger | confidence of the tag given to each word, with each found span shaded and named by its kind | a word: the input is tagged again without it, and the line breaks where the word was | `confidence` in `rt.py`, `TaggingView.tsx` |
+| Event risk | the chance, with each feature's signed effect: the change in chance when that feature takes its typical value | a feature: it is scored with the typical value, and the chance shows what it was | `effects` in `byosm/tabular/reasons.py`, `RiskDrivers.tsx` |
+| Forecaster | history, the forecast with its 80% interval and the now line (already on the Test tab) | not yet: univariate forecasters have no covariates to switch | `SeriesTry.tsx` |
+
+Word drivers come from occlusion: the drop in the answer's probability when one word is left out. It costs one
+forward pass per word on the exported ONNX bundle (about half a second for a 60-word tool-choice pair on CPU) and
+needs no gradients, so it works on any exported text bundle. The dashed line is the decision threshold when the
+answer is the positive label. Event-risk effects are one feature at a time, so they do not add up to the chance:
+features interact, and switching one off changes the effect of the others. A toggle sends the row the first lookup
+returned, so it scores again without reading the register again.
+
+Every view reads the same exported bundle through one cache keyed by the manifest's modification time
+(`byosm/app/bundles.py`), shared with Predict, so a new export is picked up without a restart.

@@ -40,7 +40,7 @@ function Body({ f }: { f: Forecast }) {
           <OverTime years={r.over_time ?? []} />
         </Section>
       )}
-      {r.today && <ForecastTry name={f.name} shown={f.spec.shown ?? []} />}
+      {r.today && <ForecastTry key={f.name} name={f.name} shown={f.spec.shown ?? []} />}
       {r.today && (
         <Section title={`Alive on 1 Jan ${r.today.year}`}>
           <ForecastToday today={r.today} horizon={f.spec.horizon_years} check={r.scores["gradient boosting"]} testYear={f.spec.cutoffs.test[0]} />

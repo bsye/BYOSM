@@ -5,6 +5,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { featureValue } from "./forecast-api"
 
 type Band = { from: number; to: number; n: number }
 type Reason = { feature: string; drop: number; value: string | number | null }
@@ -13,8 +14,6 @@ export type Today = { year: number; trained_on: number[]; scored: number; expect
 
 const config = { n: { label: "entities", color: "var(--chart-1)" } } satisfies ChartConfig
 const pct = (v: number) => `${Math.round(v * 100)}%`
-const NEVER_DAYS = 9999
-const value = (v: string | number | null) => (v == null ? "missing" : v === NEVER_DAYS ? "never" : typeof v === "number" ? String(Math.round(v * 10) / 10) : v)
 
 type Check = { base_rate: number; predicted_rate?: number }
 
@@ -72,7 +71,7 @@ function Riskiest({ top }: { top: Scored[] }) {
                 <div className="flex flex-wrap gap-1">
                   {(r.why ?? []).slice(0, 2).map((w) => (
                     <Badge key={w.feature} variant="secondary" className="font-mono" title={`+${pct(w.drop)} because of this`}>
-                      {w.feature} {value(w.value)}
+                      {w.feature} {featureValue(w.value)}
                     </Badge>
                   ))}
                 </div>

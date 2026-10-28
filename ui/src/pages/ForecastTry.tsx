@@ -7,43 +7,25 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { RiskDrivers, type Risk } from "./RiskDrivers"
 
 type Inputs = { key: string | null; columns: string[] }
-type Reason = { feature: string; drop: number; value: string | number | null }
-type Answer = { state: "alive" | "ended"; row: Record<string, string | null>; chance?: number; why?: Reason[] }
 
 const LOOKUP = "lookup"
 const FILL = "fill"
-const NEVER_DAYS = 9999
-const pct = (v: number) => `${Math.round(v * 100)}%`
-const value = (v: string | number | null) => (v == null ? "missing" : v === NEVER_DAYS ? "never" : String(v))
 
-function Result({ answer, shown }: { answer: Answer; shown: string[] }) {
+function Result({ name, request, answer, shown }: { name: string; request: object; answer: Risk; shown: string[] }) {
   const who = shown
     .map((c) => answer.row[c])
     .filter(Boolean)
     .join(" · ")
-  if (answer.state === "ended")
+  if (answer.state !== "alive")
     return (
       <p className="text-sm">
-        <Badge variant="outline">Already ended</Badge> <span className="text-muted-foreground">{who}</span>
+        <Badge variant="outline">{answer.state === "ended" ? "Already ended" : "Not scored"}</Badge> <span className="text-muted-foreground">{who}</span>
       </p>
     )
-  return (
-    <div className="grid gap-2">
-      <div className="flex flex-wrap items-baseline gap-3">
-        <span className="text-3xl font-semibold tabular-nums">{pct(answer.chance ?? 0)}</span>
-        <span className="text-muted-foreground text-sm">{who}</span>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {(answer.why ?? []).map((w) => (
-          <Badge key={w.feature} variant="secondary" className="font-mono" title={`+${pct(w.drop)} because of this`}>
-            {w.feature} {value(w.value)}
-          </Badge>
-        ))}
-      </div>
-    </div>
-  )
+  return <RiskDrivers name={name} request={request} base={answer} who={who} />
 }
 
 export function ForecastTry({ name, shown }: { name: string; shown: string[] }) {
@@ -51,7 +33,8 @@ export function ForecastTry({ name, shown }: { name: string; shown: string[] }) 
   const [mode, setMode] = useState(LOOKUP)
   const [key, setKey] = useState("")
   const [row, setRow] = useState<Record<string, string>>({})
-  const [answer, setAnswer] = useState<Answer | null>(null)
+  const [answer, setAnswer] = useState<Risk | null>(null)
+  const [request, setRequest] = useState<object>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   useEffect(() => {
@@ -60,8 +43,15 @@ export function ForecastTry({ name, shown }: { name: string; shown: string[] }) 
   const ask = () => {
     setBusy(true)
     setError("")
-    post<Answer>(`/forecasts/${name}/predict`, mode === LOOKUP ? { key } : { row })
-      .then(setAnswer, (e) => setError(String(e)))
+    const body = mode === LOOKUP ? { key } : { row }
+    post<Risk>(`/forecasts/${name}/predict`, body)
+      .then(
+        (r) => {
+          setRequest({ row: r.row })
+          setAnswer(r)
+        },
+        (e) => setError(String(e)),
+      )
       .finally(() => setBusy(false))
   }
   const ready = mode === LOOKUP ? key.trim() : Object.values(row).some(Boolean)
@@ -103,7 +93,7 @@ export function ForecastTry({ name, shown }: { name: string; shown: string[] }) 
           </Button>
         </div>
         {error && <p className="text-destructive text-sm">{error}</p>}
-        {answer && <Result answer={answer} shown={shown} />}
+        {answer && <Result key={JSON.stringify(request)} name={name} request={request} answer={answer} shown={shown} />}
       </CardContent>
     </Card>
   )

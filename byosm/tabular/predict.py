@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -68,12 +68,14 @@ def _blank_state(df: Any, event: str) -> str:
     return ENDED if pd.notna(ended) and ended.date() < date.today() else UNSCORED
 
 
-def predict(ws: Path, name: str, row: dict[str, Any], log: Callable[[str], None] = print) -> dict[str, Any]:
+def predict(
+    ws: Path, name: str, row: dict[str, Any], log: Callable[[str], None] = print, usual: Sequence[str] = ()
+) -> dict[str, Any]:
     import joblib
     import pandas as pd
 
     from .derive import derive
-    from .reasons import reasons
+    from .reasons import as_usual, effects
     from .snapshots import snapshot
     from .task import histories, load, model_path
 
@@ -88,12 +90,19 @@ def predict(ws: Path, name: str, row: dict[str, Any], log: Callable[[str], None]
     now = snapshot(df, recipe, date.today().year)
     if now.empty:
         return {"state": _blank_state(df, spec.event), "row": row}
-    x = _features(now, bundle)
+    unknown = [c for c in usual if c not in bundle["typical"]]
+    if unknown:
+        raise ValueError(f"not a feature of {name}: {', '.join(unknown)}")
+    x = as_usual(_features(now, bundle), bundle["typical"], list(usual))
     chance = float(bundle["model"].predict_proba(x)[:, 1][0])
-    why = reasons(bundle["model"], x, bundle["typical"])[0]
     return {
         "state": ALIVE,
         "row": row,
         "chance": round(chance, 4),
-        "why": [{**w, "value": _plain(now.iloc[0].get(w["feature"]))} for w in why],
+        "usual": list(usual),
+        "effects": [_effect(e, now, bundle) for e in effects(bundle["model"], x, bundle["typical"])],
     }
+
+
+def _effect(e: dict[str, Any], now: Any, bundle: dict[str, Any]) -> dict[str, Any]:
+    return {**e, "value": _plain(now.iloc[0].get(e["feature"])), "typical": _plain(bundle["typical"][e["feature"]])}

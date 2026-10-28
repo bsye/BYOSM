@@ -33,10 +33,10 @@ def forecast(ws, monkeypatch):
     return ws
 
 
-def _predict(ws, row):
+def _predict(ws, row, usual=()):
     from byosm.tabular.predict import predict
 
-    return predict(ws, "f", row, log=lambda m: None)
+    return predict(ws, "f", row, log=lambda m: None, usual=usual)
 
 
 def test_a_row_holding_only_start_and_one_feature_is_scored(forecast):
@@ -58,3 +58,20 @@ def test_an_entity_that_started_this_year_or_has_no_start_is_not_scored_rather_t
 
 def test_only_an_event_in_the_past_is_ended(forecast):
     assert _predict(forecast, {"start": "2010-01-01", "end": "2020-01-01", "kind": "a"})["state"] == "ended"
+
+
+def test_every_feature_has_a_signed_effect_and_setting_one_to_typical_moves_the_chance_by_it(forecast):
+    row = {"start": "2010-01-01", "kind": "a", "noise": 0.3}
+    out = _predict(forecast, row)
+    drops = [abs(e["drop"]) for e in out["effects"]]
+    assert {e["feature"] for e in out["effects"]} >= {"kind", "noise"} and drops == sorted(drops, reverse=True)
+    top = out["effects"][0]
+    assert {"value", "typical"} <= top.keys()
+    moved = _predict(forecast, row, usual=[top["feature"]])
+    assert moved["usual"] == [top["feature"]] and abs(out["chance"] - moved["chance"] - top["drop"]) < 1e-3
+    assert next(e for e in moved["effects"] if e["feature"] == top["feature"])["drop"] == 0
+
+
+def test_setting_an_unknown_feature_to_typical_fails_loudly(forecast):
+    with pytest.raises(ValueError):
+        _predict(forecast, {"start": "2010-01-01", "kind": "a"}, usual=["invented"])

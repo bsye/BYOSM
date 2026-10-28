@@ -18,6 +18,7 @@ class History(BaseModel):
 class Entity(BaseModel):
     key: str | None = None
     row: dict[str, Any] | None = None
+    usual: list[str] = []
 
 
 def forecast_router(ws: Path) -> APIRouter:
@@ -106,8 +107,10 @@ def forecast_router(ws: Path) -> APIRouter:
         if row is None:
             raise HTTPException(404, f"no row with {body.key}")
         try:
-            return predict(ws, name, row, lambda m: None)
+            return predict(ws, name, row, lambda m: None, body.usual)
         except KeyError as e:
             raise HTTPException(404, str(e).strip("'\"")) from e
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
 
     return router
