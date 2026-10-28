@@ -2188,3 +2188,32 @@ rows by `score` and must reproduce what the labels imply on test: precision equa
 irrelevance. Shares are compared within 5e-5, as request accuracies are rounded to four places. The outcome is kept as
 the `protocol:<suite>` report with the rows it was scored on; a mismatch, or a suite with no test rows, discards the
 frozen rows and leaves the spec unchanged.
+
+## eot-bench becomes a turn-completion suite, checked against its published silence timeout
+
+`byosm suite public <name> eot-bench` fits a binary text specialist whose positive label is a "turn over" name
+(`FINISHED_NAMES` in `byosm/predictors/turn.py`) and whose first language is one of eot-bench's 14
+(`byosm/benchmarks/eot.py`).
+
+- **Source.** `livekit/eot-bench-data` (CC-BY-4.0 on its card; the harness is Apache-2.0), the validation file of the
+  spec's language. Only the `id`, `silence_spans` and `words` columns are read, through `HfFileSystem` and a pyarrow
+  column projection, so the audio in the same file is never downloaded.
+- **Rows** follow eot-bench's harness (`eot_harness/io.py`): a span shorter than 0.1 s is skipped; the last span of a
+  turn is its end and every other one a pause, kept only between 0.2 and 5.0 s as the metric does; each span is read
+  every 0.1 s from its start, and at time t the detector hears the words that ended at least 0.5 s earlier
+  (eot-bench's transcript lag). Each distinct text in a span is one row, at the first moment it is heard, which scores
+  a text-only model exactly as reading it at every step would. The text is the current turn's words only; the earlier
+  conversation in `messages` is left out, as turn-completion reads the turn so far. A moment with no word heard yet
+  is an empty input, scored like any other.
+- **Split.** A hash of the turn id puts a fifth of the turns in calib. The suite keeps the row-level objective (recall
+  at 98% precision) and adds `cutoffs`; a row's label is its span's, so an end read before its last words arrive is
+  still an end.
+- **Protocol check.** `always-positive` reduces to a silence timeout, so on every row of the file (the split eot-bench
+  publishes on) its cutoff rates at 300 and 600 ms must equal eot-bench's published "VAD baseline" for the language,
+  read from `output/.../language_comparison/summary.json` at a pinned commit (`COMMIT`) and fetched once into the
+  open-data cache. A language with no published baseline is refused. Once the check passes, every model's published
+  cutoff rates on that file are kept in the `protocol:eot-bench` report and printed, as references measured on the
+  same rows.
+- **Not added.** The Smart Turn v3.2 test set (`pipecat-ai/smart-turn-data-v3.2-test`, CC-BY-4.0) is audio only: its
+  `spoken_text` column is empty and it has no word timing, so a text specialist cannot read it without a speech
+  recogniser.

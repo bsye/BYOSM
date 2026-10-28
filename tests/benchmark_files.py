@@ -77,3 +77,33 @@ def written(root, files):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("".join(json.dumps(r) + "\n" for r in rows))
     return lambda file: root / file
+
+
+def word(text, start, end):
+    return {"start": start, "end": end, "word": text}
+
+
+HELLO = [word("hello", 0.0, 0.3), word("there", 0.4, 0.8), word("how", 1.3, 1.5), word("are", 1.6, 1.8)]
+EOT_TURNS = [
+    {
+        "id": "en_a",
+        "silence_spans": [{"start": 0.8, "end": 1.3}, {"start": 1.5, "end": 1.58}, {"start": 2.2, "end": 3.4}],
+        "words": [*HELLO, word("you", 1.9, 2.2)],
+    },
+    {
+        "id": "en_f",
+        "silence_spans": [{"start": 0.5, "end": 0.75}, {"start": 1.0, "end": 1.15}, {"start": 1.6, "end": 2.6}],
+        "words": [word("yes", 0.1, 0.5), word("please", 0.75, 1.0), word("now", 1.15, 1.6)],
+    },
+    {
+        "id": "en_b",
+        "silence_spans": [{"start": 0.4, "end": 1.1}, {"start": 1.5, "end": 2.0}],
+        "words": [word("my", 0.0, 0.2), word("number", 0.2, 0.4), word("is", 1.1, 1.5)],
+    },
+]
+EOT_HOLDS = (0.5, 0.25, 0.7)
+
+
+def eot_summary(language, at_300, at_600, model="VAD baseline"):
+    budgets = {"best_cutoff_rate_at_0_3s_latency": at_300, "best_cutoff_rate_at_0_6s_latency": at_600}
+    return {"values": {k: {language: {model: v, "LiveKit Turn Detector v1": 0.05}} for k, v in budgets.items()}}

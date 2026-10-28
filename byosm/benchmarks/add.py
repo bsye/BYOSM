@@ -54,10 +54,12 @@ def add(p: Project, b: Benchmark, log: Log) -> dict[str, Any]:
     write_file(path, rows)
     log(f"  {b.name}: {len(rows)} rows from {b.dataset} ({_counts(rows)}) in {path}")
     suite = EvalSuite(name=b.name, kind=LOCAL, path=str(path), dataset=b.dataset, licence=licence(b.dataset))
-    check = protocol.run(p, spec, suite, b.kind.expected(spec, rows), b.kind.observed, log)
+    check = protocol.run(p, spec, suite, b.kind, rows, log)
     for c in check["checks"]:
         verdict = "ok" if c["ok"] else "MISMATCH"
         log(f"  protocol check, {c['metric']}: expected {fmt(c['expected'])}, scored {fmt(c['scored'])}, {verdict}")
+    for model, found in (check.get("published") or {}).items():
+        log(f"  published on this split, {model}: " + ", ".join(f"{k} {fmt(v)}" for k, v in found.items()))
     if not check["passed"]:
         _discard(p, suite)
         raise ValueError(f"{b.name} failed its protocol check on {p.name}: the suite was not added")

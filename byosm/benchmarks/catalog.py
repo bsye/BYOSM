@@ -3,19 +3,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
-from typing import Any
 
 from ..spec import TaskSpec
-from . import bfcl, protocol, when2call
+from . import bfcl, eot, when2call
+from .pairs import PAIRS
+from .protocol import Kind
 
 Log = Callable[[str], None]
-
-
-@dataclass(frozen=True)
-class Kind:
-    fits: Callable[[TaskSpec], bool]
-    expected: Callable[[TaskSpec, list[dict]], protocol.Values]
-    observed: Callable[[dict[str, Any]], protocol.Values]
 
 
 @dataclass(frozen=True)
@@ -26,8 +20,6 @@ class Benchmark:
     rows: Callable[[TaskSpec, Log], list[dict]]
     about: str
 
-
-PAIRS = Kind(protocol.pairs_fit, protocol.pair_expected, protocol.pair_observed)
 
 BENCHMARKS = {
     b.name: b
@@ -52,6 +44,13 @@ BENCHMARKS = {
             PAIRS,
             when2call.rows,
             "When2Call multiple-choice test: a tool fits only when the right answer is to call it now",
+        ),
+        Benchmark(
+            "eot-bench",
+            eot.REPO,
+            eot.TURNS,
+            eot.rows,
+            "LiveKit eot-bench in the spec's language: the words heard at each moment of each pause, turn over or not",
         ),
     )
 }

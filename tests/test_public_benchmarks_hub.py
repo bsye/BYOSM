@@ -3,7 +3,7 @@ import socket
 
 import pytest
 
-from byosm.benchmarks import bfcl, when2call
+from byosm.benchmarks import bfcl, eot, when2call
 from byosm.benchmarks.catalog import BENCHMARKS
 from byosm.data.hf_source.cards import UNKNOWN_LICENCE, licence
 
@@ -40,6 +40,11 @@ def test_bfcl_has_a_question_file_per_category_and_an_answer_file_where_a_tool_f
 
 def test_when2call_has_its_multiple_choice_test_file():
     assert when2call.TEST_FILE in files(when2call.REPO)
+
+
+def test_eot_bench_has_a_validation_file_for_every_language_it_publishes():
+    found = files(eot.REPO)
+    assert all(eot.FILE.format(language=language) in found for language in eot.LANGUAGES)
 
 
 def test_every_public_benchmark_states_its_licence_on_its_card():

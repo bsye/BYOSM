@@ -8,7 +8,8 @@ from typing import Any
 from ..data.store import read_file
 from ..options.situations import Situation
 from ..spec import TaskSpec
-from .pairs import Case, download, option, pair_rows
+from .pairs import Case, option, pair_rows
+from .source import download
 
 REPO = "nvidia/When2Call"
 TEST_FILE = "test/when2call_test_mcq.jsonl"

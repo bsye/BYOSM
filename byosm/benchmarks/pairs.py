@@ -2,19 +2,16 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
-from ..data.store import CALIB, record
-from ..evals.grouped import CATEGORY, GROUP
+from ..data.store import record
+from ..evals.grouped import CATEGORY, GROUP, PAIR_LABELS, REQUESTS
 from ..hub.facts import HUB_SOURCE
-from ..options.heldout import hashed
 from ..options.pairs import pairs_of, rendered, split_layouts
-from ..options.situations import Situation
+from ..options.situations import FITS, Situation
 from ..spec import PairPlan, TaskSpec
-
-CALIB_SHARE = 0.2
-TEST = "test"
+from .protocol import Kind, Values
+from .source import TEST, split_of
 
 
 @dataclass
@@ -23,16 +20,6 @@ class Case:
     category: str
     situation: Situation
     split_key: str = ""
-
-
-def split_of(key: str) -> str:
-    return CALIB if hashed(key) < CALIB_SHARE else TEST
-
-
-def download(repo: str, file: str) -> Path:
-    from huggingface_hub import hf_hub_download
-
-    return Path(hf_hub_download(repo, file, repo_type="dataset"))
 
 
 def option(tool: dict[str, Any]) -> dict[str, Any]:
@@ -54,3 +41,32 @@ def pair_rows(spec: TaskSpec, cases: Iterable[Case], dataset: str) -> list[dict]
             meta = {GROUP: c.group, CATEGORY: c.category, "layout": layout}
             rows.append({**record(text, p.label, source, **meta), "id": f"{c.group}:{i}", "split": split})
     return rows
+
+
+def fits(spec: TaskSpec) -> bool:
+    return set(spec.label_names) == PAIR_LABELS and spec.label_names[spec.pos_index] == FITS
+
+
+def expected(spec: TaskSpec, rows: list[dict]) -> Values:
+    test = [r for r in rows if r["split"] == TEST]
+    share = sum(r["label"] == FITS for r in test) / max(1, len(test))
+    requests: dict[str, list[bool]] = {}
+    for r in test:
+        requests.setdefault(r["meta"][GROUP], []).append(r["label"] == FITS)
+    needed = [all(found) for found in requests.values() if any(found)]
+    return {
+        "precision": share,
+        "recall": 1.0 if share else 0.0,
+        "f1": 2 * share / (1 + share),
+        "tool_needed": sum(needed) / len(needed) if needed else None,
+        "no_tool": 0.0 if len(needed) < len(requests) else None,
+    }
+
+
+def observed(result: dict[str, Any]) -> Values:
+    m = result["metrics"]
+    found = {k: m[REQUESTS]["all"][k]["accuracy"] for k in ("tool_needed", "no_tool")}
+    return {k: m[k] for k in ("precision", "recall", "f1")} | found
+
+
+PAIRS = Kind(fits, expected, observed)
