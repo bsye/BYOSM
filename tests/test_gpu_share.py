@@ -219,7 +219,7 @@ def test_a_training_whose_dev_score_collapses_is_treated_as_diverged(monkeypatch
     monkeypatch.setattr(loop, "release_cache", lambda: None)
     monkeypatch.setattr(
         loop,
-        "_snapshot",
+        "snapshot",
         lambda model, ep, ev: {"objective": ev["metrics"]["objective"], "macro_f1": ev["metrics"]["macro_f1"]},
     )
 

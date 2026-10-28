@@ -14,7 +14,7 @@ from ..events import stage
 from ..improve.diagnosis import scored_experiment, training_summary
 from ..project import Project
 from ..spec import EvalSuite, TaskSpec
-from ..train.loop import split_rows
+from ..train.rows import split_rows
 from . import overfit_checks as checks
 from .board import experiment_predictor
 from .dumps import _dumps

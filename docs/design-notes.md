@@ -260,7 +260,7 @@ behind the cosine LR schedule. The EMA weights are the ones evaluated and shippe
 extractor: no dropout, no BatchNorm statistic updates.
 
 **A missing dev split is cut from train.**
-`byosm/train/loop.py` `_split_rows`: a random 10% of train (at least one row) is held out with the run's seeded RNG, so
+`byosm/train/rows.py` `split_rows`: a random 10% of train (at least one row) is held out with the run's seeded RNG, so
 epoch selection always has a dev set. Gotcha: folded builtin test rows are added to train first, so this dev can
 contain them.
 
@@ -1775,3 +1775,33 @@ models. Technique rounds never count towards the plateau stop and keep a stored 
 plateau would stop training, since they cost no training. A promoted version without a saved model trains instead.
 `series run DOMAIN --until-rival --rounds 2` applies both techniques to the promoted models; neither has been run on
 the GIFT-Eval forecasters yet.
+
+Planned families (multi-rate forecasting, routing, input layouts, near-miss negatives, an embedding-model head,
+SetFit, label-noise cleaning, weight averaging, learning curves, forecaster pretraining v2, re-initialised layers, a
+small search, R-Drop and mixup, quantile boosting, self-training) become available as each one lands in the pipeline.
+
+## A logistic head on a frozen sentence-embedding model
+
+`train.method: embedding-head` (`byosm/train/embedding.py`) trains no encoder weight. It mean-pools the backbone's
+last hidden states, the pooling sentence-transformers checkpoints such as all-MiniLM-L6-v2 (the default text backbone)
+were trained with, and fits a multinomial logistic regression with `LOGISTIC_C` 1, the setting SetFit and the MTEB
+classification protocol use, and the trainer's square-root inverse-frequency class weights. It is the floor a text
+specialist can score in seconds before any fine-tune: frozen sentence encoders with a small head beat fine-tuned BERT
+at 10 rows per label in [Casanueva et al.](https://arxiv.org/abs/2003.04807). It has not been measured in BYOSM yet.
+
+The regression is written into the ordinary head, so the result is a plain `SpecialistModel` that the evals code
+scores and `byosm export` turns into the usual ONNX graph (encoder, mean pooling, linear head), checked by `verify`.
+The head's `LayerNorm` gets scale `1/sqrt(dim)` and no shift, so its output is the centred, unit-length embedding the
+regression was fitted on (`fit_head`). A binary regression becomes the two logits `-z/2, z/2`, whose softmax is its
+sigmoid, and a label with no training row gets the logit `ABSENT_LOGIT` (`logistic_weights`).
+
+Pooled embeddings are cached by content in `embeddings.sqlite` under the byosm cache (`byosm/train/vectors.py`), keyed
+by backbone, `max_len`, `truncation` and the text's SHA-1, so seed replicas and refine rounds encode a row once per
+machine. Dev rows are scored through the model, as in every other training, so the selection path is the shipped one.
+
+Gotchas: there is one pass, so `history` holds one entry whose loss is the regression's training log loss;
+`epochs`, `pretrain_steps`, `ema`, `freeze_backbone`, `init_from` and `distill_from` have no effect. A student distilled
+from an embedding-head teacher is fine-tuned (`byosm/distill.py`). The spec refuses the method for other modalities,
+frame tasks and attention pooling. Fine-tuning and the embedding methods share how rows are split and seeded
+(`prepare` in `byosm/train/rows.py`) and how a run is saved (`finish` in `byosm/train/outputs.py`), and the teacher
+and embedding caches open their database with `cache_db` (`byosm/config.py`).

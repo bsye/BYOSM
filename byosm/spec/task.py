@@ -6,10 +6,11 @@ from datetime import datetime
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .backbones import MINILM
 from .sections import (
+    FINETUNE,
     Axis,
     DataPlan,
     Decision,
@@ -24,6 +25,7 @@ from .sections import (
 
 SYNTH_FIELDS = ("name", "summary", "input_description", "languages", "diversity_axes", "hard_cases")
 DATA_RUN_SETTINGS = {"max_minutes", "local_source"}
+EMBEDDING_TASK = ("text", "classify", "mean")
 
 
 class TaskSpec(BaseModel):
@@ -55,6 +57,12 @@ class TaskSpec(BaseModel):
     evals: list[EvalSuite] = Field(default_factory=lambda: [EvalSuite(name="builtin", primary=True)])
     baselines: list[str] = Field(default_factory=list)
     search: dict[str, list[str]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _method_fits_the_task(self) -> TaskSpec:
+        if self.train.method != FINETUNE and (self.modality, self.task_type, self.train.pool) != EMBEDDING_TASK:
+            raise ValueError(f"train.method {self.train.method} trains mean-pooled text classifiers only")
+        return self
 
     @property
     def label_names(self) -> list[str]:

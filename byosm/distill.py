@@ -4,6 +4,7 @@ from typing import Any
 
 from .project import Project
 from .spec import TaskSpec
+from .spec.sections import FINETUNE
 
 STUDENT_PREFIX = "distill-"
 TINY_TEXT = "hf:google/bert_uncased_L-4_H-256_A-4"
@@ -30,6 +31,7 @@ def student_spec(teacher: TaskSpec, teacher_exp: str, overrides: dict[str, Any] 
     edits = {
         **edits,
         **(overrides or {}),
+        "train.method": FINETUNE,
         "train.distill_from": teacher_exp,
         "train.pretrain_steps": 0,
         "train.epochs": max(teacher.train.epochs, 12),

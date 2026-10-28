@@ -3,12 +3,13 @@ from __future__ import annotations
 import contextlib
 import copy
 import random
+from collections.abc import Callable
 from typing import Any
 
 import torch
 
 from ..modalities import Modality
-from ..model import SpecialistModel
+from ..model import SpecialistModel, count_params
 from ..spec import TaskSpec
 
 LAYER_SEGMENTS = {"layer", "layers", "blocks", "block", "h", "stages"}
@@ -37,6 +38,13 @@ def to_device(inputs: dict[str, torch.Tensor], dev: str) -> dict[str, torch.Tens
 
 def build_model(spec: TaskSpec, mod: Modality) -> SpecialistModel:
     return SpecialistModel(mod.build_backbone(), {spec.name: (len(spec.labels), spec.task_type, spec.train.pool)})
+
+
+def sized_model(spec: TaskSpec, mod: Modality, dev: str, log: Callable[[str], None]) -> tuple[SpecialistModel, int]:
+    model = build_model(spec, mod)
+    n_params = count_params(model.backbone) + sum(count_params(h) for h in model.heads.values())
+    log(f"  model: {spec.backbone} + {spec.task_type} head = {n_params / 1e6:.2f}M params on {dev}")
+    return model, n_params
 
 
 def pretrained_encoders(model: torch.nn.Module) -> dict[str, torch.nn.Module]:

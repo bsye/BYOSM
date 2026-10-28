@@ -42,12 +42,9 @@ def _teacher_key(spec: TaskSpec, teacher: str) -> str:
 
 
 def _db() -> sqlite3.Connection:
-    from ..config import cache_root
+    from ..config import cache_db
 
-    cache_root().mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(cache_root() / CACHE_DB)
-    db.execute("create table if not exists probs (teacher text, item text, probs text, primary key (teacher, item))")
-    return db
+    return cache_db(CACHE_DB, "probs (teacher text, item text, probs text, primary key (teacher, item))")
 
 
 def teacher_probs(

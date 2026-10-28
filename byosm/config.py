@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -40,6 +41,13 @@ def find_workspace(start: Path | None = None) -> Path:
 
 def cache_root() -> Path:
     return Path(os.environ.get("BYOSM_CACHE") or Path.home() / ".cache" / "byosm")
+
+
+def cache_db(file: str, table: str) -> sqlite3.Connection:
+    cache_root().mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(cache_root() / file)
+    db.execute(f"create table if not exists {table}")
+    return db
 
 
 def env_file(ws: Path | None = None) -> dict[str, str]:

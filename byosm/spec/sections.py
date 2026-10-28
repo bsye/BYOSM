@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, get_args
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -9,6 +9,8 @@ from .backbones import DINOV2_SMALL, MINILM
 Modality = Literal["text", "audio", "image", "document"]
 TaskType = Literal["classify", "frame"]
 Metric = Literal["f1", "macro_f1", "accuracy", "recall_at_precision", "precision_at_recall", "span_f1"]
+TrainMethod = Literal["finetune", "embedding-head"]
+FINETUNE, EMBEDDING_HEAD = get_args(TrainMethod)
 
 
 HUB_PREFIX = "hf:"
@@ -125,6 +127,7 @@ class EvalSuite(BaseModel):
 
 
 class TrainCfg(BaseModel):
+    method: TrainMethod = FINETUNE
     pretrain_steps: int = 300
     pretrain_lambda: float = 0.05
     epochs: int = 8
