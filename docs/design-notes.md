@@ -2168,8 +2168,8 @@ and `no_fit` with `fits` positive.
 - **Layouts.** `pair_rows` writes one row per offered function with `pairs_of`, rendered unmasked in the layouts the
   specialist's own calib and test use (`split_layouts(plan, "test")`), so the suite tests the layouts it was built
   for and its held-out ones.
-- **Split.** A hash of the request id puts a fifth of the requests in calib (`hashed` in `byosm/options/heldout.py`,
-  shared with the held-out tool split). When2Call hashes its BFCL source question instead, so the three variants of one
+- **Split.** A hash of the request id puts a fifth of the requests in calib (`split_of` in
+  `byosm/benchmarks/source.py`, on `hashed` from `byosm/options/heldout.py`, shared with the held-out tool split). When2Call hashes its BFCL source question instead, so the three variants of one
   question (call, ask, cannot answer) land on the same side; since BFCL ids are hashed the same way, a question that is
   in both `bfcl-live` and `when2call` sits on the same side of both.
 - **When2Call as binary** asks "should the model call this tool now": `cannot_answer` items (the tool was removed) and
@@ -2181,7 +2181,8 @@ and `no_fit` with `fits` positive.
   no offered set and no negatives, is scored as retrieval over a 43k-tool corpus, and its card states no licence, so
   turning it into pairs would mean inventing the negatives.
 
-**Protocol check** (`byosm/benchmarks/protocol.py`). Before a suite is added, `always-positive` is scored on the frozen
+**Protocol check** (`run` in `byosm/benchmarks/protocol.py`, with the pair expectations in `expected` in
+`byosm/benchmarks/pairs.py`). Before a suite is added, `always-positive` is scored on the frozen
 rows by `score` and must reproduce what the labels imply on test: precision equal to the share of fitting pairs, recall
 1, F1 `2b/(1+b)`, `tool_needed` equal to the share of tool-needing requests whose every offered tool fits (BFCL
 `simple`), and `no_tool` 0, which is BFCL's own definition: a model that always calls a function scores 0 on

@@ -63,6 +63,16 @@ Public and industry-standard where one exists. Every rival is scored by the same
 | lease-entities | LLM-written, not a public benchmark | span_f1 |
 | turn-completion | builtin held-out split | recall_at_precision |
 
+**Hard public suites.** `byosm suite public <name>` adds the public sets where strong references are below their
+ceiling, frozen with their licence, and keeps each one only after its protocol check: `always-positive` must score
+what the benchmark itself implies or publishes. None has been scored on a specialist yet.
+
+| suite | for | dataset (licence) | protocol check |
+|---|---|---|---|
+| `bfcl`, `bfcl-live` | tool choice | `gorilla-llm/Berkeley-Function-Calling-Leaderboard` v3 (Apache-2.0) | calling every tool scores 0 on irrelevance and the label shares elsewhere |
+| `when2call` | tool choice | `nvidia/When2Call` multiple-choice test (CC-BY-4.0) | the same |
+| `eot-bench` | turn completion | `livekit/eot-bench-data` (CC-BY-4.0) | answering "finished" at once reproduces eot-bench's published silence-timeout cutoffs at 300 and 600 ms |
+
 **Rivals.** `llm` is Qwen 3.8 27B, local and zero-shot. `jev` is TypeSafe's Jev judgment model, zero-shot over the same
 label definitions, one API request per item; its time column is the API round trip, not local CPU. `hf:` rivals are
 public fine-tuned checkpoints.
