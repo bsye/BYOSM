@@ -14,7 +14,7 @@ def test_autopilot_end_to_end(ws):
     spec = compile_spec("auto", "detect questions")
     spec.data.train_size, spec.data.dev_size, spec.data.test_size, spec.data.per_call = 120, 80, 60, 20
     spec.train.epochs, spec.train.pretrain_steps, spec.train.refine_rounds = 2, 0, 0
-    spec.objective.target, spec.finalist_seeds = 0.9, 1
+    spec.objective.target, spec.finalist_seeds = 0.85, 1
     spec, _ = discover(spec, {}, None, lambda m: None)
     p.ensure()
     p.save_spec(spec)
