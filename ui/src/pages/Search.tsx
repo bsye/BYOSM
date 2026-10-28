@@ -4,11 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { InfoTip } from "@/components/info-tip"
 import { StatCard, STAT_GRID } from "@/components/stat-card"
+import { axisWidth, ROW_PX } from "@/chart-size"
 import { seconds } from "@/format"
-
-const CHAR_PX = 7
-const AXIS_PAD_PX = 12
-const ROW_PX = 28
 
 const config = {
   tries: { label: "Tries", color: "var(--chart-1)" },
@@ -17,7 +14,6 @@ const config = {
 
 export function Search({ s }: { s?: SearchStats }) {
   if (!s?.experiments) return null
-  const axisWidth = Math.max(...s.families.map((f) => f.family.length)) * CHAR_PX + AXIS_PAD_PX
   const perLead = s.gpu_hours_per_sure_lead == null ? "-" : seconds(s.gpu_hours_per_sure_lead * 3600)
   return (
     <Card>
@@ -42,7 +38,7 @@ export function Search({ s }: { s?: SearchStats }) {
           <BarChart data={s.families} layout="vertical" margin={{ left: 8, right: 8 }} barGap={2}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-            <YAxis type="category" dataKey="family" tickLine={false} axisLine={false} width={axisWidth} interval={0} />
+            <YAxis type="category" dataKey="family" tickLine={false} axisLine={false} width={axisWidth(s.families.map((f) => f.family))} interval={0} />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
             <Bar dataKey="tries" fill="var(--color-tries)" radius={4} />

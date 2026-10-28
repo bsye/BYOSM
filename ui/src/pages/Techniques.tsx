@@ -2,6 +2,7 @@ import { ExternalLink } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { api } from "@/api"
+import { axisWidth, ROW_PX } from "@/chart-size"
 import { InfoTip } from "@/components/info-tip"
 import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { Badge } from "@/components/ui/badge"
@@ -30,9 +31,6 @@ type Technique = {
 }
 
 const FILTERS = ["all", "available", "built-in", "planned"] as const
-const CHAR_PX = 7
-const AXIS_PAD_PX = 12
-const ROW_PX = 28
 
 const config = {
   tries: { label: "Tries", color: "var(--chart-1)" },
@@ -44,7 +42,6 @@ const host = (url: string) => new URL(url).hostname.replace("www.", "")
 function Tried({ rows }: { rows: Technique[] }) {
   const tried = rows.filter((t) => t.tries).sort((a, b) => b.tries - a.tries)
   if (!tried.length) return null
-  const axisWidth = Math.max(...tried.map((t) => t.title.length)) * CHAR_PX + AXIS_PAD_PX
   return (
     <Card>
       <CardHeader>
@@ -55,7 +52,7 @@ function Tried({ rows }: { rows: Technique[] }) {
           <BarChart data={tried} layout="vertical" margin={{ left: 8, right: 8 }} barGap={2}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-            <YAxis type="category" dataKey="title" tickLine={false} axisLine={false} width={axisWidth} interval={0} />
+            <YAxis type="category" dataKey="title" tickLine={false} axisLine={false} width={axisWidth(tried.map((t) => t.title))} interval={0} />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
             <Bar dataKey="tries" fill="var(--color-tries)" radius={4} />

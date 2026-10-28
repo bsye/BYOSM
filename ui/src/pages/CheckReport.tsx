@@ -1,12 +1,12 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import type { CheckReport as Report } from "@/api"
+import { ROW_PX } from "@/chart-size"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 const MAX_LISTED = 30
-const ROW_PX = 28
 
 const VERDICT_BADGE = { ready: "default", "needs more": "secondary", fix: "destructive" } as const
 

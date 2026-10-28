@@ -1,12 +1,12 @@
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts"
 import type { Job } from "@/api"
+import { ROW_PX } from "@/chart-size"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart"
 import { describe } from "@/jobs"
 import { useNow } from "@/now"
 
 const SHOWN = 12
-const ROW_PX = 28
 const STATUS_COLOR: Record<Job["status"], string> = {
   queued: "var(--muted-foreground)",
   running: "var(--chart-1)",
