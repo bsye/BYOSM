@@ -8,9 +8,10 @@ import numpy as np
 from ..format import fmt
 from ..options.situations import FITS, NO_FIT
 from ..spec import TaskSpec
+from . import cutoffs
 
 GROUP, CATEGORY = "group", "category"
-REQUESTS = "requests"
+REQUESTS, CUTOFFS = "requests", "cutoffs"
 PAIR_LABELS = {FITS, NO_FIT}
 SUMMARY_DIGITS = 3
 
@@ -43,7 +44,13 @@ def grouped_metrics(
     meta = (test[0].get("meta") or {}) if test and spec.task_type == "classify" else {}
     if GROUP in meta and set(spec.label_names) == PAIR_LABELS:
         return {REQUESTS: per_request(spec, test, dec)}
+    if cutoffs.SPAN in meta:
+        return {CUTOFFS: cutoffs.scores(spec, calib, test, pc, pt)}
     return {}
+
+
+def _cutoff(found: dict | None) -> str:
+    return f"{found['cutoff']:.1%}" if found else "no policy that fast"
 
 
 def summary(m: dict[str, Any]) -> str | None:
@@ -51,4 +58,7 @@ def summary(m: dict[str, Any]) -> str | None:
         s = m[REQUESTS]["all"]
         none, needed = (fmt(s[k]["accuracy"], SUMMARY_DIGITS) for k in ("no_tool", "tool_needed"))
         return f"no tool {none}, tool needed {needed}"
+    held = (m.get(CUTOFFS) or {}).get("held_out")
+    if held:
+        return "cutoffs " + ", ".join(f"{_cutoff(held[str(b)])} at {b} ms" for b in cutoffs.LATENCY_BUDGETS_MS)
     return None

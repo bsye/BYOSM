@@ -2109,3 +2109,28 @@ already carry the request.
 `byosm board` shows the test rows each model was scored on beside its score on every suite (`<suite>:n` in
 `board_rows`), so a rival scored on a smaller or older version of a suite stands out, and `--detail` adds the
 per-request summary for suites that have one.
+
+## False cutoffs at 300 and 600 ms, scored the way eot-bench scores them
+
+Recall at 98% precision on single transcripts hides the trade-off a voice agent lives with: answering sooner after the
+user stops cuts more users off mid-sentence. LiveKit's eot-bench ([github.com/livekit/eot-bench](https://github.com/livekit/eot-bench),
+`eot_harness/metrics.py`) reports instead the lowest false-cutoff rate a detector reaches within a mean-latency
+budget, and `byosm/evals/cutoffs.py` ports that sweep for suites whose rows carry silence timing:
+
+- A suite row is one state of a silence span: `meta.span` names the span, `meta.span_s` is its length and `meta.at_s`
+  the silence (seconds) after which this text is what the detector reads. The span's label is the turn's end
+  (`eot`, the positive label) for the last span of a turn and a pause (`hold`) for the others.
+- For each threshold (0 to 1 in steps of 0.01), a span fires at the first state whose chance is above it. A policy adds
+  an action delay (0.2 to 1.0 s, the earliest the agent may act) and a timeout (1.0 to 3.5 s, when it ends the turn
+  anyway). A pause is cut off when the agent acts or times out before the pause ends; an end's latency is when the
+  agent acts, or the timeout when it never fires. These grids are eot-bench's defaults.
+- `cutoffs.all` is eot-bench's own protocol: over every row of the set (calib and test, the split eot-bench publishes
+  on), the policy with the lowest cutoff rate among those whose mean latency is within 300 ms, and within 600 ms, with
+  eot-bench's tie-breaking. These numbers are comparable with eot-bench's published tables. The policy is tuned on the
+  rows it reports, as eot-bench does.
+- `cutoffs.held_out` picks the policy on calib only and reports its cutoff rate and latency on test, the number
+  selection-honest comparisons should use.
+
+`byosm board --detail` shows the held-out cutoff rates. A detector that always answers "finished" fires at once in
+every span, so its policy reduces to a silence timeout: its cutoff rate at a budget is the share of pauses longer than
+the budget, which is eot-bench's published "VAD baseline" and the protocol check of the eot-bench suite.
