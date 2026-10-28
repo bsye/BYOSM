@@ -44,3 +44,14 @@ def test_a_machine_that_stays_busy_is_not_timed_at_all(timed, monkeypatch):
 def test_a_busy_timing_becomes_a_step_that_times_it_again(timed):
     check = _speed(timed.spec(), timed.result("slow", "builtin"))
     assert check["status"] == "unknown" and check["args"] == ["time", "t"]
+
+
+def test_a_specialist_with_a_busy_timing_lists_time_it_again_among_its_next_steps(timed):
+    from conftest import save_board
+
+    from byosm.next_steps import suggestions
+
+    timed.promote("slow")
+    save_board(timed, {"slow": {"builtin": {**timed.result("slow", "builtin"), "calib_objective": 0.9}}})
+    step = next(s for s in suggestions("t") if s["id"] == "speed")
+    assert step["title"] == "Time it again" and step["args"] == ["time", "t"]

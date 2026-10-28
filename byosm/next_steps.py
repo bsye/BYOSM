@@ -136,7 +136,7 @@ def _experiments(p: Project, spec: TaskSpec, cs: list[dict]) -> dict[str, Any]:
 
 def _from_checks(cs: list[dict]) -> list[dict[str, Any]]:
     return [
-        _step(c["id"], COMMAND_TITLES.get(c["args"][0], FIX_TITLES[c["id"]]), c["why"], c["args"])
+        _step(c["id"], COMMAND_TITLES.get(c["args"][0]) or FIX_TITLES[c["id"]], c["why"], c["args"])
         for c in cs
         if c["args"] and c["status"] != OK
     ]
