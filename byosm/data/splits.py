@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import random
 from collections.abc import Callable
 
-from .store import DEV_SHARE, TEST_SHARE, near_groups
+from .store import CALIB, DEV_SHARE, TEST_SHARE, near_groups
 
 Log = Callable[[str], None]
 
@@ -45,3 +46,27 @@ def _hold_out(splits: dict[str, list[dict]], rng: random.Random, log: Log) -> No
     log(
         f"  no source gave {' or '.join(empty)} rows: held out {', '.join(f'{len(parts[s])} for {s}' for s in empty)} from train"
     )
+
+
+CALIB_EVERY = 2
+
+
+def _label_key(r: dict) -> str:
+    label = r.get("label")
+    return label if isinstance(label, str) else ""
+
+
+def _stable(rid: object) -> str:
+    return hashlib.sha1(str(rid).encode()).hexdigest()
+
+
+def carve_calib(splits: dict[str, list[dict]]) -> None:
+    groups: dict[object, list[dict]] = {}
+    for g, r in zip(near_groups([r["input"] for r in splits["dev"]]), splits["dev"], strict=True):
+        groups.setdefault((r.get("meta") or {}).get("file") or g, []).append(r)
+    by_label: dict[str, list[list[dict]]] = {}
+    for group in groups.values():
+        by_label.setdefault(_label_key(group[0]), []).append(group)
+    ordered = [g for lab in sorted(by_label) for g in sorted(by_label[lab], key=lambda g: _stable(g[0]["id"]))]
+    splits["dev"] = [r for i, g in enumerate(ordered) if not i % CALIB_EVERY for r in g]
+    splits[CALIB] = [r for i, g in enumerate(ordered) if i % CALIB_EVERY for r in g]

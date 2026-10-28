@@ -29,5 +29,11 @@ def calibrated_threshold(p: Project, exp: str) -> float | None:
     return t if t is not None else p.meta(exp).get("threshold")
 
 
+def clean_selection(p: Project, spec: TaskSpec, exp: str) -> bool:
+    prim = spec.primary_suite()
+    kind = next((e.kind for e in spec.evals if e.name == prim), "builtin")
+    return kind != "builtin" or bool(p.meta(exp).get("calib_held"))
+
+
 def sure_lead(cmp: dict | None) -> bool:
     return cmp is None or cmp["p_better"] >= SURE_LEAD

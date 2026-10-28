@@ -8,7 +8,7 @@ from ..ablation import is_arm
 from ..ablation import summaries as ablation_summaries
 from ..archive import archived, set_archived
 from ..auto.standing import best_baseline
-from ..data.store import SPLITS, Dataset
+from ..data.store import STORED_SPLITS, Dataset
 from ..data.sufficiency import data_check
 from ..dataset_search import saved_suggestions
 from ..evals.overfit import OVERFIT
@@ -172,8 +172,8 @@ def delete(ws: Path, name: str) -> None:
 
 
 def rows(ws: Path, name: str, split: str, offset: int, limit: int) -> dict[str, Any]:
-    if split not in SPLITS:
-        raise KeyError(f"split must be one of {', '.join(SPLITS)}")
+    if split not in STORED_SPLITS:
+        raise KeyError(f"split must be one of {', '.join(STORED_SPLITS)}")
     p = project(ws, name)
     data = Dataset(p.data_dir_for(p.spec())).load(split)
     return {"total": len(data), "rows": data[offset : offset + min(limit, MAX_PAGE)]}

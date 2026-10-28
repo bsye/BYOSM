@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-const SPLITS = ["train", "dev", "test"]
+const SPLITS = ["train", "dev", "calib", "test"]
 
 type Row = { id: string; input: unknown; label: unknown; source: string }
 

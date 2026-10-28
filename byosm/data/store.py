@@ -14,6 +14,8 @@ DEV_SHARE = 0.1
 TEST_SHARE = 0.15
 
 SPLITS = ("train", "dev", "test")
+CALIB = "calib"
+STORED_SPLITS = ("train", "dev", CALIB, "test")
 TRAIN_INPUTS = "train-inputs"
 REFINE_PREFIX = "refine-"
 ROUNDS_SUFFIX = "-rounds"
@@ -141,5 +143,5 @@ class Dataset:
         return exists(self.path("train"))
 
     def summary(self) -> dict[str, Any]:
-        tallies = {s: tally(self.path(s), "label") for s in SPLITS}
+        tallies = {s: tally(self.path(s), "label") for s in STORED_SPLITS}
         return {s: {"n": sum(n for _, n in t), "labels": count_labels(t)} for s, t in tallies.items()}

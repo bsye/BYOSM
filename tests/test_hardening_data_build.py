@@ -30,6 +30,7 @@ def test_panel_rows_that_nearly_copy_a_test_input_do_not_reach_train(tmp_path, m
     splits = {
         "train": [record(f"train row number {i}", "a", "local") for i in range(5)],
         "dev": [],
+        "calib": [],
         "test": [record(test_text, "a", "local")],
     }
     panel_rows = [record(test_text.upper() + "  ", "b", "panel"), record("something else entirely", "b", "panel")]

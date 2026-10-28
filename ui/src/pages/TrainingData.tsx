@@ -10,7 +10,7 @@ import { href } from "@/route"
 import { DataRows } from "./DataRows"
 
 type Built = { name: string; title: string; modality: string; labels: number; splits: Record<string, number>; sources: string[]; exported: boolean }
-const SPLITS = ["train", "dev", "test"]
+const SPLITS = ["train", "dev", "calib", "test"]
 
 export function TrainingData() {
   const [rows, setRows] = useState<Built[] | null>(null)

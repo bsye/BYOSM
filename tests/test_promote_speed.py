@@ -44,7 +44,7 @@ def test_a_faster_student_is_promoted_from_the_board_when_it_is_within_the_toler
     )
     p.save_spec(spec)
     for exp in ("v1", "distill-v1"):
-        p.save_experiment(exp, meta={})
+        p.save_experiment(exp, meta={"calib_held": True})
     p.promote("v1")
 
     def result(calib, ms):

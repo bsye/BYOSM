@@ -4,7 +4,7 @@ import json
 from collections import Counter
 from typing import Any
 
-from ..data.store import SPLITS, read
+from ..data.store import STORED_SPLITS, read
 from ..project import Project
 from ..spec import TaskSpec
 
@@ -95,7 +95,9 @@ def diagnose(name: str) -> dict[str, Any]:
             for s in meta.get("train_splits") or ["train"]
             for r in read(p.data_dir_for(spec) / f"{s}.jsonl")
         ),
-        "read_by_source": Counter(r.get("source") for s in SPLITS for r in read(p.data_dir_for(spec) / f"{s}.jsonl")),
+        "read_by_source": Counter(
+            r.get("source") for s in STORED_SPLITS for r in read(p.data_dir_for(spec) / f"{s}.jsonl")
+        ),
     }
     history = tried(p, board, base.primary_suite())
     return {**head, **training_summary(meta, spec), "board": board, "primary": base.primary_suite(), "history": history}

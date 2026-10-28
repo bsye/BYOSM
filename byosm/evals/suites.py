@@ -5,7 +5,7 @@ import random
 from collections.abc import Callable
 from pathlib import Path
 
-from ..data.store import Dataset, read, read_file, record, write
+from ..data.store import CALIB, Dataset, read, read_file, record, write
 from ..db import rows as stored_rows
 from ..project import Project
 from ..spec import EvalSuite, TaskSpec
@@ -27,7 +27,7 @@ def fingerprint(p: Project, spec: TaskSpec, suite: EvalSuite) -> str:
         stored_rows.text(d / f"{split}.jsonl", FINGERPRINT_CHARS_PER_FILE) for split in stored_rows.splits(d)
     )
     if suite.kind == "builtin":
-        blob += spec.data_key()
+        blob += spec.data_key() + CALIB
     space = suite.label_space(spec.label_names)
     if space != spec.label_names:
         blob += ",".join(space)
@@ -39,7 +39,7 @@ def stored(p: Project, base: TaskSpec, suite: EvalSuite) -> tuple[list[dict], li
     if suite.kind == "builtin":
         dd = p.data_dir_for(base)
         ds = Dataset(dd)
-        return ds.load("dev"), ds.load("test"), dd
+        return ds.load(CALIB), ds.load("test"), dd
     d = suite_dir(p, suite)
     return (read(d / "calib.jsonl"), read(d / "test.jsonl"), d) if stored_rows.exists(d / "test.jsonl") else None
 

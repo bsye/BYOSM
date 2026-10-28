@@ -11,7 +11,8 @@ import numpy as np
 import torch
 
 from ..config import device as pick_device
-from ..data.store import BASE_TRAIN, Dataset
+from ..data.store import BASE_TRAIN, CALIB, Dataset
+from ..db.rows import exists
 from ..events import emit, stage
 from ..modalities import Modality, get_modality
 from ..model import SpecialistModel, count_params
@@ -153,7 +154,7 @@ def _fit(
     mod = get_modality(spec, str(data_dir))
     train_rows, dev_rows, n_folded = split_rows(spec, ds, rng, log, splits)
     if spec.train.init_from:
-        train_rows += replay(spec, train_rows, dev_rows + ds.load("test"), rng, log)
+        train_rows += replay(spec, train_rows, dev_rows + ds.load(CALIB) + ds.load("test"), rng, log)
     log(f"  loading {len(train_rows)} train / {len(dev_rows)} dev examples")
     train_raw = mod.load_many(train_rows)
     dev_raw = mod.load_many(dev_rows)
@@ -184,5 +185,6 @@ def _fit(
     }
     meta = build_meta(spec, best, history, jepa_hist, n_params, dev, round(time.time() - t0, 1), counts)
     meta["train_splits"] = list(splits)
+    meta["calib_held"] = exists(ds.path(CALIB))
     save_run(run_dir, best)
     return meta, json.loads(json.dumps(best["dev"]["errors"], default=str))

@@ -1596,3 +1596,16 @@ this change have no saved model until the next Keep training.
 The board scored only models present on every dataset, so a rival published for two of three datasets disappeared from
 it. Each model is now scored on the datasets it has (`datasets` in `overall`), and a rival with fewer shows our
 promoted model's score on the same ones (`ours_on_shared`), as the rival stat card already did.
+
+## Calib is held out of dev on builtin suites
+
+On a builtin suite the calib split used to be the dev split, the same rows that picked each model's best epoch and its
+threshold, so a promotion vote rewarded whichever run happened to overfit dev best. Every dataset now keeps a fourth
+split, `calib`, carved from dev by `carve_calib` in `byosm/data/splits.py`: rows are grouped so near-duplicates and
+clips of one recording stay on one side, ordered by a hash of their id within each label, and every second group goes
+to calib. Training still selects on dev; selection, promotion and the held-out size checks read calib.
+
+Each training records `calib_held` in its metadata. A model trained before the split saw today's calib rows while it
+picked its epoch, so it can no longer win a promotion on a builtin suite (`clean_selection` in
+`byosm/evals/selection.py`); it stays promoted until a model trained on the new dev beats it. The existing datasets
+were split once, and builtin scores carry the split in their fingerprint so every model is scored again on calib.

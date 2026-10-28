@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from ..data.store import BASE_TRAIN, Dataset
+from ..data.store import BASE_TRAIN, CALIB, Dataset
 from ..evals.test_sets import held_out_set, test_sets
 from ..evals.workbench import OURS
 from ..model_refs import model_ref
@@ -90,7 +90,7 @@ def splits(f: CardFacts) -> dict[str, list[dict]]:
     bench = Dataset(f.p.data_dir_for(f.base))
     out = {
         "train": train,
-        "validation": [{k: r.get(k) for k in FIELDS} for r in bench.load("dev")],
+        "validation": [{k: r.get(k) for k in FIELDS} for r in bench.load("dev") + bench.load(CALIB)],
         "test": _with_answers(f, held) if held else [{k: r.get(k) for k in FIELDS} for r in bench.load("test")],
     }
     sets = (s for s in test_sets(f.p, f.base) if not s["board"] and s["rows"])

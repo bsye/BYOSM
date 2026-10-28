@@ -10,7 +10,7 @@ from . import evals
 from .config import load_config
 from .data import synth_text
 from .data.review import reviewed_labels
-from .data.store import Dataset, refine_split, rounds_split
+from .data.store import CALIB, Dataset, refine_split, rounds_split
 from .events import stage
 from .held_out import adopt_data, bigger_held_out
 from .project import WEIGHTS, Project
@@ -74,7 +74,7 @@ def refine(
         return {**analysis, "added": 0, "suspects": len(suspects)}
     ds = Dataset(data_dir)
     written = ds.load(refine_split(exp)) + ds.load(rounds_split(exp))
-    prior = ds.load("train") + written + ds.load("dev") + ds.load("test")
+    prior = ds.load("train") + written + ds.load("dev") + ds.load(CALIB) + ds.load("test")
     rows = synth_text.generate(spec, 0, "train", cfg, against=prior, jobs=jobs, log=log)
     ds.add(split or refine_split(exp), rows)
     log(f"  added {len(rows)} targeted training examples")
@@ -151,7 +151,11 @@ def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> d
     cmp = evals.compare(base, a, b) if b else None
     sig = f", P(better)={cmp['p_better']:.2f}" if cmp else ""
     test = f"; test {a['objective']:.4f}" if a else ""
-    if mine > cur and evals.sure_lead(cmp):
+    if p.promoted and not evals.clean_selection(p, base, exp):
+        log(
+            f"  kept {p.promoted}: {exp} trained before calib was held out of dev, so its calib score is not a fair vote"
+        )
+    elif mine > cur and evals.sure_lead(cmp):
         p.promote(exp)
         log(f"  promoted {exp}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{sig}){test}")
     elif a and b and fixes_speed(base, a, b, mine, cur):

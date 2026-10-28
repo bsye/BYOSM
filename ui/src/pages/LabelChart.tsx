@@ -6,13 +6,14 @@ import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartToo
 const CHAR_PX = 7
 const AXIS_PAD_PX = 12
 const MAX_AXIS_PX = 280
-const SPLITS = ["train", "dev", "test"] as const
+const SPLITS = ["train", "dev", "calib", "test"] as const
 const MAX_LABELS = 40
 const ROW_PX = 18
 
 const config = {
   train: { label: "train", color: "var(--chart-1)" },
   dev: { label: "dev", color: "var(--chart-2)" },
+  calib: { label: "calib", color: "var(--chart-4)" },
   test: { label: "test", color: "var(--chart-3)" },
 } satisfies ChartConfig
 

@@ -7,8 +7,8 @@ from typing import Any
 
 from ..spec import HFSource, TaskSpec
 from . import audio_mix, budget, hf_source, panel, segments
-from .splits import HELD, _group_split3, _hold_out, _split3
-from .store import TEST_SHARE, TRAIN_INPUTS, Dataset, dedupe, record, write
+from .splits import HELD, _group_split3, _hold_out, _split3, carve_calib
+from .store import CALIB, TEST_SHARE, TRAIN_INPUTS, Dataset, dedupe, record, write
 from .table import is_table, table_rows
 
 MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
@@ -162,6 +162,7 @@ def _collect(
     if spec.modality == "text":
         splits["test"] = dedupe(splits["test"], against=splits["train"] + splits["dev"])
         splits["dev"] = dedupe(splits["dev"], against=splits["train"])
+    carve_calib(splits)
     return splits, unlabeled, fit
 
 
@@ -183,7 +184,7 @@ def build(
         )
     if spec.data.teachers:
         labelled = panel.label_pool(spec, splits, unlabeled, data_dir, log, reviewed)
-        held = splits["dev"] + splits["test"]
+        held = splits["dev"] + splits[CALIB] + splits["test"]
         splits["train"] += dedupe(labelled, against=held) if spec.modality == "text" else labelled
     for s, rows in splits.items():
         ds.save(s, rows)

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..config import TESTSET_PER_LABEL, TESTSET_SUITE, load_config
-from ..data.store import SPLITS, Dataset, append, dedupe, label_counts, read
+from ..data.store import STORED_SPLITS, Dataset, append, dedupe, label_counts, read
 from ..data.synth_text import generate, judge
 from ..db.rows import splits
 from ..events import stage
@@ -53,7 +53,7 @@ def _resumed(spec: TaskSpec, path: Path, against: list[dict], cfg: dict, log: Ca
 
 def existing_rows(p: Project, spec: TaskSpec) -> list[dict]:
     ds = Dataset(p.data_dir_for(spec))
-    return [r for split in SPLITS for r in ds.load(split)]
+    return [r for split in STORED_SPLITS for r in ds.load(split)]
 
 
 def with_layout(spec: TaskSpec, rows: list[dict]) -> TaskSpec:

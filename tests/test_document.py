@@ -49,11 +49,11 @@ def pages_for(label, i, rng):
 def write_corpus(dd, make_pdf):
     (dd / "pdf").mkdir(parents=True)
     rng = random.Random(0)
-    splits = {"train": [], "dev": [], "test": []}
+    splits = {"train": [], "dev": [], "calib": [], "test": []}
     for i in range(60):
         lab = "invoice" if i % 2 else "letter"
         make_pdf(dd / "pdf" / f"{i}.pdf", pages_for(lab, i, rng))
-        split = "train" if i < 40 else ("dev" if i < 50 else "test")
+        split = "train" if i < 40 else "dev" if i < 45 else "calib" if i < 50 else "test"
         splits[split].append(record(f"pdf/{i}.pdf", lab, "test"))
     for s, rows in splits.items():
         Dataset(dd).save(s, rows)

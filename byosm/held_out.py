@@ -2,17 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from .data.store import Dataset
+from .data.store import CALIB, Dataset
 from .data.sufficiency import MIN_CALIB_ITEMS, MIN_TEST_ITEMS
-from .evals.selection import selection_value
+from .evals.selection import clean_selection, selection_value
 from .project import Project
-
-CALIB_SPLIT = "dev"
 
 
 def held_out_size(p: Project, exp: str | None) -> tuple[int, int]:
     ds = Dataset(p.data_dir_for(p.exp_spec(exp) if exp else p.spec()))
-    return len(ds.load("test")), len(ds.load(CALIB_SPLIT))
+    return len(ds.load("test")), len(ds.load(CALIB))
 
 
 def enough(n_test: int, n_calib: int) -> bool:
@@ -42,7 +40,11 @@ def adopt_data(name: str, exp: str, log: Callable[[str], None] = print) -> str |
     log(f"benchmark: {exp}'s data, {held_out_size(p, None)[0]} test rows (was {before[0]}); rescoring every model")
     board = evals.run(name, log=log)
     prim = spec.primary_suite()
-    scored = {e: selection_value(board[e][prim]) for e in p.experiments() if prim in board.get(e, {})}
+    scored = {
+        e: selection_value(board[e][prim])
+        for e in p.experiments()
+        if prim in board.get(e, {}) and clean_selection(p, spec, e)
+    }
     if not scored:
         return None
     best = max(scored, key=lambda e: scored[e])
