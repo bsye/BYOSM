@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import select
 
 from .db import Experiment, session
+from .spec.sections import FINETUNE
 from .train.gpu import busy_slots, slots
 
 ADAM_BYTES_PER_PARAM = 16
@@ -70,13 +71,17 @@ def _speed(meta: dict) -> float | None:
     return rows * epochs / seconds if seconds and rows and epochs else None
 
 
+def _fine_tuned(spec: dict) -> bool:
+    return (spec.get("train") or {}).get("method", FINETUNE) == FINETUNE
+
+
 def backbones(ws: Path) -> list[dict[str, Any]]:
     with session(ws) as s:
         found = s.execute(select(Experiment.spec, Experiment.meta)).all()
     runs: dict[str, list[tuple[int, float]]] = {}
     for spec, meta in found:
         speed, params = _speed(meta or {}), (meta or {}).get("params")
-        if speed and params and spec:
+        if speed and params and spec and _fine_tuned(spec):
             runs.setdefault(spec.get("backbone") or "", []).append((params, speed))
     out = []
     for name, rows in runs.items():

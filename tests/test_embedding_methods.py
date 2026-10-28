@@ -10,6 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from byosm.data.store import record, write
 from byosm.distill import TINY_TEXT, student_spec
 from byosm.export import export
+from byosm.machine import backbones
 from byosm.modalities import get_modality
 from byosm.pipeline import build
 from byosm.project import WEIGHTS, Project
@@ -152,3 +153,12 @@ def test_an_embedding_method_is_scored_and_exported_like_a_finetuned_model(ws, c
 def test_a_student_distilled_from_an_embedding_head_is_fine_tuned():
     student = student_spec(head_spec("hf:x"), "v1")
     assert student.train.method == "finetune" and student.backbone == TINY_TEXT and student.train.distill_from == "v1"
+
+
+def test_the_machine_page_measures_fine_tuning_speed_without_embedding_heads(ws):
+    p = Project("isq").ensure()
+    p.save_spec(head_spec(TINY_TEXT, method="finetune"))
+    meta = {"train_seconds": 10.0, "n_train": 100, "history": [{}, {}], "params": 11_000_000}
+    p.save_experiment("v1", spec=head_spec(TINY_TEXT, method="finetune"), meta=meta)
+    p.save_experiment("v2", spec=head_spec(TINY_TEXT), meta={**meta, "train_seconds": 0.1, "history": [{}]})
+    assert [(b["backbone"], b["rows_per_second"], b["runs"]) for b in backbones(ws)] == [(TINY_TEXT, 20.0, 1)]

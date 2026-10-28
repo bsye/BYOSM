@@ -1810,6 +1810,8 @@ from an embedding-head teacher is fine-tuned (`byosm/distill.py`). The spec refu
 frame tasks and attention pooling. Fine-tuning and the embedding methods share how rows are split and seeded
 (`prepare` in `byosm/train/rows.py`) and how a run is saved (`finish` in `byosm/train/outputs.py`), and the teacher
 and embedding caches open their database with `cache_db` (`byosm/config.py`).
+The Machine page's training speed per backbone counts fine-tuning runs only (`_fine_tuned` in `byosm/machine.py`):
+one pass over cached embeddings would make a backbone look many times faster to fine-tune than it is.
 
 ## SetFit: label pairs before the logistic head
 
