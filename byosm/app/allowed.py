@@ -27,6 +27,7 @@ ALLOWED_COMMANDS = (
     "seeds",
     "curve",
     "lab",
+    "scout",
     "exp",
     "suite",
     "baseline",

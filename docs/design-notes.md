@@ -2320,3 +2320,17 @@ to do, waiting, running (spinner), done or failed, with the reason (and the fail
 a click away, and the share finished as a progress bar. The button is never disabled: clicking it with nothing
 missing says so, and clicking it during a run only adds what is not queued yet. Running and waiting come live from
 the job events; the board reloads on each `measure` event.
+
+## A scout proposes techniques from recent papers
+
+The catalogue only knew the techniques of one research report. The scout (`byosm/scout/`) keeps it current: every
+`scout.every_days` (7 by default, in `byosm.yaml`) the app queues a `byosm scout` job, and "Find new techniques" on the
+Techniques page runs one at any time. A scan reads the newest arXiv papers for four areas (small text classifiers,
+tool selection, forecasting with pretrained models, turn detection; `AREAS` in `papers.py`) and Hugging Face's daily
+papers, skips papers it has read before, and asks the `scout` LLM role for techniques a small-model pipeline could
+adopt, with the gain each paper reports. A proposal is kept only when it cites one of the papers just read, by its exact
+URL, so links cannot be invented, and only when it does not overlap a catalogue family. Proposals wait on the Techniques
+page; an accepted one can be sent to a text classifier's lab, which asks the LLM to implement it from that paper as
+code the owner approves before it runs. The claimed gains are the papers' own numbers, not BYOSM's: a technique counts
+here only once a lab run of it wins the seed-averaged vote. The scheduler checks once an hour and never runs a scan
+while another is queued or running. Its state is a workspace report (`byosm/db/workspace.py`).

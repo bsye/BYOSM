@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { seconds } from "@/format"
+import { ScoutProposals } from "./ScoutProposals"
 
 type Status = "available" | "built-in" | "planned"
 type Technique = {
@@ -159,6 +160,7 @@ export function Techniques() {
           detail={hours ? `${seconds(hours * 3600)} in all` : "not recorded yet"}
         />
       </div>
+      <ScoutProposals />
       <Tried rows={rows} />
       <Catalogue rows={shown} />
     </div>
