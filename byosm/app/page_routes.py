@@ -28,6 +28,12 @@ def page_router(ws: Path) -> APIRouter:
             raise HTTPException(422, "the page view works for document classifiers")
         return model
 
+    def _labelled(name: str, label: str | None) -> Any:
+        model = _model(name)
+        if label not in model.labels:
+            raise HTTPException(422, f"label is one of {', '.join(model.labels)}")
+        return model
+
     def _path(file: str) -> Path:
         from .occlusion import tried_path
 
@@ -54,13 +60,18 @@ def page_router(ws: Path) -> APIRouter:
 
         return read(_model(name), _path(body.file))
 
+    @router.post("/page/views")
+    def without(name: str, body: PageRequest) -> dict[str, Any]:
+        from .occlusion import views
+
+        model = _labelled(name, body.label)
+        return views(model, _path(body.file), body.label)
+
     @router.post("/page/{row}")
     def row(name: str, row: int, body: PageRequest) -> dict[str, Any]:
         from .occlusion import occlusion_row
 
-        model = _model(name)
-        if body.label not in model.labels:
-            raise HTTPException(422, f"label is one of {', '.join(model.labels)}")
+        model = _labelled(name, body.label)
         try:
             return {"row": row, "drops": occlusion_row(model, _path(body.file), row, body.label)}
         except ValueError as e:

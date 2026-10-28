@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from byosm.app import bundles, create_app, occlusion
-from byosm.app.occlusion import GRID, occlusion_row, page, save_tried, tried_path
+from byosm.app.occlusion import GRID, occlusion_row, page, save_tried, tried_path, views
 
 AUTH = {"Authorization": "Bearer t"}
 SIZE = 60
@@ -50,6 +50,11 @@ def test_covering_the_square_the_model_reads_is_the_only_drop(scan):
         occlusion_row(Model(), tried_path(scan), GRID, "letter")
 
 
+def test_without_the_picture_the_answer_changes_and_without_the_text_it_stays(scan):
+    got = views(Model(), tried_path(scan), "letter")
+    assert got == {"picture": {"label": "form", "p": 0.3}, "text": {"label": "letter", "p": 0.9}}
+
+
 def test_the_page_routes_serve_document_classifiers_only(ws, scan, monkeypatch):
     with TestClient(create_app(ws, "t"), base_url="http://127.0.0.1") as c:
         url = "/api/specialists/doc"
@@ -63,5 +68,9 @@ def test_the_page_routes_serve_document_classifiers_only(ws, scan, monkeypatch):
         assert c.post(f"{url}/page", json={"file": scan}, headers=AUTH).json()["label"] == "letter"
         assert c.post(f"{url}/page/0", json={"file": scan, "label": "letter"}, headers=AUTH).json()["drops"][0] == 0.6
         assert c.post(f"{url}/page/0", json={"file": scan, "label": "memo"}, headers=AUTH).status_code == 422
+        assert (
+            c.post(f"{url}/page/views", json={"file": scan, "label": "letter"}, headers=AUTH).json()["text"]["p"] == 0.9
+        )
+        assert c.post(f"{url}/page/views", json={"file": scan}, headers=AUTH).status_code == 422
         monkeypatch.setattr(bundles, "bundle", lambda ws, name: Model("text"))
         assert c.post(f"{url}/page", json={"file": scan}, headers=AUTH).status_code == 422

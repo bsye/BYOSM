@@ -89,3 +89,16 @@ def occlusion_row(model: Any, path: Path, row: int, label: str) -> list[float]:
     base = _base(model, path, label)
     covered = [model.predict([(text, _covered(img, row, col)), *rest])["probs"][label] for col in range(GRID)]
     return [round(base - p, DIGITS) for p in covered]
+
+
+def _answer(out: dict[str, Any], label: str) -> dict[str, Any]:
+    return {"label": out["label"], "p": round(out["probs"][label], DIGITS)}
+
+
+def views(model: Any, path: Path, label: str) -> dict[str, Any]:
+    from PIL import Image
+
+    pages = _pages(model, path)
+    no_picture = [(text, Image.new("RGB", img.size, COVER)) for text, img in pages]
+    no_text = [("", img) for _, img in pages]
+    return {"picture": _answer(model.predict(no_picture), label), "text": _answer(model.predict(no_text), label)}

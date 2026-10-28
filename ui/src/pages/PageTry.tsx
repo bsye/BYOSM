@@ -4,7 +4,9 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
-import { usePageReading, type PageRead } from "./page-reading"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { usePageReading, type PageRead, type Without } from "./page-reading"
 
 const TOP = 3
 const SHADE_MAX = 80
@@ -45,7 +47,37 @@ function Heatmap({ page, rows }: { page: PageRead; rows: Record<number, number[]
   )
 }
 
-function Answer({ page }: { page: PageRead }) {
+const VIEWS = [
+  { key: "picture", name: "Picture" },
+  { key: "text", name: "Text" },
+] as const
+
+function WithoutTable({ page, without }: { page: PageRead; without: Without | null }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Without</TableHead>
+          <TableHead>Answer</TableHead>
+          <TableHead className="text-right">{page.label}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {VIEWS.map((v) => (
+          <TableRow key={v.key}>
+            <TableCell>{v.name}</TableCell>
+            <TableCell className={without && without[v.key].label !== page.label ? "font-medium" : "text-muted-foreground"}>
+              {without ? without[v.key].label : <Skeleton className="h-4 w-24" />}
+            </TableCell>
+            <TableCell className="text-right tabular-nums">{without ? without[v.key].p.toFixed(3) : <Skeleton className="ml-auto h-4 w-10" />}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
+function Answer({ page, without }: { page: PageRead; without: Without | null }) {
   const top = Object.entries(page.probs)
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP)
@@ -61,13 +93,14 @@ function Answer({ page }: { page: PageRead }) {
           <Progress value={p * 100} />
         </div>
       ))}
+      <WithoutTable page={page} without={without} />
       {page.text && <p className="text-muted-foreground line-clamp-6 text-xs">{page.text}</p>}
     </div>
   )
 }
 
 export function PageTry({ name }: { name: string }) {
-  const { page, rows, busy, error, send } = usePageReading(name)
+  const { page, rows, without, busy, error, send } = usePageReading(name)
   const picker = <Input type="file" accept={ACCEPT} className="w-64" onChange={(e) => e.target.files?.[0] && send(e.target.files[0])} />
   return (
     <Card>
@@ -89,7 +122,7 @@ export function PageTry({ name }: { name: string }) {
         {page ? (
           <div className="grid gap-6 @3xl/main:grid-cols-2">
             <Heatmap page={page} rows={rows} />
-            <Answer page={page} />
+            <Answer page={page} without={without} />
           </div>
         ) : (
           <Empty>
