@@ -19,7 +19,8 @@ type Proposal = {
   how: string | null
   status: "proposed" | "accepted" | "rejected"
 }
-type Scouted = { last_run: number | null; due: boolean; every_days: number; proposals: Proposal[] }
+type Scan = { read: number; proposed: number; kept: number }
+type Scouted = { last_run: number | null; due: boolean; every_days: number; proposals: Proposal[]; last_scan?: Scan | null }
 
 const labCapable = (s: Summary) => s.modality === "text" && s.task_type === "classify" && !s.archived
 
@@ -66,7 +67,9 @@ export function ScoutProposals() {
   }, [])
   const decide = (id: string, status: "accepted" | "rejected") => post(`/scout/${id}`, { status }).then(refresh)
   const shown = (data?.proposals ?? []).filter((p) => p.status !== "rejected").sort((a, b) => Number(a.status === "accepted") - Number(b.status === "accepted"))
-  const last = data?.last_run ? new Date(data.last_run * 1000).toLocaleDateString() : "never"
+  const scan = data?.last_scan
+  const read = scan ? (scan.read ? `, ${scan.read} new papers read, ${scan.kept} of ${scan.proposed} ideas kept` : ", no new papers since the scan before") : ""
+  const last = data?.last_run ? `${new Date(data.last_run * 1000).toLocaleString()}${read}` : "never"
   return (
     <Card>
       <CardHeader>

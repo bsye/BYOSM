@@ -66,18 +66,28 @@ def paper_key(url: str) -> str:
     return head if ARXIV_ABS in bare and sep and version.isdigit() and head[-1:].isdigit() else bare
 
 
-def _kept(raw: list[dict], papers: list[Paper]) -> list[dict[str, Any]]:
-    urls = {paper_key(p.url): p.url for p in papers}
+def _reason(r: dict, cited: str | None, known: set[str]) -> str | None:
+    if not r.get("title"):
+        return "it has no title"
+    if not cited:
+        return f"it cites {r.get('paper') or 'no paper'}, which this scan did not read"
+    overlap = str(r.get("overlaps") or "").strip()
+    return f"the catalogue already has it as {overlap}" if overlap in known else None
+
+
+def _kept(raw: list[dict], papers: list[Paper], log: Callable[[str], None]) -> list[dict[str, Any]]:
+    from ..improve.techniques import techniques
+
+    urls, known = {paper_key(p.url): p.url for p in papers}, {t.id for t in techniques()}
     out = []
     for r in raw:
         cited = urls.get(paper_key(str(r.get("paper") or "")))
-        if not cited or r.get("overlaps") or not r.get("title"):
+        if why := _reason(r, cited, known):
+            log(f"  dropped {r.get('title') or 'a proposal'}: {why}")
             continue
-        r = {**r, "paper": cited}
-        pid = hashlib.sha1(f"{r['paper']}{r['title']}".encode()).hexdigest()[:10]
-        out.append(
-            {**{k: r.get(k) for k in ITEM if k != "overlaps"}, "id": pid, "status": PROPOSED, "found": time.time()}
-        )
+        pid = hashlib.sha1(f"{cited}{r['title']}".encode()).hexdigest()[:10]
+        fields = {k: r.get(k) for k in ITEM if k != "overlaps"} | {"paper": cited}
+        out.append({**fields, "id": pid, "status": PROPOSED, "found": time.time()})
     return out
 
 
@@ -89,8 +99,9 @@ def scan(ws: Path | None, log: Callable[[str], None] = print, llm: Any = None, g
     seen = set(st["seen"])
     papers = [p for p in (fetch(log, get) if get else fetch(log)) if p.url not in seen]
     raw = (llm or get_llm(ROLE)).json(SYSTEM, _prompt(papers), SCHEMA).get("proposals", []) if papers else []
-    new = _kept(raw, papers)
+    new = _kept(raw, papers, log)
     st = {"last_run": time.time(), "seen": [*st["seen"], *(p.url for p in papers)][-MAX_SEEN:]}
+    st["last_scan"] = {"read": len(papers), "proposed": len(raw), "kept": len(new)}
     save_workspace_report(ws, SCOUT, {**st, "proposals": state(ws)["proposals"] + new})
     log(f"[scout] {len(papers)} new papers read; the LLM proposed {len(raw)}, {len(new)} kept as new techniques")
     return new

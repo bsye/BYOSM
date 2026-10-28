@@ -32,6 +32,7 @@ def scout_router(ws: Path, runner: Any, schedule: bool = True) -> APIRouter:
             "due": due(ws, cfg, time.time()),
             "every_days": every_days(cfg),
             "proposals": st["proposals"],
+            "last_scan": st.get("last_scan"),
         }
 
     @router.post("/api/scout/{pid}")

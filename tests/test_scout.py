@@ -38,15 +38,24 @@ class Reader:
         }
         made_up = {"paper": "https://arxiv.org/abs/9999.99999", "title": "Invented", "effect": "e"}
         known = {"paper": "https://arxiv.org/abs/2610.00003", "title": "Masking", "overlaps": "forecaster-pretraining"}
-        return {"proposals": [good, made_up, known]}
+        fresh = {
+            "paper": "https://arxiv.org/abs/2610.00002v1",
+            "title": "Another idea",
+            "effect": "e",
+            "overlaps": "none",
+        }
+        return {"proposals": [good, made_up, known, fresh]}
 
 
 def test_a_scan_keeps_only_new_techniques_that_cite_a_paper_it_read_and_reads_each_paper_once(ws):
     llm = Reader()
     new = scan(ws, lambda _: None, llm, fake_get)
-    assert [p["title"] for p in new] == ["Contrastive head"] and new[0]["status"] == "proposed"
+    assert [p["title"] for p in new] == ["Contrastive head", "Another idea"] and new[0]["status"] == "proposed"
+    assert state(ws)["last_scan"] == {"read": 3, "proposed": 4, "kept": 2}
     assert '"id": "setfit"' in llm.prompts[0]
-    assert scan(ws, lambda _: None, llm, fake_get) == [] and len(llm.prompts) == 1
+    said = []
+    assert scan(ws, said.append, llm, fake_get) == [] and len(llm.prompts) == 1
+    assert state(ws)["last_scan"]["read"] == 0
     assert decide(ws, new[0]["id"], ACCEPTED)["status"] == ACCEPTED
     assert state(ws)["proposals"][0]["status"] == ACCEPTED
 
