@@ -6,21 +6,14 @@ ARCHIVE = "archive"
 
 
 def archived(ws: Path) -> set[str]:
-    from sqlalchemy import select
+    from .db.workspace import workspace_report
 
-    from .db import session
-    from .db.models import WorkspaceReport
-
-    with session(ws) as s:
-        data = s.scalar(select(WorkspaceReport.data).where(WorkspaceReport.kind == ARCHIVE))
-    return set((data or {}).get("names", []))
+    return set((workspace_report(ws, ARCHIVE) or {}).get("names", []))
 
 
 def set_archived(ws: Path, name: str, on: bool) -> set[str]:
-    from .db import get_or_add, session
-    from .db.models import WorkspaceReport
+    from .db.workspace import save_workspace_report
 
     names = archived(ws) - {name} | ({name} if on else set())
-    with session(ws) as s:
-        get_or_add(s, WorkspaceReport, kind=ARCHIVE).data = {"names": sorted(names)}
+    save_workspace_report(ws, ARCHIVE, {"names": sorted(names)})
     return names

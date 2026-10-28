@@ -4,24 +4,18 @@ import time
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
-
-from ..db import get_or_add, session
-from ..db.models import WorkspaceReport
+from ..db.workspace import save_workspace_report, workspace_report
 from .cache import cached
 
 LIBRARY = "open-datasets"
 
 
 def entries(ws: Path) -> list[dict[str, Any]]:
-    with session(ws) as s:
-        data = s.scalar(select(WorkspaceReport.data).where(WorkspaceReport.kind == LIBRARY))
-    return [{**e, "cached": cached(e["file"]["url"])} for e in (data or [])]
+    return [{**e, "cached": cached(e["file"]["url"])} for e in (workspace_report(ws, LIBRARY) or [])]
 
 
 def _save(ws: Path, rows: list[dict[str, Any]]) -> None:
-    with session(ws) as s:
-        get_or_add(s, WorkspaceReport, kind=LIBRARY).data = rows
+    save_workspace_report(ws, LIBRARY, rows)
 
 
 def add(ws: Path, dataset: dict[str, Any], file: dict[str, Any]) -> list[dict[str, Any]]:

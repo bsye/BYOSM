@@ -40,11 +40,9 @@ def stored(per: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
 
 
 def save_report(ws: Path, report: dict[str, Any]) -> None:
-    from ..db import get_or_add, session
-    from ..db.models import WorkspaceReport
+    from ..db.workspace import save_workspace_report
 
-    with session(ws) as s:
-        get_or_add(s, WorkspaceReport, kind=REPORT + report["domain"]).data = report
+    save_workspace_report(ws, REPORT + report["domain"], report)
 
 
 def with_published(report: dict[str, Any]) -> dict[str, Any]:

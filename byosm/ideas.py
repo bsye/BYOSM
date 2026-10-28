@@ -5,10 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
-
-from .db import get_or_add, session
-from .db.models import WorkspaceReport
+from .db.workspace import save_workspace_report, workspace_report
 
 IDEAS = "ideas"
 MAX_IDEAS = 8
@@ -56,11 +53,8 @@ def find_ideas(ws: Path, log: Callable[[str], None] = print) -> list[dict[str, A
 
 
 def save(ws: Path, ideas: list[dict[str, Any]]) -> None:
-    with session(ws) as s:
-        get_or_add(s, WorkspaceReport, kind=IDEAS).data = {"at": time.time(), IDEAS: ideas}
+    save_workspace_report(ws, IDEAS, {"at": time.time(), IDEAS: ideas})
 
 
 def saved(ws: Path) -> dict[str, Any]:
-    with session(ws) as s:
-        data = s.scalar(select(WorkspaceReport.data).where(WorkspaceReport.kind == IDEAS))
-    return data or {"at": None, IDEAS: []}
+    return workspace_report(ws, IDEAS) or {"at": None, IDEAS: []}

@@ -6,10 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
-
-from ..db import get_or_add, session
-from ..db.models import WorkspaceReport
+from ..db.workspace import save_workspace_report, workspace_report
 from . import sources
 from .catalog import TABULAR, TIMEOUT_S, search
 
@@ -55,19 +52,16 @@ def _schema() -> dict[str, Any]:
 
 
 def requests(ws: Path) -> list[dict[str, Any]]:
-    with session(ws) as s:
-        return s.scalar(select(WorkspaceReport.data).where(WorkspaceReport.kind == REQUESTS)) or []
+    return workspace_report(ws, REQUESTS) or []
 
 
 def _save(ws: Path, entry: dict[str, Any]) -> None:
     rest = [r for r in requests(ws) if r["request"] != entry["request"]]
-    with session(ws) as s:
-        get_or_add(s, WorkspaceReport, kind=REQUESTS).data = [entry, *rest][:KEPT_REQUESTS]
+    save_workspace_report(ws, REQUESTS, [entry, *rest][:KEPT_REQUESTS])
 
 
 def forget(ws: Path, request: str) -> list[dict[str, Any]]:
-    with session(ws) as s:
-        get_or_add(s, WorkspaceReport, kind=REQUESTS).data = [r for r in requests(ws) if r["request"] != request]
+    save_workspace_report(ws, REQUESTS, [r for r in requests(ws) if r["request"] != request])
     return requests(ws)
 
 
