@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy as np
 
+from .calendar import clock
 from .gifteval import DOMAINS, Series, horizon, load, season, splits
 from .metrics import QUANTILES
 
@@ -49,14 +50,20 @@ def load_model(ws: Path, domain: str, version: str) -> Any:
 
 
 def forecast(
-    ws: Path, domain: str, version: str, history: list[float | None], freq: str, config: str | None = None
+    ws: Path,
+    domain: str,
+    version: str,
+    history: list[float | None],
+    freq: str,
+    config: str | None = None,
+    start: str | None = None,
 ) -> dict[str, Any]:
     from .routing import served
 
     model = served(load_model(ws, domain, version), config)
     values = np.asarray([np.nan if v is None else v for v in history], dtype=float)
     h = horizon(freq)
-    quantiles = model.predict_many([values], season(freq), h)[0]
+    quantiles = model.predict_many([values], season(freq), h, [clock(start, freq)])[0]
     return {"horizon": h, "quantiles": list(QUANTILES), "forecast": np.round(quantiles, 4).tolist()}
 
 
@@ -65,8 +72,10 @@ def example(domain: str, config: str, index: int) -> dict[str, Any]:
         raise KeyError(f"{config} is not a dataset of {domain}")
     windows = splits(_series(config))
     w = windows[np.random.default_rng(SAMPLE_SEED + index).integers(len(windows))]
-    history, future = _json(w["history"][-HISTORY:]), _json(w["future"])
-    return {"config": config, "freq": w["freq"], "item": w["item"], "history": history, "future": future}
+    history, future, at = _json(w["history"][-HISTORY:]), _json(w["future"]), clock(w["start"], w["freq"])
+    start = None if at is None else str(at.stamps(len(w["history"]))[len(w["history"]) - len(history)])
+    shown = {"history": history, "future": future, "start": start}
+    return {"config": config, "freq": w["freq"], "item": w["item"], **shown}
 
 
 @lru_cache(maxsize=len(DOMAINS) * 4)

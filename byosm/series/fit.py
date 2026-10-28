@@ -24,7 +24,7 @@ def fit_domain(
     configs: list[str], effort: int, log: Callable[[str], None], progress: Progress, cfg: PredictCfg
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     s = scored(configs, log)
-    groups = [Group(p.histories, p.season, p.horizon) for p in s.prepared]
+    groups = [Group(p.histories, p.season, p.horizon, p.clocks) for p in s.prepared]
     models = candidates(effort)
     for i, model in enumerate(models):
         log(f"  training {model.name}, recipe {i + 1} of {len(models)}")

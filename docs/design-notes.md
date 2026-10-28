@@ -1993,3 +1993,29 @@ the training generator, so a pretraining run is reproducible.
 Cost, measured on the CPU at batch 256: one v1 base step takes 524 ms forward and backward and 8 ms to build its batch;
 a v2 base step 483 ms and 19 ms (10.4M parameters, most of the extra in the 21-level head); a v2 long step 1,012 ms
 and 25 ms (18.2M). `series pretrain --recipe v2` pretrains it; nothing has been measured on GIFT-Eval yet.
+
+## Quantile boosting reads the calendar
+
+GIFT-Eval series keep their start time (`Series.start`); every window carries it, `Prepared` keeps a `Clock` (start
+and frequency, `byosm/series/calendar.py`) per training history, and every forecaster's `predict_many` takes one clock
+per history, or none. Wrappers pass them on. `MultiRate` passes them at the native rate only: a coarse rate already
+reads coarse lags as native ones, so it forecasts without dates. Live forecasts of an example get the date of its first
+value; a pasted series has none.
+
+`calendar.features` gives the minute, hour, day of week, day of month and month of every step. GIFT-Eval's frequency
+aliases (`H`, `10S`, `15T`, `W-SUN`, `A-DEC`) are stepped with numpy, since pandas 3 no longer reads most of them;
+monthly and longer steps land on the first of the month. An unknown date is -1, not NaN: scikit-learn's histogram
+binning fails on a column with no value at all, which a dataset without dates would give.
+
+`QuantileBoosted` (`gradient boosting, quantile`, in `byosm/series/models.py`) learns from the same rows and target as
+boosting (lags scaled by the recent level, minus the seasonal base, divided by the noise), with the calendar of each
+forecast step added as known-future covariates, and fits one `HistGradientBoostingRegressor(loss="quantile",
+quantile=q)` per level instead of one squared-error model plus residual quantiles taken on the last 10% of origins.
+That is nine fits instead of two. It is cached by content like boosting. The boosted rows moved to
+`byosm/series/rows.py` and the squared model builds the same table and forecasts bit for bit, so its cache stays
+valid; the classes stay in `models.py`, because saved versions pickle them by module path.
+
+A sanity check, not a benchmark: on 4 hourly series with a weekend drop whose starts are 13 hours apart, 30
+iterations, the median's error is 0.595 with dates, 0.865 for the same model without them and 0.842 for squared-error
+boosting. fev-bench's tuned LightGBM beats Chronos-2 on 17 of 100 tasks with quantile objectives and covariates; it has
+not been run on the GIFT-Eval forecasters yet.

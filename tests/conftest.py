@@ -121,7 +121,7 @@ class Flat:
     def fit(self, groups):
         self.fits.append(len(groups))
 
-    def predict_many(self, histories, season, horizon):
+    def predict_many(self, histories, season, horizon, clocks=None):
         from byosm.series.metrics import QUANTILES
 
         return [np.full((len(QUANTILES), horizon), h[-1] + self.level) for h in histories]

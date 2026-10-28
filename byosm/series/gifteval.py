@@ -24,6 +24,7 @@ class Series:
     item: str
     freq: str
     values: np.ndarray
+    start: Any = None
 
 
 def unit(freq: str) -> str:
@@ -39,7 +40,7 @@ def load(config: str) -> list[Series]:
     for row in ds:
         target = np.asarray(row["target"], dtype=float)
         rows = target if target.ndim == 2 else target[None]
-        out += [Series(f"{row['item_id']}:{i}", row["freq"], r) for i, r in enumerate(rows)]
+        out += [Series(f"{row['item_id']}:{i}", row["freq"], r, row.get("start")) for i, r in enumerate(rows)]
     return out
 
 
@@ -63,9 +64,8 @@ def splits(series: list[Series], back: int = 0) -> list[dict[str, Any]]:
         for k in range(w):
             end = len(s.values) - ((back + 1) * w - k) * h
             if end > 2 * season(s.freq):
-                out.append(
-                    {"item": s.item, "freq": s.freq, "history": s.values[:end], "future": s.values[end : end + h]}
-                )
+                history, future = s.values[:end], s.values[end : end + h]
+                out.append({"item": s.item, "freq": s.freq, "start": s.start, "history": history, "future": future})
     return out
 
 

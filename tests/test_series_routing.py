@@ -19,7 +19,7 @@ class KnowsSeason:
     def fit(self, groups):
         pass
 
-    def predict_many(self, histories, season, horizon):
+    def predict_many(self, histories, season, horizon, clocks=None):
         miss = 0.5 if season == self.season else 50.0
         return [np.tile(h[-1] + np.arange(1, horizon + 1) + miss, (len(QUANTILES), 1)) for h in histories]
 

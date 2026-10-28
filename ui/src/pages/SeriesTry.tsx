@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { score } from "@/format"
 import type { ForecasterView } from "./Forecaster"
 
-type Example = { config: string; freq: string; item: string; history: (number | null)[]; future: (number | null)[] }
+type Example = { config: string; freq: string; item: string; start: string | null; history: (number | null)[]; future: (number | null)[] }
 type Forecast = { version: string; horizon: number; quantiles: number[]; forecast: number[][] }
 
 const SHOWN_HORIZONS = 4
@@ -74,7 +74,7 @@ export function SeriesTry({ f }: { f: ForecasterView }) {
     setForecast(null)
     api<Example>(`/series/${f.name}/example?config=${encodeURIComponent(config)}&index=${index}`).then((e) => {
       setExample(e)
-      post<Forecast>(`/series/${f.name}/forecast`, { history: e.history, freq: e.freq, config: e.config }).then(setForecast)
+      post<Forecast>(`/series/${f.name}/forecast`, { history: e.history, freq: e.freq, config: e.config, start: e.start }).then(setForecast)
     })
   }, [f.name, f.live, config, index])
 

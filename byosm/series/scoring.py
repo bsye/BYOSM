@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from .calendar import Clock, clock
 from .gifteval import horizon, load, season, splits, windows
 from .metrics import summary
 
@@ -22,15 +23,15 @@ class Prepared:
     calib: list[dict[str, Any]]
     tests: list[dict[str, Any]]
     histories: list[np.ndarray]
+    clocks: list[Clock | None] = field(default_factory=list)
 
 
 def prepare(config: str, log: Callable[[str], None]) -> Prepared:
     series = load(config)
     h, s = horizon(series[0].freq), season(series[0].freq)
     cut = 2 * windows(series) * h
-    p = Prepared(
-        config, s, h, splits(series, back=1), splits(series), [x.values[: len(x.values) - cut] for x in series]
-    )
+    histories, clocks = [x.values[: len(x.values) - cut] for x in series], [clock(x.start, x.freq) for x in series]
+    p = Prepared(config, s, h, splits(series, back=1), splits(series), histories, clocks)
     log(f"  {config}: {len(series)} series, {len(p.calib)} calib and {len(p.tests)} test windows of {h} steps")
     return p
 
@@ -64,7 +65,8 @@ def _line(name: str, score: dict[str, Any]) -> str:
 
 
 def _forecast(model: Any, windows: list[dict[str, Any]], p: Prepared) -> Forecasts:
-    return model.predict_many([w["history"] for w in windows], p.season, p.horizon)
+    clocks = [clock(w["start"], w["freq"]) for w in windows]
+    return model.predict_many([w["history"] for w in windows], p.season, p.horizon, clocks)
 
 
 def score_model(model: Any, s: Scored, train_s: float, log: Callable[[str], None]) -> None:

@@ -40,8 +40,8 @@ class Routed:
     def for_config(self, config: str | None) -> Any:
         return self.models[self.routes.get(config or "", self.default)]
 
-    def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
-        return self.for_config(None).predict_many(histories, season, horizon)
+    def predict_many(self, histories: list[np.ndarray], season: int, horizon: int, clocks: Any = None) -> list:
+        return self.for_config(None).predict_many(histories, season, horizon, clocks)
 
 
 def served(model: Any, config: str | None) -> Any:

@@ -13,7 +13,7 @@ MEDIAN = QUANTILES.index(0.5)
 class RightAtHalfRate:
     name = "right at half rate"
 
-    def predict_many(self, histories, season, horizon):
+    def predict_many(self, histories, season, horizon, clocks=None):
         return [np.full((len(QUANTILES), horizon), h[-1] + (0.0 if season == 12 else 5.0)) for h in histories]
 
 
@@ -48,7 +48,7 @@ class WorseAtCoarseRates:
     name = "worse at coarse rates"
     misses = {24: 1.0, 12: 1.5, 6: 3.0}
 
-    def predict_many(self, histories, season, horizon):
+    def predict_many(self, histories, season, horizon, clocks=None):
         return [np.full((len(QUANTILES), horizon), h[-1] + self.misses[season]) for h in histories]
 
 

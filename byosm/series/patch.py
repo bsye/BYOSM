@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 from . import checkpoint
-from .models import Group
+from .models import Clocks, Group
 from .patch_net import SIZES, SMALL, PatchNet, Size, picker, train, window
 from .recipe import V1, Recipe
 
@@ -77,7 +77,7 @@ class PatchModel:
             pick = picker(series, self.size.patch)
             train(self.net, pick, total, lr, BATCH, device, SEED, report, resume, self.recipe)
 
-    def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
+    def predict_many(self, histories: list[np.ndarray], season: int, horizon: int, clocks: Clocks = None) -> list:
         windows = [window(h, self.size.context) for h in histories]
         out = []
         with torch.no_grad():
