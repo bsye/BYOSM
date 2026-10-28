@@ -8,6 +8,7 @@ from ..events import emit
 from .combine import combine
 from .models import Boosted, Group, rivals
 from .patch import PatchModel, PretrainedPatch, pretrained
+from .prediction import PredictCfg
 from .scoring import Progress, score_model, scored
 from .specialist import is_rival
 
@@ -20,7 +21,7 @@ def candidates(effort: int) -> list[Any]:
 
 
 def fit_domain(
-    configs: list[str], effort: int, log: Callable[[str], None], progress: Progress
+    configs: list[str], effort: int, log: Callable[[str], None], progress: Progress, cfg: PredictCfg
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     s = scored(configs, log)
     groups = [Group(p.histories, p.season, p.horizon) for p in s.prepared]
@@ -34,4 +35,4 @@ def fit_domain(
         log(f"  {model.name}: one model for {len(s.prepared)} datasets, trained in {took:.1f} s")
         score_model(model, s, took, log)
         progress(s.per, [m.name for m in models[i + 1 :]])
-    return s.per, combine(s, [m for m in models if not is_rival(m.name)])
+    return s.per, combine(s, [m for m in models if not is_rival(m.name)], cfg, log)

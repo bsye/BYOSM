@@ -1714,3 +1714,21 @@ MiniLM the next rungs are now Ettin-32M, DistilBERT, Ettin-68M and DeBERTa-v3-xs
 of texts, the MS MARCO MiniLM reranker (the tool-choice backbone) and an NLI DeBERTa-v3-xsmall, are listed with
 `"for": "pairs"`: the proposer can pick them for a pair task, and the escalation ladder skips them for single-text
 tasks. None of the three Ettin sizes has been trained by BYOSM yet.
+
+## Forecasts mixed across sampling rates
+
+A small forecaster sees a long series only through its last few hundred steps. `MultiRate`
+(`byosm/series/multirate.py`) wraps any trained forecaster and also forecasts the series at coarser rates, with no
+training: blocks of r steps are averaged so the last block ends at the forecast origin, the season and horizon shrink
+by r, and each coarse quantile is interpolated from the block centres back to every native step. The rates are
+`MULTI_RATES` (1, 2 and 4) in `byosm/series/prediction.py`. Each series weighs its rates per quantile by the inverse
+pinball loss on its own last `BACKTESTS` (2) horizons before the origin, so the weights never see a calib or test
+value, and the mixed quantiles are sorted. A series too short for the coarsest rate keeps the native forecast. The
+cost is rates times (backtests + 1) forecasts, 9 by default.
+
+It is a recipe option of a version, `predict.rates` (default `[1]`, off). When it is on, each of our models and their
+ensemble get a twin named `<model>, multi-rate`, scored by the same metric code on the same calib and test windows,
+and the calib pick decides whether a twin serves. The next training starts from the promoted version's options, so a
+twin that wins stays on. Two gotchas: twice the candidates leans the calib pick slightly optimistic, and a trained
+model has seen the backtest windows in training, which can favour the native rate. TimeSSM reports 0.545 to 0.513
+CRPS from this on a 2.5M model (self-reported); it has not been measured on our forecasters yet.

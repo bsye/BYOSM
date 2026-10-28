@@ -9,6 +9,7 @@ from typing import Any
 from .board import interval, overall, reports, save_report, stored, with_published
 from .fit import fit_domain
 from .gifteval import DOMAINS
+from .prediction import PredictCfg, of
 from .saved import save
 from .scoring import Progress
 from .specialist import add_version, choose, promoted_version
@@ -53,10 +54,10 @@ def _progress(ws: Path, domain: str, kept: dict[str, Any]) -> Progress:
     return progress
 
 
-def _finish(ws: Path, domain: str, made: tuple[dict, dict], kept: dict, effort: int, log: Log) -> dict[str, Any]:
-    per, trained = made
+def _finish(ws: Path, domain: str, made: tuple[dict, dict], kept: dict, at: tuple[int, PredictCfg], log: Log) -> dict:
+    (per, trained), (effort, cfg) = made, at
     report = _report(domain, per, [], kept)
-    report = add_version(report, interval(per, choose(report["overall"])), effort)
+    report = add_version(report, interval(per, choose(report["overall"])), effort, cfg.model_dump())
     save_report(ws, report)
     if report.get("versions"):
         newest = report["versions"][-1]
@@ -68,11 +69,11 @@ def _finish(ws: Path, domain: str, made: tuple[dict, dict], kept: dict, effort: 
 def run_domain(ws: Path, domain: str, log: Log = print) -> dict[str, Any]:
     previous = _previous(ws, domain)
     best = promoted_version(previous)
-    effort = best["effort"] + 1 if best else 0
+    effort, cfg = (best["effort"] + 1 if best else 0), of(best)
     log(f"  effort {effort}: {2**effort}x the base training steps")
     kept = _kept(previous)
-    made = fit_domain(DOMAINS.get(domain, [domain]), effort, log, _progress(ws, domain, kept))
-    return _finish(ws, domain, made, kept, effort, log)
+    made = fit_domain(DOMAINS.get(domain, [domain]), effort, log, _progress(ws, domain, kept), cfg)
+    return _finish(ws, domain, made, kept, (effort, cfg), log)
 
 
 def _gain(report: dict[str, Any]) -> float:

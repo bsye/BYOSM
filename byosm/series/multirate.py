@@ -1,0 +1,81 @@
+from __future__ import annotations
+
+import math
+from collections.abc import Callable
+from typing import Any
+
+import numpy as np
+
+from .metrics import QUANTILES, pinball
+
+BACKTESTS = 2
+SEASONS_NEEDED = 2
+COARSE_CONTEXT = 1024
+MIN_LOSS = 1e-9
+SUFFIX = ", multi-rate"
+
+
+def twin_name(name: str) -> str:
+    return name + SUFFIX
+
+
+def coarse(history: np.ndarray, rate: int) -> np.ndarray:
+    if rate == 1:
+        return history
+    blocks = history[len(history) % rate :][-COARSE_CONTEXT * rate :].reshape(-1, rate)
+    seen = ~np.isnan(blocks)
+    counts = seen.sum(1)
+    return np.where(counts > 0, np.where(seen, blocks, 0.0).sum(1) / np.maximum(counts, 1), np.nan)
+
+
+def coarse_season(season: int, rate: int) -> int:
+    return max(1, round(season / rate))
+
+
+def native(quantiles: np.ndarray, rate: int, horizon: int) -> np.ndarray:
+    if rate == 1:
+        return quantiles[:, :horizon]
+    centres = np.arange(quantiles.shape[1]) * rate + (rate - 1) / 2
+    return np.stack([np.interp(np.arange(horizon), centres, q) for q in quantiles])
+
+
+def _predict(fn: Callable[..., list[np.ndarray]], histories: list[np.ndarray], *shape: int) -> list[np.ndarray]:
+    return fn(histories, *shape) if histories else []
+
+
+class MultiRate:
+    def __init__(self, model: Any, rates: list[int]) -> None:
+        self.model, self.rates, self.name = model, list(rates), twin_name(model.name)
+
+    def _at_rates(self, histories: list[np.ndarray], season: int, horizon: int) -> np.ndarray:
+        out = []
+        for rate in self.rates:
+            shape = coarse_season(season, rate), math.ceil(horizon / rate)
+            pred = self.model.predict_many([coarse(h, rate) for h in histories], *shape)
+            out.append([native(q, rate, horizon) for q in pred])
+        return np.asarray(out).swapaxes(0, 1)
+
+    def _weights(self, histories: list[np.ndarray], season: int, horizon: int) -> np.ndarray:
+        loss = np.zeros((len(histories), len(self.rates), len(QUANTILES)))
+        for back in range(1, BACKTESTS + 1):
+            cuts = [len(h) - back * horizon for h in histories]
+            forecasts = self._at_rates([h[:c] for h, c in zip(histories, cuts, strict=True)], season, horizon)
+            for i, (h, c) in enumerate(zip(histories, cuts, strict=True)):
+                loss[i] += [pinball(h[c : c + horizon], f) for f in forecasts[i]]
+        inverse = 1 / np.maximum(loss, MIN_LOSS)
+        return inverse / inverse.sum(1, keepdims=True)
+
+    def _mix(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
+        weights, forecasts = self._weights(histories, season, horizon), self._at_rates(histories, season, horizon)
+        return list(np.sort(np.einsum("srq,srqh->sqh", weights, forecasts), axis=1))
+
+    def _usable(self, history: np.ndarray, season: int, horizon: int) -> bool:
+        rate = max(self.rates)
+        return (len(history) - BACKTESTS * horizon) // rate > SEASONS_NEEDED * coarse_season(season, rate)
+
+    def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
+        usable = [self._usable(h, season, horizon) for h in histories]
+        mixed = iter(_predict(self._mix, [h for h, u in zip(histories, usable, strict=True) if u], season, horizon))
+        plain = [h for h, u in zip(histories, usable, strict=True) if not u]
+        native_only = iter(_predict(self.model.predict_many, plain, season, horizon))
+        return [next(mixed) if u else next(native_only) for u in usable]

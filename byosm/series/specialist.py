@@ -12,6 +12,7 @@ KIND = "forecast"
 RIVAL_NAMES = (NAIVE, "Timestral")
 CI_DRAWS = 500
 CI_SEED = 0
+PREDICT = "predict"
 
 
 def is_rival(model: str) -> bool:
@@ -27,7 +28,9 @@ def choose(overall: dict[str, dict[str, Any]]) -> str | None:
     return min(recipes, key=lambda m: recipes[m]) if recipes else None
 
 
-def add_version(report: dict[str, Any], interval: list[float] | None, effort: int = 0) -> dict[str, Any]:
+def add_version(
+    report: dict[str, Any], interval: list[float] | None, effort: int = 0, predict: dict[str, Any] | None = None
+) -> dict[str, Any]:
     recipe = choose(report["overall"])
     if recipe is None:
         return report
@@ -37,6 +40,7 @@ def add_version(report: dict[str, Any], interval: list[float] | None, effort: in
         "name": f"v{len(versions) + 1}",
         "recipe": recipe,
         "effort": effort,
+        PREDICT: predict or {},
         "calib": scores["calib_mase"],
         "test": scores["mase"],
         "crps": scores["crps"],
