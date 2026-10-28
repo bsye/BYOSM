@@ -55,6 +55,17 @@ export type Job = {
   ended: number | null
   code: number | null
   target?: string | null
+  isolation?: Isolation | null
+}
+
+export type Isolation = {
+  mode: "process" | "container"
+  nice?: number
+  cpus?: number
+  memory_gb?: number
+  gpus?: string
+  network?: string[]
+  fallback?: string
 }
 
 export type Result = {

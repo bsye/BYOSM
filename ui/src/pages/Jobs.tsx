@@ -16,6 +16,7 @@ import { go, href } from "@/route"
 import { JobDetail } from "./JobLog"
 import { GpuQueue } from "./GpuQueue"
 import { Interrupted } from "./Interrupted"
+import { IsolationBadge } from "./IsolationBadge"
 import { MeasureBoard, MeasureButton, useMeasure } from "./MeasureBoard"
 import { Timeline } from "./Timeline"
 
@@ -167,6 +168,7 @@ function JobList({ rows, titles }: { rows: ReturnType<typeof useRows>; titles: R
                       </a>
                     )}
                     <span className="font-mono">{job.id.slice(0, 6)}</span>
+                    <IsolationBadge isolation={job.isolation} />
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground max-w-xs text-xs">
