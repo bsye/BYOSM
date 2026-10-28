@@ -1,24 +1,18 @@
-import { InfoTip } from "@/components/info-tip"
 import { Forecaster } from "./Forecaster"
 import { useForecaster } from "./forecaster-api"
 import { ForecastPage } from "./ForecastPage"
 import { useForecasts } from "./forecast-api"
 import { RunningHere } from "./RunningHere"
-import { Archive, ArchiveRestore, Gauge, Hammer, Info, Lightbulb, ListFilter, Package, Save, Trash2, type LucideIcon, Wand2 } from "lucide-react"
+import { Archive, ArchiveRestore, Gauge, Hammer, Info, Lightbulb, Package, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
-import { api, del, post, put, runJob, type Detail } from "@/api"
-import { Badge } from "@/components/ui/badge"
+import { api, del, post, runJob, type Detail } from "@/api"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
 import { useLive } from "@/events"
 import { signed, ms, params, rivalName, score } from "@/format"
 import { go } from "@/route"
-import { BoardChart, boardRows } from "./BoardChart"
 import { DataRows } from "./DataRows"
 import { LabelChart } from "./LabelChart"
 import { DataSize } from "./DataSize"
@@ -26,9 +20,7 @@ import { Overfit } from "./Overfit"
 import { hasTeachers, Panel } from "./Panel"
 import { Playground, useExamples } from "./Playground"
 import { Runs } from "./Runs"
-import { SizeChart } from "./SizeChart"
 import { PageSkeleton } from "@/components/page-skeleton"
-import { ModelName } from "@/components/model-name"
 import { Health, type HealthReport } from "./Health"
 import { titleOf } from "./specialist-groups"
 import { NextSteps } from "./NextSteps"
@@ -40,6 +32,8 @@ import { UseIt } from "./UseIt"
 import { YourData } from "./YourData"
 import { openJob } from "@/job-sheet"
 import { Lab } from "./Lab"
+import { SpecEditor } from "./SpecEditor"
+import { Board } from "./SpecialistBoard"
 
 const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] }[] = [
   { label: "Build", icon: Hammer, args: (n) => ["build", n] },
@@ -47,146 +41,6 @@ const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] 
   { label: "Improve", icon: Lightbulb, args: (n) => ["improve", n] },
   { label: "Export", icon: Package, args: (n) => ["export", n] },
 ]
-
-const FOCUS_OTHERS = 5
-
-const display = (d: Detail, model: string) => (d.baselines.includes(model) ? rivalName(model) : model)
-
-const LAB_MODALITIES = ["text", "audio", "image", "document"]
-const canLab = (d: Detail) => LAB_MODALITIES.includes(d.modality)
-
-function Board({ d }: { d: Detail }) {
-  const [all, setAll] = useState(false)
-  const every = boardRows(d.board, d.primary_suite)
-  const keep = new Set([d.promoted, ...d.baselines])
-  const others = every
-    .filter((r) => !keep.has(r.model))
-    .slice(0, FOCUS_OTHERS)
-    .map((r) => r.model)
-  const rows = all ? every : every.filter((r) => keep.has(r.model) || others.includes(r.model))
-  const caughtLabels = Object.keys(d.board[d.promoted ?? ""]?.[d.primary_suite]?.caught ?? {})
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Test {d.metric} on {d.benchmark}
-          <InfoTip>Test with its 95% interval, next to calib. Calib picks the model; test is only reported.</InfoTip>
-        </CardTitle>
-        {(every.length > rows.length || all) && (
-          <CardAction>
-            <Button variant="outline" size="sm" onClick={() => setAll(!all)}>
-              <ListFilter />
-              {all ? "Show the key models" : `Show all ${every.length}`}
-            </Button>
-          </CardAction>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {rows.length ? (
-          <BoardChart rows={rows.map((r) => ({ ...r, model: display(d, r.model) }))} />
-        ) : (
-          <p className="text-muted-foreground text-sm">Nothing scored yet. Build or score this specialist to fill the board.</p>
-        )}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Model</TableHead>
-              <TableHead>
-                <span className="inline-flex items-center gap-1">
-                  Test [95% CI]
-                  <InfoTip>
-                    The range the test score falls in when the test rows are resampled 1,000 times. With a bound like {d.metric}, a resample that misses the
-                    bound scores 0, so a lower end of 0 means the model sits at the edge of the bound.
-                  </InfoTip>
-                </span>
-              </TableHead>
-              <TableHead>Calib</TableHead>
-              {caughtLabels.map((l) => (
-                <TableHead key={l}>Catches {l}</TableHead>
-              ))}
-              <TableHead>Params</TableHead>
-              <TableHead>CPU per input</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => {
-              const res = d.board[r.model][d.primary_suite]
-              return (
-                <TableRow key={r.model}>
-                  <TableCell>
-                    <span className="flex items-center gap-2">
-                      <ModelName model={d.models[r.model]} shown={display(d, r.model)} />
-                      {r.model === d.promoted && <Badge>Promoted</Badge>}
-                      {d.baselines.includes(r.model) && <Badge variant="outline">Rival</Badge>}
-                    </span>
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {res.unreached != null ? (
-                      <Badge
-                        variant="outline"
-                        className="text-muted-foreground font-normal"
-                        title="Never reaches the required precision on test, so it scores 0"
-                      >
-                        precision {(res.unreached * 100).toFixed(1)}%
-                      </Badge>
-                    ) : (
-                      <span className="font-medium">{score(r.test)}</span>
-                    )}{" "}
-                    {res.unreached == null && res.ci && (
-                      <span className="text-muted-foreground/70">
-                        [{score(res.ci.lo)}, {score(res.ci.hi)}]
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-foreground/70 tabular-nums">{score(r.calib)}</TableCell>
-                  {caughtLabels.map((l) => (
-                    <TableCell key={l} className="text-foreground/70 tabular-nums">
-                      {res.caught?.[l] != null ? `${((res.caught[l] as number) * 100).toFixed(1)}%` : "-"}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-foreground/70 tabular-nums">{params(res.params)}</TableCell>
-                  <TableCell className="text-foreground/70 tabular-nums">{ms(res.latency_ms)}</TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-        <SizeChart d={d} />
-      </CardContent>
-    </Card>
-  )
-}
-
-function SpecEditor({ d, onSaved }: { d: Detail; onSaved: () => void }) {
-  const [text, setText] = useState(JSON.stringify(d.spec, null, 2))
-  const [note, setNote] = useState("")
-  const save = async () => {
-    try {
-      await put(`/specialists/${d.name}/spec`, JSON.parse(text))
-      setNote("saved")
-      onSaved()
-    } catch (e) {
-      setNote(String(e))
-    }
-  }
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>spec.yaml</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Textarea className="h-[32rem] font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} />
-        <div className="flex items-center gap-3">
-          <Button onClick={save}>
-            <Save />
-            Save changes
-          </Button>
-          <span className="text-muted-foreground text-sm">{note}</span>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
 
 export function Specialist({ name, tab }: { name: string; tab?: string }) {
   const team = useTeam(name)
@@ -294,7 +148,7 @@ function Model({ name, tab }: { name: string; tab?: string }) {
         <TabsList>
           <TabsTrigger value="board">Board</TabsTrigger>
           <TabsTrigger value="runs">Experiments</TabsTrigger>
-          {canLab(d) && <TabsTrigger value="lab">Lab</TabsTrigger>}
+          {d.lab && <TabsTrigger value="lab">Lab</TabsTrigger>}
           <TabsTrigger value="data">Data</TabsTrigger>
           {hasTeachers(d) && <TabsTrigger value="teachers">Teachers</TabsTrigger>}
           <TabsTrigger value="try">Test</TabsTrigger>
@@ -310,7 +164,7 @@ function Model({ name, tab }: { name: string; tab?: string }) {
         <TabsContent value="runs">
           <Runs d={d} />
         </TabsContent>
-        <TabsContent value="lab">{canLab(d) && <Lab name={name} kind="classifier" />}</TabsContent>
+        <TabsContent value="lab">{d.lab && <Lab name={name} kind="classifier" />}</TabsContent>
         <TabsContent value="data" className="space-y-4">
           {d.data && d.task_type === "classify" && <LabelChart data={d.data} />}
           <YourData name={name} />

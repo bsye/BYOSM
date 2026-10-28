@@ -138,6 +138,7 @@ export type Ablation = {
 }
 
 export type Detail = Summary & {
+  lab: boolean
   ablations: Ablation[]
   data_check: unknown
   health: unknown

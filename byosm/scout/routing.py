@@ -4,10 +4,9 @@ from pathlib import Path
 from typing import Any
 
 from ..db.workspace import save_workspace_report
+from ..lab.contract import LAB_KINDS, SERIES
 from .proposals import SCOUT, state
 
-SERIES = "series"
-LAB_KINDS = ("text", "audio", "image", "document", SERIES)
 MAX_TRIES = 2
 
 

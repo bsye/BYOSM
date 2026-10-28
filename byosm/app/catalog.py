@@ -15,6 +15,7 @@ from ..health import health
 from ..hub.facts import suite_dataset
 from ..improve.bandit import search_summary
 from ..improve.proposals import PROPOSALS
+from ..lab.contract import SPECIALIST_MODALITIES
 from ..metrics import metric_label, unreached
 from ..model_refs import model_refs
 from ..next_steps import suggestions, suggestions_or_none
@@ -134,6 +135,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "health": health(p, spec),
         "data_suggestions": saved_suggestions(p),
         "ablations": ablation_summaries(p),
+        "lab": spec.modality in SPECIALIST_MODALITIES,
     }
 
 

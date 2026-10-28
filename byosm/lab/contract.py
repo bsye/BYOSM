@@ -6,6 +6,9 @@ from typing import Any
 
 Hooks = dict[str, Callable[..., Any]]
 CLASSIFIER, FORECASTER = "classifier", "forecaster"
+SPECIALIST_MODALITIES = ("text", "audio", "image", "document")
+SERIES = "series"
+LAB_KINDS = (*SPECIALIST_MODALITIES, SERIES)
 ALLOWED_IMPORTS = frozenset(
     {"collections", "dataclasses", "functools", "itertools", "math", "numpy", "random", "statistics", "torch", "typing"}
 )
