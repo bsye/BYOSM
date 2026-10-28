@@ -143,7 +143,7 @@ def fair_ms(result: dict[str, Any]) -> float | None:
     return None if busy(result) else result.get("latency_ms")
 
 
-def _add_speed(out: dict[str, Any], pred: Predictor, spec: TaskSpec, test: list[dict], root: Path) -> None:
+def add_speed(out: dict[str, Any], pred: Predictor, spec: TaskSpec, test: list[dict], root: Path) -> None:
     ck = pred.stream_chunk_ms()
     if ck is not None:
         out["stream_ms_per_chunk"], out["chunk_ms"] = round(ck, 4), pred.chunk_ms
@@ -182,5 +182,5 @@ def score(
     out.update(
         metrics=m, objective=m["objective"], n_test=len(test), n_calib=len(calib), seconds=round(time.time() - t0, 1)
     )
-    _add_speed(out, pred, spec, test, root)
+    add_speed(out, pred, spec, test, root)
     return out

@@ -145,7 +145,8 @@ def _speed(spec: TaskSpec, mine: dict) -> dict:
             f"Timed while the machine ran at {mine['latency_load']:g} load per core, so it is not a fair CPU latency. "
             "Score it again when the machine is quiet."
         )
-        return check("speed", CHECK_TITLES["speed"], 1, UNKNOWN, f"{ms:.1f} ms, timed while busy", why)
+        value = f"{ms:.1f} ms, timed while busy"
+        return check("speed", CHECK_TITLES["speed"], 1, UNKNOWN, value, why, ["time", spec.name])
     status = graded(ms, budget, budget * SLOW_FACTOR, False)
     return check(
         "speed",

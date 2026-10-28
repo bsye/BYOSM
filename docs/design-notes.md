@@ -2639,6 +2639,13 @@ Scoring now records the load per core next to each latency (`latency_load`, from
 speed rule in promotion ignores it, and the board marks it busy. Timings scored before this have no load and keep
 their value.
 
+A busy timing closes the loop like any other check: the speed check's fix is `byosm time <name>`, shown as "Time it
+again" in Next steps and run by the ready loop. It waits until the load is back under `BUSY_LOAD` (polling every
+`QUIET_POLL_S`, for at most `QUIET_WAIT_S`), times each experiment whose primary timing was busy on the primary suite,
+and saves only the speed fields, keeping every score (`byosm/evals/timing.py`). A machine that stays busy fails the
+job instead of saving another unfair number; `--exp` times any experiment again, including ones timed before the load
+was recorded.
+
 ## Two models compared on the same rows
 
 "Is this run better than that one?" had no answer on the page: the board shows each model's own interval, and two

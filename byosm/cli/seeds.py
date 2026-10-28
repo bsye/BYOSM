@@ -32,3 +32,15 @@ def curve(name: str) -> None:
 
     _spec(name)
     learning_curve(name, log)
+
+
+@app.command("time")
+def time_(
+    name: str,
+    exp: Annotated[list[str] | None, typer.Option(help="experiments to time (default: those timed while busy)")] = None,
+) -> None:
+    """Time experiments again on the primary suite once the machine is quiet, so their CPU latency is fair."""
+    from ..evals.timing import retime
+
+    _spec(name)
+    retime(name, exp or None, log)

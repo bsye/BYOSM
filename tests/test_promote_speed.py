@@ -86,5 +86,5 @@ def test_a_latency_timed_while_the_machine_was_busy_is_unknown_not_slow(monkeypa
     monkeypatch.setattr("byosm.machine.load_per_core", lambda: 1.7)
     monkeypatch.setattr(scoring, "get_modality", lambda spec, root: type("M", (), {"load": staticmethod(lambda r: r)}))
     out = {}
-    scoring._add_speed(out, Timed(), spec, [{"input": "x"}], Path("."))
+    scoring.add_speed(out, Timed(), spec, [{"input": "x"}], Path("."))
     assert out == {"latency_ms": 12.0, "latency_load": 1.7} and scoring.fair_ms(out) is None

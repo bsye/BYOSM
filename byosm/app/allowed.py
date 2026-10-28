@@ -25,6 +25,7 @@ ALLOWED_COMMANDS = (
     "check-data",
     "promote",
     "seeds",
+    "time",
     "curve",
     "lab",
     "scout",

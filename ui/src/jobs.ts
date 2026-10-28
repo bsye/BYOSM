@@ -23,6 +23,7 @@ const VERBS: Record<string, string> = {
   baseline: "Rival",
   overfit: "Overfitting check",
   seeds: "Measure seed noise",
+  time: "Time again",
   curve: "Measure learning curve",
   testset: "Write test set",
   "adopt-data": "Adopt data",
