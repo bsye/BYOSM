@@ -123,37 +123,3 @@ def decide(ws: Path | None, pid: str, status: str) -> dict[str, Any]:
     found["status"] = status
     save_workspace_report(ws, SCOUT, st)
     return found
-
-
-LAB_KINDS = ("text", "audio", "image", "document")
-MAX_TRIES = 2
-
-
-def lab_fits(proposal: dict[str, Any]) -> bool:
-    return bool(set(proposal.get("kinds") or []) & set(LAB_KINDS))
-
-
-def chosen(ws: Path | None, proposal: dict[str, Any]) -> list[str]:
-    from ..archive import archived
-    from ..health import health
-    from ..project import Project, list_projects
-
-    found = []
-    for name in sorted(set(list_projects(ws)) - archived(ws)):
-        p = Project(name, ws)
-        spec = p.spec()
-        if p.promoted and spec.modality in LAB_KINDS and spec.modality in (proposal.get("kinds") or []):
-            found.append(((health(p, spec) or {}).get("score", 0), name))
-    return [name for _, name in sorted(found)[:MAX_TRIES]]
-
-
-def ask(proposal: dict[str, Any]) -> str:
-    return f'Implement "{proposal["title"]}" from {proposal["paper"]}: {proposal.get("how") or proposal["effect"]}'
-
-
-def mark_sent(ws: Path | None, pid: str, names: list[str]) -> dict[str, Any]:
-    st = state(ws)
-    found = next(p for p in st["proposals"] if p["id"] == pid)
-    found["sent"] = sorted({*found.get("sent", []), *names})
-    save_workspace_report(ws, SCOUT, st)
-    return found

@@ -104,3 +104,27 @@ def test_trying_a_technique_sends_it_to_the_labs_of_the_specialists_that_need_it
         assert c.post("/api/scout/s1/try").status_code == 422
     assert len(sent) == 2 and "b" in sent and [a[:3] for a in submitted] == [["lab", "write", n] for n in sorted(sent)]
     assert all('Implement "Head"' in a[4] and a[5:] == ["--paper", "https://arxiv.org/abs/1"] for a in submitted)
+
+
+def test_a_forecasting_technique_goes_to_the_labs_of_the_forecasters_with_the_lowest_health(ws, monkeypatch):
+    from conftest import save_forecaster
+    from fastapi.testclient import TestClient
+
+    from byosm.app import create_app
+    from byosm.db.workspace import save_workspace_report
+
+    monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: {})
+    series = {"id": "s1", "title": "DHF", "paper": "https://arxiv.org/abs/2", "effect": "e", "kinds": ["series"]}
+    audio = {"id": "a1", "title": "VAD", "paper": "https://arxiv.org/abs/3", "effect": "e", "kinds": ["audio"]}
+    save_workspace_report(ws, "scout", {"last_run": 1, "seen": [], "proposals": [series, audio]})
+    submitted = []
+    app = create_app(ws, "")
+    app.state.runner.submit = lambda args: submitted.append(args)
+    with TestClient(app, base_url="http://127.0.0.1") as c:
+        assert c.post("/api/scout/s1/try").status_code == 422
+        for domain, ours in (("ahead", 0.7), ("behind", 0.95), ("near", 0.82)):
+            save_forecaster(ws, domain, ours=ours, rival=0.8)
+        assert c.post("/api/scout/s1/try").json()["sent"] == ["behind", "near"]
+        assert c.post("/api/scout/a1/try").status_code == 422
+    assert [a[:3] for a in submitted] == [["lab", "write", "behind"], ["lab", "write", "near"]]
+    assert 'Implement "DHF"' in submitted[0][4]

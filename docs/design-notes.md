@@ -2575,3 +2575,9 @@ steps as well. To close the loop, a forecaster's "Beats the best rival" check, w
 technique Keep training tries next ("Try Multi-rate forecasting", `series run <domain> --until-rival`) or, once none is
 left at the promoted effort, "Try Lab method" (`lab write <domain>`). `next_steps` in `byosm/series/steps.py` lists
 those fixes and the pretraining v2 step, which moved there from the measure plan, so both read one rule.
+
+**Where a proposal goes.** "Try it" on a forecasting technique (`kinds` holds `series`) now sends it to the labs of the
+promoted forecasters, not archived, lowest health score first, and the two lowest across classifiers and forecasters
+are picked when a proposal fits both (`chosen` in `byosm/scout/routing.py`, which also holds `lab_fits`, `ask` and
+`mark_sent`, moved out of `proposals.py`). The lab kinds are `text` and `series`; any other kind, such as audio, is
+still refused with a 422.

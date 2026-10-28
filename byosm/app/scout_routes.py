@@ -46,16 +46,17 @@ def scout_router(ws: Path, runner: Any, schedule: bool = True) -> APIRouter:
 
     @router.post("/api/scout/{pid}/try")
     def try_it(pid: str) -> dict:
-        from ..scout.proposals import ask, chosen, lab_fits, mark_sent, state
+        from ..scout.proposals import state
+        from ..scout.routing import ask, chosen, lab_fits, mark_sent
 
         found = next((p for p in state(ws)["proposals"] if p["id"] == pid), None)
         if found is None:
             raise HTTPException(404, f"no proposed technique {pid}")
         if not lab_fits(found):
-            raise HTTPException(422, "the lab writes training code for text classifiers only so far")
+            raise HTTPException(422, "the lab has no training contract for this kind yet")
         names = chosen(ws, found)
         if not names:
-            raise HTTPException(422, "no promoted text classifier fits this technique")
+            raise HTTPException(422, "no promoted specialist or forecaster of this kind")
         for name in names:
             runner.submit(["lab", "write", name, "--ask", ask(found), "--paper", found["paper"]])
         return mark_sent(ws, pid, names)
