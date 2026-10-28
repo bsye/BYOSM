@@ -1680,8 +1680,8 @@ Proposing is now a search over the families of `byosm/improve/techniques.yaml`:
 
 The Runs tab shows the search: families tried, sure leads, GPU time per sure lead, repeated edits, and tries against
 sure leads per family. Experiments from before verdicts were recorded count as a win only if they are the promoted
-model. Numeric values inside a family are still the proposer's choice; a TPE sampler is left for the short-run rungs
-of step 5, since it needs Optuna or a hand-written sampler.
+model. Numeric values inside a family come from the proposer, and from the TPE sampler described below once a setting
+has been tried enough.
 
 ## Label noise is cleaned by out-of-fold loss and the judge
 
@@ -1942,3 +1942,13 @@ SetFit's largest gains are below about 30 labelled rows per label, so a diagnosi
 with fewer training rows per label than that; as a rule, it raises those families in the bandit rather than deciding.
 The proposal cost now scales with the method: the embedding head costs about 5% and SetFit about 30% of fine-tuning on
 the same rows (`METHOD_COST` in `byosm/improve/cost.py`), rough ratios to be replaced by measured GPU hours.
+
+## A small TPE sampler suggests numeric settings
+
+Once a `train.*` setting of an eligible family has four or more distinct values tried on a specialist (experiments
+that edited it, plus the promoted model), `byosm/improve/tpe.py` proposes the next value the way TPE does: the best
+quarter of tries by calib forms one Gaussian density and the rest another, on a log scale when every value is
+positive, with a bandwidth of the value span divided by the number of tries; of 24 draws around the good tries, the one
+with the highest good-to-bad density ratio is proposed (`tpe-<path>`, source `tpe`), rounded to a whole number for
+integer settings. It is written by hand because Optuna is not a dependency. Data-size settings are left out, since
+they change the data rather than the training. The bandit decides whether a TPE proposal runs, like any other.

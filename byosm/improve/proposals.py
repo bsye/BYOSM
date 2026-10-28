@@ -17,6 +17,7 @@ from .paths import apply_ops
 from .portfolio import recipes
 from .registry import rule_proposals, unique
 from .techniques import family
+from .tpe import tpe_proposals
 
 PROPOSALS = "proposals"
 NOVELTY_SIMILARITY = 0.9
@@ -51,7 +52,8 @@ def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print)
     dg = diagnose(name)
     p = Project(name)
     base = p.exp_spec(dg["experiment"]) if dg.get("experiment") else p.spec()
-    found = recipes(p, base) + rule_proposals(dg) + (llm_proposals(dg, log) if use_llm else [])
+    found = recipes(p, base) + tpe_proposals(p, base) + rule_proposals(dg)
+    found += llm_proposals(dg, log) if use_llm else []
     props = _novel(p, [pr for pr in unique(found) if _valid(base, pr, log)], log)
     for pr in props:
         pr["cost"] = estimate(dg, pr)

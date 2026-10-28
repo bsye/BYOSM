@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from functools import cache, reduce
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field
@@ -35,8 +35,12 @@ class Technique(BaseModel):
         return self.status == AVAILABLE and kind and task
 
 
+def value_at(spec: TaskSpec, path: str) -> Any:
+    return reduce(lambda part, key: getattr(part, key, None), path.split("."), spec)
+
+
 def present(spec: TaskSpec, path: str) -> bool:
-    return reduce(lambda part, key: getattr(part, key, None), path.split("."), spec) is not None
+    return value_at(spec, path) is not None
 
 
 @cache
