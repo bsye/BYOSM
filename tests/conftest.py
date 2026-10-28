@@ -140,6 +140,37 @@ def save_board(p, board):
             p.save_result(pid, suite, data)
 
 
+def promoted_specialist(
+    name="qa", n_test=500, n_calib=200, rivals=("jev",), labels=("statement", "question"), positive=None
+):
+    from byosm.project import Project
+    from byosm.spec import Label, TaskSpec
+
+    p = Project(name).ensure()
+    spec = TaskSpec(
+        name=name,
+        description="is it a question",
+        modality="text",
+        labels=[Label(name=n, definition=n) for n in labels],
+        positive_label=positive,
+        baselines=list(rivals),
+    )
+    p.save_spec(spec)
+    p.exp_dir("v1").mkdir(parents=True)
+    p.save_experiment("v1", meta={})
+    p.promote("v1")
+    save_board(p, {"v1": {"builtin": {"kind": "experiment", "objective": 0.9, "n_test": n_test, "n_calib": n_calib}}})
+    return p
+
+
+def with_train_rows(p, per_label):
+    from byosm.data.store import Dataset, record
+
+    spec = p.spec()
+    rows = [record(f"{lab} example {i}", lab, "x") for lab in spec.label_names for i in range(per_label)]
+    Dataset(p.data_dir_for(spec)).save("train", rows)
+
+
 def write_pdf(path, pages):
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas

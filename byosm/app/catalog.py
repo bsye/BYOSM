@@ -17,7 +17,7 @@ from ..improve.bandit import search_summary
 from ..improve.proposals import PROPOSALS
 from ..metrics import metric_label, unreached
 from ..model_refs import model_refs
-from ..next_steps import suggestions
+from ..next_steps import suggestions, suggestions_or_none
 from ..project import Project, list_projects
 from ..rungs import auxiliary
 from ..spec import Objective, TaskSpec
@@ -148,13 +148,7 @@ def steps_of(ws: Path, name: str) -> list[dict[str, Any]]:
 
 
 def next_steps(ws: Path) -> dict[str, list[dict[str, Any]]]:
-    out = {}
-    for name in list_projects(ws):
-        try:
-            out[name] = suggestions(name, ws)
-        except Exception:
-            out[name] = []
-    return out
+    return {name: suggestions_or_none(name, ws) for name in list_projects(ws)}
 
 
 def save_spec(ws: Path, name: str, body: dict) -> dict[str, Any]:

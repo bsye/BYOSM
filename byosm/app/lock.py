@@ -13,10 +13,16 @@ class WorkspaceBusyError(RuntimeError):
     pass
 
 
-def claim(ws: Path, port: int | None) -> Path:
+def serving(ws: Path) -> dict | None:
     path = ws / LOCK_PATH
     held = json.loads(path.read_text()) if path.exists() else None
-    if held and held["pid"] != os.getpid() and alive(held["pid"]):
+    return held if held and alive(held["pid"]) else None
+
+
+def claim(ws: Path, port: int | None) -> Path:
+    path = ws / LOCK_PATH
+    held = serving(ws)
+    if held and held["pid"] != os.getpid():
         raise WorkspaceBusyError(
             f"another byosm app (pid {held['pid']}, port {held.get('port')}) already serves this workspace; "
             "open it, or stop it first"

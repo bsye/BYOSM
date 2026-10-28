@@ -14,6 +14,10 @@ def recipe_of(report: dict[str, Any]) -> Recipe:
     return of(promoted_version(report)).fit.recipe
 
 
+def tried(report: dict[str, Any], recipe: Recipe) -> bool:
+    return any(of(v).fit.recipe == recipe for v in report.get("versions", []))
+
+
 def upstream(recipe: Recipe = V1) -> dict[str, Any]:
     from .corpus import files
     from .patch import pretrained

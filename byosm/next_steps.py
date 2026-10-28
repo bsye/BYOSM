@@ -179,3 +179,10 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         _experiments(p),
     ]
     return [_with_gain(s, cs) for s in unique([s for s in steps if s] + _from_checks(p, spec))]
+
+
+def suggestions_or_none(name: str, ws: Path) -> list[dict[str, Any]]:
+    try:
+        return suggestions(name, ws)
+    except Exception:
+        return []

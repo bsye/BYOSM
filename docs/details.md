@@ -35,6 +35,7 @@ byosm export vad && byosm predict vad clip.wav
 | `byosm build <name> [--exp vN] [--overfit]` | data, pretrain, train, evaluate, promote |
 | `byosm eval <name>` · `byosm board <name>` | score everything, show the leaderboard |
 | `byosm overfit <name> [--exp vN]` | is it overfitting? train vs test gap, calib vs test, train/test overlap, selection pressure, learning curve |
+| `byosm measure [--all \| <name>...] [--dry-run]` | queue every measurement missing for the promoted models (overfitting, hard public benchmarks, seed noise, learning curve, forecaster pretraining v2): CPU first, GPU one specialist at a time; also the Measure everything button on the Jobs page |
 | `byosm improve <name> [--apply ids --run]` | diagnose, propose, run the next experiment |
 | `byosm exp create <name> <exp> --set path=value` · `byosm promote <name> <exp>` | one-line ablations; choose what ships |
 | `byosm suite add` · `byosm baseline add` | add a benchmark or a rival |

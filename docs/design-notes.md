@@ -2269,3 +2269,47 @@ the model has no other suite scored. Once every fitting public benchmark is a su
 `byosm/next_steps.py` now offers "Score on hard public benchmarks" as `eval <name> --suite <each>` for the public
 suites the promoted model has no result on, so the ready loop (and the measurement plan) adds a benchmark and then
 scores it, and a newly promoted model is scored on them as well.
+
+## Measure everything: one plan of the missing measurements, run as jobs
+
+Nothing of the research plan above had run on a real specialist, because each piece had its own command.
+`byosm measure [--all | <name>...] [--dry-run]`, `GET /api/measure` and `POST /api/measure` (the "Measure everything"
+button on the Jobs page) list and queue every measurement still missing for the promoted models
+(`byosm/measure/plan.py`). Nothing is decided twice: a model's measurements are its next steps
+(`suggestions` in `byosm/next_steps.py`) whose id is one of these, and a forecaster's comes from its saved versions.
+
+| Measurement | Comes from | Command | Lane |
+|---|---|---|---|
+| Overfitting | the `overfit` health check: no report for the promoted model, or one for another model | `overfit <name>` | CPU |
+| Public benchmarks | `_public`: a fitting public benchmark is not a suite yet, then a public suite has no result for the promoted model | `suite public <name>`, then `eval <name> --suite ...` | CPU |
+| Seed noise | the `seeds` health check: fewer clean seed runs than `finalist_seeds`, or no spread yet | `seeds <name>` | GPU |
+| Learning curve | `_curve`: the data check says thin and the stored curve is for another model | `curve <name>` | GPU |
+| Pretraining v2 | no version of the forecaster has `fit.pretraining: v2` (`tried` in `byosm/series/escalation.py`) | `series pretrain --recipe v2` while no v2 base exists, then `series run <domain> --until-rival --rounds 2` | GPU |
+
+Archived specialists are left out, and so is a specialist whose next steps fail to compute (as on Home).
+
+**Order.** CPU cells first, by measurement then specialist; then GPU cells grouped by specialist. Every CPU cell is
+submitted at once and the runner's own admission bounds them. A GPU cell starts only when no GPU cell of another
+specialist has a job (`gpu_turn` in `byosm/measure/conduct.py`), so two specialists never share the GPU queue and one
+specialist's trainings finish before the next starts; the cells of one specialist (seeds and curve) may run together.
+
+**The run** is one workspace report (`measure`): the cells in order, each with its current job, every job it ran and
+its state (open, done, failed). `byosm measure` and the POST only merge the fresh plan into it: an open cell is kept
+as it is, a finished cell that is still missing is opened again, new ones are appended. The app's `Conductor` ticks
+every `TICK_S` (5 s, and at once after a POST) and for each open cell: leaves it while its job is queued or running;
+fails it when the job failed, was interrupted or cancelled; otherwise reads the cell's step again from the plan rules
+for that specialist, so a measurement done meanwhile, or by its first job, ends the cell as done, and the next step
+of a two-step measurement (scoring after adding the suites, running after pretraining) is the new command. A cell
+whose measurement is still missing after `MAX_JOBS` (3) jobs fails instead of looping. A job already queued or
+running with the same command is followed, not started again, and nothing is ever cancelled. Writes compare a
+version number, so a CLI queue and a tick cannot overwrite each other. When no app serves the workspace, the queued
+run waits for `byosm app`, which resumes it, as it resumes the jobs themselves.
+
+**The board** (`board` in `byosm/measure/run.py`) shows one cell per specialist and measurement: a run cell while it
+is open, or failed on the same promoted model; otherwise the fresh plan's cell as `todo`; otherwise the run cell's
+final state. The UI takes the running and pending states live from the job events and reloads the board on a
+`measure` event, which the conductor publishes whenever it changes the run.
+
+Not measured yet: nothing in this note has run on the workspace's specialists. `series run --until-rival --rounds 2`
+tries v2 only once more training stops helping (the plateau rule above), so a forecaster may need its second or
+third job, or fail its cell as still missing, before v2 is scored.
