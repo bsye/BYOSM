@@ -21,6 +21,11 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 - **Experiments end as code.** Every experiment that works is consolidated into the pipeline, tested, and noted in
   `docs/design-notes.md`, so the app does it by default from then on. A result reached only by a scratch script, a
   manual setting or a one-off command does not count; land it in the code or drop it.
+- **A feature closes the loop: feature, health, next steps, LLM.** Every feature that measures or improves a
+  specialist adds a health check (or a finding in one) whose `args` are the step that fixes it, so it shows in Health
+  and becomes a next step the ready loop and Measure everything run. A technique also gets a catalogue entry in
+  `byosm/improve/techniques.yaml` naming the checks it `targets`. The proposer and lab LLMs read the health checks,
+  the next steps and the catalogue with its targets, with one goal: raise the primary score and clear what is not ok.
 - **Never cancel running work to free resources.** If jobs wait on the GPU, memory or a lock, fix the scheduling or
   the memory use; long trainings must be allowed to finish.
 
