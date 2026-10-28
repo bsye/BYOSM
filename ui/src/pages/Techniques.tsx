@@ -153,7 +153,11 @@ export function Techniques() {
         <StatCard label="Available" value={String(rows.filter((t) => t.status === "available").length)} detail={`${rows.length} families in all`} />
         <StatCard label="Experiments" value={String(tries)} detail={`${rows.filter((t) => t.tries).length} families tried`} />
         <StatCard label="Sure leads" value={String(wins)} detail={tries ? `${Math.round((100 * wins) / tries)}% of experiments` : undefined} />
-        <StatCard label="GPU per sure lead" value={wins ? seconds((hours / wins) * 3600) : "-"} detail={`${seconds(hours * 3600)} in all`} />
+        <StatCard
+          label="GPU per sure lead"
+          value={wins && hours ? seconds((hours / wins) * 3600) : "-"}
+          detail={hours ? `${seconds(hours * 3600)} in all` : "not recorded yet"}
+        />
       </div>
       <Tried rows={rows} />
       <Catalogue rows={shown} />

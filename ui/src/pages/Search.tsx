@@ -31,7 +31,11 @@ export function Search({ s }: { s?: SearchStats }) {
         <div className={STAT_GRID}>
           <StatCard label="Families tried" value={String(s.families.length)} detail={`${s.experiments} experiments`} />
           <StatCard label="Sure leads" value={String(s.sure_leads)} />
-          <StatCard label="GPU per sure lead" value={perLead} detail={`${seconds(s.gpu_hours * 3600)} in all`} />
+          <StatCard
+            label="GPU per sure lead"
+            value={s.gpu_hours ? perLead : "-"}
+            detail={s.gpu_hours ? `${seconds(s.gpu_hours * 3600)} in all` : "not recorded yet"}
+          />
           <StatCard label="Repeated edits" value={String(s.repeats)} />
         </div>
         <ChartContainer config={config} className="w-full" style={{ height: s.families.length * ROW_PX + 60 }}>
