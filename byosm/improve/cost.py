@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from ..spec import TaskSpec
+from ..spec.sections import EMBEDDING_HEAD, SETFIT
 from .paths import apply_ops
 
 INGEST_S = {"document": 0.36, "image": 0.02, "audio": 0.05, "text": 0.0}
+METHOD_COST = {EMBEDDING_HEAD: 0.05, SETFIT: 0.3}
 
 
 def _items(spec: TaskSpec) -> int:
@@ -41,5 +43,6 @@ def estimate(dg: dict, pr: dict) -> dict[str, float]:
     scale = (b / a) * (new.train.epochs / max(1, old.train.epochs))
     if _encoder_changed(old, new):
         scale *= 1.5
+    scale *= METHOD_COST.get(new.train.method, 1.0) / METHOD_COST.get(old.train.method, 1.0)
     ingest = max(0, b - a) * _ingest_per_item(new)
     return {"minutes": round(((dg.get("train_seconds") or 0) * scale + ingest) / 60, 1), "new_items": max(0, b - a)}

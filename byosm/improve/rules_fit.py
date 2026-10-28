@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..spec.sections import EMBEDDING_HEAD, FINETUNE, SETFIT
 from .registry import gap, refine_hurt, rule
+
+FEW_SHOT_PER_LABEL = 30
 
 DOMAIN_ENCODERS: dict[str, dict[str, Any]] = {
     "document.image_backbone": {
@@ -119,3 +122,26 @@ def refine_more(dg: dict) -> list[dict]:
         why = f"dev {dg['dev']:.3f} < target {spec.objective.target}; run more analyze->generate->retrain rounds."
         return [{"id": "refine-more", "ops": ops, "why": why}]
     return []
+
+
+@rule
+def few_shot(dg: dict) -> list[dict]:
+    spec = dg["spec"]
+    per_label = (dg.get("n_train") or 0) / max(1, len(spec.labels))
+    if spec.modality != "text" or spec.task_type != "classify" or spec.train.method != FINETUNE:
+        return []
+    if per_label >= FEW_SHOT_PER_LABEL:
+        return []
+    why = f"{per_label:.0f} training rows per label: below {FEW_SHOT_PER_LABEL}, a sentence-embedding model with "
+    return [
+        {
+            "id": "setfit",
+            "ops": [{"op": "set", "path": "train.method", "value": SETFIT}],
+            "why": why + "contrastive tuning (SetFit) beats fine-tuning the encoder.",
+        },
+        {
+            "id": "embedding-head",
+            "ops": [{"op": "set", "path": "train.method", "value": EMBEDDING_HEAD}],
+            "why": why + "a logistic head is a floor that trains in seconds.",
+        },
+    ]

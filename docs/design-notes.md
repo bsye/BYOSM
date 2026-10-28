@@ -1934,3 +1934,11 @@ Three second-tier regularisers are now `train` settings the proposer can choose 
 
 Distillation batches skip R-Drop and mixup. The evidence is from 2019 to 2021 BERT-sized models and the gains are
 small, so both families carry low priors. Not measured on a specialist yet.
+
+## Few real rows per label suggest SetFit
+
+SetFit's largest gains are below about 30 labelled rows per label, so a diagnosis rule (`few_shot` in
+`byosm/improve/rules_fit.py`) proposes `train.method: setfit` and `embedding-head` for a fine-tuned text classifier
+with fewer training rows per label than that; as a rule, it raises those families in the bandit rather than deciding.
+The proposal cost now scales with the method: the embedding head costs about 5% and SetFit about 30% of fine-tuning on
+the same rows (`METHOD_COST` in `byosm/improve/cost.py`), rough ratios to be replaced by measured GPU hours.
