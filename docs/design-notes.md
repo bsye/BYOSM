@@ -1631,3 +1631,10 @@ two edits in another order, counted as a new idea. `proposal_key` (`byosm/improv
 folds text to lower case with single spaces, and rounds every number to the nearest quarter decade on a log scale,
 so values in one bin (a factor of 1.78 wide) share a key. Seeds keep their exact value, because a re-seed is a
 deliberate repeat.
+
+## Every experiment records its GPU time
+
+To share trials out by gain per GPU-hour, the cost of each experiment has to be known. `gpu_slot`
+(`byosm/train/gpu.py`) adds up how long a process holds a GPU slot, and `build` stores the difference over the build
+as `gpu_hours` in the experiment's metadata; a training on the CPU records zero. The Runs tab shows it next to the
+training time.

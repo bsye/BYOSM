@@ -99,6 +99,7 @@ export type Run = {
   params: number | null
   n_train: number | null
   train_seconds: number | null
+  gpu_hours?: number | null
   ablation_arm: boolean
   best_epoch: number | null
   history: { epoch: number; loss: number; dev: number }[]

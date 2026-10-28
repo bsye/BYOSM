@@ -78,6 +78,7 @@ export function Runs({ d }: { d: Detail }) {
                 <TableHead>Params</TableHead>
                 <TableHead>Train rows</TableHead>
                 <TableHead>Train time</TableHead>
+                <TableHead>GPU time</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,6 +93,7 @@ export function Runs({ d }: { d: Detail }) {
                   <TableCell>{params(r.params)}</TableCell>
                   <TableCell>{r.n_train ?? "-"}</TableCell>
                   <TableCell>{r.train_seconds == null ? "-" : seconds(r.train_seconds)}</TableCell>
+                  <TableCell>{r.gpu_hours == null ? "-" : seconds(r.gpu_hours * 3600)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

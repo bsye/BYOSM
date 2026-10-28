@@ -17,6 +17,7 @@ from .project import WEIGHTS, Project
 from .promotion import maybe_promote
 from .spec import TaskSpec
 from .train import fit
+from .train.gpu import held_seconds
 from .train.input_length import fitted_max_len
 
 KEPT_WEIGHTS = "model.kept.pt"
@@ -97,6 +98,7 @@ def build(
     ed = p.exp_dir(exp)
     ed.mkdir(parents=True, exist_ok=True)
     log(f"[experiment] {name}/{exp}")
+    held = held_seconds()
 
     dd = ensure_data(p, spec, cfg, log, force_data, data_seconds)
     spec = fitted_max_len(spec, dd, log)
@@ -124,6 +126,7 @@ def build(
     if best_round != rounds[-1]["round"]:
         log(f"[train] keeping round {best_round}: the best dev {spec.objective.metric} of {len(rounds)} rounds")
     meta |= {"rounds": rounds, "kept_round": best_round, "data_key": spec.data_key(), "refine_analyses": analyses}
+    meta["gpu_hours"] = round((held_seconds() - held) / 3600, 4)
     p.save_experiment(exp, spec=spec, meta=meta, errors=errors)
 
     log("[eval] scoring on every suite (+ baselines, cached)")

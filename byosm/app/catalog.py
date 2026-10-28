@@ -24,6 +24,7 @@ from ..spec import Objective, TaskSpec
 MAX_PAGE = 500
 RESULT_FIELDS = ("objective", "calib_objective", "latency_ms", "params", "n_test", "n_calib")
 SUITE_FIELDS = ("name", "kind", "primary", "written_by", "judged_by")
+META_FIELDS = ("params", "n_train", "train_seconds", "gpu_hours", "best_epoch")
 
 
 def project(ws: Path, name: str) -> Project:
@@ -103,10 +104,7 @@ def _run(p: Project, exp: str) -> dict[str, Any]:
         "continued": ((e.get("spec") or {}).get("train") or {}).get("init_from"),
         "created": e["created"].timestamp() if e.get("created") else None,
         "ablation_arm": is_arm(exp),
-        "params": m.get("params"),
-        "n_train": m.get("n_train"),
-        "train_seconds": m.get("train_seconds"),
-        "best_epoch": m.get("best_epoch"),
+        **{k: m.get(k) for k in META_FIELDS},
         "history": [
             {"epoch": h["epoch"] + 1, "loss": h["loss"], "dev": h["dev_objective"]} for h in m.get("history", [])
         ],

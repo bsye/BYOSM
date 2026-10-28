@@ -28,10 +28,15 @@ HEARTBEAT_S = 300
 
 
 _WAITED: list[float] = []
+_HELD: list[float] = []
 
 
 def waited_seconds() -> float:
     return sum(_WAITED)
+
+
+def held_seconds() -> float:
+    return sum(_HELD)
 
 
 def auto_slots() -> int:
@@ -164,13 +169,14 @@ def gpu_slot(
         _WAITED.append(waited)
     os.environ[SHARE_ENV] = f"{share:.3f}"
     _cap_memory(device, log, share)
-    ran_out = None
+    ran_out, since = None, time.time()
     try:
         yield device
     except RuntimeError as e:
         ran_out = share * total_gb() if "out of memory" in str(e) else None
         raise
     finally:
+        _HELD.append(time.time() - since)
         remember(base, key, ran_out)
         with _admission(base):
             (base / f"slot-{index}.share").unlink(missing_ok=True)
