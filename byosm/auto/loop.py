@@ -32,13 +32,27 @@ def _budget_stop(s: Session, st: dict, max_experiments: int) -> str:
     return ""
 
 
-def _pick(fresh: list[dict], deadline: float) -> tuple[dict | None, str]:
+def _pick(fresh: list[dict], deadline: float, eta: int) -> tuple[list[dict], str]:
     left_min = (deadline - time.time()) / 60
     fits = [pr for pr in fresh if pr["cost"]["minutes"] <= left_min]
     if not fits:
         cheapest = min(pr["cost"]["minutes"] for pr in fresh)
-        return None, f"time budget: {left_min:.0f} min left, cheapest untried proposal needs ~{cheapest:.0f} min"
-    return fits[0], ""
+        return [], f"time budget: {left_min:.0f} min left, cheapest untried proposal needs ~{cheapest:.0f} min"
+    return fits[: max(1, eta)], ""
+
+
+def _screened(s: Session, cands: list[dict]) -> dict:
+    from .. import improve
+    from ..rungs import screen
+
+    if len(cands) < 2:
+        return cands[0]
+    exps = {improve.apply(s.name, [c["id"]]): c for c in cands}
+    kept = screen(s.name, list(exps), s.echo)
+    for exp, c in exps.items():
+        if exp not in kept[:1]:
+            s.log("screen", exp, f"{c['id']}: dropped after a short run", proposal=c)
+    return exps[kept[0]] if kept else cands[0]
 
 
 def _is_real_gain(kept: bool, cmp: dict | None, mine: float | None, before: float | None) -> bool:
@@ -104,7 +118,9 @@ def improve_until_stop(s: Session, max_experiments: int, use_llm: bool) -> str:
     from ..next_steps import tried_proposals
 
     tried = tried_proposals(s.p) | {
-        proposal_key(d["proposal"]) for d in s.log.decisions if d["step"] in ("experiment", "skip") and "proposal" in d
+        proposal_key(d["proposal"])
+        for d in s.log.decisions
+        if d["step"] in ("experiment", "skip", "screen") and "proposal" in d
     }
     stale = 0
     while True:
@@ -116,11 +132,11 @@ def improve_until_stop(s: Session, max_experiments: int, use_llm: bool) -> str:
         fresh = _applicable(s, props, tried)
         if not fresh:
             return "no untried proposals left"
-        pick, reason = _pick(fresh, s.deadline)
-        if pick is None:
+        cands, reason = _pick(fresh, s.deadline, s.base.screen_eta)
+        if not cands:
             return reason
-        tried.add(proposal_key(pick))
-        real = _experiment(s, st, pick, fresh)
+        tried |= {proposal_key(c) for c in cands}
+        real = _experiment(s, st, _screened(s, cands), fresh)
         stale = 0 if real else stale + 1
         if stale >= PLATEAU_ROUNDS:
             return f"plateau: {PLATEAU_ROUNDS} rounds without a significant gain or with a failed build"

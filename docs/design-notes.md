@@ -1694,3 +1694,14 @@ the mean of the seeds; otherwise the original run ships. A soup maps back to its
 compared with the recipe's seed runs, and it never counts as a seed when the noise is measured. Seed runs share their
 pretrained start, which is what makes their weights averageable. The catalogue marks it `built-in`: the pipeline
 always does it, so it is not a proposal. Not measured on a specialist yet.
+
+## Candidates are screened with short runs first
+
+Every candidate used to cost a full training, so a round could try one idea. Batches now go through one rung of
+successive halving (`byosm/rungs.py`): each candidate trains as `<exp>-r1` for 1/`screen_eta` of its epochs (3 by
+default, in `spec.yaml`) with no refine rounds, never votes on promotion, and only the best ceil(n/`screen_eta`) on calib
+go on to a full training and the seed-averaged vote. `byosm improve --each --run` (the Run experiments step) screens
+the lined-up batch, and the autopilot screens the first `screen_eta` proposals of each round and trains the best one.
+A candidate dropped at the rung keeps its attempt, so it counts as a try without a win for the bandit and is not
+proposed again. Rung runs and ablation arms are `auxiliary` runs, hidden from the Runs tab. A rung is a planned
+budget, not a cancellation: every short run finishes.

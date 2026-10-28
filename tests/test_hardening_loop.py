@@ -7,6 +7,7 @@ from byosm import improve, pipeline
 from byosm.auto import loop
 from byosm.auto.state import Session
 from byosm.format import MISSING
+from byosm.spec import Label, TaskSpec
 
 STANDING = {"won": False, "exp": "e0", "ours": None, "suite": "s", "best_baseline": None, "target": None}
 
@@ -21,7 +22,8 @@ class FakeLog:
 
 def _session() -> Session:
     p = SimpleNamespace(experiments=lambda: [], attempts=lambda: [], board=lambda: {})
-    return Session("t", p, FakeLog(), None, 0.0, time.time() + 3600, lambda _m: None)
+    spec = TaskSpec(name="t", description="", modality="text", labels=[Label(name="a", definition="")])
+    return Session("t", p, FakeLog(), spec, 0.0, time.time() + 3600, lambda _m: None)
 
 
 def _proposal(i: int) -> dict:

@@ -4,7 +4,6 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from ..ablation import is_arm
 from ..ablation import summaries as ablation_summaries
 from ..archive import archived, set_archived
 from ..auto.standing import best_baseline
@@ -20,6 +19,7 @@ from ..metrics import metric_label, unreached
 from ..model_refs import model_refs
 from ..next_steps import suggestions
 from ..project import Project, list_projects
+from ..rungs import auxiliary
 from ..spec import Objective, TaskSpec
 
 MAX_PAGE = 500
@@ -104,7 +104,7 @@ def _run(p: Project, exp: str) -> dict[str, Any]:
         "parent": (e.get("proposal") or {}).get("parent"),
         "continued": ((e.get("spec") or {}).get("train") or {}).get("init_from"),
         "created": e["created"].timestamp() if e.get("created") else None,
-        "ablation_arm": is_arm(exp),
+        "auxiliary": auxiliary(exp),
         **{k: m.get(k) for k in META_FIELDS},
         "history": [
             {"epoch": h["epoch"] + 1, "loss": h["loss"], "dev": h["dev_objective"]} for h in m.get("history", [])

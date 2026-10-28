@@ -18,7 +18,7 @@ const calib = (d: Detail, run: string) => d.board[run]?.[d.primary_suite]?.calib
 
 function byCalib(d: Detail): Detail["runs"] {
   const key = (name: string) => (name === d.promoted ? Infinity : (calib(d, name) ?? -Infinity))
-  return d.runs.filter((r) => !r.ablation_arm).sort((a, b) => key(b.name) - key(a.name))
+  return d.runs.filter((r) => !r.auxiliary).sort((a, b) => key(b.name) - key(a.name))
 }
 
 function defaults(d: Detail): string[] {

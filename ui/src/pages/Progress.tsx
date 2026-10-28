@@ -15,7 +15,7 @@ const config = {
 export function Progress({ d }: { d: Detail }) {
   const prim = d.primary_suite
   const data = d.runs
-    .filter((r) => !r.ablation_arm && d.board[r.name]?.[prim])
+    .filter((r) => !r.auxiliary && d.board[r.name]?.[prim])
     .sort((a, b) => (a.created ?? 0) - (b.created ?? 0))
     .map((r) => ({ name: r.name, calib: d.board[r.name][prim].calib_objective, test: d.board[r.name][prim].objective }))
   if (data.length < MIN_RUNS) return null
