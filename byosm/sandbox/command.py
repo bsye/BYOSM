@@ -6,7 +6,7 @@ from typing import Any
 
 from ..app.detached import wrapped
 from ..app.job import Job, job_vars
-from ..config import cache_root, env_file
+from ..config import CONCURRENCY_ENV, DEVICE_ENV, LLM_OVERRIDE_ENV, cache_root, env_file
 from .containers import HARDENED, JOB_PREFIX, LABEL, NETWORK_PREFIX, SCRATCH, proxy_url
 
 SHM_SIZE = "2g"
@@ -16,7 +16,8 @@ CONTAINER_USER = "byosm"
 CONTAINER_PYTHON = "python"
 ALL_GPUS, NO_GPUS = "all", "none"
 PROXY_VARS = ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy")
-PASSED_PREFIXES = ("BYOSM_", "HF_")
+HF_PREFIX, CACHE_SUFFIX = "HF_", "_CACHE"
+SETTINGS = (DEVICE_ENV, CONCURRENCY_ENV, LLM_OVERRIDE_ENV)
 
 
 def hf_home() -> Path:
@@ -32,9 +33,12 @@ def gpu_flags(gpus: str) -> list[str]:
 
 
 def _mounts(ws: Path) -> list[str]:
-    folders = [ws, cache_root(), hf_home()]
-    for folder in folders:
-        folder.mkdir(parents=True, exist_ok=True)
+    caches = [Path(v) for k, v in os.environ.items() if k.startswith(HF_PREFIX) and k.endswith(CACHE_SUFFIX)]
+    folders: list[Path] = []
+    for folder in (ws, cache_root(), hf_home(), *caches):
+        if not any(folder.is_relative_to(f) for f in folders):
+            folder.mkdir(parents=True, exist_ok=True)
+            folders.append(folder)
     return [f"--volume={folder}:{folder}" for folder in folders]
 
 
@@ -47,7 +51,7 @@ def passed_names(ws: Path, job: Job, fixed: dict[str, str]) -> list[str]:
     from ..app.keys import KNOWN_KEYS
     from ..db.engine import URL_ENV
 
-    host = [n for n in os.environ if n.startswith(PASSED_PREFIXES) or n in (*KNOWN_KEYS, URL_ENV)]
+    host = [n for n in os.environ if n.startswith(HF_PREFIX) or n in (*SETTINGS, *KNOWN_KEYS, URL_ENV)]
     return sorted({*job_vars(job), *env_file(ws), *host} - set(fixed))
 
 

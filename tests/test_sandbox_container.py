@@ -87,15 +87,23 @@ def test_a_rule_is_a_domain_with_its_subdomains_or_one_host_and_port():
     assert allowed("::1", 8080, rules) and not allowed("sub.localhost", 11434, rules)
 
 
-def test_a_container_job_has_its_limits_its_own_network_and_no_secret_in_its_command(ws, monkeypatch, tmp_path):
+def test_a_container_job_has_its_limits_its_own_network_and_no_secret_in_its_command(
+    ws, monkeypatch, tmp_path, tmp_path_factory
+):
+    hub = tmp_path_factory.mktemp("hub")
     monkeypatch.setenv("BYOSM_CACHE", str(tmp_path / "cache"))
     monkeypatch.setattr(command, "hf_home", lambda: tmp_path / "hf")
+    monkeypatch.setenv("HF_HUB_CACHE", str(hub))
+    monkeypatch.setenv("BYOSM_DEVICE", "cpu")
+    monkeypatch.setenv("BYOSM_APP_TOKEN", SECRET)
     (ws / ".env").write_text(f"HF_TOKEN={SECRET}\n")
     job = Job(id="abc", args=["build", "intent"])
     run = command.run_args(ws, job, ENTRY, "img", LIMITS, command.gpu_flags("0,1"), ws / "abc.inner")
     flags = [after(run, flag) for flag in ("--cpus", "--memory", "--gpus", "--network")]
     assert flags == ["4.0", "16384m", '"device=0,1"', "byosm-net-abc"]
-    assert {"--read-only", "--init", "--env=HF_TOKEN", f"--volume={ws}:{ws}"} <= set(run)
+    assert {"--read-only", "--init", "--env=HF_TOKEN", "--env=BYOSM_DEVICE", f"--volume={ws}:{ws}"} <= set(run)
+    assert f"--volume={hub}:{hub}" in run and f"--volume={tmp_path / 'hf'}:{tmp_path / 'hf'}" not in run
+    assert "--env=BYOSM_APP_TOKEN" not in run
     assert "--env=HTTPS_PROXY=http://byosm-egress-abc:3128" in run and SECRET not in " ".join(run)
     assert run[run.index("img") + 1 :][:3] == ["python", "-P", "-c"] and run[-2:] == ["build", "intent"]
 

@@ -16,6 +16,7 @@ CONFIG_NAME = "byosm.yaml"
 ENV_FILE = ".env"
 LLM_OVERRIDE_ENV = "BYOSM_LLM"
 CONCURRENCY_ENV = "BYOSM_CONCURRENCY"
+DEVICE_ENV = "BYOSM_DEVICE"
 TESTSET_PER_LABEL = 20
 TESTSET_SUITE = "llm-written"
 HF_TOKEN_KEY = "HF_TOKEN"
@@ -110,7 +111,7 @@ def write_default_config(ws: Path) -> Path:
 def device() -> str:
     import torch
 
-    forced = os.environ.get("BYOSM_DEVICE")
+    forced = os.environ.get(DEVICE_ENV)
     if forced:
         return forced
     if torch.cuda.is_available():

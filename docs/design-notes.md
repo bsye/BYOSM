@@ -2393,8 +2393,8 @@ SIGTERM to the supervisor, which stops the container with a 5 s grace (`STOP_GRA
 |---|---|
 | image | `docker/train.Dockerfile` built by the same `build_image` as served models, from the frozen code snapshot plus `pyproject.toml`; tag `byosm-train:<snapshot>-<hash of flavour, pyproject, Dockerfile>`, so one build per code version, and the dependency layer sits below the code layer. CPU torch, or PyPI's CUDA wheels for CUDA jobs |
 | container | `--init`, read-only root, `/tmp` tmpfs (exec allowed: Triton and Inductor load compiled kernels from it), no capabilities, `no-new-privileges`, `--cpus`, `--memory`, `--shm-size 2g` for DataLoader workers, `--pids-limit 16384`, the host user's uid, `--gpus` only for CUDA jobs, `--log-driver none` since the job log is the record |
-| files | the workspace, the BYOSM cache and the Hugging Face cache, mounted at their host paths, so paths in the database stay valid and GPU slot locks (`byosm/train/gpu.py`) are shared with every other job |
-| environment | job variables and keys pass by name (`--env NAME`), so no secret is on a command line |
+| files | the workspace, the BYOSM cache, the Hugging Face home and any `HF_*_CACHE` folder outside them, mounted at their host paths, so paths in the database stay valid and GPU slot locks (`byosm/train/gpu.py`) are shared with every other job. A file outside these folders is invisible to the job |
+| environment | the job's own variables, the keys, `HF_*`, `DATABASE_URL`, `BYOSM_DEVICE`, `BYOSM_CONCURRENCY` and `BYOSM_LLM` pass by name (`--env NAME`), so no secret is on a command line; the app's token is not passed |
 | exit code | the wrapper inside writes the job's code to `<id>.inner`; a container killed for memory has none, so the supervisor reports 137 and says the job used all of its memory |
 | watchdog | reads the CPU of the container's processes (`docker inspect` pid), not the idle supervisor's |
 
