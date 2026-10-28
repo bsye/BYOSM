@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { seconds, signed, signedInterval } from "@/format"
 import { EffectChart, type Effect } from "@/pages/EffectChart"
+import { ProvenMethods } from "./ProvenMethods"
 import { ScoutProposals } from "./ScoutProposals"
 
 type Status = "available" | "built-in" | "planned"
@@ -183,6 +184,7 @@ export function Techniques() {
         />
       </div>
       <ScoutProposals />
+      <ProvenMethods />
       <EffectChart families={rows} />
       <Tried rows={rows} />
       <Catalogue rows={shown} />

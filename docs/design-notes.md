@@ -2472,3 +2472,18 @@ Every family in `byosm/improve/techniques.yaml` records the day it joined the ca
 page shows it next to each evidence link's publication month. The month comes from the arXiv identifier itself
 (`2006.05987` is June 2020; `published` in `byosm/improve/techniques.py`), so no lookup is needed; other links show no
 date. Proposed techniques show the paper's date and the day the scout found them.
+
+## From a paper to a default technique
+
+A paper the scout found now has a path all the way into the pipeline, with the owner approving at each step that runs
+or ships code:
+
+| Step | What happens | Where |
+|---|---|---|
+| Read | "Try it" passes the paper's link; the lab reads its method and training sections from arXiv's HTML version, cached per paper, and writes code that follows them | `byosm/scout/fulltext.py`, `lab write --paper` |
+| Retry | a run that fails or does not win writes a revision from the error or the scores (`parent` on the draft), at most two per method; each version waits for approval | `revise` in `byosm/lab/run.py` |
+| Spread | a promotion won with a lab method puts it in the workspace's proven methods; the proposer offers that approved code to other specialists of the kind | `byosm/lab/proven.py`, `note_win` in `_record` |
+| Ship | after wins on two specialists a patch adds the method as `byosm/lab/methods/<name>.py`, a catalogue family pinned to `train.lab_method=builtin:<name>` and a test; the owner reviews it and runs `git apply` | `write_patch`, Techniques page "From the lab" |
+
+Shipped methods load from the repository and still pass the static checks before they run. Nothing changes the
+repository on its own: the patch is a file in `.byosm/lab/patches/`.

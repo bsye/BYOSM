@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from ..data.store import ShingleIndex
 from ..events import stage
+from ..lab.proven import proposals as lab_proposals
 from ..project import Project
 from ..spec import TaskSpec
 from .analyst import LLM, llm_proposals
@@ -59,7 +60,7 @@ def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print)
     dg = diagnose(name)
     p = Project(name)
     base = p.exp_spec(dg["experiment"]) if dg.get("experiment") else p.spec()
-    found = recipes(p, base) + tpe_proposals(p, base) + rule_proposals(dg)
+    found = recipes(p, base) + lab_proposals(p, base) + tpe_proposals(p, base) + rule_proposals(dg)
     found += llm_proposals(dg, log) if use_llm else []
     props = _novel(p, [pr for pr in unique(found) if _valid(base, pr, log)], log)
     for pr in props:

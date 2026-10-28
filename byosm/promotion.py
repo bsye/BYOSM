@@ -57,6 +57,10 @@ def _record(p: Project, exp: str, won: bool, cmp: dict | None, runs_: tuple[list
         "gpu_hours": round(hours, 4),
     }
     p.save_report(VERDICT + exp, verdict)
+    if won:
+        from .lab.proven import note_win
+
+        note_win(p, exp)
     if ops:
         effects(p, {exp: proposal.get("parent")})
 

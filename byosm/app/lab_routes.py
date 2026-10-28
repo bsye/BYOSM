@@ -22,6 +22,12 @@ def lab_router(ws: Path) -> APIRouter:
             raise HTTPException(404, f"no specialist {name!r}")
         return p
 
+    @router.get("/api/lab/proven")
+    def proven() -> list[dict]:
+        from ..lab.proven import registry
+
+        return sorted(registry(ws).values(), key=lambda e: (-len(e["won_on"]), e["name"]))
+
     @router.get("/api/specialists/{name}/lab")
     def methods(name: str) -> list[dict]:
         from ..lab.drafts import drafts
