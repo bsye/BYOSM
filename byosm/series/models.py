@@ -43,8 +43,8 @@ def average(forecasts: list[list[np.ndarray]]) -> list[np.ndarray]:
 class Ensemble:
     name = "ensemble"
 
-    def __init__(self, models: list[Any]) -> None:
-        self.models = models
+    def __init__(self, models: list[Any], name: str = name) -> None:
+        self.models, self.name = models, name
 
     def predict_many(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
         return average([m.predict_many(histories, season, horizon) for m in self.models])

@@ -1,9 +1,11 @@
 import numpy as np
 import pytest
 
+from byosm.series.board import reports
 from byosm.series.gifteval import Series, horizon, season, splits, unit, windows
 from byosm.series.metrics import QUANTILES, crps, geomean, mase
-from byosm.series.models import Boosted, Group, SeasonalNaive
+from byosm.series.models import Boosted, Ensemble, Group, SeasonalNaive
+from byosm.series.specialist import NAIVE
 
 TRAINED = {"gradient boosting": SeasonalNaive()}
 
@@ -113,10 +115,10 @@ def test_a_domain_report_is_saved_after_each_recipe_so_results_show_as_they_arri
     score = {"mase": 1.0, "crps": 1.0, "train_s": 0.0, "ms_per_forecast": 0.1, "windows": [1.0]}
 
     def fit(configs, effort, log, progress):
-        per = {c: {run.NAIVE: score} for c in configs}
+        per = {c: {NAIVE: score} for c in configs}
         for pending in (["gradient boosting"], []):
             progress(per, pending)
-            seen.append(next(r["pending"] for r in run.reports(ws) if r["domain"] == "demo"))
+            seen.append(next(r["pending"] for r in reports(ws) if r["domain"] == "demo"))
         return per, {}
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a", "b"]})
@@ -150,7 +152,7 @@ def _versioned_run(ws, monkeypatch, calib, test):
     monkeypatch.setattr(
         run,
         "fit_domain",
-        lambda configs, effort, log, progress: ({"a": {run.NAIVE: naive, "gradient boosting": ours}}, TRAINED),
+        lambda configs, effort, log, progress: ({"a": {NAIVE: naive, "gradient boosting": ours}}, TRAINED),
     )
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: {})
     return run.run_domain(ws, "demo", log=lambda _: None)
@@ -216,7 +218,7 @@ def test_one_model_per_recipe_is_trained_for_all_datasets_and_the_ensemble_avera
         def predict_many(self, histories, season, horizon):
             return [np.full((len(QUANTILES), horizon), h[-1] + self.level) for h in histories]
 
-    monkeypatch.setattr(fit, "load", lambda config: series)
+    monkeypatch.setattr("byosm.series.scoring.load", lambda config: series)
     monkeypatch.setattr(
         fit,
         "candidates",
@@ -226,10 +228,10 @@ def test_one_model_per_recipe_is_trained_for_all_datasets_and_the_ensemble_avera
     monkeypatch.setattr(fit, "emit", lambda kind, **data: events.append((kind, data["recipe"], data["index"])))
     out, trained = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None)
     assert [e[1:] for e in events] == [("seasonal naive", 1), ("gradient boosting", 2), ("patch transformer", 3)]
-    assert set(trained) == {"gradient boosting", "patch transformer", fit.ENSEMBLE}
+    assert set(trained) == {"gradient boosting", "patch transformer", Ensemble.name}
     assert fits == [("gradient boosting", 2), ("patch transformer", 2)]
     for row in out.values():
-        assert row[fit.ENSEMBLE]["mase"] < min(row["gradient boosting"]["mase"], row["patch transformer"]["mase"])
+        assert row[Ensemble.name]["mase"] < min(row["gradient boosting"]["mase"], row["patch transformer"]["mase"])
 
 
 def test_keep_training_stops_once_a_version_beats_the_best_rival(ws, monkeypatch):
@@ -241,7 +243,7 @@ def test_keep_training_stops_once_a_version_beats_the_best_rival(ws, monkeypatch
         efforts.append(effort)
         ours = 0.9 - 0.1 * effort
         return {
-            "a": {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
+            "a": {NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
         }, TRAINED
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
@@ -267,7 +269,7 @@ def test_the_rival_is_compared_on_the_datasets_both_were_scored_on_and_the_harde
 
 
 def test_the_board_shows_a_rival_scored_on_some_datasets_next_to_ours_on_the_same_ones():
-    from byosm.series.run import promoted_board
+    from byosm.series.board import promoted_board
 
     def row(ours, timestral=None):
         out = {"seasonal naive": {"mase": 1.0}, "patch transformer": {"mase": ours}}
@@ -306,7 +308,7 @@ def test_keep_training_stops_when_doubling_the_training_no_longer_helps(ws, monk
         efforts.append(effort)
         ours = 0.85 - 0.001 * effort
         return {
-            "a": {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
+            "a": {NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
         }, TRAINED
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})
@@ -399,7 +401,7 @@ def _plateaued(ws, monkeypatch, upstream):
         efforts.append(effort)
         ours = 0.85 - 0.001 * effort
         return {
-            "a": {run.NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
+            "a": {NAIVE: naive, "gradient boosting": {**naive, "mase": ours, "calib_mase": ours, "windows": [ours]}}
         }, TRAINED
 
     monkeypatch.setattr(run, "DOMAINS", {"demo": ["a"]})

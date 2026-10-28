@@ -18,6 +18,10 @@ def is_rival(model: str) -> bool:
     return model.startswith(RIVAL_NAMES)
 
 
+def promoted_version(report: dict[str, Any]) -> dict[str, Any] | None:
+    return next((v for v in report.get("versions", []) if v["name"] == report.get("promoted")), None)
+
+
 def choose(overall: dict[str, dict[str, Any]]) -> str | None:
     recipes = {m: s["calib_mase"] for m, s in overall.items() if not is_rival(m) and "calib_mase" in s}
     return min(recipes, key=lambda m: recipes[m]) if recipes else None
@@ -40,7 +44,7 @@ def add_version(report: dict[str, Any], interval: list[float] | None, effort: in
         "at": time.time(),
         "configs": report["configs"],
     }
-    best = next((v for v in versions if v["name"] == report.get("promoted")), None)
+    best = promoted_version(report)
     promoted = version["name"] if best is None or version["calib"] < best["calib"] else best["name"]
     return {**report, "versions": [*versions, version], "promoted": promoted}
 
@@ -50,7 +54,7 @@ def _relative(rows: list[dict[str, Any]], model: str) -> float:
 
 
 def best_rival(report: dict[str, Any]) -> dict[str, Any] | None:
-    promoted = next((v for v in report.get("versions", []) if v["name"] == report.get("promoted")), None)
+    promoted = promoted_version(report)
     if not promoted:
         return None
     configs, ours = promoted.get("configs") or {}, promoted["recipe"]
@@ -67,7 +71,7 @@ def best_rival(report: dict[str, Any]) -> dict[str, Any] | None:
 def summary(report: dict[str, Any]) -> dict[str, Any]:
     domain = report["domain"]
     versions = report.get("versions", [])
-    promoted = next((v for v in versions if v["name"] == report.get("promoted")), None)
+    promoted = promoted_version(report)
     return {
         "name": domain,
         "kind": KIND,

@@ -19,11 +19,15 @@ def mase(history: np.ndarray, future: np.ndarray, median: np.ndarray, season: in
     return float(np.mean(np.abs(future[keep] - median[keep])) / _scale(history, season)) if keep.any() else np.nan
 
 
-def crps(future: np.ndarray, quantiles: np.ndarray) -> tuple[float, float]:
+def pinball(future: np.ndarray, quantiles: np.ndarray) -> np.ndarray:
     keep = ~np.isnan(future)
     y, q = future[keep], quantiles[:, keep]
-    loss = sum(2 * np.sum(np.abs((y - q[i]) * ((y <= q[i]) - level))) for i, level in enumerate(QUANTILES))
-    return float(loss / len(QUANTILES)), float(np.sum(np.abs(y)))
+    return 2 * np.sum(np.abs((y - q) * ((y <= q) - np.asarray(QUANTILES)[:, None])), axis=1)
+
+
+def crps(future: np.ndarray, quantiles: np.ndarray) -> tuple[float, float]:
+    total = float(np.sum(np.abs(future[~np.isnan(future)])))
+    return float(pinball(future, quantiles).sum() / len(QUANTILES)), total
 
 
 def summary(windows: list[dict[str, Any]], forecasts: list[np.ndarray], seasons: list[int]) -> dict[str, Any]:

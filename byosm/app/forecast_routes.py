@@ -50,20 +50,20 @@ def forecast_router(ws: Path) -> APIRouter:
 
     @router.get("/api/series")
     def series() -> list[dict[str, Any]]:
-        from ..series.run import reports
+        from ..series.board import reports
 
         return reports(ws)
 
     @router.get("/api/series/{domain}")
     def forecaster(domain: str) -> dict[str, Any]:
-        from ..series.run import reports
+        from ..series.board import reports
         from ..series.specialist import summary
 
         found = next((r for r in reports(ws) if r["domain"] == domain), None)
         if found is None:
             raise HTTPException(404, f"no forecasting domain named {domain}")
+        from ..series.board import promoted_board
         from ..series.health import health
-        from ..series.run import promoted_board
         from ..series.saved import live_version
 
         live = live_version(ws, domain, found)
@@ -80,7 +80,7 @@ def forecast_router(ws: Path) -> APIRouter:
 
     @router.post("/api/series/{domain}/forecast")
     def forecast(domain: str, body: History) -> dict[str, Any]:
-        from ..series.run import reports
+        from ..series.board import reports
         from ..series.saved import forecast, live_version
 
         found = next((r for r in reports(ws) if r["domain"] == domain), {})

@@ -6,94 +6,58 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
+from .board import interval, overall, reports, save_report, stored, with_published
 from .fit import fit_domain
 from .gifteval import DOMAINS
-from .metrics import geomean, ratio_interval
 from .saved import save
-from .specialist import CI_DRAWS, CI_SEED, NAIVE, add_version, choose
+from .scoring import Progress
+from .specialist import add_version, choose, promoted_version
 from .specialist import summary as forecaster
 
-REPORT = "series:"
 SERIES_EVENT = "series"
 MIN_GAIN = 0.01
 PLATEAU = "plateau"
-SCORES = ("mase", "crps", "calib_mase", "calib_crps")
+Log = Callable[[str], None]
 
 
-def _overall(per: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    overall: dict[str, dict[str, Any]] = {}
-    for m in sorted({m for r in per.values() for m in r}):
-        rows = [r for r in per.values() if m in r and NAIVE in r]
-        overall[m] = {"datasets": len(rows)}
-        for k in SCORES:
-            if rows and all(k in r[m] and k in r[NAIVE] for r in rows):
-                overall[m][k] = geomean([r[m][k] / r[NAIVE][k] for r in rows])
-        for k in ("train_s", "ms_per_forecast"):
-            if rows and all(k in r[m] for r in rows):
-                overall[m][k] = round(float(np.mean([r[m][k] for r in rows])), 3)
-        overall[m]["published"] = any(r[m].get("published") for r in rows)
-    return overall
+def _previous(ws: Path, domain: str) -> dict[str, Any]:
+    return next((r for r in reports(ws) if r["domain"] == domain), {})
 
 
-def _interval(per: dict[str, dict[str, Any]], recipe: str | None) -> list[float] | None:
-    if recipe is None:
-        return None
-    ours, base = [r[recipe]["windows"] for r in per.values()], [r[NAIVE]["windows"] for r in per.values()]
-    return ratio_interval(ours, base, CI_DRAWS, CI_SEED)
-
-
-def _stored(per: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    return {c: {m: {k: v for k, v in s.items() if k != "windows"} for m, s in r.items()} for c, r in per.items()}
-
-
-def _save(ws: Path, report: dict[str, Any]) -> None:
-    from ..db import get_or_add, session
-    from ..db.models import WorkspaceReport
-
-    with session(ws) as s:
-        get_or_add(s, WorkspaceReport, kind=REPORT + report["domain"]).data = report
-
-
-def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dict[str, Any]:
-    from ..events import emit
-
-    previous = next((r for r in reports(ws) if r["domain"] == domain), {})
-    kept = {
+def _kept(previous: dict[str, Any]) -> dict[str, Any]:
+    return {
         "versions": previous.get("versions", []),
         "promoted": previous.get("promoted"),
         "created": previous.get("created") or datetime.now(UTC).isoformat(),
     }
-    best = next((v for v in kept["versions"] if v["name"] == kept["promoted"]), None)
-    effort = best["effort"] + 1 if best else 0
-    log(f"  effort {effort}: {2**effort}x the base training steps")
 
-    def progress(per: dict[str, dict[str, Any]], pending: list[str]) -> None:
-        _save(
-            ws,
-            {
-                "domain": domain,
-                "at": time.time(),
-                "configs": _stored(per),
-                "overall": _overall(per),
-                "pending": pending,
-                **kept,
-            },
-        )
-        emit(SERIES_EVENT, domain=domain, pending=len(pending))
 
-    per, trained = fit_domain(DOMAINS.get(domain, [domain]), effort, log, progress)
-    report = {
+def _report(domain: str, per: dict[str, Any], pending: list[str], kept: dict[str, Any]) -> dict[str, Any]:
+    return {
         "domain": domain,
         "at": time.time(),
-        "configs": _stored(per),
-        "overall": _overall(per),
-        "pending": [],
+        "configs": stored(per),
+        "overall": overall(per),
+        "pending": pending,
         **kept,
     }
-    report = add_version(report, _interval(per, choose(report["overall"])), effort)
-    _save(ws, report)
+
+
+def _progress(ws: Path, domain: str, kept: dict[str, Any]) -> Progress:
+    from ..events import emit
+
+    def progress(per: dict[str, dict[str, Any]], pending: list[str]) -> None:
+        save_report(ws, _report(domain, per, pending, kept))
+        emit(SERIES_EVENT, domain=domain, pending=len(pending))
+
+    return progress
+
+
+def _finish(ws: Path, domain: str, made: tuple[dict, dict], kept: dict, effort: int, log: Log) -> dict[str, Any]:
+    per, trained = made
+    report = _report(domain, per, [], kept)
+    report = add_version(report, interval(per, choose(report["overall"])), effort)
+    save_report(ws, report)
     if report.get("versions"):
         newest = report["versions"][-1]
         save(ws, domain, newest["name"], trained[newest["recipe"]])
@@ -101,40 +65,14 @@ def run_domain(ws: Path, domain: str, log: Callable[[str], None] = print) -> dic
     return report
 
 
-def _with_published(report: dict[str, Any]) -> dict[str, Any]:
-    from .published import scores
-
-    def merged(configs: dict[str, Any]) -> dict[str, Any]:
-        return {c: {**r, **scores(c, r[NAIVE]["mase"])} for c, r in configs.items()}
-
-    per = merged(report.get("configs", {}))
-    versions = [{**v, "configs": merged(v["configs"])} if v.get("configs") else v for v in report.get("versions", [])]
-    return {**report, "configs": per, "overall": _overall(per), "versions": versions} if per else report
-
-
-def promoted_board(report: dict[str, Any]) -> dict[str, Any]:
-    version = next((v for v in report.get("versions", []) if v["name"] == report.get("promoted")), None)
-    configs = (version or {}).get("configs")
-    if not configs:
-        return {}
-    overall = _overall(configs)
-    for name, s in overall.items():
-        shared = {c: r for c, r in configs.items() if name in r and version["recipe"] in r}
-        if s["datasets"] < len(configs) and shared:
-            s["ours_on_shared"] = _overall(shared)[version["recipe"]]["mase"]
-    return {"configs": configs, "overall": overall}
-
-
-def reports(ws: Path) -> list[dict[str, Any]]:
-    from sqlalchemy import select
-
-    from ..db import session
-    from ..db.models import WorkspaceReport
-
-    with session(ws) as s:
-        rows = s.scalars(select(WorkspaceReport.data).where(WorkspaceReport.kind.startswith(REPORT))).all()
-    found = {r["domain"]: _with_published(r) for r in rows if r}
-    return [found.get(d) or {"domain": d, "at": None} for d in [*DOMAINS, *(k for k in found if k not in DOMAINS)]]
+def run_domain(ws: Path, domain: str, log: Log = print) -> dict[str, Any]:
+    previous = _previous(ws, domain)
+    best = promoted_version(previous)
+    effort = best["effort"] + 1 if best else 0
+    log(f"  effort {effort}: {2**effort}x the base training steps")
+    kept = _kept(previous)
+    made = fit_domain(DOMAINS.get(domain, [domain]), effort, log, _progress(ws, domain, kept))
+    return _finish(ws, domain, made, kept, effort, log)
 
 
 def _gain(report: dict[str, Any]) -> float:
@@ -161,11 +99,11 @@ def _lever() -> str:
 
 def _mark(ws: Path, report: dict[str, Any], plateau: dict[str, Any] | None) -> dict[str, Any]:
     report = {**report, PLATEAU: plateau}
-    _save(ws, report)
+    save_report(ws, report)
     return report
 
 
-def _escalate(ws: Path, previous: dict[str, Any], log: Callable[[str], None]) -> bool:
+def _escalate(ws: Path, previous: dict[str, Any], log: Log) -> bool:
     from .corpus import PRETRAIN_STEPS
     from .patch import missing_size
     from .pretrain import pretrain
@@ -183,15 +121,15 @@ def _escalate(ws: Path, previous: dict[str, Any], log: Callable[[str], None]) ->
     return True
 
 
-def until_rival(ws: Path, domain: str, rounds: int, log: Callable[[str], None] = print) -> dict[str, Any]:
-    previous = next((r for r in reports(ws) if r["domain"] == domain), {})
+def until_rival(ws: Path, domain: str, rounds: int, log: Log = print) -> dict[str, Any]:
+    previous = _previous(ws, domain)
     stuck = previous.get(PLATEAU)
     if stuck and stuck["upstream"] == _upstream() and not _escalate(ws, previous, log):
         return previous
     report = previous
     for n in range(rounds):
         report = run_domain(ws, domain, log)
-        rival = forecaster(_with_published(report))["rival"]
+        rival = forecaster(with_published(report))["rival"]
         if rival and rival["ours"] < rival["score"]:
             log(f"  beat {rival['name']} after {n + 1} round(s): {rival['ours']:.3f} vs {rival['score']:.3f}")
             return _mark(ws, report, None)

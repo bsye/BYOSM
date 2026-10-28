@@ -80,7 +80,7 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
 
 
 def specialists(ws: Path) -> list[dict[str, Any]]:
-    from ..series.run import reports
+    from ..series.board import reports
     from ..series.specialist import summary as forecaster
     from ..tabular.specialist import summary as risk
     from ..tabular.task import forecasts

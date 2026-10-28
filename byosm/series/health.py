@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from ..health_score import FAIL, OK, UNKNOWN, WARN, check, report
-from .specialist import NAIVE, best_rival
+from .specialist import NAIVE, best_rival, promoted_version
 
 AGREE_OK, AGREE_WARN = 0.10, 0.25
 WIDTH_OK, WIDTH_WARN = 0.05, 0.15
@@ -62,7 +62,7 @@ def _rival(report_: dict[str, Any]) -> dict:
 
 
 def health(report_: dict[str, Any]) -> dict[str, Any] | None:
-    version = next((v for v in report_.get("versions", []) if v["name"] == report_.get("promoted")), None)
+    version = promoted_version(report_)
     if not version:
         return None
     configs = version.get("configs") or {}
@@ -70,7 +70,7 @@ def health(report_: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def of_domain(ws: Path, name: str) -> dict[str, Any] | None:
-    from .run import reports
+    from .board import reports
 
     found = next((r for r in reports(ws) if r["domain"] == name and r["at"]), None)
     return health(found) if found else None
