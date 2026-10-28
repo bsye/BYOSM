@@ -1978,7 +1978,7 @@ what the published ablations rank highest (TiRex, Chronos-2, Moirai 2.0; see the
 | Field | v2 | Why |
 |---|---|---|
 | `quantiles` | 21 levels, 0.01, 0.05 to 0.95 in steps of 0.05, 0.99 | Moirai 2.0's largest single gain; scoring and served forecasts stay on the 9 standard levels, taken as a subset (`served`) |
-| `mask_rate` | `MASK_RATE` 0.15 | One contiguous span of whole input patches is hidden per window, its length uniform between 0 and twice the rate, so 15% of patches on average; TiRex reports -7.6% CRPS |
+| `mask_rate` | `MASK_RATE` 0.15 | One contiguous span of whole input patches is hidden per window, its length uniform between 0 and twice the rate, so 15% of patches on average; a short window the span would hide entirely is left whole; TiRex reports -7.6% CRPS |
 | `amplitude`, `censor`, `mixup` | chances 0.3, 0.1, 0.3 | Amplitude modulation (the deviation from the context mean times a piecewise-linear gain between 0.5 and 1.5), censoring (clipped from below or above at a quantile of the context up to 0.3), and TSMixup of two series of the batch, each scaled by its mean absolute context value, with a Beta(1.5, 1.5) weight; TiRex reports a further -4.4% |
 | `arcsinh` | on | After the window's z-score, inputs and targets go through arcsinh, and forecasts back through sinh, which is monotone, so quantiles stay ordered (they are still sorted) |
 | `synthetic` | `SYNTHETIC_SHARE` 0.2 | A share of every pretraining batch comes from `byosm/series/synthetic.py`, so pretraining runs with no downloaded corpus |

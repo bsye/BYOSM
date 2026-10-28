@@ -59,6 +59,9 @@ def test_patch_masking_hides_one_contiguous_span_of_whole_patches_at_the_named_r
             assert gone[0] % 32 == 0 and len(gone) % 32 == 0 and np.all(np.diff(gone) == 1)
         shares.append(len(gone) / len(past))
     assert abs(np.mean(shares) - 0.15) < 0.02 and hidden(past, 32, 0.0, rng) is past
+    short = np.full(32 * 20, np.nan)
+    short[-32:] = 1.0
+    assert all(np.isfinite(hidden(short, 32, 0.5, rng)).sum() == 32 for _ in range(100))
 
 
 def test_amplitude_modulation_keeps_the_level_and_censoring_clips_one_side():

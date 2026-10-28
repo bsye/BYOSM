@@ -65,4 +65,4 @@ def hidden(past: np.ndarray, patch: int, rate: float, rng: np.random.Generator) 
     start = int(rng.integers(0, patches - span + 1))
     out = past.copy()
     out[start * patch : (start + span) * patch] = np.nan
-    return out
+    return past if np.isnan(out).all() else out
