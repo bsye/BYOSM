@@ -12,6 +12,7 @@ BACKTESTS = 2
 SEASONS_NEEDED = 2
 COARSE_CONTEXT = 1024
 MIN_LOSS = 1e-9
+SHARPNESS = 10.0
 SUFFIX = ", multi-rate"
 
 
@@ -62,8 +63,9 @@ class MultiRate:
             forecasts = self._at_rates([h[:c] for h, c in zip(histories, cuts, strict=True)], season, horizon)
             for i, (h, c) in enumerate(zip(histories, cuts, strict=True)):
                 loss[i] += [pinball(h[c : c + horizon], f) for f in forecasts[i]]
-        inverse = 1 / np.maximum(loss, MIN_LOSS)
-        return inverse / inverse.sum(1, keepdims=True)
+        relative = loss / np.maximum(loss.min(1, keepdims=True), MIN_LOSS)
+        weight = np.exp(-SHARPNESS * (relative - 1))
+        return weight / weight.sum(1, keepdims=True)
 
     def _mix(self, histories: list[np.ndarray], season: int, horizon: int) -> list[np.ndarray]:
         weights, forecasts = self._weights(histories, season, horizon), self._at_rates(histories, season, horizon)

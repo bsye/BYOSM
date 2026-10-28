@@ -1722,10 +1722,16 @@ A small forecaster sees a long series only through its last few hundred steps. `
 (`byosm/series/multirate.py`) wraps any trained forecaster and also forecasts the series at coarser rates, with no
 training: blocks of r steps are averaged so the last block ends at the forecast origin, the season and horizon shrink
 by r, and each coarse quantile is interpolated from the block centres back to every native step. The rates are
-`MULTI_RATES` (1, 2 and 4) in `byosm/series/prediction.py`. Each series weighs its rates per quantile by the inverse
-pinball loss on its own last `BACKTESTS` (2) horizons before the origin, so the weights never see a calib or test
-value, and the mixed quantiles are sorted. A series too short for the coarsest rate keeps the native forecast. The
-cost is rates times (backtests + 1) forecasts, 9 by default.
+`MULTI_RATES` (1, 2 and 4) in `byosm/series/prediction.py`. Each series scores its rates per quantile by the pinball
+loss on its own last `BACKTESTS` (2) horizons before the origin, so the weights never see a calib or test value, and
+weighs them by a softmax of each loss relative to the best one (`SHARPNESS` 10): a rate at 1.5 times the best loss
+gets under 1% of the weight. The mixed quantiles are sorted. A series too short for the coarsest rate keeps the native
+forecast. The cost is rates times (backtests + 1) forecasts, 9 by default.
+
+Inverse-loss weights were too flat. Boosting reads coarse lags as if they were native ones, so its coarse forecasts
+are poor, and on 20 synthetic hourly series (a sanity check, not a benchmark) inverse-loss weights took its test MASE
+from 0.858 to 0.997. With the softmax the twin scores 0.870, and seasonal naive still gains, from 1.272 to 1.222. The
+twins took 7 to 8 times as long per forecast there.
 
 It is a recipe option of a version, `predict.rates` (default `[1]`, off). When it is on, each of our models and their
 ensemble get a twin named `<model>, multi-rate`, scored by the same metric code on the same calib and test windows,

@@ -44,6 +44,19 @@ def test_the_mix_trusts_the_rate_that_forecast_the_series_own_last_windows_best(
     assert np.allclose(plain, 15.0) and np.allclose(mixed, 10.0, atol=1e-6)
 
 
+class WorseAtCoarseRates:
+    name = "worse at coarse rates"
+    misses = {24: 1.0, 12: 1.5, 6: 3.0}
+
+    def predict_many(self, histories, season, horizon):
+        return [np.full((len(QUANTILES), horizon), h[-1] + self.misses[season]) for h in histories]
+
+
+def test_a_rate_whose_recent_loss_is_half_again_the_best_gets_almost_no_weight():
+    mixed = MultiRate(WorseAtCoarseRates(), MULTI_RATES).predict_many([np.full(400, 10.0)], 24, 48)[0]
+    assert np.allclose(mixed, 11.0, atol=0.02)
+
+
 def test_a_series_too_short_for_the_coarsest_rate_keeps_the_native_forecast_and_every_mix_is_sorted():
     short, long = _wave(100), _wave(24 * 30, seed=1)
     out = MultiRate(SeasonalNaive(), MULTI_RATES).predict_many([short, long], 24, 48)
