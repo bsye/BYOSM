@@ -34,7 +34,10 @@ def test_cpu_checks_come_first_then_the_gpu_trainings_one_specialist_after_the_o
 
 def test_a_measured_model_drops_out_and_a_stale_check_comes_back(ws):
     p = promoted_specialist()
+    measured = {"verdict": "ok", "summary": "train and test agree", "findings": [{"check": "fresh"}]}
     p.save_report("overfit", {"experiment": "v1", "verdict": "ok", "summary": "train and test agree"})
+    assert [c["measurement"] for c in plan(ws)] == ["overfit", "seeds"]
+    p.save_report("overfit", {"experiment": "v1", **measured})
     assert [c["measurement"] for c in plan(ws)] == ["seeds"]
     p.save_report("overfit", {"experiment": "v0", "verdict": "ok", "summary": "an older model"})
     assert [c["measurement"] for c in plan(ws)] == ["overfit", "seeds"]

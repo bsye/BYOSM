@@ -120,7 +120,8 @@ def test_the_board_shows_what_is_missing_then_each_cell_as_its_job_moves(ws):
     _job_ends(ws, runner, "qa", "overfit", "running")
     assert _statuses(ws, runner) == {("qa", "overfit"): RUNNING, ("qa", "seeds"): PENDING}
     _job_ends(ws, runner, "qa", "overfit", "done")
-    p.save_report("overfit", {"experiment": "v1", "verdict": "ok", "summary": "train and test agree"})
+    report = {"experiment": "v1", "verdict": "ok", "summary": "train and test agree", "findings": [{"check": "fresh"}]}
+    p.save_report("overfit", report)
     tick(ws, runner)
     assert _statuses(ws, runner)[("qa", "overfit")] == DONE
     assert board(ws, runner.jobs)["progress"] == {"done": 1, "failed": 0, "todo": 0, "total": 2}

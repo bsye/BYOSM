@@ -51,7 +51,7 @@ def overfit_health(p: Project, spec: TaskSpec, report: dict | None) -> dict:
     if not report or report.get("experiment") != p.promoted:
         why = "No overfitting check for the current model."
         return check("overfit", TITLE, CHECK_WEIGHT, UNKNOWN, "not checked", why, ["overfit", p.name])
-    if required(spec) and not any(f["check"] == FRESH for f in report["findings"]):
+    if required(spec) and not any(f.get("check") == FRESH for f in report.get("findings", [])):
         scored = written_suites(spec, p.board().get(p.promoted or "", {}))
         why = "Not yet scored on test cases written after training, so memorised benchmark quirks would go unnoticed. "
         why += "Runs the check again with them." if scored else "Writes a new test set the model never saw."
