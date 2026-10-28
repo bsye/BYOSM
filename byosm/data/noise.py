@@ -47,7 +47,7 @@ def cleaned(
 ) -> list[dict]:
     if not spec.data.clean_labels or spec.task_type != "classify" or spec.modality != "text":
         return rows
-    from .synth_text import judge as llm_judge
+    from .judge import judge as llm_judge
 
     flagged = suspects(rows)
     kept = {id(r) for r in (judge or llm_judge)(spec, flagged, cfg, log=log)}
