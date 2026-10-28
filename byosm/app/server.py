@@ -20,6 +20,7 @@ from .errors import missing
 from .forecast_routes import forecast_router
 from .hub import Hub
 from .jobs import Runner
+from .lab_routes import lab_router
 from .live_routes import live_router
 from .lock import claim, release
 from .models_routes import models_router
@@ -185,7 +186,7 @@ def create_app(
         app.include_router(r, dependencies=[Depends(check)])
     for r in (resources_router(ws), opendata_router(ws), forecast_router(ws), publish_router(ws), archive_router(ws)):
         app.include_router(r, dependencies=[Depends(check)])
-    for r in (data_router(ws), panel_routes.router(ws), techniques_router(ws)):
+    for r in (data_router(ws), panel_routes.router(ws), techniques_router(ws), lab_router(ws)):
         app.include_router(r, dependencies=[Depends(check)])
     if STATIC_DIR.exists():
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")

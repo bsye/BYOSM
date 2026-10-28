@@ -35,8 +35,10 @@ class Trainer:
     soft: list[Any] | None
     weight: torch.Tensor
     rng: random.Random
+    hooks: dict[str, Callable[..., Any]] = field(default_factory=dict)
     frozen: list[torch.nn.Module] = field(init=False)
     probe: int = field(init=False)
+    steps: int = field(init=False, default=0)
 
     def __post_init__(self) -> None:
         tc = self.spec.train
@@ -44,8 +46,8 @@ class Trainer:
         self.frozen = list(enc.values()) if enc else [self.model.backbone]
         self.opt = torch.optim.AdamW(param_groups(self.model, tc), weight_decay=0.01)
         steps_per_epoch = math.ceil(len(self.train_raw) / tc.batch_size)
-        steps = tc.epochs * steps_per_epoch
-        self.sched = warmup_cosine(self.opt, steps, steps // 15)
+        self.total = tc.epochs * steps_per_epoch
+        self.sched = warmup_cosine(self.opt, self.total, self.total // 15)
         self.amp = amp_dtype(self.spec, self.model, self.dev)
         self.scaler = torch.amp.GradScaler(self.dev, enabled=self.amp == torch.float16)
         self.probe = 0 if tc.freeze_backbone or not enc else min(tc.probe_epochs, tc.epochs // 4)
@@ -87,7 +89,7 @@ class Trainer:
         y = ft.to(dev) if ft is not None else torch.tensor([self.train_t[i] for i in b], device=dev)
         has_gold = bool((y != IGNORE).any())
         alpha = tc.distill_alpha if self.soft is not None else 1.0
-        loss = task_loss(logits, y, mask, self.weight) * alpha if has_gold else logits.sum() * 0
+        loss = self._task_loss(logits, y, mask) * alpha if has_gold else logits.sum() * 0
         pooled_task = self.spec.task_type == "classify" and self.soft is None and has_gold
         if pooled_task and tc.rdrop > 0:
             loss = loss + tc.rdrop * self._rdrop(inputs, logits)
@@ -99,6 +101,10 @@ class Trainer:
                 logits.float(), tp.float(), valid, tc.distill_temperature
             )
         return loss
+
+    def _task_loss(self, logits: torch.Tensor, y: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        custom = self.hooks.get("loss") if self.spec.task_type == "classify" else None
+        return custom(logits, y, self.weight, self.steps) if custom else task_loss(logits, y, mask, self.weight)
 
     def _rdrop(self, inputs: dict, logits: torch.Tensor) -> torch.Tensor:
         with autocast(self.dev, self.amp):
@@ -120,6 +126,9 @@ class Trainer:
         self.scaler.step(self.opt)
         self.scaler.update()
         self.sched.step()
+        if "after_step" in self.hooks:
+            self.hooks["after_step"](self.model, self.steps, self.total)
+        self.steps += 1
         if self.ema is not None:
             self.ema.update_parameters(self.model)
 

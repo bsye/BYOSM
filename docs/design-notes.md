@@ -2244,3 +2244,20 @@ set ("Write new test cases"); once the suite is scored, the step runs the check 
 yet (taggers, forecasters) are judged without it, and the report lists the check as skipped. The drop also reflects
 how much the written cases differ from the benchmark, so a warning is a prompt to read the failures, not proof of
 memorisation by itself.
+
+## The lab lets an LLM write training methods that a person approves
+
+The catalogue can only combine techniques someone already built. The lab (`byosm/lab/`) lets an LLM write a new one
+as code, in the spirit of a coding agent, with a person in the loop:
+
+| Step | What happens |
+|---|---|
+| Write | `byosm lab write <name> [--ask ...]` or "Write a method" on the specialist's Lab tab: the `lab` LLM role reads the task, the promoted model's scores, weakest labels and confusions, the experiments tried and every earlier method with its outcome or error, and returns a name, a hypothesis and a module (`author.py`) |
+| Contract | the module defines any of `rows(train, rng)`, `loss(logits, targets, weight, step)` and `after_step(model, step, total)` (`contract.py`); the architecture, tokenizer, scoring and export stay the pipeline's, so a method's model is scored and shipped like any other |
+| Checks | an AST check (`static.py`) refuses imports outside torch, numpy, math, random and a few standard modules, calls such as open, eval and exec, dunder names and attributes, torch.hub, torch.load and torch.save, and any statement other than imports, constants and functions at import time |
+| Approve | the draft id is the hash of its code; nothing runs until a person approves that exact code (`decide`, or Approve on the Lab tab); code that fails its checks cannot be approved, and the loader refuses an unapproved, changed or failing draft (`plugin.py`) |
+| Run | `byosm lab run` trains the promoted recipe with `train.lab_method` set (`run.py`), as an experiment of the `lab-method` family (status `manual`, so the proposer can never set it), through the same seed-averaged vote; its error or result goes back on the draft, and the next write reads it |
+
+Loaded code gets a reduced set of builtins and an import guard, but this is not a sandbox: the approval is the real
+gate, and container isolation of jobs is the next layer. A method that wins is still an experiment: to become a
+default it has to be rewritten into the pipeline with tests, like any other result.

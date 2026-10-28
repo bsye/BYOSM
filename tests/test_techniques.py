@@ -74,7 +74,8 @@ def test_every_editable_path_belongs_to_one_available_family_and_seeds_are_left_
 def test_every_ranked_technique_has_an_entry_and_a_planned_one_adds_no_editable_path():
     ids = {t.id for t in techniques()}
     assert set(RANKED) <= ids and len(ids) == len(techniques())
-    assert all(not t.paths for t in techniques() if t.status != "available")
+    assert all(not t.paths for t in techniques() if t.status in ("built-in", "planned"))
+    assert not allowed("train.lab_method")
 
 
 def test_a_family_is_offered_only_to_the_kinds_it_fits():

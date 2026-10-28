@@ -38,6 +38,7 @@ import { Team, useTeam } from "./Team"
 import { UseIt } from "./UseIt"
 import { YourData } from "./YourData"
 import { openJob } from "@/job-sheet"
+import { Lab } from "./Lab"
 
 const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] }[] = [
   { label: "Build", icon: Hammer, args: (n) => ["build", n] },
@@ -49,6 +50,8 @@ const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] 
 const FOCUS_OTHERS = 5
 
 const display = (d: Detail, model: string) => (d.baselines.includes(model) ? rivalName(model) : model)
+
+const canLab = (d: Detail) => d.modality === "text" && d.task_type === "classify"
 
 function Board({ d }: { d: Detail }) {
   const [all, setAll] = useState(false)
@@ -289,6 +292,7 @@ function Model({ name }: { name: string }) {
         <TabsList>
           <TabsTrigger value="board">Board</TabsTrigger>
           <TabsTrigger value="runs">Experiments</TabsTrigger>
+          {canLab(d) && <TabsTrigger value="lab">Lab</TabsTrigger>}
           <TabsTrigger value="data">Data</TabsTrigger>
           {hasTeachers(d) && <TabsTrigger value="teachers">Teachers</TabsTrigger>}
           <TabsTrigger value="try">Test</TabsTrigger>
@@ -304,6 +308,7 @@ function Model({ name }: { name: string }) {
         <TabsContent value="runs">
           <Runs d={d} />
         </TabsContent>
+        <TabsContent value="lab">{canLab(d) && <Lab name={name} />}</TabsContent>
         <TabsContent value="data" className="space-y-4">
           {d.data && d.task_type === "classify" && <LabelChart data={d.data} />}
           <YourData name={name} />

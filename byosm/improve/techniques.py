@@ -26,7 +26,7 @@ class Technique(BaseModel):
     cost: float = 1.0
     prior: float = 0.5
     evidence: list[str] = Field(default_factory=list)
-    status: Literal["available", "built-in", "planned"] = "planned"
+    status: Literal["available", "built-in", "manual", "planned"] = "planned"
     transferable: bool = False
 
     def fits(self, modality: str, task_type: str | None = None) -> bool:

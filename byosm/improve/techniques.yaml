@@ -278,3 +278,14 @@
   prior: 0.2
   evidence: [https://arxiv.org/abs/2210.17541, https://arxiv.org/abs/2010.02194]
   status: available
+
+- id: lab-method
+  title: Lab method
+  effect: "A training method an LLM wrote as code and a person approved, run through the same seed-averaged vote."
+  paths: [train.lab_method]
+  modalities: [text]
+  task_types: [classify]
+  cost: 1.0
+  prior: 0.3
+  evidence: []
+  status: manual

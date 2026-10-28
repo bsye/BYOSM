@@ -122,4 +122,4 @@ def test_the_techniques_page_lists_every_family_with_its_tries_and_sure_leads_ac
     by_id = {r["id"]: r for r in rows}
     assert by_id["schedule"]["tries"] == 2 and by_id["schedule"]["wins"] == 1 and by_id["schedule"]["specialists"] == 2
     assert by_id["schedule"]["gpu_hours"] == 1.5 and by_id["setfit"]["tries"] == 0
-    assert {r["status"] for r in rows} == {"available", "built-in"}
+    assert {r["status"] for r in rows} == {"available", "built-in", "manual"}

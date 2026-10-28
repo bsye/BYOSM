@@ -96,6 +96,17 @@ def fit(
         return recover(spec, lambda s: train(s, data_dir, run_dir, log, seed, splits, dev), log, dev)
 
 
+def lab_hooks(spec: TaskSpec, log: Callable[[str], None]) -> dict[str, Callable[..., Any]]:
+    if not spec.train.lab_method:
+        return {}
+    from ..lab.plugin import load
+    from ..project import Project
+
+    hooks = load(Project(spec.name), spec.train.lab_method)
+    log(f"  lab method {spec.train.lab_method}: {', '.join(hooks) or 'no hooks'}")
+    return hooks
+
+
 def _fit(
     spec: TaskSpec,
     data_dir: Path,
@@ -106,6 +117,9 @@ def _fit(
     dev: str,
 ) -> tuple[dict[str, Any], list[Any]]:
     s = prepare(spec, data_dir, log, seed, splits)
+    hooks = lab_hooks(spec, log)
+    if "rows" in hooks:
+        s.train = hooks["rows"](s.train, s.rng)
     if spec.train.init_from:
         s.train += replay(spec, s.train, s.dev + s.ds.load(CALIB) + s.ds.load("test"), s.rng, log)
     if spec.train.self_train > 0:
@@ -128,7 +142,7 @@ def _fit(
         train_t += extra_t
     model.to(dev)
     weight = class_weight(spec, train_t[:n_labeled], dev)
-    trainer = Trainer(spec, s.mod, model, dev, train_raw, train_t, soft, weight, s.rng)
+    trainer = Trainer(spec, s.mod, model, dev, train_raw, train_t, soft, weight, s.rng, hooks)
     trainer.log_recipe(log)
     best, history = _select(trainer, s.dev, dev_raw, log, run_dir.name)
     seconds = round(time.time() - t0, 1)

@@ -46,6 +46,10 @@ inputs_app = typer.Typer(
 )
 db_app = typer.Typer(no_args_is_help=True, help="The database that holds every specialist, result and report.")
 exp_app = typer.Typer(no_args_is_help=True, help="Create experiment variants (ablations) by editing spec paths.")
+lab_app = typer.Typer(
+    no_args_is_help=True, help="Training methods an LLM writes as code, run only once a person approves them."
+)
+app.add_typer(lab_app, name="lab")
 app.add_typer(suite_app, name="suite")
 app.add_typer(baseline_app, name="baseline")
 app.add_typer(exp_app, name="exp")
