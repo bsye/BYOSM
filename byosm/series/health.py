@@ -83,7 +83,7 @@ def health(report_: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def of_domain(ws: Path, name: str) -> dict[str, Any] | None:
-    from .board import reports
+    from .board import report_of
 
-    found = next((r for r in reports(ws) if r["domain"] == name and r["at"]), None)
-    return health(found) if found else None
+    found = report_of(ws, name)
+    return health(found) if found and found["at"] else None

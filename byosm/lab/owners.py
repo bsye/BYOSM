@@ -37,11 +37,11 @@ def kind_of(owner: Owner) -> str:
 
 
 def owner(name: str, ws: Path | None = None) -> Owner:
-    from ..series.board import reports
+    from ..series.board import report_of
 
     p = Project(name, ws)
     if p.exists():
         return p
-    if any(r["domain"] == name and r["at"] for r in reports(p.ws)):
+    if (report_of(p.ws, name) or {}).get("at"):
         return Forecaster(p.ws, name)
     raise KeyError(f"no specialist or forecaster {name!r}")

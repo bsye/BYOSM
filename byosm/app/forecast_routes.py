@@ -59,18 +59,20 @@ def forecast_router(ws: Path) -> APIRouter:
 
     @router.get("/api/series/{domain}")
     def forecaster(domain: str) -> dict[str, Any]:
-        from ..series.board import reports
+        from ..series.board import report_of
         from ..series.specialist import summary
 
-        found = next((r for r in reports(ws) if r["domain"] == domain), None)
+        found = report_of(ws, domain)
         if found is None:
             raise HTTPException(404, f"no forecasting domain named {domain}")
         from ..series.board import promoted_board
         from ..series.health import health
         from ..series.saved import live_version
+        from ..series.steps import next_steps
 
         live = live_version(ws, domain, found)
-        return {**found, **promoted_board(found), **summary(found), "health": health(found), "live": live}
+        board = {**promoted_board(found), **summary(found)}
+        return {**found, **board, "health": health(found), "next": next_steps(found), "live": live}
 
     @router.get("/api/series/{domain}/example")
     def example(domain: str, config: str, index: int = 0) -> dict[str, Any]:
@@ -83,10 +85,10 @@ def forecast_router(ws: Path) -> APIRouter:
 
     @router.post("/api/series/{domain}/forecast")
     def forecast(domain: str, body: History) -> dict[str, Any]:
-        from ..series.board import reports
+        from ..series.board import report_of
         from ..series.saved import forecast, live_version
 
-        found = next((r for r in reports(ws) if r["domain"] == domain), {})
+        found = report_of(ws, domain) or {}
         version = live_version(ws, domain, found)
         if version is None:
             raise HTTPException(409, "train a version first: Keep training saves the model it builds")

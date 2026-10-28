@@ -46,9 +46,9 @@ function Experiment({ name, p, start }: { name: string; p: Proposal; start: Star
   )
 }
 
-function StepRow({ i, s, d, start }: { i: number; s: NextStep; d: Detail; start: Start }) {
+function StepRow({ i, s, name, proposals, start }: { i: number; s: NextStep; name: string; proposals: Proposal[]; start: Start }) {
   const [open, setOpen] = useState(false)
-  const lined = (d.proposals?.proposals ?? []).filter((p) => s.experiments?.includes(p.id))
+  const lined = proposals.filter((p) => s.experiments?.includes(p.id))
   return (
     <Collapsible open={open} onOpenChange={setOpen} asChild>
       <li className="py-2.5">
@@ -74,7 +74,7 @@ function StepRow({ i, s, d, start }: { i: number; s: NextStep; d: Detail; start:
         <CollapsibleContent>
           <ul className="mt-2 ml-7 divide-y border-t">
             {lined.map((p) => (
-              <Experiment key={p.id} name={d.name} p={p} start={start} />
+              <Experiment key={p.id} name={name} p={p} start={start} />
             ))}
           </ul>
         </CollapsibleContent>
@@ -83,8 +83,13 @@ function StepRow({ i, s, d, start }: { i: number; s: NextStep; d: Detail; start:
   )
 }
 
+type Steps = { name: string; steps: NextStep[]; proposals: Proposal[]; ask: string[]; batch: boolean }
+
 export function NextSteps({ d }: { d: Detail }) {
-  const steps = d.next as NextStep[]
+  return <StepsCard name={d.name} steps={d.next as NextStep[]} proposals={d.proposals?.proposals ?? []} ask={["improve", d.name]} batch />
+}
+
+export function StepsCard({ name, steps, proposals, ask, batch }: Steps) {
   const llm = useLlmChoice()
   const start: Start = (args) => void runJob(args, llm.config() ?? undefined).then((j) => openJob(j.id))
   return (
@@ -96,12 +101,12 @@ export function NextSteps({ d }: { d: Detail }) {
         </CardTitle>
         <CardAction className="flex gap-2">
           <LlmPicker llm={llm} label="LLM for these steps" />
-          <Button size="sm" variant="outline" onClick={() => start(["improve", d.name])}>
+          <Button size="sm" variant="outline" onClick={() => start(ask)}>
             <Sparkles />
             Ask the LLM
           </Button>
-          {steps.length > 1 && (
-            <Button size="sm" onClick={() => start(["next", d.name, "--all"])}>
+          {batch && steps.length > 1 && (
+            <Button size="sm" onClick={() => start(["next", name, "--all"])}>
               <Play />
               Do all {steps.length}
             </Button>
@@ -112,7 +117,7 @@ export function NextSteps({ d }: { d: Detail }) {
         <CardContent>
           <ol className="divide-y">
             {steps.map((s, i) => (
-              <StepRow key={s.id} i={i} s={s} d={d} start={start} />
+              <StepRow key={s.id} i={i} s={s} name={name} proposals={proposals} start={start} />
             ))}
           </ol>
         </CardContent>

@@ -16,6 +16,7 @@ import { rivalName, score, signed } from "@/format"
 import { openJob } from "@/job-sheet"
 import { SeriesTry } from "./SeriesTry"
 import { Health, type HealthReport } from "./Health"
+import { StepsCard, type NextStep } from "./NextSteps"
 import { Lab } from "./Lab"
 import { RunningHere } from "./RunningHere"
 import { leadOf, rivalScope, titleOf } from "./specialist-groups"
@@ -50,6 +51,7 @@ export type ForecasterView = Summary & {
   pending?: string[]
   versions?: Version[]
   health?: HealthReport | null
+  next?: NextStep[]
   live?: string | null
   routes?: Record<string, string>
 }
@@ -340,7 +342,10 @@ export function Forecaster({ f }: { f: ForecasterView }) {
         </Button>
       </div>
       <RunningHere name={f.name} />
-      <Health h={f.health} />
+      <div className="grid gap-4 *:data-[slot=card]:h-full @3xl/main:grid-cols-2">
+        <Health h={f.health} />
+        <StepsCard name={f.name} steps={f.next ?? []} proposals={[]} ask={["lab", "write", f.name]} batch={false} />
+      </div>
       <Stats f={f} />
       {f.overall && Object.keys(f.overall).length ? (
         <Tabs defaultValue="board">

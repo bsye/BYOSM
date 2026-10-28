@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from ..health_score import OK
@@ -32,12 +33,23 @@ def pretraining_step(report: dict[str, Any]) -> dict[str, Any] | None:
     return {**found, "why": why, "args": [*keep_training(domain), "--rounds", str(FORECAST_ROUNDS)]}
 
 
+def of_domain(ws: Path, name: str) -> list[dict[str, Any]] | None:
+    from .board import report_of
+
+    found = report_of(ws, name)
+    return next_steps(found) if found and found["at"] else None
+
+
+def _why(check: dict[str, Any]) -> str:
+    return f"{check['title']} is not ok: {check['value']}. {check['why']}"
+
+
 def next_steps(report: dict[str, Any]) -> list[dict[str, Any]]:
     from .health import health
 
     checks = (health(report) or {}).get("checks", [])
     fixes = [
-        {"id": c["id"], "title": f"Try {', '.join(c['techniques'])}", "why": c["why"], "args": c["args"]}
+        {"id": c["id"], "title": f"Try {', '.join(c['techniques'])}", "why": _why(c), "args": c["args"]}
         for c in checks
         if c["status"] != OK and c.get("args")
     ]

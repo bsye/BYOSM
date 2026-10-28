@@ -144,7 +144,9 @@ def health_of(ws: Path, name: str) -> dict[str, Any] | None:
 
 
 def steps_of(ws: Path, name: str) -> list[dict[str, Any]]:
-    return suggestions(project(ws, name).name, ws)
+    from ..series.steps import of_domain
+
+    return found if (found := of_domain(ws, name)) is not None else suggestions(project(ws, name).name, ws)
 
 
 def next_steps(ws: Path) -> dict[str, list[dict[str, Any]]]:

@@ -16,11 +16,11 @@ def _scores(row: dict[str, Any]) -> dict[str, float]:
 
 def diagnose(ws: Path, domain: str) -> dict[str, Any]:
     from ..improve.diagnosis import HEALTH_FIELDS, STEP_FIELDS
-    from .board import promoted_board, reports
+    from .board import promoted_board, report_of
     from .health import health
     from .steps import next_steps
 
-    report = next((r for r in reports(ws) if r["domain"] == domain), {})
+    report = report_of(ws, domain) or {}
     version = promoted_version(report)
     if version is None:
         raise KeyError(f"{domain} has no promoted version yet: Keep training builds one")

@@ -76,6 +76,10 @@ def reports(ws: Path) -> list[dict[str, Any]]:
     return [found.get(d) or {"domain": d, "at": None} for d in [*DOMAINS, *(k for k in found if k not in DOMAINS)]]
 
 
+def report_of(ws: Path, domain: str) -> dict[str, Any] | None:
+    return next((r for r in reports(ws) if r["domain"] == domain), None)
+
+
 def promoted_reports(ws: Path) -> list[dict[str, Any]]:
     from ..archive import archived
 

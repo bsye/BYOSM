@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ..lab.owners import Forecaster
-from .board import interval, overall, reports, save_report, stored, with_published
+from .board import interval, overall, report_of, save_report, stored, with_published
 from .combine import members
 from .escalation import base_for, escalate, lever, recipe_of, upstream
 from .fit import fit_domain, refreshed, rescore
@@ -24,7 +24,7 @@ Log = Callable[[str], None]
 
 
 def _previous(ws: Path, domain: str) -> dict[str, Any]:
-    return next((r for r in reports(ws) if r["domain"] == domain), {})
+    return report_of(ws, domain) or {}
 
 
 def _kept(previous: dict[str, Any]) -> dict[str, Any]:

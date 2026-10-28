@@ -2579,11 +2579,18 @@ those fixes and the pretraining v2 step, which moved there from the measure plan
 **Where a proposal goes.** "Try it" on a forecasting technique (`kinds` holds `series`) now sends it to the labs of the
 promoted forecasters, not archived, lowest health score first, and the two lowest across classifiers and forecasters
 are picked when a proposal fits both (`chosen` in `byosm/scout/routing.py`, which also holds `lab_fits`, `ask` and
-`mark_sent`, moved out of `proposals.py`). The lab kinds are `text` and `series`; any other kind, such as audio, is
-still refused with a 422.
+`mark_sent`, moved out of `proposals.py`). The lab kinds are `text`, `audio`, `image`, `document` and `series`, and the
+scout's list says per proposal whether the lab can try it (`lab`), so the page and the route read one rule; event
+risk is still refused with a 422.
 
 **On the page.** A forecaster has a Lab tab after Versions, the same component as a specialist's with the kind's rule
 in its tooltip and its score named calib MASE; the sure lead badge stays a classifier's. The Versions table's Options
 column shows `lab <id>` for a version trained with a method. The Techniques page offers Try it on forecasting
-techniques and says "No lab for audio yet" only for kinds the lab does not write. Not screenshotted: these pages were
-type-checked and formatted, not opened in the app.
+techniques and says "No lab for ... yet" only for kinds the lab does not write. Checked in the app on `energy`: the
+writer read its board and wrote a method aimed at solar/H's calib/test gap, which waits for approval.
+
+**Next steps and revisions.** A forecaster's page shows Next steps beside Health, the same card as a specialist's,
+read from `byosm/series/steps.py` through `/api/next-steps/<name>`; each fix says which check it clears. Its "Ask the
+LLM" writes a lab method, and there is no "Do all" because the ready loop drives specialists only. A forecaster's
+method that fails or loses gets a revision for approval like any other; one its promoted version already trains with
+is refused (`RefusedError`) without an error on the draft or a revision.
