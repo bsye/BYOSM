@@ -62,11 +62,14 @@ def states(words: list[dict], start: float, end: float) -> Iterator[tuple[float,
             yield round(at - start, 6), text
 
 
+def length(start: float, end: float) -> float:
+    return round(stamps(start, end)[-1] - start, 6)
+
+
 def kept(start: float, end: float, last: bool) -> bool:
     if end - start < MIN_SPAN_S - HARNESS_EPS:
         return False
-    length = round(stamps(start, end)[-1] - start, 6)
-    return last or HOLD_S[0] - METRIC_EPS <= length <= HOLD_S[1] + METRIC_EPS
+    return last or HOLD_S[0] - METRIC_EPS <= length(start, end) <= HOLD_S[1] + METRIC_EPS
 
 
 def turn_rows(turn: dict[str, Any], finished: str, pause: str, source: str) -> list[dict]:
@@ -75,9 +78,8 @@ def turn_rows(turn: dict[str, Any], finished: str, pause: str, source: str) -> l
         last = i == len(spans) - 1
         if not kept(s["start"], s["end"], last):
             continue
-        length = round(stamps(s["start"], s["end"])[-1] - s["start"], 6)
         for k, (at, text) in enumerate(states(turn["words"] or [], s["start"], s["end"])):
-            meta = {SPAN: f"{turn['id']}:{i}", SPAN_S: length, AT_S: at, TURN: turn["id"]}
+            meta = {SPAN: f"{turn['id']}:{i}", SPAN_S: length(s["start"], s["end"]), AT_S: at, TURN: turn["id"]}
             label = finished if last else pause
             rows.append({**record(text, label, source, **meta), "id": f"{turn['id']}:{i}:{k}", "split": split})
     return rows
@@ -108,7 +110,8 @@ def summary() -> dict[str, Any]:
 def published(spec: TaskSpec) -> Published:
     values, language = summary()["values"], spec.languages[0]
     models = values[PUBLISHED_KEYS[LATENCY_BUDGETS_MS[0]]].get(language, {})
-    return {m: {CUTOFF_AT.format(b): values[k][language].get(m) for b, k in PUBLISHED_KEYS.items()} for m in models}
+    by_budget = {CUTOFF_AT.format(b): values[k].get(language, {}) for b, k in PUBLISHED_KEYS.items()}
+    return {m: {at: found.get(m) for at, found in by_budget.items()} for m in models}
 
 
 def expected(spec: TaskSpec, converted: list[dict]) -> Values:
