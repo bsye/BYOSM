@@ -66,6 +66,8 @@ its domain, measured on public benchmarks. Every change should serve that thesis
   hierarchy, equal-height cards in a grid, informative labels, every state designed.
 - **Work in a cycle.** Build, screenshot the page, critique it against the guidelines, cut what does not earn its
   place, and repeat before committing.
+- **Click by element, not by position.** In a browser check, find the element first and click its reference: a page
+  that is still loading shifts, and a click by coordinates can land on a button that starts a job.
 - **Formatting.** `ui/.prettierrc` is the style (no semicolons, 160 columns). Run `npx prettier --check` on the files
   you touch.
 - No regex and no comments in TypeScript either.
