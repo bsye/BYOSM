@@ -2144,3 +2144,47 @@ one place the model card reads: `suite_dataset` names it in the results tables, 
 card's `datasets`, and the caveats list each public suite with its licence. `byosm suite ls` shows it too. The card
 licence lookup moved from the data release to `licence` in `byosm/data/hf_source/cards.py`, next to the other
 dataset-card reads, so the release card and new suites read licences the same way.
+
+## BFCL and When2Call become frozen tool-choice suites
+
+The tool-choice specialist was only scored on pairs written from xlam-60k, where an LLM rival is near its ceiling.
+`byosm suite public <name> [benchmark ...]` (`byosm/cli/benchmarks.py`, `byosm/benchmarks/`) adds public sets where
+strong models are not: without names it adds every catalogued benchmark that fits the specialist and is missing. Each
+is converted by one module per source into rows in `.byosm/benchmarks/<name>/<suite>.jsonl`, added as a `local` suite
+with its `dataset` and the `licence` on its card, frozen on the first `byosm eval`, and from then on scored for every
+experiment and rival by the same code as the builtin suite. A pair benchmark fits a specialist whose labels are `fits`
+and `no_fit` with `fits` positive.
+
+| Suite | Source on the Hub | Licence | Requests kept | A pair fits when |
+|---|---|---|---|---|
+| `bfcl` | `gorilla-llm/Berkeley-Function-Calling-Leaderboard`, v3 `simple`, `multiple`, `irrelevance` | Apache-2.0 | every request that offers a function and whose answer calls only offered ones | the possible answer calls that function; never on `irrelevance` |
+| `bfcl-live` | the same, `live_simple`, `live_multiple`, `live_irrelevance` | Apache-2.0 | the same | the same; never on `live_irrelevance` |
+| `when2call` | `nvidia/When2Call`, `test/when2call_test_mcq.jsonl` | CC-BY-4.0 | every item that offers a tool | the right answer is `tool_call` and it is the target tool |
+
+- **Request text.** BFCL questions are chats: the request is the user messages of the first turn; system prompts are
+  dropped. When2Call's `question` is used as is.
+- **Functions** are JSON schemas; `option` (`byosm/benchmarks/pairs.py`) turns one into the option the layouts read:
+  its properties become parameters, each marked `required` from the schema's list.
+- **Layouts.** `pair_rows` writes one row per offered function with `pairs_of`, rendered unmasked in the layouts the
+  specialist's own calib and test use (`split_layouts(plan, "test")`), so the suite tests the layouts it was built
+  for and its held-out ones.
+- **Split.** A hash of the request id puts a fifth of the requests in calib (`hashed` in `byosm/options/heldout.py`,
+  shared with the held-out tool split). When2Call hashes its BFCL source question instead, so the three variants of one
+  question (call, ask, cannot answer) land on the same side; since BFCL ids are hashed the same way, a question that is
+  in both `bfcl-live` and `when2call` sits on the same side of both.
+- **When2Call as binary** asks "should the model call this tool now": `cannot_answer` items (the tool was removed) and
+  `request_for_info` items (a required value was removed from the question) are `no_fit` for every offered tool, as
+  the `missing_parameter` near miss guesses. The per-category request scores keep the three kinds apart. Items that
+  offer no tool give no pair.
+- **Left out.** BFCL `live_relevance` names no fitting function, so its pairs cannot be labelled. BFCL v4 is only in
+  the GitHub repository; the Hub has v3. ToolRet (`mangopy/ToolRet-Queries`) lists only each query's target tools, with
+  no offered set and no negatives, is scored as retrieval over a 43k-tool corpus, and its card states no licence, so
+  turning it into pairs would mean inventing the negatives.
+
+**Protocol check** (`byosm/benchmarks/protocol.py`). Before a suite is added, `always-positive` is scored on the frozen
+rows by `score` and must reproduce what the labels imply on test: precision equal to the share of fitting pairs, recall
+1, F1 `2b/(1+b)`, `tool_needed` equal to the share of tool-needing requests whose every offered tool fits (BFCL
+`simple`), and `no_tool` 0, which is BFCL's own definition: a model that always calls a function scores 0 on
+irrelevance. Shares are compared within 5e-5, as request accuracies are rounded to four places. The outcome is kept as
+the `protocol:<suite>` report with the rows it was scored on; a mismatch, or a suite with no test rows, discards the
+frozen rows and leaves the spec unchanged.

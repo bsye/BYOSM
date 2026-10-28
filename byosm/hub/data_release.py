@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
@@ -8,7 +7,7 @@ from pathlib import Path
 import yaml
 
 from ..data.hf_source.cards import licence
-from ..data.store import BASE_TRAIN, CALIB, Dataset
+from ..data.store import BASE_TRAIN, CALIB, Dataset, write_file
 from ..evals.test_sets import held_out_set, test_sets
 from ..evals.workbench import OURS
 from ..model_refs import model_ref
@@ -55,11 +54,6 @@ def _answers(f: CardFacts, s: dict) -> dict[str, dict[str, str]]:
 def _with_answers(f: CardFacts, s: dict) -> list[dict]:
     given = _answers(f, s)
     return [{**r, "answers": {m: got.get(r["id"]) for m, got in given.items()}} for r in s["rows"]]
-
-
-def _write(path: Path, rows: list[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
 
 
 def _blank(v: object) -> object:
@@ -139,7 +133,7 @@ def front(f: CardFacts, found: dict[str, list[dict]], total: int) -> str:
 def stage(f: CardFacts, out: Path) -> Path:
     found = splits(f)
     for name, rows in found.items():
-        _write(out / ("data" if name in MAIN_SPLITS else "test-sets") / f"{name}.jsonl", rows)
+        write_file(out / ("data" if name in MAIN_SPLITS else "test-sets") / f"{name}.jsonl", rows)
     total = sum(len(r) for r in found.values())
     (out / "README.md").write_text(
         CARD.format(

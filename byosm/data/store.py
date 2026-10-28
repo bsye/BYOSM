@@ -38,6 +38,11 @@ def read_file(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
+def write_file(path: Path, rows: Iterable[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+
+
 def record(input: Any, label: Any, source: str, **meta: Any) -> dict:
     return {"id": uuid.uuid4().hex[:12], "input": input, "label": label, "source": source, "meta": meta}
 

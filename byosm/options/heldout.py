@@ -12,9 +12,12 @@ HASH_CHARS = 8
 EVAL_SPLITS = (CALIB, "test")
 
 
+def hashed(key: str) -> float:
+    return int(hashlib.sha1(key.encode()).hexdigest()[:HASH_CHARS], 16) / 16**HASH_CHARS
+
+
 def held_api(name: str) -> bool:
-    digest = int(hashlib.sha1(name.encode()).hexdigest()[:HASH_CHARS], 16)
-    return digest / 16**HASH_CHARS < HELD_API_SHARE
+    return hashed(name) < HELD_API_SHARE
 
 
 def by_api(situation: Situation, draw: float) -> tuple[Situation, str] | None:

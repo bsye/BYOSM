@@ -1,5 +1,6 @@
 from . import (
     ablate,
+    benchmarks,
     datasets,
     db,
     define,
@@ -21,6 +22,7 @@ from .base import app
 __all__ = [
     "ablate",
     "app",
+    "benchmarks",
     "datasets",
     "db",
     "define",
