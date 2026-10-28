@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from byosm.app import create_app, jobs
 from byosm.measure import conduct
 from byosm.measure.conduct import MAX_JOBS, Conductor
+from byosm.sandbox import launch
 
 TIMEOUT_S = 30
 POLL_S = 0.05
@@ -15,7 +16,7 @@ HARMLESS = "print('measured')"
 
 def test_measure_lists_the_missing_measurements_and_runs_them_as_jobs(ws, monkeypatch):
     monkeypatch.setattr(jobs, "ENTRY", HARMLESS)
-    monkeypatch.setattr(jobs, "job_env", lambda ws, job: dict(os.environ))
+    monkeypatch.setattr(launch, "job_env", lambda ws, job: dict(os.environ))
     monkeypatch.setattr(conduct, "TICK_S", POLL_S)
     promoted_specialist()
     app = create_app(ws, "")
