@@ -2604,3 +2604,26 @@ trained one idea twice. `improve --apply` already refused a proposal whose chang
 normalised changes (`proposal_key`). A manual experiment is refused when a different attempt makes the same changes,
 with the command that builds that one; recreating the same experiment name is allowed, so a next step can be run
 again, and `--force` trains the changes again on purpose.
+
+## A lab method waits for a person wherever work is listed
+
+A method the lab wrote was only visible on the Lab tab: the Techniques page said "Sent to energy, operations" and
+nothing else, and an approved method waited for someone to find its Run button. Now `byosm/lab/steps.py` turns the
+lab into steps, for specialists and forecasters alike:
+
+| Draft | Step | Who acts |
+|---|---|---|
+| pending, passes its checks | "Approve lab method X", no command, `approve` set to its id | a person, with Approve or Reject |
+| approved, not run | "Run lab method X", `byosm lab run <name> <id>` | the ready loop, "Do all", or a person |
+
+The approval steps show in a specialist's or forecaster's Next steps, pinned at the top of Home's Next actions
+(`/api/lab/pending`, one request for the whole workspace) and on the technique that produced them (each proposal lists
+its methods by paper, linked to `#/specialists/<name>/lab`). Every place uses the same Approve and Reject buttons
+(`MethodActions.tsx`). Approval stays a person's decision: an approval step has no command, the ready loop and the
+bulk buttons take only steps with one, and the job runner refuses `lab approve` (`PERSON_ONLY`), so neither an LLM
+nor a queued job can approve code.
+
+A forecaster's promoted version trained before models were saved has nothing to refit. A lab run then trains all of
+that version's models again with the method, at the same effort, and promotes the result only on a lower calib
+MASE; the same function backs Keep training (`_fit_version` in `byosm/series/run.py`). A run that is refused (no
+promoted version, or the method already in use) records why on the draft, shown on its card and in its step.

@@ -77,13 +77,14 @@ def run(name: str, did: str, log: Log = print) -> dict[str, Any]:
     trained = _forecaster if kind_of(found_owner) == FORECASTER else _classifier
     try:
         result = trained(found_owner, found, log)
-    except RefusedError:
+    except RefusedError as e:
+        update(found_owner, did, refused=str(e))
         raise
     except Exception as e:
         update(found_owner, did, error=f"{type(e).__name__}: {e}"[:ERROR_CHARS])
         revise(name, found, f"its run failed with {type(e).__name__}: {str(e)[:ERROR_CHARS]}", log)
         raise
-    updated = update(found_owner, did, result=result)
+    updated = update(found_owner, did, result=result, refused=None)
     if not result["won"]:
         revise(name, found, f"it reached calib {result['calib']} and did not beat the promoted model", log)
     return updated

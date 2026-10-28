@@ -177,7 +177,23 @@ def test_a_method_the_promoted_version_already_trains_with_is_refused_without_an
     run("demo", did, lambda _: None)
     with pytest.raises(RefusedError):
         run("demo", did, lambda _: None)
-    assert draft(f, did)["error"] is None and revisions == []
+    assert draft(f, did)["error"] is None and revisions == [] and "already trains with" in draft(f, did)["refused"]
+
+
+def test_a_promoted_version_that_was_not_saved_is_trained_again_whole_with_the_method(
+    ws, domain, revisions, monkeypatch
+):
+    from byosm.lab.run import run
+    from byosm.series.board import reports
+
+    trained, lab = domain
+    lab |= {"seasonal": True}
+    monkeypatch.setattr("byosm.series.run.saved", lambda ws, domain, name: False)
+    did = _approved(owner("demo"))
+    run("demo", did, lambda _: None)
+    report = next(r for r in reports(ws) if r["domain"] == "demo")
+    assert BOOSTED in trained and f"{PATCH}, lab {did}" in trained
+    assert report["versions"][-1][FIT]["lab_method"] == did and report["promoted"] == "v2"
 
 
 def test_a_lab_run_that_fails_keeps_its_error_on_the_draft_and_asks_for_a_revision(ws, domain, revisions):

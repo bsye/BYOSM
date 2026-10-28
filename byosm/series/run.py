@@ -68,15 +68,18 @@ def _finish(ws: Path, domain: str, made: tuple[dict, dict], kept: dict, at: tupl
     return report
 
 
-def run_domain(ws: Path, domain: str, log: Log = print) -> dict[str, Any]:
-    previous = _previous(ws, domain)
-    best = promoted_version(previous)
-    effort, options = (best["effort"] + 1 if best else 0), of(best)
-    log(f"  effort {effort}: {2**effort}x the base training steps")
-    kept = _kept(previous)
+def _fit_version(ws: Path, domain: str, effort: int, options: Options, log: Log) -> dict[str, Any]:
+    kept = _kept(_previous(ws, domain))
     configs, lab = DOMAINS.get(domain, [domain]), Forecaster(ws, domain)
     made = fit_domain(configs, effort, log, _progress(ws, domain, kept), options, lab)
     return _finish(ws, domain, made, kept, (effort, options), log)
+
+
+def run_domain(ws: Path, domain: str, log: Log = print) -> dict[str, Any]:
+    best = promoted_version(_previous(ws, domain))
+    effort, options = (best["effort"] + 1 if best else 0), of(best)
+    log(f"  effort {effort}: {2**effort}x the base training steps")
+    return _fit_version(ws, domain, effort, options, log)
 
 
 def apply_technique(ws: Path, domain: str, options: Options, models: list[Any], log: Log = print) -> dict[str, Any]:
@@ -99,14 +102,18 @@ def try_lab_method(ws: Path, domain: str, did: str, log: Log = print) -> dict[st
     from ..lab.drafts import RefusedError
 
     report = _previous(ws, domain)
+    best = promoted_version(report)
+    if best is None:
+        raise RefusedError(f"{domain} has no promoted version to try a lab method on: Keep training builds one")
+    options = of(best)
+    if options.fit.lab_method == did:
+        raise RefusedError(f"{best['name']} of {domain} already trains with lab method {did}")
+    options = options.model_copy(update={"fit": options.fit.model_copy(update={"lab_method": did})})
     models = _promoted_models(ws, domain, report)
     if not models:
-        raise RefusedError(f"{domain} has no saved promoted version to try a lab method on: Keep training builds one")
-    options = of(promoted_version(report))
-    if options.fit.lab_method == did:
-        raise RefusedError(f"{report['promoted']} of {domain} already trains with lab method {did}")
-    options = options.model_copy(update={"fit": options.fit.model_copy(update={"lab_method": did})})
-    log(f"  lab method {did}: refitting the patch transformers of {report['promoted']} with it")
+        log(f"  {best['name']} of {domain} was not saved: training all of its models again, with lab method {did}")
+        return _fit_version(ws, domain, best["effort"], options, log)
+    log(f"  lab method {did}: refitting the patch transformers of {best['name']} with it")
     return apply_technique(ws, domain, options, models, log)
 
 
