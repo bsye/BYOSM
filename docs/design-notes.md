@@ -2638,3 +2638,16 @@ Scoring now records the load per core next to each latency (`latency_load`, from
 `fair_ms` in `byosm/evals/scoring.py` returns nothing for it, so the speed check says unknown instead of slow and the
 speed rule in promotion ignores it, and the board marks it busy. Timings scored before this have no load and keep
 their value.
+
+## Two models compared on the same rows
+
+"Is this run better than that one?" had no answer on the page: the board shows each model's own interval, and two
+overlapping intervals say nothing about the difference. `byosm/evals/versus.py` runs the paired bootstrap the
+promotion already uses (`compare`) for two models on every suite both were scored on, on calib and on test, and the
+Board tab's "Compare two models" card draws the test difference per suite as a forest plot with a table of the calib
+lead, a "sure lead" badge at the same 0.95 the promotion requires, and the test lead. The forest plot is the same
+chart as the catalogue's calib effect (`ForestChart.tsx`).
+
+On tool-choice-held it settled a question the separate intervals could not: the screening rung `v2-r1` (one epoch)
+scored 0.967 on test against 0.958 for the full three-epoch near-miss run, but on calib the lead is -0.001
+[-0.011, +0.008] with p 0.40, so the shorter schedule is not better; both lead `v1` by 0.046 on calib.

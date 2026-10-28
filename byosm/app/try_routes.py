@@ -129,6 +129,12 @@ def try_router(ws: Path) -> APIRouter:
         except ValueError as e:
             raise HTTPException(422, str(e)) from e
 
+    @router.get("/api/specialists/{name}/versus")
+    def versus(name: str, a: str, b: str) -> dict:
+        from ..evals.versus import versus as paired
+
+        return missing(paired, Project(name, ws), a, b)
+
     @router.post("/api/specialists/{name}/compare")
     def compare(name: str, body: CompareRequest) -> dict:
         p = Project(name, ws)

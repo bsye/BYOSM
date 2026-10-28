@@ -35,6 +35,7 @@ import { Lab } from "./Lab"
 import { SpecEditor } from "./SpecEditor"
 import { Board } from "./SpecialistBoard"
 import { SuitesChart } from "./SuitesChart"
+import { Versus } from "./Versus"
 
 const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] }[] = [
   { label: "Build", icon: Hammer, args: (n) => ["build", n] },
@@ -160,6 +161,7 @@ function Model({ name, tab }: { name: string; tab?: string }) {
           <OptionsCard name={d.name} />
           <Board d={d} />
           <SuitesChart d={d} />
+          <Versus d={d} />
           <DataSize d={d} />
           <Overfit d={d} />
         </TabsContent>
