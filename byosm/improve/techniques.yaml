@@ -187,12 +187,21 @@
   status: available
 
 - id: weight-averaging
-  title: Seed soups and distillation
-  effect: "Averages the weights of seeded finalists or distils their ensemble into one student."
+  title: Seed soups
+  effect: "Averages the weights of a winning recipe's seed runs and ships the soup when it scores at least their mean on calib."
   paths: []
-  cost: 0.3
+  cost: 0.0
   prior: 0.4
   evidence: [https://arxiv.org/abs/2203.05482, https://arxiv.org/abs/2212.05956]
+  status: built-in
+
+- id: ensemble-distillation
+  title: Ensemble distillation
+  effect: "Distils the averaged predictions of the top finalists into one student of the shipped size."
+  paths: []
+  cost: 1.0
+  prior: 0.3
+  evidence: [https://arxiv.org/html/2506.15692]
   status: planned
 
 - id: learning-curve

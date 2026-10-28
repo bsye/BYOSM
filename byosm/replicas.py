@@ -9,12 +9,19 @@ from .health_score import OK, WARN, check
 from .project import Project
 
 SEED_SEP = "-s"
+SOUP_SUFFIX = "-soup"
 SEED_STEP = "seed"
 SEEDS_COMMAND = "seeds"
 Z = 1.96
 
 
+def is_soup(pid: str) -> bool:
+    return pid.endswith(SOUP_SUFFIX) and len(pid) > len(SOUP_SUFFIX)
+
+
 def recipe_of(pid: str) -> str | None:
+    if is_soup(pid):
+        return pid[: -len(SOUP_SUFFIX)]
     head, sep, tail = pid.rpartition(SEED_SEP)
     return head if sep and head and tail.isdigit() else None
 
@@ -25,7 +32,7 @@ def replica(exp: str, k: int) -> str:
 
 def recipe_runs(p: Project, exp: str) -> list[str]:
     recipe = recipe_of(exp) or exp
-    return [e for e in p.experiments() if e == recipe or recipe_of(e) == recipe]
+    return [e for e in p.experiments() if not is_soup(e) and (e == recipe or recipe_of(e) == recipe)]
 
 
 def clean_runs(p: Project, exp: str, suite: str) -> list[str]:
@@ -76,7 +83,7 @@ def seed_sd(p: Project, suite: str) -> float | None:
     groups: dict[str, list[float]] = {}
     for e in p.experiments():
         value = selection_value(board.get(e, {}).get(suite))
-        if value is not None and clean_selection(p, p.spec(), e):
+        if value is not None and not is_soup(e) and clean_selection(p, p.spec(), e):
             groups.setdefault(recipe_of(e) or e, []).append(value)
     spread = [(len(v) - 1, variance(v)) for v in groups.values() if len(v) > 1]
     dof = sum(d for d, _ in spread)

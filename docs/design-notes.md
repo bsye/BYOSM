@@ -1684,3 +1684,13 @@ every training row with a cheap character n-gram TF-IDF and logistic-regression 
 (`byosm/data/noise.py`, five folds), sends the 10% with the highest out-of-fold loss (at most 2,000) to the judge model,
 and drops the ones the judge labels differently. Only train is cleaned: calib and test keep their rows so the clean-up
 cannot flatter the score. It has not been measured on a specialist yet.
+
+## A winning recipe ships as a seed soup
+
+Once a recipe wins the seed-averaged vote, its seed runs (at least two whose calib was held out) are averaged weight by
+weight into `<recipe>-soup` (`byosm/soup.py`): floating-point tensors are averaged, integer buffers are copied from the
+first run. The soup is scored like any experiment and ships instead of the single run when its calib score is at least
+the mean of the seeds; otherwise the original run ships. A soup maps back to its recipe, so a later challenger is
+compared with the recipe's seed runs, and it never counts as a seed when the noise is measured. Seed runs share their
+pretrained start, which is what makes their weights averageable. The catalogue marks it `built-in`: the pipeline
+always does it, so it is not a proposal. Not measured on a specialist yet.

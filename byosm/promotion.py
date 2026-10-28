@@ -7,6 +7,7 @@ from typing import Any
 from . import evals
 from .project import Project
 from .replicas import beyond_seed_noise, clean_runs, recipe_runs, replicate, runs, seed_sd
+from .soup import shipped
 from .spec import TaskSpec
 
 Log = Callable[[str], None]
@@ -80,8 +81,10 @@ def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:
     won = (mine > cur and sure) or bool(a and b and fixes_speed(base, a, b, mine, cur))
     _record(p, exp, won, cmp, (mine_runs, cur_runs))
     if mine > cur and sure:
-        p.promote(exp)
-        log(f"  promoted {exp}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{seeds}{sig}){test}")
+        p.promote(shipped(p, exp, mine_runs, log))
+        log(
+            f"  promoted {p.promoted}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{seeds}{sig}){test}"
+        )
     elif a and b and fixes_speed(base, a, b, mine, cur):
         was = p.promoted
         p.promote(exp)
