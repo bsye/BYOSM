@@ -15,7 +15,7 @@ from ..rt import hysteresis
 from ..spec import TaskSpec
 from .grouped import grouped_metrics
 
-BUSY_LOAD = 1.0
+BUSY_LOAD = 0.3
 FramePairs = list[tuple[np.ndarray, np.ndarray]]
 ACTIVATION_GRID = np.linspace(0.1, 0.9, 33)
 CI_RESAMPLES = 500

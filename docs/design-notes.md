@@ -2634,7 +2634,7 @@ CPU per input is the median of single-input runs taken while the suite is scored
 tool-choice-held's `v2-r1` showed 670.5 ms against 110.5 ms for `v1`, same size, scored while another training and a
 test run held the CPU: a number that would fail "Fast enough" and line up a distillation the model does not need.
 Scoring now records the load per core next to each latency (`latency_load`, from `load_per_core` in
-`byosm/machine.py`, the same reader as the machine page). Above `BUSY_LOAD` (1.0 per core) the timing is not fair:
+`byosm/machine.py`, the same reader as the machine page). Above `BUSY_LOAD` (0.3 per core) the timing is not fair:
 `fair_ms` in `byosm/evals/scoring.py` returns nothing for it, so the speed check says unknown instead of slow and the
 speed rule in promotion ignores it, and the board marks it busy. Timings scored before this have no load and keep
 their value.
@@ -2645,6 +2645,12 @@ again" in Next steps and run by the ready loop. It waits until the load is back 
 and saves only the speed fields, keeping every score (`byosm/evals/timing.py`). A machine that stays busy fails the
 job instead of saving another unfair number; `--exp` times any experiment again, including ones timed before the load
 was recorded.
+
+The threshold started at 1.0 per core and was too loose: timed again back to back at 0.71 to 0.91 load per core,
+tool-choice-held's `v1`, `v2-r1` and `near-miss` took 625, 677 and 596 ms, so the near-miss data did not slow the
+model, but `v1` had been timed at 110.5 ms on a quieter machine: the experiment predictor runs PyTorch on every core,
+and a load of 0.7 per core already made it about 5.7 times slower. At 0.3 those timings count as busy and wait to be
+taken again.
 
 ## Two models compared on the same rows
 

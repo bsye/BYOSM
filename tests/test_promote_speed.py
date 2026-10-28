@@ -18,7 +18,7 @@ SLOW, FAST = {"latency_ms": 163.0}, {"latency_ms": 10.0}
         ({"latency_ms": 150.0}, SLOW, 0.978, False),
         ({}, SLOW, 0.978, False),
         (FAST, {**SLOW, "latency_load": 3.0}, 0.978 - TOLERANCE, False),
-        ({**FAST, "latency_load": 0.4}, {**SLOW, "latency_load": 0.4}, 0.978 - TOLERANCE, True),
+        ({**FAST, "latency_load": 0.2}, {**SLOW, "latency_load": 0.2}, 0.978 - TOLERANCE, True),
     ],
 )
 def test_a_model_is_promoted_for_speed_only_when_it_meets_the_budget_the_current_one_misses(mine, cur, value, promoted):
@@ -72,7 +72,7 @@ def test_a_latency_timed_while_the_machine_was_busy_is_unknown_not_slow(monkeypa
 
     labels = [Label(name="a", definition=""), Label(name="b", definition="")]
     spec = TaskSpec(name="gate", description="", modality="text", labels=labels, latency_budget_ms=100)
-    assert _speed(spec, {**SLOW, "latency_load": 0.3})["status"] == "warn"
+    assert _speed(spec, {**SLOW, "latency_load": 0.2})["status"] == "warn"
     busy = _speed(spec, {**SLOW, "latency_load": 2.5})
     assert busy["status"] == "unknown" and "busy" in busy["value"]
 

@@ -7,7 +7,7 @@ from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 
 LABELS = [Label(name=n, definition="") for n in "ab"]
-QUIET, BUSY = 0.3, 2.5
+QUIET, BUSY = 0.2, 2.5
 
 
 @pytest.fixture
