@@ -13,6 +13,8 @@ REWRITE_SYSTEM = """You rewrite requests that people send to an assistant that c
 in the request's language, and follow the instruction exactly."""
 PARAPHRASE = """Write {k} rewrites of each request below. Change the wording, order and tone; keep its meaning and every \
 value it gives (names, numbers, dates, quoted text) unchanged."""
+LEAVE_OUT = """Write 1 rewrite of each request below that no longer gives the value named in brackets after it and keeps \
+everything else. Leave the brackets out of the rewrite."""
 SCHEMA = {
     "type": "object",
     "properties": {
@@ -53,3 +55,8 @@ def rewrites(items: list[str], instruction: str, cfg: dict | None, log: Log) -> 
 
 def paraphrases(requests: list[str], k: int, cfg: dict | None, log: Log) -> list[list[str]]:
     return [texts[:k] for texts in rewrites(requests, PARAPHRASE.format(k=k), cfg, log)]
+
+
+def left_out(items: list[tuple[str, str]], cfg: dict | None, log: Log) -> list[str | None]:
+    found = rewrites([f"{request} [{what}]" for request, what in items], LEAVE_OUT, cfg, log)
+    return [texts[0] if texts else None for texts in found]

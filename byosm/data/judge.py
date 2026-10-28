@@ -28,7 +28,7 @@ def judge_labels(
 ) -> list[str | None]:
     if not texts:
         return []
-    llm, schema = get_llm(JUDGE_ROLE, cfg), _schema(spec)
+    llm, schema, answers = get_llm(JUDGE_ROLE, cfg), _schema(spec), {*spec.label_names, DROP}
 
     def run(start: int) -> tuple[int, list[str | None]]:
         chunk = texts[start : start + JUDGE_BATCH]
@@ -36,7 +36,7 @@ def judge_labels(
         ask = f"Return {len(chunk)} labels, each with its input's number n."
         out = llm.json(JUDGE_SYSTEM, f"{task_context(spec)}\n\nInputs:\n{listing}\n\n{ask}", schema)
         labs = {v.get("n"): v.get("label") for v in out.get("labels", []) if isinstance(v, dict)}
-        return start, [labs.get(i) if labs.get(i) in spec.label_index else None for i in range(1, len(chunk) + 1)]
+        return start, [labs.get(i) if labs.get(i) in answers else None for i in range(1, len(chunk) + 1)]
 
     found: list[str | None] = [None] * len(texts)
     starts = range(0, len(texts), JUDGE_BATCH)

@@ -1,7 +1,7 @@
 from conftest import numbered_items
 
 from byosm.data import judge as judge_module
-from byosm.data.judge import JUDGE_BATCH, judge, judge_labels
+from byosm.data.judge import DROP, JUDGE_BATCH, judge, judge_labels
 from byosm.spec import Label, TaskSpec
 
 
@@ -21,7 +21,7 @@ def test_the_judge_returns_one_label_per_input_in_order_even_when_a_batch_fails(
     monkeypatch.setattr(judge_module, "get_llm", lambda role, cfg=None: Labeller())
     texts = ["a", "b", "x"] + ["a"] * (JUDGE_BATCH - 3) + ["boom"] * JUDGE_BATCH + ["b", "a"]
     labels = judge_labels(_spec(), texts, {"concurrency": 2}, log=lambda m: None)
-    assert labels[:3] == ["a", "b", None] and set(labels[JUDGE_BATCH : 2 * JUDGE_BATCH]) == {None}
+    assert labels[:3] == ["a", "b", DROP] and set(labels[JUDGE_BATCH : 2 * JUDGE_BATCH]) == {None}
     assert labels[2 * JUDGE_BATCH :] == ["b", "a"]
 
 

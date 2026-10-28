@@ -105,8 +105,8 @@ the separation (see "LLM roles fall back to `default`" for how a role entry is m
 `byosm/data/judge.py` `judge`: the `judge` role relabels each generated row blind, and only rows where both labels
 agree are kept. Label noise caps the precision a tiny model can reach, and this is cheap insurance. It is a second
 opinion only when `judge` is configured as a different model. `judge_labels` returns the judge's own label for each
-input in order (none where a batch failed or the judge dropped it), so a step that needs the judge's label rather than
-its agreement, such as relabelling mined near-miss pairs, asks it the same way.
+input in order, so a step that needs the judge's label rather than its agreement, such as relabelling mined
+near-miss pairs, asks it the same way; a row the judge drops comes back as `__drop__`, a failed batch as none.
 
 **Refinement learns from dev errors.**
 `byosm/pipeline.py` `refine`, `byosm/data/synth_text.py` `refine_jobs`: the `analyze` role reads the dev errors and
@@ -1894,3 +1894,24 @@ rewrite is paired with the request's offered tools and keeps their labels; its r
 cache folder (`byosm/llm/memo.py`), keyed by the prompt version, the writer's model, the instruction and the request,
 and saved batch by batch, so a rebuild, a seed replica or another experiment with the same plan asks the LLM only for
 requests it has not rewritten, and an interrupted run keeps what it got. A failed batch is logged and not kept.
+
+## Near-miss negatives are always relabelled by the judge
+
+xlam requests come with tools that are easy to rule out, and none of them comes without a fitting tool, so a pair
+model rarely sees a negative that looks like a positive. `data.pairs.near_misses` lists the kinds that
+`byosm/options/nearmiss.py` mines from every training request with a fitting tool, each one pair per request:
+
+| Kind | The pair |
+|---|---|
+| `nearest` | the training tool most like the request and its fitting tool (TF-IDF over the tool text), added to the offer |
+| `same_category` | a tool offered beside the fitting tool in another training request, as xlam has no category field |
+| `missing_parameter` | the fitting tool, with the request rewritten by the `generate` role to leave out a required parameter |
+| `removed` | the remaining tool most like the request, once every fitting tool is taken out of the offer |
+
+Candidates come only from training requests, so a held-out tool never enters training this way. A near miss can fit
+after all, so none enters training on the miner's guess: `relabel` (`byosm/options/relabel.py`) gives each one to the
+`judge` role, written in the `marked` layout, takes the judge's label, and drops what it drops or fails to answer.
+Configure `judge` as the strongest model available; its verdicts are kept by content in the same cache as the
+paraphrases, keyed by its model, the task's labels and the pair, so a rebuild asks it only about new pairs. The kept
+rows carry `near-miss:<judge model>` as source and their kind in `meta.kind`, and are written in the plan's layouts
+and masking like every training pair.

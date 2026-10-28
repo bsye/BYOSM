@@ -7,7 +7,9 @@ from collections.abc import Callable
 from ..data.budget import LLM_SOURCE
 from ..data.store import STORED_SPLITS, record
 from ..spec import PairPlan, TaskSpec
+from .nearmiss import near_misses
 from .pairs import Pair, pairs_of, rendered
+from .rewrite import paraphrases, writer
 from .situations import FITS, Situation
 
 Log = Callable[[str], None]
@@ -40,8 +42,6 @@ def train_record(pair: Pair, plan: PairPlan) -> dict:
 
 
 def paraphrased(train: list[tuple[str, Situation]], k: int, cfg: dict | None, log: Log) -> list[Pair]:
-    from .rewrite import paraphrases, writer
-
     found = paraphrases([s.text for _, s in train], k, cfg, log)
     source = f"{LLM_SOURCE}{writer(cfg)}"
     return [
@@ -55,7 +55,8 @@ def paraphrased(train: list[tuple[str, Situation]], k: int, cfg: dict | None, lo
 def train_pairs(spec: TaskSpec, train: list[tuple[str, Situation]], cfg: dict | None, log: Log) -> list[Pair]:
     plan = spec.data.pairs or PairPlan()
     pairs = [p for g, s in train for p in pairs_of(g, s, spec.data.local_source)]
-    return pairs + (paraphrased(train, plan.paraphrases, cfg, log) if plan.paraphrases else [])
+    pairs += paraphrased(train, plan.paraphrases, cfg, log) if plan.paraphrases else []
+    return pairs + near_misses(spec, train, cfg, log)
 
 
 def pair_splits(spec: TaskSpec, rows: list[dict[str, str]], cfg: dict | None, log: Log) -> dict[str, list[dict]]:
