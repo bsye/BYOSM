@@ -9,6 +9,7 @@ type Live = {
   lines: Record<string, string[]>
   metrics: Record<string, Metric[]>
   received: Record<string, number>
+  measured: number
   connected: boolean
   unauthorized: boolean
 }
@@ -18,7 +19,7 @@ const SEED_LINES = 50
 const UNFINISHED = new Set(["running", "queued"])
 const UNAUTHORIZED = 4401
 const KEPT_LINES = 5000
-const EMPTY: Live = { jobs: {}, lines: {}, metrics: {}, received: {}, connected: false, unauthorized: false }
+const EMPTY: Live = { jobs: {}, lines: {}, metrics: {}, received: {}, measured: 0, connected: false, unauthorized: false }
 const LiveContext = createContext<Live>(EMPTY)
 
 export function LiveProvider({ children }: { children: ReactNode }) {
@@ -57,6 +58,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         setLive((l) => {
           if (ev.type === "job") return { ...l, jobs: { ...l.jobs, [ev.job.id]: ev.job } }
           if (ev.type === "metric") return { ...l, metrics: { ...l.metrics, [ev.job]: [...(l.metrics[ev.job] ?? []), ev.data] } }
+          if (ev.type === "measure") return { ...l, measured: l.measured + 1 }
           return {
             ...l,
             lines: { ...l.lines, [ev.job]: [...(l.lines[ev.job] ?? []), ev.line].slice(-KEPT_LINES) },

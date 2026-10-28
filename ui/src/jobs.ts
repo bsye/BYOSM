@@ -22,6 +22,8 @@ const VERBS: Record<string, string> = {
   suite: "Suite",
   baseline: "Rival",
   overfit: "Overfitting check",
+  seeds: "Measure seed noise",
+  curve: "Measure learning curve",
   testset: "Write test set",
   "adopt-data": "Adopt data",
   rivals: "Add fine-tuned rivals",
@@ -36,7 +38,7 @@ const VERBS: Record<string, string> = {
 const INPUT_VERBS: Record<string, string> = { write: "Write inputs", sample: "Sample inputs", run: "Score inputs" }
 const SUB_VERBS: Record<string, Record<string, string>> = {
   baseline: { add: "Add rival" },
-  suite: { add: "Add suite" },
+  suite: { add: "Add suite", public: "Add public benchmarks" },
   exp: { create: "Create experiment" },
   forecast: { run: "Run forecast", new: "Save forecast" },
   series: { run: "Train forecaster", pretrain: "Pretrain forecasters", corpus: "Download pretraining data" },

@@ -12,6 +12,8 @@ TICK_S = 5.0
 MAX_JOBS = 3
 DONE_JOB = "done"
 LOST = "lost"
+JOB_ENDED = "Job {}"
+STILL_MISSING = "Still missing after {} jobs"
 MEASURE_EVENT = {"type": "measure"}
 
 
@@ -49,14 +51,14 @@ class Tick:
         if job is not None and job.status in ACTIVE:
             return False
         if c["job"] and (job is None or job.status != DONE_JOB):
-            return _end(c, FAILED, f"job {job.status if job else LOST}")
+            return _end(c, FAILED, JOB_ENDED.format(job.status if job else LOST))
         if c["lane"] == GPU and gpu_turn(cells) != c["specialist"]:
             return False
         step = self.step(c)
         if step is None:
             return _end(c, DONE)
         if len(c["jobs"]) >= MAX_JOBS:
-            return _end(c, FAILED, f"still missing after {len(c['jobs'])} jobs")
+            return _end(c, FAILED, STILL_MISSING.format(len(c["jobs"])))
         job = self.start(step["args"])
         c.update(args=step["args"], why=step["why"], model=step["model"], job=job.id, jobs=[*c["jobs"], job.id])
         return True

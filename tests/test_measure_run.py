@@ -90,7 +90,7 @@ def test_a_failed_job_fails_its_cell_and_hands_the_gpu_to_the_next_specialist(ws
     tick(ws, runner)
     _job_ends(ws, runner, "qa", "seeds", "interrupted")
     tick(ws, runner)
-    assert _statuses(ws, runner)[("qa", "seeds")] == FAILED and _cell(ws, "qa", "seeds")["note"] == "job interrupted"
+    assert _statuses(ws, runner)[("qa", "seeds")] == FAILED and _cell(ws, "qa", "seeds")["note"] == "Job interrupted"
     assert runner.started[-1] == ["seeds", "vad"] and not runner.cancelled
 
 
@@ -103,7 +103,7 @@ def test_a_measurement_still_missing_after_its_jobs_fails_instead_of_running_for
         _job_ends(ws, runner, "qa", "seeds", "done")
     tick(ws, runner)
     cell = _cell(ws, "qa", "seeds")
-    assert cell["state"] == FAILED and cell["note"] == f"still missing after {MAX_JOBS} jobs"
+    assert cell["state"] == FAILED and cell["note"] == f"Still missing after {MAX_JOBS} jobs"
     assert runner.started.count(["seeds", "qa"]) == MAX_JOBS
 
 

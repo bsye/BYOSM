@@ -31,7 +31,7 @@ def test_measure_lists_the_missing_measurements_and_runs_them_as_jobs(ws, monkey
             assert time.time() < end, "timed out"
             time.sleep(POLL_S)
         final = client.get("/api/measure").json()
-        assert {c["note"] for c in final["cells"]} == {f"still missing after {MAX_JOBS} jobs"}
+        assert {c["note"] for c in final["cells"]} == {f"Still missing after {MAX_JOBS} jobs"}
         ran = client.get("/api/jobs").json()
         assert sorted(j["args"][0] for j in ran) == sorted(["overfit", "seeds"] * MAX_JOBS)
         assert {j["status"] for j in ran} == {"done"}

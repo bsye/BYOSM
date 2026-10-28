@@ -2313,3 +2313,10 @@ final state. The UI takes the running and pending states live from the job event
 Not measured yet: nothing in this note has run on the workspace's specialists. `series run --until-rival --rounds 2`
 tries v2 only once more training stops helping (the plateau rule above), so a forecaster may need its second or
 third job, or fail its cell as still missing, before v2 is scored.
+
+**On the Jobs page**, "Measure everything" is the primary action (top right) and posts the plan; the Measurements
+card below it is the board: one row per specialist or forecaster, one column per measurement that appears, each cell
+to do, waiting, running (spinner), done or failed, with the reason (and the failure) in its tooltip and the job's log
+a click away, and the share finished as a progress bar. The button is never disabled: clicking it with nothing
+missing says so, and clicking it during a run only adds what is not queued yet. Running and waiting come live from
+the job events; the board reloads on each `measure` event.
