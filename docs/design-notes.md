@@ -2358,3 +2358,11 @@ zero. `scipy` (already installed with scikit-learn) is now a declared dependency
 
 Measured on this machine: one paired bootstrap takes 0.06 s for 2 labels and 1,000 calib rows, and 11.6 s for 77
 labels and 1,540 rows, hence the cache. The first page load after this change measures the older experiments once.
+
+The Techniques page draws it as a forest plot, "Calib effect per family" (`ui/src/pages/EffectChart.tsx`): one row
+per family with an interval, a dot at the mean on a line across the interval, a dashed line at zero, sorted by mean.
+Hovering a row gives the mean, the interval, how many experiments were measured and left out, and the mean per kind
+when there are several. Families that ran but have fewer than two measured experiments are listed under the plot as
+"Not enough runs", and the table repeats the mean and interval in a Calib effect column. The marks use `--chart-2`:
+`--chart-1` is a light grey that gives a 2 px line about 1.5:1 contrast on the light card. The marks do not animate
+in. The row height and label width of the horizontal charts now come from `ui/src/chart-size.ts`.

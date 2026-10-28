@@ -2,6 +2,8 @@ export const score = (x: number | null | undefined) => (x == null ? "-" : x.toFi
 
 export const signed = (x: number | null | undefined) => (x == null ? "-" : `${x > 0 ? "+" : ""}${x.toFixed(3)}`)
 
+export const signedInterval = (lo: number | null, hi: number | null) => (lo == null || hi == null ? "" : `[${signed(lo)}, ${signed(hi)}]`)
+
 const BILLION = 1e9
 
 export const params = (x: number | null | undefined) => (x == null ? "-" : x >= BILLION ? `${(x / BILLION).toFixed(1)}B` : `${(x / 1e6).toFixed(1)}M`)

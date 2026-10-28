@@ -11,7 +11,8 @@ import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartToo
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { seconds } from "@/format"
+import { seconds, signed, signedInterval } from "@/format"
+import { EffectChart, type Effect } from "@/pages/EffectChart"
 import { ScoutProposals } from "./ScoutProposals"
 
 type Status = "available" | "built-in" | "planned"
@@ -28,6 +29,7 @@ type Technique = {
   wins: number
   gpu_hours: number
   specialists: number
+  calib_effect: Effect
 }
 
 const FILTERS = ["all", "available", "built-in", "planned"] as const
@@ -76,6 +78,7 @@ function Catalogue({ rows }: { rows: Technique[] }) {
               <TableHead>Kinds</TableHead>
               <TableHead className="text-right">Tries</TableHead>
               <TableHead className="text-right">Sure leads</TableHead>
+              <TableHead className="text-right">Calib effect</TableHead>
               <TableHead className="text-right">GPU time</TableHead>
               <TableHead>Evidence</TableHead>
             </TableRow>
@@ -93,6 +96,10 @@ function Catalogue({ rows }: { rows: Technique[] }) {
                 <TableCell className="text-muted-foreground">{t.modalities.join(", ") || "all"}</TableCell>
                 <TableCell className="text-right tabular-nums">{t.tries}</TableCell>
                 <TableCell className="text-right tabular-nums">{t.wins}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  <div>{signed(t.calib_effect.mean)}</div>
+                  <div className="text-muted-foreground/70 text-xs">{signedInterval(t.calib_effect.lo, t.calib_effect.hi)}</div>
+                </TableCell>
                 <TableCell className="text-right tabular-nums">{t.gpu_hours ? seconds(t.gpu_hours * 3600) : "-"}</TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
@@ -158,6 +165,7 @@ export function Techniques() {
         />
       </div>
       <ScoutProposals />
+      <EffectChart families={rows} />
       <Tried rows={rows} />
       <Catalogue rows={shown} />
     </div>
