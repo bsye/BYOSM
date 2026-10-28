@@ -19,6 +19,7 @@ dependencies = [
   "huggingface_hub>=0.24",
   "numpy",
   "scikit-learn",
+  "scipy",
   "soundfile",
   "pydantic>=2",
   "pyyaml",

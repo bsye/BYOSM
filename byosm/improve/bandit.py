@@ -27,13 +27,15 @@ def outcomes(p: Project) -> list[dict[str, Any]]:
     verdicts = p.reports(VERDICT)
     out = []
     for exp in p.attempts():
-        ops = [o for a in (p.proposal(exp) or {}).get("applied", []) for o in a.get("ops", [])]
+        proposal = p.proposal(exp) or {}
+        ops = [o for a in proposal.get("applied", []) for o in a.get("ops", [])]
         if not ops:
             continue
         v = verdicts.get(VERDICT + exp) or {"won": exp == p.promoted}
         out.append(
             {
                 "experiment": exp,
+                "parent": proposal.get("parent"),
                 "family": family(ops),
                 "won": bool(v["won"]),
                 "gpu_hours": v.get("gpu_hours"),
@@ -117,26 +119,40 @@ def search_summary(p: Project) -> dict[str, Any]:
     }
 
 
-def catalogue_board(ws: Any = None) -> list[dict[str, Any]]:
-    from .techniques import techniques
+def _seen(ws: Any) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
+    from .effects import measured
 
     tally: dict[str, dict[str, Any]] = {}
+    found: list[dict[str, Any]] = []
     for name in list_projects(ws):
-        for r in outcomes(Project(name, ws)):
+        p = Project(name, ws)
+        rows = outcomes(p)
+        found += measured(p, rows)
+        for r in rows:
             t = tally.setdefault(r["family"], {"tries": 0, "wins": 0, "gpu_hours": 0.0, "specialists": set()})
             t["tries"] += 1
             t["wins"] += r["won"]
             t["gpu_hours"] += r["gpu_hours"] or 0
             t["specialists"].add(name)
+    return tally, found
+
+
+def catalogue_board(ws: Any = None) -> list[dict[str, Any]]:
+    from .effects import family_effect
+    from .techniques import techniques
+
+    tally, found = _seen(ws)
     out = []
     for t in techniques():
         seen = tally.get(t.id, {"tries": 0, "wins": 0, "gpu_hours": 0.0, "specialists": set()})
+        effect = family_effect([f for f in found if f["family"] == t.id])
         out.append(
             {
                 **t.model_dump(),
                 **seen,
                 "gpu_hours": round(seen["gpu_hours"], 3),
                 "specialists": len(seen["specialists"]),
+                "calib_effect": {**effect, "left_out": seen["tries"] - effect["measured"]},
             }
         )
     return out

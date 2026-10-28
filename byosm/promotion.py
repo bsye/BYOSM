@@ -43,9 +43,11 @@ def _leads(p: Project, exp: str, prim: str) -> bool:
 
 def _record(p: Project, exp: str, won: bool, cmp: dict | None, runs_: tuple[list, list]) -> None:
     from .improve.bandit import VERDICT
+    from .improve.effects import effects
     from .improve.techniques import family
 
-    ops = [o for a in (p.proposal(exp) or {}).get("applied", []) for o in a.get("ops", [])]
+    proposal = p.proposal(exp) or {}
+    ops = [o for a in proposal.get("applied", []) for o in a.get("ops", [])]
     hours = sum(p.meta(e).get("gpu_hours") or 0 for e in recipe_runs(p, exp))
     verdict = {
         "won": won,
@@ -55,6 +57,8 @@ def _record(p: Project, exp: str, won: bool, cmp: dict | None, runs_: tuple[list
         "gpu_hours": round(hours, 4),
     }
     p.save_report(VERDICT + exp, verdict)
+    if ops:
+        effects(p, {exp: proposal.get("parent")})
 
 
 def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:

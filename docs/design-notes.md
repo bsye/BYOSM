@@ -2334,3 +2334,27 @@ page; an accepted one can be sent to a text classifier's lab, which asks the LLM
 code the owner approves before it runs. The claimed gains are the papers' own numbers, not BYOSM's: a technique counts
 here only once a lab run of it wins the seed-averaged vote. The scheduler checks once an hour and never runs a scan
 while another is queued or running. Its state is a workspace report (`byosm/db/workspace.py`).
+
+## Each technique family's effect on calib is measured against the parent experiment
+
+Tries and sure leads say how often a family won, not by how much. `byosm/improve/effects.py` measures every experiment
+tagged with a family against the experiment it was built from (`parent` in its proposal), and `catalogue_board` adds
+the result per family as `calib_effect` (`GET /api/techniques`):
+
+| Step | What |
+|---|---|
+| Pair | the experiment and its parent on the primary suite, both with a calib score and the same suite fingerprint. Any other experiment (no parent, parent not scored, another suite version, no calib split) is left out and counted in `left_out` |
+| Effect | calib score minus the parent's, with the paired bootstrap 95% interval of `evals.compare` (1,000 draws over the same calib rows) when both sides kept calib units |
+| Cache | report `effect:<exp>`, keyed by the parent and both sides' fingerprint and identity, so the bootstrap runs once per scoring. The promotion vote (`_record` in `byosm/promotion.py`) fills it after every build |
+| Family | `measured`, `mean` of the deltas over every specialist, and a Student t 95% interval of that mean: mean ± t(0.975, n - 1) x sd / sqrt(n). Under `MIN_MEASURED` (2) there is no interval |
+| Kind | the same summary per modality and task type (`kinds`), and every measured pair (`experiments`) |
+
+The interval is Student t, not a bootstrap across experiments, because a family has two to five measured experiments
+for a long time, and with so few a percentile bootstrap shrinks to the range of the values and covers too little. Each
+delta already carries its own seed and sampling noise, so the spread across experiments includes it. Deltas are
+differences in each specialist's own objective (all on a 0 to 1 scale), so a family mean pools metrics; the `kinds`
+rows keep like with like. Ablation arms count like any other experiment, so their "off" arm adds seed noise around
+zero. `scipy` (already installed with scikit-learn) is now a declared dependency for the t quantile.
+
+Measured on this machine: one paired bootstrap takes 0.06 s for 2 labels and 1,000 calib rows, and 11.6 s for 77
+labels and 1,540 rows, hence the cache. The first page load after this change measures the older experiments once.
