@@ -34,6 +34,7 @@ import { openJob } from "@/job-sheet"
 import { Lab } from "./Lab"
 import { SpecEditor } from "./SpecEditor"
 import { Board } from "./SpecialistBoard"
+import { SuitesChart } from "./SuitesChart"
 
 const ACTIONS: { label: string; icon: LucideIcon; args: (n: string) => string[] }[] = [
   { label: "Build", icon: Hammer, args: (n) => ["build", n] },
@@ -158,6 +159,7 @@ function Model({ name, tab }: { name: string; tab?: string }) {
         <TabsContent value="board" className="space-y-4">
           <OptionsCard name={d.name} />
           <Board d={d} />
+          <SuitesChart d={d} />
           <DataSize d={d} />
           <Overfit d={d} />
         </TabsContent>
