@@ -30,7 +30,10 @@ def test_a_tiny_held_out_set_comes_first(ws):
 
 def test_the_untried_proposals_form_one_experiments_step(ws):
     p = _specialist(ws, n_test=500, n_calib=200, rivals=())
-    proposals = [{"id": "more-data", "why": "a", "ops": [1]}, {"id": "regularize", "why": "b", "ops": [2]}]
+    proposals = [
+        {"id": "more-data", "why": "a", "ops": [{"op": "set", "path": "data.train_size", "value": 4000}]},
+        {"id": "regularize", "why": "b", "ops": [{"op": "set", "path": "train.ema", "value": True}]},
+    ]
     p.save_report("proposals", {"from": "v1", "proposals": proposals})
     p.save_experiment("v1", proposal={"applied": [proposals[1]]})
     step = next(s for s in suggestions("qa") if s["id"] == "experiments")

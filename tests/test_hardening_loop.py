@@ -25,7 +25,12 @@ def _session() -> Session:
 
 
 def _proposal(i: int) -> dict:
-    return {"id": f"llm-{i}", "ops": [{"n": i}], "cost": {"minutes": 1.0}, "why": "w"}
+    return {
+        "id": f"llm-{i}",
+        "ops": [{"op": "set", "path": "train.seed", "value": i}],
+        "cost": {"minutes": 1.0},
+        "why": "w",
+    }
 
 
 def test_failed_builds_stop_on_plateau(monkeypatch):
