@@ -1628,6 +1628,6 @@ one seed, and `byosm seeds <name>` trains the missing seeds.
 
 "Already tried" compared the exact JSON of a proposal's edits, so a learning rate of 2.2e-5 after 2e-5, or the same
 two edits in another order, counted as a new idea. `proposal_key` (`byosm/improve/proposals.py`) now sorts the edits,
-folds text to lower case with single spaces, and rounds every number to a quarter of a decade on a log scale, so
-values within a factor of about 1.33 of each other share a key. Seeds keep their exact value, because a re-seed is a
+folds text to lower case with single spaces, and rounds every number to the nearest quarter decade on a log scale,
+so values in one bin (a factor of 1.78 wide) share a key. Seeds keep their exact value, because a re-seed is a
 deliberate repeat.
