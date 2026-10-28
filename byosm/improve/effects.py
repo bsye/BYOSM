@@ -44,7 +44,12 @@ def _measure(spec: TaskSpec, parent: str, mine: dict, theirs: dict) -> dict[str,
     }
 
 
-def effects(p: Project, parents: dict[str, str | None]) -> dict[str, dict[str, Any]]:
+def _delta_only(parent: str, mine: dict, theirs: dict) -> dict[str, Any]:
+    delta = _rounded(mine["calib_objective"] - theirs["calib_objective"])
+    return {"key": _key(parent, mine, theirs), "parent": parent, "delta": delta, "lo": None, "hi": None}
+
+
+def effects(p: Project, parents: dict[str, str | None], bootstrap: bool = True) -> dict[str, dict[str, Any]]:
     spec, board, cache = p.spec(), p.board(), p.reports(EFFECT)
     suite = spec.primary_suite()
     out: dict[str, dict[str, Any]] = {}
@@ -54,15 +59,16 @@ def effects(p: Project, parents: dict[str, str | None]) -> dict[str, dict[str, A
             continue
         found = cache.get(EFFECT + exp) or {}
         if found.get("key") != _key(parent, mine, theirs):
-            found = _measure(spec, parent, mine, theirs)
-            p.save_report(EFFECT + exp, found)
+            found = _measure(spec, parent, mine, theirs) if bootstrap else _delta_only(parent, mine, theirs)
+            if bootstrap:
+                p.save_report(EFFECT + exp, found)
         out[exp] = found
     return out
 
 
 def measured(p: Project, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     spec = p.spec()
-    found = effects(p, {r["experiment"]: r["parent"] for r in rows})
+    found = effects(p, {r["experiment"]: r["parent"] for r in rows}, bootstrap=False)
     kind = {"specialist": p.name, "modality": spec.modality, "task_type": spec.task_type}
     return [{**kind, **r, **found[r["experiment"]]} for r in rows if r["experiment"] in found]
 

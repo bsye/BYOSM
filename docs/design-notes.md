@@ -2357,7 +2357,10 @@ rows keep like with like. Ablation arms count like any other experiment, so thei
 zero. `scipy` (already installed with scikit-learn) is now a declared dependency for the t quantile.
 
 Measured on this machine: one paired bootstrap takes 0.06 s for 2 labels and 1,000 calib rows, and 11.6 s for 77
-labels and 1,540 rows, hence the cache. The first page load after this change measures the older experiments once.
+labels and 1,540 rows, hence the cache. With 109 older experiments that made the first page load run for more than
+five minutes, so the Techniques page now reads only the deltas, which are a subtraction, plus any interval already
+cached; the paired interval of each experiment is computed by the promotion vote, once, when the experiment is built.
+The family intervals use only the deltas, so they are complete from the first load.
 
 The Techniques page draws it as a forest plot, "Calib effect per family" (`ui/src/pages/EffectChart.tsx`): one row
 per family with an interval, a dot at the mean on a line across the interval, a dashed line at zero, sorted by mean.
