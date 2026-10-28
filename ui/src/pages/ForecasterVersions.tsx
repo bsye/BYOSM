@@ -1,4 +1,5 @@
 import { CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts"
+import { InfoTip } from "@/components/info-tip"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
@@ -45,6 +46,15 @@ function Progress({ f }: { f: ForecasterView }) {
   )
 }
 
+const PERCENT = 100
+
+function calibChange(versions: Version[], i: number): string {
+  const before = versions.slice(0, i).map((v) => v.calib)
+  if (!before.length) return "-"
+  const change = (versions[i].calib / Math.min(...before) - 1) * PERCENT
+  return `${change > 0 ? "+" : ""}${change.toFixed(1)}%`
+}
+
 export function Versions({ f }: { f: ForecasterView }) {
   return (
     <Card>
@@ -58,6 +68,14 @@ export function Versions({ f }: { f: ForecasterView }) {
               <TableHead>Options</TableHead>
               <TableHead className="text-right">Training</TableHead>
               <TableHead className="text-right">Calib MASE</TableHead>
+              <TableHead className="text-right">
+                <span className="inline-flex items-center gap-1">
+                  vs best before
+                  <InfoTip>
+                    Change in calib MASE against the best earlier version: negative is better. A version is promoted on any drop, however small.
+                  </InfoTip>
+                </span>
+              </TableHead>
               <TableHead className="text-right">Test MASE</TableHead>
               <TableHead className="text-right">95% CI</TableHead>
               <TableHead className="text-right">Built</TableHead>
@@ -74,6 +92,7 @@ export function Versions({ f }: { f: ForecasterView }) {
                 <TableCell>{options(v)}</TableCell>
                 <TableCell className="text-right tabular-nums">{2 ** (v.effort ?? 0)}x</TableCell>
                 <TableCell className="text-right tabular-nums">{score(v.calib)}</TableCell>
+                <TableCell className="text-muted-foreground text-right tabular-nums">{calibChange(f.versions ?? [], (f.versions ?? []).indexOf(v))}</TableCell>
                 <TableCell className="text-right tabular-nums">{score(v.test)}</TableCell>
                 <TableCell className="text-right tabular-nums">{v.ci ? `${score(v.ci[0])} to ${score(v.ci[1])}` : "-"}</TableCell>
                 <TableCell className="text-right text-xs tabular-nums">
