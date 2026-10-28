@@ -49,7 +49,7 @@ def test_the_forecaster_techniques_come_from_the_catalogue_and_each_turns_on_a_r
     found = forecaster_techniques()
     assert [t.id for t in found] == [MULTI_RATE, ROUTING, QUANTILE, PRETRAINING]
     every = {f"{PREDICT}.{f}" for f in PredictCfg.model_fields} | {f"{FIT}.{f}" for f in FitCfg.model_fields}
-    assert set(TURNED_ON) == every
+    assert set(TURNED_ON) == every - {f"{FIT}.lab_method"}
     assert [turned_on(Options(), t) for t in found] == [
         Options(predict=PredictCfg(rates=MULTI_RATES)),
         Options(predict=PredictCfg(routing=True)),
@@ -140,7 +140,7 @@ def domain(ws, monkeypatch):
 
     trained = []
 
-    def models(effort, options):
+    def models(effort, options, lab=None):
         boosted = QUANTILE_BOOSTED if options.quantile_boosting else BOOSTED
         ours = [Fitted(boosted, 0.5, effort, trained), Fitted(PATCH, -0.5, effort, trained)]
         base = [Fitted(PRETRAINED_V2, 3.0, effort, trained)] if options.recipe == V2 else []

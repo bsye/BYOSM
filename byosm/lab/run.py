@@ -4,8 +4,9 @@ from collections.abc import Callable
 from typing import Any
 
 from ..project import Project
+from .contract import FORECASTER
 from .drafts import APPROVED, draft, update
-from .owners import Owner, owner
+from .owners import Forecaster, Owner, kind_of, owner
 
 MAX_REVISIONS = 2
 LAB_PATH = "train.lab_method"
@@ -57,13 +58,25 @@ def _classifier(p: Project, found: dict[str, Any], log: Log) -> dict[str, Any]:
     return {"experiment": exp, "won": verdict.get("won"), "calib": calib}
 
 
+def _forecaster(f: Forecaster, found: dict[str, Any], log: Log) -> dict[str, Any]:
+    from ..series.run import try_lab_method
+
+    update(f, found["id"], error=None)
+    log(f"[lab] {found['id']} {found['name']} -> a new version of {f.name}")
+    report = try_lab_method(f.ws, f.name, found["id"], log)
+    newest = report["versions"][-1]
+    update(f, found["id"], experiment=newest["name"])
+    return {"experiment": newest["name"], "won": report["promoted"] == newest["name"], "calib": newest["calib"]}
+
+
 def run(name: str, did: str, log: Log = print) -> dict[str, Any]:
     found_owner = owner(name)
     found = draft(found_owner, did)
     if not found or found["status"] != APPROVED:
         raise PermissionError(f"lab method {did} is not approved")
+    trained = _forecaster if kind_of(found_owner) == FORECASTER else _classifier
     try:
-        result = _classifier(found_owner, found, log)
+        result = trained(found_owner, found, log)
     except Exception as e:
         update(found_owner, did, error=f"{type(e).__name__}: {e}"[:ERROR_CHARS])
         revise(name, found, f"its run failed with {type(e).__name__}: {str(e)[:ERROR_CHARS]}", log)

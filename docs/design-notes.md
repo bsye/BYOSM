@@ -2546,3 +2546,21 @@ forecaster domain that has run (`owner`); the kind comes from the owner (`kind_o
 Lab routes, `byosm lab write|ls|show|approve|run` and the approval of the exact code hash work the same for both.
 Listing workspace reports by prefix is one helper now (`workspace_reports`, with `LIKE` escaping, since dataset names
 such as `car_parts_with_missing` contain `_`), shared by the forecaster board and the event-risk forecasts.
+
+**Training a forecaster with a method.** The hooks act in `train` and `batch` (`byosm/series/patch_net.py`): `window`
+gets every training window after the recipe's augmentations and before patches are hidden and the window is scaled,
+with `values[:context]` the past and the rest the future up to the longest horizon (NaN past the dataset's own), and
+must return as many values as it was given; `loss` replaces the pinball loss and gets the quantile levels as a tensor;
+`after_step` runs after every optimiser step. Steps count from 0, as in the classifier trainer. A version option,
+`fit.lab_method` (the draft id), turns a method on. `candidates` (`byosm/series/fit.py`) gives the patch transformers,
+from scratch and pretrained, a `Method` (the owner and the id) and names them `patch transformer, lab <id>`, so
+`refreshed` sees exactly those models change: they are trained again at the promoted effort, and boosting, the rivals
+and the rest are only scored again on the same calib and test windows. `byosm lab run <domain> <id>` runs that round
+(`try_lab_method` in `byosm/series/run.py` on top of `apply_technique`), so the version it adds is promoted only on a
+strictly lower calib MASE, like a technique round. The draft gets the version, whether it was promoted and its calib
+MASE, or the error. A method the promoted version already trains with is not run again. The hooks are loaded when
+training starts, never stored on the model, so a saved version pickles only the reference. The option stays on in the
+versions built from a promoted one, so Keep training goes on training the patch transformers with the method; if the
+method is rejected later, those rounds stop with "not approved" instead of training without it. The catalogue's
+`lab-method` entry now covers `fit.lab_method` and targets `rival`. Not measured: no lab method has run on a GIFT-Eval
+forecaster yet; the tests use fakes and a tiny patch transformer on the CPU.

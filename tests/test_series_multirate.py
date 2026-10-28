@@ -73,7 +73,7 @@ def test_with_multi_rate_on_every_model_and_the_ensemble_get_a_twin_scored_on_th
     monkeypatch.setattr(fit, "emit", lambda kind, **data: None)
     ours = ["gradient boosting", "patch transformer"]
     monkeypatch.setattr(
-        fit, "candidates", lambda effort, fit: [SeasonalNaive(), Flat(ours[0], 1.0), Flat(ours[1], -1.0)]
+        fit, "candidates", lambda effort, fit, lab=None: [SeasonalNaive(), Flat(ours[0], 1.0), Flat(ours[1], -1.0)]
     )
     cfg = Options(predict=PredictCfg(rates=MULTI_RATES))
     per, trained = fit.fit_domain(["a"], 0, lambda _: None, lambda per, pending: None, cfg)
@@ -95,7 +95,7 @@ def test_each_version_records_its_prediction_options_and_the_next_training_start
     naive = {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0]}
     ours = {**naive, "mase": 0.8, "calib_mase": 0.8, "windows": [0.8]}
 
-    def fit(configs, effort, log, progress, cfg):
+    def fit(configs, effort, log, progress, cfg, lab=None):
         asked.append(cfg)
         return {"a": {NAIVE: naive, "gradient boosting": ours}}, {"gradient boosting": SeasonalNaive()}
 

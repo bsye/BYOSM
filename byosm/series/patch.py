@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from ..lab.plugin import Method
 from . import checkpoint
 from .models import Clocks, Group
 from .patch_net import SIZES, SMALL, PatchNet, Size, picker, train, window
@@ -18,6 +19,7 @@ BATCH = 256
 LR = 1e-3
 FINETUNE_LR = 2e-4
 SEED = 0
+LAB_TAG = "lab"
 
 
 def weights_path(name: str = "base") -> Path:
@@ -33,6 +35,10 @@ def pretrained(recipe: Recipe = V1) -> tuple[str, Size] | None:
 
 def missing_size(recipe: Recipe = V1) -> str | None:
     return next((n for n in recipe.sizes if not weights_path(recipe.weights(n)).exists()), None)
+
+
+def lab_named(name: str, method: Method | None) -> str:
+    return f"{name}, {LAB_TAG} {method.id}" if method else name
 
 
 def reporter(label: str, steps: int, log: Callable[[str], None] = print) -> Callable[[int, float], None]:
@@ -56,9 +62,10 @@ class PatchModel:
     size: Size = SMALL
     pretrained = False
     recipe: Recipe = V1
+    method: Method | None = None
 
-    def __init__(self, effort: int = 0) -> None:
-        self.effort = effort
+    def __init__(self, effort: int = 0, method: Method | None = None) -> None:
+        self.effort, self.method, self.name = effort, method, lab_named(self.name, method)
 
     def fit(self, groups: list[Group]) -> None:
         from ..train.gpu import gpu_slot
@@ -70,12 +77,13 @@ class PatchModel:
             self.net.load_state_dict(torch.load(weights_path(self.weights), map_location="cpu"))
             steps, lr = FINETUNE_STEPS, FINETUNE_LR
         series, total = [(h, g.horizon) for g in groups for h in g.histories], steps * 2**self.effort
+        hooks = self.method.hooks() if self.method else {}
         quick = self.size == SMALL and total <= CPU_FALLBACK_STEPS
         with gpu_slot(_device(), print, fallback="cpu" if quick else None) as device:
             report = reporter(self.name, total)
             resume = checkpoint.path(checkpoint.key(self.name, self.size, total, lr, arrays=[h for h, _ in series]))
             pick = picker(series, self.size.patch)
-            train(self.net, pick, total, lr, BATCH, device, SEED, report, resume, self.recipe)
+            train(self.net, pick, total, lr, BATCH, device, SEED, report, resume, self.recipe, hooks)
 
     def predict_many(self, histories: list[np.ndarray], season: int, horizon: int, clocks: Clocks = None) -> list:
         windows = [window(h, self.size.context) for h in histories]
@@ -94,7 +102,7 @@ class PretrainedPatch(PatchModel):
     name = "patch transformer, pretrained"
     pretrained = True
 
-    def __init__(self, effort: int = 0, recipe: Recipe = V1) -> None:
-        super().__init__(effort)
-        self.recipe, self.name, first = recipe, recipe.named(PretrainedPatch.name), recipe.sizes[0]
+    def __init__(self, effort: int = 0, recipe: Recipe = V1, method: Method | None = None) -> None:
+        super().__init__(effort, method)
+        self.recipe, self.name, first = recipe, lab_named(recipe.named(PretrainedPatch.name), method), recipe.sizes[0]
         self.weights, self.size = pretrained(recipe) or (recipe.weights(first), SIZES[first])

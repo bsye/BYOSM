@@ -5,6 +5,8 @@ from collections.abc import Callable
 from typing import Any
 
 from ..events import emit
+from ..lab.owners import Owner
+from ..lab.plugin import Method
 from .combine import combine
 from .models import Boosted, Group, QuantileBoosted, SeasonalNaive, rivals
 from .patch import PatchModel, PretrainedPatch, pretrained
@@ -16,15 +18,18 @@ FITTING_EVENT = "fitting"
 Log = Callable[[str], None]
 
 
-def candidates(effort: int, fit: FitCfg) -> list[Any]:
-    base = [PretrainedPatch(effort, fit.recipe)] if pretrained(fit.recipe) else []
+def candidates(effort: int, fit: FitCfg, lab: Owner | None = None) -> list[Any]:
+    method = Method(lab, fit.lab_method) if fit.lab_method else None
+    base = [PretrainedPatch(effort, fit.recipe, method)] if pretrained(fit.recipe) else []
     boosted = QuantileBoosted(effort) if fit.quantile_boosting else Boosted(effort)
-    return [*rivals(), boosted, PatchModel(effort), *base]
+    return [*rivals(), boosted, PatchModel(effort, method), *base]
 
 
-def refreshed(saved: list[Any], effort: int, before: FitCfg, after: FitCfg) -> tuple[list[Any], list[Any]]:
-    old = {m.name for m in candidates(effort, before)}
-    new = [m for m in candidates(effort, after) if not is_rival(m.name)]
+def refreshed(
+    saved: list[Any], effort: int, before: FitCfg, after: FitCfg, lab: Owner | None = None
+) -> tuple[list[Any], list[Any]]:
+    old = {m.name for m in candidates(effort, before, lab)}
+    new = [m for m in candidates(effort, after, lab) if not is_rival(m.name)]
     replaced = old - {m.name for m in new}
     return [m for m in saved if m.name not in replaced], [m for m in new if m.name not in old]
 
@@ -42,10 +47,10 @@ def _train(model: Any, s: Scored, groups: list[Group], log: Log) -> None:
 
 
 def fit_domain(
-    configs: list[str], effort: int, log: Log, progress: Progress, options: Options
+    configs: list[str], effort: int, log: Log, progress: Progress, options: Options, lab: Owner | None = None
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     s = scored(configs, log)
-    groups, models = _groups(s), candidates(effort, options.fit)
+    groups, models = _groups(s), candidates(effort, options.fit, lab)
     for i, model in enumerate(models):
         log(f"  training {model.name}, recipe {i + 1} of {len(models)}")
         emit(FITTING_EVENT, recipe=model.name, index=i + 1, of=len(models))

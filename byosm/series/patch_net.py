@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch import nn
 
+from ..lab.contract import Hooks
 from ..train.gpu_memory import release_cache
 from . import checkpoint
 from .augment import augmented, hidden
@@ -76,6 +77,24 @@ def pinball(
     return loss.sum() / known.sum().clamp(min=1)
 
 
+def _loss(
+    pred: torch.Tensor, target: torch.Tensor, known: torch.Tensor, step: int, recipe: Recipe, hooks: Hooks
+) -> torch.Tensor:
+    if "loss" not in hooks:
+        return pinball(pred, target, known, recipe.quantiles)
+    levels = torch.tensor(recipe.quantiles, device=pred.device)
+    return hooks["loss"](pred, target, known, levels, step)
+
+
+def reshaped(segments: list[np.ndarray], context: int, rng: np.random.Generator, hooks: Hooks) -> list[np.ndarray]:
+    if "window" not in hooks:
+        return segments
+    out = [np.asarray(hooks["window"](s.copy(), context, rng), dtype=float) for s in segments]
+    if any(o.shape != s.shape for o, s in zip(out, segments, strict=True)):
+        raise ValueError(f"the window hook must return {len(segments[0])} values, as many as it was given")
+    return out
+
+
 def picker(series: list[tuple[np.ndarray, int]], patch: int) -> Pick:
     usable = [(h, horizon) for h, horizon in series if len(h) > horizon + patch]
     return lambda rng, n: [usable[i] for i in rng.integers(0, len(usable), n)]
@@ -91,11 +110,16 @@ def _segment(h: np.ndarray, horizon: int, size: Size, rng: np.random.Generator) 
 
 
 def batch(
-    chosen: list[tuple[np.ndarray, int]], size: Size, rng: np.random.Generator, device: str, recipe: Recipe = V1
+    chosen: list[tuple[np.ndarray, int]],
+    size: Size,
+    rng: np.random.Generator,
+    device: str,
+    recipe: Recipe = V1,
+    hooks: Hooks | None = None,
 ) -> list[torch.Tensor]:
     segments = augmented([_segment(h, horizon, size, rng) for h, horizon in chosen], size.context, recipe, rng)
     values, seen, targets, known = [], [], [], []
-    for segment in segments:
+    for segment in reshaped(segments, size.context, rng, hooks or {}):
         past = hidden(segment[: size.context], size.patch, recipe.mask_rate, rng)
         v, m, mean, std = window(past, size.context)
         future = recipe.scale(np.clip((segment[size.context :] - mean) / std, -TARGET_CAP, TARGET_CAP))
@@ -117,7 +141,9 @@ def train(
     report: Callable[[int, float], None] | None = None,
     resume: Path | None = None,
     recipe: Recipe = V1,
+    hooks: Hooks | None = None,
 ) -> None:
+    hooks = hooks or {}
     rng = np.random.default_rng(seed)
     net.to(device).train()
     opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=0.01)
@@ -126,13 +152,15 @@ def train(
     if done:
         print(f"  resuming from step {done}/{steps}")
     for step in range(done + 1, steps + 1):
-        values, seen, targets, known = batch(pick(rng, size), net.size, rng, device, recipe)
-        loss = pinball(net(values, seen), targets, known, recipe.quantiles)
+        values, seen, targets, known = batch(pick(rng, size), net.size, rng, device, recipe, hooks)
+        loss = _loss(net(values, seen), targets, known, step - 1, recipe, hooks)
         opt.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm_(net.parameters(), 1.0)
         opt.step()
         sched.step()
+        if "after_step" in hooks:
+            hooks["after_step"](net, step - 1, steps)
         if report and step % REPORT_EVERY == 0:
             report(step, loss.item())
         if resume and step % checkpoint.EVERY == 0 and step < steps:

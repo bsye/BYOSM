@@ -117,7 +117,7 @@ def test_a_domain_report_is_saved_after_each_recipe_so_results_show_as_they_arri
     seen = []
     score = {"mase": 1.0, "crps": 1.0, "train_s": 0.0, "ms_per_forecast": 0.1, "windows": [1.0]}
 
-    def fit(configs, effort, log, progress, cfg):
+    def fit(configs, effort, log, progress, cfg, lab=None):
         per = {c: {NAIVE: score} for c in configs}
         for pending in (["gradient boosting"], []):
             progress(per, pending)
@@ -155,7 +155,10 @@ def _versioned_run(ws, monkeypatch, calib, test):
     monkeypatch.setattr(
         run,
         "fit_domain",
-        lambda configs, effort, log, progress, cfg: ({"a": {NAIVE: naive, "gradient boosting": ours}}, TRAINED),
+        lambda configs, effort, log, progress, cfg, lab=None: (
+            {"a": {NAIVE: naive, "gradient boosting": ours}},
+            TRAINED,
+        ),
     )
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: {})
     return run.run_domain(ws, "demo", log=lambda _: None)
@@ -211,7 +214,7 @@ def test_one_model_per_recipe_is_trained_for_all_datasets_and_the_ensemble_avera
 
     ours = [Flat("gradient boosting", 1.0), Flat("patch transformer", -1.0)]
     monkeypatch.setattr("byosm.series.scoring.load", lambda config: series)
-    monkeypatch.setattr(fit, "candidates", lambda effort, options: [SeasonalNaive(), *ours])
+    monkeypatch.setattr(fit, "candidates", lambda effort, options, lab=None: [SeasonalNaive(), *ours])
     events = []
     monkeypatch.setattr(fit, "emit", lambda kind, **data: events.append((kind, data["recipe"], data["index"])))
     out, trained = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None, Options())
@@ -227,7 +230,7 @@ def test_keep_training_stops_once_a_version_beats_the_best_rival(ws, monkeypatch
 
     efforts, naive = [], {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0]}
 
-    def one(configs, effort, log, progress, cfg):
+    def one(configs, effort, log, progress, cfg, lab=None):
         efforts.append(effort)
         ours = 0.9 - 0.1 * effort
         return {
@@ -292,7 +295,7 @@ def test_keep_training_stops_when_doubling_the_training_no_longer_helps(ws, monk
 
     efforts, naive = [], {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0]}
 
-    def one(configs, effort, log, progress, cfg):
+    def one(configs, effort, log, progress, cfg, lab=None):
         efforts.append(effort)
         ours = 0.85 - 0.001 * effort
         return {
@@ -385,7 +388,7 @@ def _plateaued(ws, monkeypatch, upstream):
 
     efforts, naive = [], {"mase": 1.0, "crps": 1.0, "calib_mase": 1.0, "calib_crps": 1.0, "windows": [1.0]}
 
-    def one(configs, effort, log, progress, cfg):
+    def one(configs, effort, log, progress, cfg, lab=None):
         efforts.append(effort)
         ours = 0.85 - 0.001 * effort
         return {

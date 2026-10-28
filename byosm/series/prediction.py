@@ -24,6 +24,7 @@ class PredictCfg(BaseModel):
 class FitCfg(BaseModel):
     pretraining: str = V1.name
     quantile_boosting: bool = False
+    lab_method: str | None = None
 
     @field_validator("pretraining")
     @classmethod
