@@ -56,7 +56,7 @@ def _label_key(r: dict) -> str:
     return label if isinstance(label, str) else ""
 
 
-def _stable(rid: object) -> str:
+def stable_key(rid: object) -> str:
     return hashlib.sha1(str(rid).encode()).hexdigest()
 
 
@@ -74,6 +74,6 @@ def carve_calib(splits: dict[str, list[dict]]) -> None:
     by_label: dict[str, list[list[dict]]] = {}
     for group in groups.values():
         by_label.setdefault(_label_key(group[0]), []).append(group)
-    ordered = [g for lab in sorted(by_label) for g in sorted(by_label[lab], key=lambda g: _stable(g[0]["id"]))]
+    ordered = [g for lab in sorted(by_label) for g in sorted(by_label[lab], key=lambda g: stable_key(g[0]["id"]))]
     splits["dev"] = [r for i, g in enumerate(ordered) if not i % CALIB_EVERY for r in g]
     splits[CALIB] = [r for i, g in enumerate(ordered) if i % CALIB_EVERY for r in g]

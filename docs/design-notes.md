@@ -2055,3 +2055,15 @@ so the next round doubles the steps on top of v2 instead of pretraining a bigger
 loses, the upstream is unchanged and the old escalation pretrains the next v1 size. A recipe has its own size ladder:
 v1 goes base then large, v2 base then long, and the lever names `--recipe`. None of this has been run on the GIFT-Eval
 forecasters yet.
+
+## More of the same data waits for the learning curve
+
+"Add more data" had run seven times on plateaued specialists without anyone checking whether data was the limit.
+`byosm curve <name>` (`byosm/curve.py`, also the "Measure the learning curve" next step when the data check says thin)
+trains the promoted recipe on nested subsets of 25% and 50% of its training rows (`train.data_fraction`, a prefix of
+the rows sorted by a hash of their id, so the smaller subset sits inside the larger), fits calib against the log of the
+row count by least squares over the two subsets and the full run, and stores the slope times ln 2 as the gain expected
+from twice the data. The `more-data` rule stays silent while the stored curve of the promoted model says that gain is
+below the seed noise (or 0.002 when the noise is unknown). Curve runs are auxiliary: they never promote and are hidden
+from the Runs tab. New sources found by the dataset search are still offered, since they bring other data rather than
+more of the same.

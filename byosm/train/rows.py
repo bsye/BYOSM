@@ -8,6 +8,7 @@ from typing import Any
 
 import torch
 
+from ..data.splits import stable_key
 from ..data.store import BASE_TRAIN, Dataset
 from ..modalities import Modality, get_modality
 from ..spec import TaskSpec
@@ -67,4 +68,8 @@ def prepare(
     ds = Dataset(data_dir)
     mod = get_modality(spec, str(data_dir))
     train_rows, dev_rows, n_folded = split_rows(spec, ds, rng, log, splits)
+    if spec.train.data_fraction < 1:
+        keep = max(1, round(len(train_rows) * spec.train.data_fraction))
+        train_rows = sorted(train_rows, key=lambda r: stable_key(r["id"]))[:keep]
+        log(f"  training on {keep} rows, {spec.train.data_fraction:.0%} of train, for the learning curve")
     return Prepared(ds, mod, rng, seed, train_rows, dev_rows, n_folded)

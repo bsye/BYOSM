@@ -210,12 +210,12 @@
 
 - id: learning-curve
   title: Learning-curve check
-  effect: "Trains on nested subsets of a source and extrapolates before asking for more of it."
+  effect: "Trains the promoted recipe on a quarter and a half of its rows; more of the same data is proposed only while the curve still climbs."
   paths: []
-  cost: 2.0
+  cost: 0.75
   prior: 0.3
   evidence: [https://arxiv.org/abs/2209.06640]
-  status: planned
+  status: built-in
 
 - id: forecaster-pretraining
   title: Forecaster pretraining v2

@@ -21,8 +21,9 @@ def is_rung(exp: str) -> bool:
 
 def auxiliary(exp: str) -> bool:
     from .ablation import is_arm
+    from .curve import is_curve_run
 
-    return is_rung(exp) or is_arm(exp)
+    return is_rung(exp) or is_arm(exp) or is_curve_run(exp)
 
 
 def short(spec: TaskSpec) -> TaskSpec:

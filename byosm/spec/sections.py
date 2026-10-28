@@ -176,5 +176,6 @@ class TrainCfg(BaseModel):
     rdrop: float = 0.0
     mixup: float = 0.0
     reinit_layers: int = 0
+    data_fraction: float = 1.0
     pairs_per_row: int = 40
     lr_pairs: float = 2e-5

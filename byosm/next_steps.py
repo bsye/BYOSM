@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .curve import CURVE
 from .data.sufficiency import MIN_CALIB_ITEMS, MIN_TEST_ITEMS, data_check
 from .dataset_search import saved_suggestions
 from .finetuned_rivals import REPORT as FINETUNED
@@ -34,6 +35,7 @@ STEP_CHECKS = {
     "robust": ("robust",),
     "export": ("export",),
     "seeds": ("seeds",),
+    "curve": ("data",),
 }
 FIX_TITLES = {
     "overfit": "Check for overfitting",
@@ -58,6 +60,13 @@ def _held_out(p: Project, check: dict | None) -> dict[str, Any] | None:
         return _step("adopt-data", f"Score every model on {exp}'s data", why, ["adopt-data", p.name, exp])
     why = f"The test set has {check['test']} rows and calib {check['calib']}: scores on so few rows say almost nothing. Rebuilding the data splits by group of similar rows."
     return _step("rebuild-data", "Rebuild the data with a bigger held-out set", why, ["build", p.name, "--force-data"])
+
+
+def _curve(p: Project, check: dict | None) -> dict[str, Any] | None:
+    if not check or not check["thin"] or (p.report(CURVE) or {}).get("experiment") == p.promoted:
+        return None
+    why = "Before adding data: trains the promoted recipe on a quarter and a half of its rows to see whether calib still grows with more."
+    return _step("curve", "Measure the learning curve", why, ["curve", p.name])
 
 
 def _more_data(p: Project, check: dict | None) -> dict[str, Any] | None:
@@ -143,6 +152,7 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
     cs = checks(p, spec)
     steps = [
         _held_out(p, check),
+        _curve(p, check),
         _more_data(p, check),
         _finetuned(p, spec),
         _rivals(p, spec, prim),

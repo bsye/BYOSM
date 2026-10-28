@@ -23,3 +23,12 @@ def seeds(
     made = replicate(name, target, n or base.finalist_seeds, log)
     sd = seed_sd(p, base.primary_suite())
     log(f"trained {len(made)} seeds of {target}; seed sd on calib: {'unknown' if sd is None else f'{sd:.4f}'}")
+
+
+@app.command()
+def curve(name: str) -> None:
+    """Train the promoted recipe on 25% and 50% of its training rows and estimate what twice the data would add on calib."""
+    from ..curve import learning_curve
+
+    _spec(name)
+    learning_curve(name, log)

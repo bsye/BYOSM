@@ -100,7 +100,8 @@ def more_data(dg: dict) -> list[dict]:
     spec, out = dg["spec"], []
     lag, bb = gap(dg, dg["primary"])
     below = (dg["suites"].get(dg["primary"], {}).get("objective") or 0) < spec.objective.target
-    if not (lag > 0 or below) or plateaued(dg):
+    curve = dg.get("learning_curve")
+    if not (lag > 0 or below) or plateaued(dg) or (curve and not curve["data_limited"]):
         return out
     ev = _more_data_evidence(dg, lag, bb)
     labeled = _richest_labeled(dg)

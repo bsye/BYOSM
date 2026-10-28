@@ -4,6 +4,7 @@ import json
 from collections import Counter
 from typing import Any
 
+from ..curve import CURVE
 from ..data.store import STORED_SPLITS, read
 from ..project import Project
 from ..spec import TaskSpec
@@ -101,6 +102,8 @@ def diagnose(name: str) -> dict[str, Any]:
         ),
     }
     history = tried(p, board, base.primary_suite())
+    curve = p.report(CURVE) or {}
+    head["learning_curve"] = curve if curve.get("experiment") == exp else None
     return {**head, **training_summary(meta, spec), "board": board, "primary": base.primary_suite(), "history": history}
 
 
