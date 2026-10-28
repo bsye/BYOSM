@@ -91,15 +91,17 @@ def options_new(
         "lockon/xlam-function-calling-60k", help="a supported dataset of requests with offered tools"
     ),
     situations: int = typer.Option(6000, help="how many requests to turn into pairs"),
+    held_out: bool = typer.Option(False, help="calib and test on tools and a layout that training never sees"),
 ) -> None:
     """Create a specialist that scores (request, option) pairs, so options never seen in training can be chosen."""
     from ..config import find_workspace
-    from ..options.create import build_table, spec_for
+    from ..options.create import build_table, pair_plan, spec_for
     from ..project import Project
 
     ws = find_workspace()
     p = Project(name).ensure()
-    p.save_spec(spec_for(name, build_table(ws, name, source, situations, log), source))
+    plan = pair_plan(held_out)
+    p.save_spec(spec_for(name, build_table(ws, name, source, situations, plan, log), source, plan))
     log(f"saved {name}: run `byosm build {name}` to train it")
 
 

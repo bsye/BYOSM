@@ -60,10 +60,17 @@ def _stable(rid: object) -> str:
     return hashlib.sha1(str(rid).encode()).hexdigest()
 
 
+def _group_key(r: dict, near: int) -> object:
+    meta = r.get("meta") or {}
+    return meta.get("file") or meta.get("group") or near
+
+
 def carve_calib(splits: dict[str, list[dict]]) -> None:
+    if splits.get(CALIB):
+        return
     groups: dict[object, list[dict]] = {}
     for g, r in zip(near_groups([r["input"] for r in splits["dev"]]), splits["dev"], strict=True):
-        groups.setdefault((r.get("meta") or {}).get("file") or g, []).append(r)
+        groups.setdefault(_group_key(r, g), []).append(r)
     by_label: dict[str, list[list[dict]]] = {}
     for group in groups.values():
         by_label.setdefault(_label_key(group[0]), []).append(group)

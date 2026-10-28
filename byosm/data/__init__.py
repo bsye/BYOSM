@@ -7,9 +7,9 @@ from typing import Any
 
 from ..spec import HFSource, TaskSpec
 from . import audio_mix, budget, hf_source, noise, panel, segments
-from .splits import HELD, _group_split3, _hold_out, _split3, carve_calib
-from .store import CALIB, TEST_SHARE, TRAIN_INPUTS, Dataset, dedupe, record, write
-from .table import is_table, table_rows
+from .local import add_local, add_pairs
+from .splits import _group_split3, _hold_out, _split3, carve_calib
+from .store import CALIB, TRAIN_INPUTS, Dataset, dedupe, record, write
 
 MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
 UNLABELED_PER_SOURCE = 2000
@@ -28,20 +28,6 @@ def _save_media(spec: TaskSpec, data_dir: Path, split: str, x: Any) -> str:
     else:
         x.save(data_dir / rel)
     return rel
-
-
-def _local(spec: TaskSpec) -> list[tuple[Any, Any, str]]:
-    root = Path(spec.data.local_dir or "")
-    if is_table(root):
-        return table_rows(spec, root)
-    out = []
-    for lab in spec.label_names:
-        for p in sorted((root / lab).glob("*")) if (root / lab).exists() else []:
-            if p.suffix == ".txt" and spec.modality == "text":
-                out += [(line.strip(), lab, "") for line in p.read_text().splitlines() if line.strip()]
-            elif spec.modality != "text":
-                out.append((str(p.resolve()), lab, ""))
-    return out
 
 
 def _segment_clips(spec: TaskSpec, src: HFSource, data_dir: Path, log: Log) -> list[dict]:
@@ -80,19 +66,6 @@ def _split_by_recording(real: list[dict], rng: random.Random) -> dict[str, list[
         "train": [r for r in real if r["meta"]["file"] not in dev_files],
         "dev": [r for r in real if r["meta"]["file"] in dev_files],
     }
-
-
-def _add_local(spec: TaskSpec, splits: dict[str, list[dict]], rng: random.Random, log: Log) -> None:
-    local = _local(spec)
-    source = spec.data.local_source
-    marked = {m: [record(x, y, source) for x, y, s in local if s == m] for m in HELD}
-    rows = [record(x, y, source) for x, y, s in local if s not in HELD]
-    shares = {m: 0.0 for m in HELD if marked[m]}
-    parts = _split3(rows, rng, **shares) if shares else _split3(rows, rng, test=TEST_SHARE)
-    for s, part in parts.items():
-        splits[s] += part + marked.get(s, [])
-    counts = ", ".join(f"{len(v)} marked {m}" for m, v in marked.items() if v)
-    log(f"  local: {len(local)} examples from {spec.data.local_dir} ({counts or 'none marked'})")
 
 
 def _resolve_sources(spec: TaskSpec, data_dir: Path, cfg: dict | None, log: Log) -> tuple[list, list]:
@@ -143,10 +116,12 @@ def _collect(
 ) -> tuple[dict[str, list[dict]], list[dict], dict | None]:
     rng = random.Random(spec.name)
     fit = None
-    splits: dict[str, list[dict]] = {"train": [], "dev": [], "test": []}
+    splits: dict[str, list[dict]] = {"train": [], "dev": [], CALIB: [], "test": []}
     unlabeled: list[dict] = []
-    if spec.data.local_dir:
-        _add_local(spec, splits, rng, log)
+    if spec.data.local_dir and spec.data.pairs:
+        add_pairs(spec, splits, cfg, log)
+    elif spec.data.local_dir:
+        add_local(spec, splits, rng, log)
     sources, seg_sources = _resolve_sources(spec, data_dir, cfg, log)
     pools = _add_hf(spec, data_dir, sources, splits, unlabeled, rng, log)
     for src in seg_sources:
@@ -162,6 +137,7 @@ def _collect(
     if spec.modality == "text":
         splits["test"] = dedupe(splits["test"], against=splits["train"] + splits["dev"])
         splits["dev"] = dedupe(splits["dev"], against=splits["train"])
+        splits[CALIB] = dedupe(splits[CALIB], against=splits["train"])
     carve_calib(splits)
     return splits, unlabeled, fit
 

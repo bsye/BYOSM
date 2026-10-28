@@ -77,3 +77,10 @@ def test_builtin_suites_score_selection_on_calib_and_never_on_dev(ws):
     calib, test, _ = stored(p, spec, spec.evals[0])
     assert [r["input"] for r in calib] == [f"{CALIB} row"]
     assert [r["input"] for r in test] == ["test row"]
+
+
+def test_a_calib_the_source_already_marked_is_kept_and_dev_is_left_whole():
+    splits = {"dev": _rows("a", ["one", "two"]), CALIB: _rows("a", ["three"])}
+    carve_calib(splits)
+    assert [r["input"] for r in splits["dev"]] == ["one", "two"]
+    assert [r["input"] for r in splits[CALIB]] == ["three"]

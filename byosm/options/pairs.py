@@ -3,78 +3,70 @@ from __future__ import annotations
 import csv
 import json
 import random
-from collections.abc import Iterable, Iterator
+from collections import Counter
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-FITS, NO_FIT = "fits", "no_fit"
-NONE_SHARE = 0.15
-TEST_SHARE = 0.15
-DEV_SHARE = 0.1
-DESCRIPTION_CHARS = 300
-OPTION_MARK = "\n\nOption: "
-OTHERS_MARK = "\nOther options: "
-NO_OTHERS = "none"
+from ..spec import PairPlan
+from .heldout import EVAL_SPLITS, assign
+from .layouts import masked, render
+from .situations import FITS, NO_FIT, Situation, with_unrelated
+
+TABLE_COLUMNS = ["text", "label", "split", "group", "request", "option", "layout"]
+TABLE_KIND = "table"
 
 
 @dataclass
-class Situation:
-    text: str
-    options: list[dict[str, Any]]
-    chosen: set[str]
+class Pair:
+    group: str
+    request: str
+    option: dict[str, Any]
+    offered: list[dict[str, Any]]
+    label: str
+    source: str = ""
+    kind: str = TABLE_KIND
 
 
-def option_text(option: dict[str, Any]) -> str:
-    params = ", ".join((option.get("parameters") or {}).keys())
-    return f"{option['name']}: {str(option.get('description') or '')[:DESCRIPTION_CHARS]} ({params})"
+def pairs_of(group: str, s: Situation, source: str = "", kind: str = TABLE_KIND) -> list[Pair]:
+    return [
+        Pair(group, s.text, o, s.options, FITS if o["name"] in s.chosen else NO_FIT, source, kind) for o in s.options
+    ]
 
 
-def pair_text(situation: str, option: dict[str, Any], others: list[dict[str, Any]] | None = None) -> str:
-    names = ", ".join(o["name"] for o in others or [] if o["name"] != option["name"]) or NO_OTHERS
-    return f"{situation}{OPTION_MARK}{option_text(option)}{OTHERS_MARK}{names}"
+def rendered(pair: Pair, layouts: list[str], mask: float) -> tuple[str, str]:
+    rng = random.Random(f"{pair.group}|{pair.request}|{pair.option['name']}|{pair.kind}")
+    layout = rng.choice(layouts)
+    option, offered = masked(pair.option, pair.offered) if rng.random() < mask else (pair.option, pair.offered)
+    return render(layout, pair.request, option, offered), layout
 
 
-def xlam(row: dict[str, Any]) -> Situation:
-    tools = json.loads(row["tools"]) if isinstance(row["tools"], str) else row["tools"]
-    answers = json.loads(row["answers"]) if isinstance(row["answers"], str) else row["answers"]
-    return Situation(row["query"], tools, {a["name"] for a in answers})
+def split_layouts(plan: PairPlan, split: str) -> tuple[list[str], float]:
+    if split in EVAL_SPLITS:
+        return plan.layouts + plan.held_out_layouts, 0.0
+    return plan.layouts, plan.mask_names if split == "train" else 0.0
 
 
-def with_unrelated(situations: list[Situation], rng: random.Random) -> list[Situation]:
-    out = []
-    for s in situations:
-        if rng.random() < NONE_SHARE:
-            other = rng.choice(situations)
-            names = {o["name"] for o in s.options}
-            if not names & {o["name"] for o in other.options}:
-                out.append(Situation(s.text, other.options, set()))
-                continue
-        out.append(s)
-    return out
-
-
-def rows(situations: Iterable[Situation], rng: random.Random) -> Iterator[dict[str, str]]:
-    for i, s in enumerate(situations):
-        draw = rng.random()
-        split = "test" if draw < TEST_SHARE else "dev" if draw < TEST_SHARE + DEV_SHARE else "train"
-        for o in s.options:
-            yield {
-                "text": pair_text(s.text, o, s.options),
-                "label": FITS if o["name"] in s.chosen else NO_FIT,
-                "split": split,
-                "group": str(i),
-            }
-
-
-def write(path: Path, situations: list[Situation], seed: int = 0) -> dict[str, int]:
+def table_rows(situations: list[Situation], plan: PairPlan, seed: int = 0) -> Iterator[dict[str, str]]:
     rng = random.Random(seed)
+    mixed = with_unrelated(situations, rng)
+    placed = assign(mixed, iter(rng.random, None), plan.held_out_apis, bool(plan.held_out_layouts))
+    for i, (s, split) in enumerate(placed):
+        layouts, mask = split_layouts(plan, split)
+        for p in pairs_of(str(i), s):
+            text, layout = rendered(p, layouts, mask)
+            row = {"text": text, "label": p.label, "split": split, "group": p.group, "request": p.request}
+            yield row | {"option": json.dumps(p.option), "layout": layout}
+
+
+def write(path: Path, situations: list[Situation], plan: PairPlan, seed: int = 0) -> dict[str, int]:
     path.parent.mkdir(parents=True, exist_ok=True)
-    counts: dict[str, int] = {}
+    counts: Counter = Counter()
     with path.open("w", newline="") as f:
-        out = csv.DictWriter(f, fieldnames=["text", "label", "split", "group"])
+        out = csv.DictWriter(f, fieldnames=TABLE_COLUMNS)
         out.writeheader()
-        for r in rows(with_unrelated(situations, rng), rng):
+        for r in table_rows(situations, plan, seed):
             out.writerow(r)
-            counts[f"{r['split']}:{r['label']}"] = counts.get(f"{r['split']}:{r['label']}", 0) + 1
-    return counts
+            counts[f"{r['split']}:{r['label']}"] += 1
+    return dict(counts)

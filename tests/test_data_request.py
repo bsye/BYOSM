@@ -1,7 +1,7 @@
 import csv
 
-from byosm.data import _local
 from byosm.data.check import check
+from byosm.data.local import local_rows
 from byosm.data.request import missing_labels, score_rows_needed, write_request
 from byosm.data.table import read_table
 from byosm.project import Project
@@ -66,5 +66,5 @@ def test_a_clean_table_trains_and_keeps_its_test_rows(ws):
     report = check(spec, p, path, judge=False)
     assert report["verdict"] == "needs more" and report["noise"]["agreement"] > 0.9
     spec.data.local_dir = str(path)
-    held = [x for x, _, s in _local(spec) if s == "test"]
+    held = [x for x, _, s in local_rows(spec) if s == "test"]
     assert len(held) == 6 and p.report("data-check")["verdict"] == "needs more"

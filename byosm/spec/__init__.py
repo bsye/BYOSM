@@ -13,6 +13,7 @@ from .sections import (
     Metric,
     Modality,
     Objective,
+    PairPlan,
     TaskType,
     TrainCfg,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "Metric",
     "Modality",
     "Objective",
+    "PairPlan",
     "TaskSpec",
     "TaskType",
     "TrainCfg",

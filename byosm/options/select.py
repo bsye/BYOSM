@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from .pairs import FITS
+from .situations import FITS
 
 THRESHOLD = 0.5
 BOOTSTRAP = 1000

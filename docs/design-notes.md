@@ -1850,3 +1850,37 @@ when the spec lists a language other than English, unless it already runs one of
 sentence-transformers checkpoints, the pooling the head uses. The switch happens in `apply_ops`, which `byosm exp
 create --set`, proposals, ablations and Keep training all go through, so the stored spec always names the encoder that
 ran. A backbone named in the same edit is kept, and later edits to an embedding experiment leave its encoder alone.
+
+## Tool-choice pairs are written in several layouts, and calib and test can hold tools training never sees
+
+The tool-choice student scored well on its own layout and far worse on test sets written in other layouts, and its
+calib and test offered the same tools it trained on, so selection could reward memorising tool names. A specialist
+made by `byosm options new` now carries a pair plan, `data.pairs` in `spec.yaml` (`PairPlan` in
+`byosm/spec/sections.py`); a spec without one (every specialist made before) keeps reading its table as a plain local
+table, with the same data key.
+
+The table in `.byosm/options/<name>.csv` keeps, besides the rendered `text`, each pair's `request`, its tool as JSON
+(`option`), its request `group` and its `layout`, so the data stage (`byosm/options/training.py`) can write the
+training pairs again for whatever plan an experiment has, while dev, calib and test come from the table's `text`
+unchanged, so every experiment is scored on the same rows. With the default plan the table is the same, row for row,
+as the one written before pair plans existed.
+
+- **Layouts** (`byosm/options/layouts.py`): `marked` (the request, then `Option: name: description (params)` and the
+  other names, as before), `json` (the request, then the tool as a JSON schema), `openai` (an OpenAI-style request
+  payload with the tool in `tools`) and `prose` (the tool described in words, then the request). `data.pairs.layouts`
+  lists the ones training uses; each pair draws one from a random generator seeded by its request, tool and kind, so a
+  rebuild writes the same rows.
+- **Masked names**: `data.pairs.mask_names` is the share of training pairs whose tool names, the scored one and the
+  others listed with it, become `tool_1`, `tool_2`, ..., so the model has to read the description and parameters.
+- **Held-out tools** (`byosm/options/heldout.py`, `byosm options new --held-out`): a hash of each tool name puts a
+  quarter of the names on the held-out side. A request whose called tools (or, when none fits, offered tools) include
+  a held-out one goes to calib or test and keeps only its held-out tools; every other request goes to train or dev and
+  drops any held-out tool from its offer. No tool name in calib or test appears in train or dev. Because held-out
+  requests keep fewer of their offered tools, calib and test hold a larger share of fitting pairs than train.
+- **Held-out layouts**: `data.pairs.held_out_layouts` (`prose` with `--held-out`) are drawn only for calib and test
+  rows, which draw from the training layouts and these; the plan refuses a layout that is in both lists.
+
+When the table marks calib itself, `carve_calib` keeps it and leaves dev whole; otherwise it still halves dev, now
+keeping every pair of one request (`meta.group`) on one side. The `options rival` LLM now reads the same rendered
+pairs as the model, one item per pair, and answers with item numbers, so it is compared on the same input in every
+layout instead of a clean listing only it saw.

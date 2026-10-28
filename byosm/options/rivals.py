@@ -3,31 +3,26 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from .pairs import OPTION_MARK, OTHERS_MARK
-
 ROLE = "baseline"
 SAMPLE = 200
-SYSTEM = """You choose which of the offered tools a request should call. Answer with the exact names of every tool the \
-request needs, including the same tool for several items; answer an empty list when no offered tool fits."""
+SYSTEM = """You choose which of the offered tools a request should call. Each item shows the request with one offered \
+tool, written the way the specialist reads it. Answer with the numbers of every item whose tool the request needs; \
+answer an empty list when no offered tool fits."""
+SCHEMA = {"type": "object", "properties": {"items": {"type": "array", "items": {"type": "integer"}}}}
 
 
-def _split(rows: list[dict[str, str]]) -> tuple[str, list[str]]:
-    situation = rows[0]["text"].partition(OPTION_MARK)[0]
-    return situation, [r["text"].partition(OPTION_MARK)[2].partition(OTHERS_MARK)[0] for r in rows]
+def listing(rows: list[dict[str, str]]) -> str:
+    return "\n\n".join(f"Item {i}:\n{r['text']}" for i, r in enumerate(rows, 1))
 
 
 def llm_chooser(cfg: dict | None, role: str = ROLE) -> Callable[[list[dict[str, str]]], set[int]]:
     from ..llm import get_llm
 
     llm = get_llm(role, cfg)
-    schema = {"type": "object", "properties": {"tools": {"type": "array", "items": {"type": "string"}}}}
 
     def choose(rows: list[dict[str, str]]) -> set[int]:
-        situation, options = _split(rows)
-        names = [o.partition(":")[0].strip() for o in options]
-        listing = "\n".join(f"- {o}" for o in options)
-        picked = llm.json(SYSTEM, f"Request: {situation}\n\nTools:\n{listing}", schema).get("tools") or []
-        return {names.index(n) for n in picked if n in names}
+        picked = llm.json(SYSTEM, listing(rows), SCHEMA).get("items") or []
+        return {n - 1 for n in picked if isinstance(n, int) and 0 < n <= len(rows)}
 
     return choose
 

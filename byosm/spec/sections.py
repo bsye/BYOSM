@@ -78,6 +78,26 @@ class DocumentCfg(BaseModel):
     modality_dropout: float = 0.2
 
 
+Layout = Literal["marked", "json", "openai", "prose"]
+NearMiss = Literal["nearest", "same_category", "missing_parameter", "removed"]
+MAX_PARAPHRASES = 5
+
+
+class PairPlan(BaseModel):
+    layouts: list[Layout] = Field(default_factory=lambda: ["marked"], min_length=1)
+    mask_names: float = Field(0.0, ge=0.0, le=1.0)
+    paraphrases: int = Field(0, ge=0, le=MAX_PARAPHRASES)
+    near_misses: list[NearMiss] = Field(default_factory=list)
+    held_out_apis: bool = False
+    held_out_layouts: list[Layout] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _eval_only_layouts(self) -> PairPlan:
+        if both := set(self.layouts) & set(self.held_out_layouts):
+            raise ValueError(f"layouts {sorted(both)} are held out for calib and test, so training cannot use them")
+        return self
+
+
 class DataPlan(BaseModel):
     synthetic: bool = True
     train_size: int = 3000
@@ -94,6 +114,7 @@ class DataPlan(BaseModel):
     teachers: list[str] = Field(default_factory=list)
     teacher_rows: int = 2000
     audio: AudioCfg = Field(default_factory=AudioCfg)
+    pairs: PairPlan | None = None
 
 
 class Decision(BaseModel):
