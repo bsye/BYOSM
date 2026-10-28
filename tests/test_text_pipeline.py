@@ -18,7 +18,7 @@ def test_text_pipeline_end_to_end(ws, load_runtime, monkeypatch, capfd):
     spec = compile_spec("isq", "detect questions")
     spec.data.dev_size, spec.data.per_call = 40, 20
     spec.train.epochs, spec.train.pretrain_steps, spec.train.refine_rounds = 3, 10, 1
-    spec.baselines = ["llm"]
+    spec.baselines, spec.finalist_seeds = ["llm"], 1
     p = Project("isq").ensure()
     p.save_spec(spec)
     build("isq", log=quiet)
