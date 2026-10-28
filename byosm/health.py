@@ -100,8 +100,7 @@ def _target(p: Project, spec: TaskSpec, mine: dict) -> dict:
     return check("target", CHECK_TITLES["target"], 2, status, value, why)
 
 
-def _data(p: Project, spec: TaskSpec) -> dict | None:
-    c = data_check(p, spec)
+def _data(c: dict | None) -> dict | None:
     if not c:
         return None
     status = OK if c["verdict"] == ENOUGH else WARN if c["verdict"] == THIN else FAIL
@@ -165,7 +164,7 @@ def _shipped(p: Project) -> dict:
     return check("export", CHECK_TITLES["export"], 1, UNKNOWN, "not current", why, ["export", p.name])
 
 
-def checks(p: Project, spec: TaskSpec) -> list[dict]:
+def checks(p: Project, spec: TaskSpec, data: dict | None = None) -> list[dict]:
     board, prim = p.board(), spec.primary_suite()
     by_suite = board.get(p.promoted or "", {})
     mine = by_suite.get(prim)
@@ -177,7 +176,7 @@ def checks(p: Project, spec: TaskSpec) -> list[dict]:
         overfit_health(p, spec, p.report(OVERFIT)),
         robust_check(p, spec, board, prim),
         real_check(p, spec, board),
-        _data(p, spec),
+        _data(data if data is not None else data_check(p, spec)),
         _certainty(mine),
         seeds_check(p, prim),
         _weakest(mine),

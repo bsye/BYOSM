@@ -134,10 +134,10 @@ def _experiments(p: Project, spec: TaskSpec, cs: list[dict]) -> dict[str, Any]:
     return {**step, "experiments": fresh}
 
 
-def _from_checks(p: Project, spec: TaskSpec) -> list[dict[str, Any]]:
+def _from_checks(cs: list[dict]) -> list[dict[str, Any]]:
     return [
         _step(c["id"], COMMAND_TITLES.get(c["args"][0], FIX_TITLES[c["id"]]), c["why"], c["args"])
-        for c in checks(p, spec)
+        for c in cs
         if c["args"] and c["status"] != OK
     ]
 
@@ -168,7 +168,7 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         return [{**first, "gain": None, "unblocks": []}]
     prim = spec.primary_suite()
     check = data_check(p, spec)
-    cs = checks(p, spec)
+    cs = checks(p, spec, check)
     steps = [
         _held_out(p, check),
         _curve(p, check),
@@ -179,7 +179,7 @@ def suggestions(name: str, ws: Path | None = None) -> list[dict[str, Any]]:
         faster(p, spec, cs),
         _experiments(p, spec, cs),
     ]
-    found = [s for s in steps if s] + _from_checks(p, spec) + lab_steps(p)
+    found = [s for s in steps if s] + _from_checks(cs) + lab_steps(p)
     return [_with_gain(s, cs) for s in unique(found)]
 
 
