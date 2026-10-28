@@ -22,7 +22,7 @@ from .pretraining import pretrain_backbone
 from .recovery import DivergedError, recover
 from .regularise import reinit_top
 from .rows import prepare
-from .teacher import _teacher_targets, row_soft_targets
+from .teacher import _teacher_targets, pseudo_labels, row_soft_targets
 from .trainer import Trainer, class_weight
 from .warm import replay, warm_start
 
@@ -108,6 +108,8 @@ def _fit(
     s = prepare(spec, data_dir, log, seed, splits)
     if spec.train.init_from:
         s.train += replay(spec, s.train, s.dev + s.ds.load(CALIB) + s.ds.load("test"), s.rng, log)
+    if spec.train.self_train > 0:
+        s.train += pseudo_labels(spec, s.train, s.ds, data_dir, dev, log)
     train_raw, dev_raw, train_t = s.loaded(spec, log)
     model, n_params = sized_model(spec, s.mod, dev, log)
     if spec.train.init_from:

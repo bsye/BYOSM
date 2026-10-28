@@ -173,6 +173,7 @@ class TrainCfg(BaseModel):
     distill_temperature: float = 2.0
     distill_unlabeled: int = 20000
     distill_seeds: int = 3
+    self_train: float = 0.0
     prefix_rate: float = 0.0
     rdrop: float = 0.0
     mixup: float = 0.0

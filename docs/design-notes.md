@@ -2076,3 +2076,12 @@ of the teacher recipe's trained seed runs, averaged row by row (`teachers` and `
 a teacher with no seed runs teaches alone as before, and `distill_seeds: 1` restores the single teacher. Since a
 recipe has seed runs only after it reached the finalist vote, this is the merge step for the seeded finalists. Not
 measured on a specialist yet.
+
+## Self-training on the unlabelled pool
+
+With `train.self_train` above 0 (a `self-training` family for text classifiers, off by default), training first lets
+the promoted model label the specialist's unlabelled in-domain pool (the same pool distillation reads, capped by
+`train.distill_unlabeled`, never rows already in training) and adds the rows it labels with at least that confidence
+as ordinary training rows with source `pseudo` (`pseudo_labels` in `byosm/train/teacher.py`). The gains reported are
+largest when a model starts with few labels. With this, every family in the catalogue is available or built in: the
+small hyperparameter search is the TPE proposals together with short-run screening. Not measured on a specialist yet.
