@@ -1,118 +1,23 @@
-import { Loader2, Play } from "lucide-react"
-import { useEffect, useState } from "react"
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts"
-import { api, runJob, type Summary } from "@/api"
+import { Play } from "lucide-react"
+import { runJob } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { StatCard, STAT_GRID } from "@/components/stat-card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useLive } from "@/events"
-import { rivalName, score, signed } from "@/format"
+import { ms, rivalName, score, signed } from "@/format"
 import { openJob } from "@/job-sheet"
-import { SeriesTry } from "./SeriesTry"
-import { Health, type HealthReport } from "./Health"
-import { StepsCard, type NextStep } from "./NextSteps"
+import { trainTime, type ForecasterView } from "./forecaster-api"
+import { Board } from "./ForecasterBoard"
+import { Datasets } from "./ForecasterDatasets"
+import { Versions } from "./ForecasterVersions"
+import { Health } from "./Health"
 import { Lab } from "./Lab"
+import { StepsCard } from "./NextSteps"
 import { RunningHere } from "./RunningHere"
+import { SeriesTry } from "./SeriesTry"
 import { leadOf, rivalScope, titleOf } from "./specialist-groups"
-
-type Score = {
-  mase: number
-  crps: number
-  calib_mase?: number
-  train_s?: number
-  ms_per_forecast?: number
-  published?: boolean
-  datasets?: number
-  ours_on_shared?: number
-}
-type Predict = { rates?: number[]; routing?: boolean }
-type Fit = { pretraining?: string; quantile_boosting?: boolean; lab_method?: string | null }
-type Version = {
-  name: string
-  recipe: string
-  effort?: number
-  predict?: Predict
-  fit?: Fit
-  calib: number
-  test: number
-  crps: number
-  ci: [number, number] | null
-  at: number
-}
-export type ForecasterView = Summary & {
-  configs?: Record<string, Record<string, Score>>
-  overall?: Record<string, Score>
-  pending?: string[]
-  versions?: Version[]
-  health?: HealthReport | null
-  next?: NextStep[]
-  live?: string | null
-  routes?: Record<string, string>
-}
-
-const RIVALS = ["seasonal naive", "Timestral"]
-const isRival = (model: string) => RIVALS.some((r) => model.startsWith(r))
-
-const chart = {
-  mase: { label: "Test MASE", color: "var(--chart-1)" },
-} satisfies ChartConfig
-
-const OURS_FILL = "var(--chart-1)"
-const RIVAL_FILL = "var(--muted-foreground)"
-
-function Who({ name, f, s }: { name: string; f: ForecasterView; s: Score }) {
-  if (isRival(name)) return <Badge variant="outline">{s.published ? "published rival" : "rival"}</Badge>
-  const promoted = f.versions?.find((v) => v.name === f.promoted)?.recipe === name
-  return promoted ? <Badge>ours, {f.promoted}</Badge> : <Badge variant="secondary">ours</Badge>
-}
-
-function Coverage({ s, total }: { s: Score; total: number }) {
-  const n = s.datasets ?? total
-  if (n >= total) return <>{`${n} of ${total}`}</>
-  return (
-    <span className="inline-flex items-center gap-1">
-      {`${n} of ${total}`}
-      {s.ours_on_shared != null && <InfoTip>{`On the same ${n} datasets our promoted model scores ${score(s.ours_on_shared)}.`}</InfoTip>}
-    </span>
-  )
-}
-
-export function useForecaster(name: string): ForecasterView | null | undefined {
-  const [view, setView] = useState<ForecasterView | null | undefined>(undefined)
-  const live = useLive()
-  const progress = Object.values(live.jobs).reduce(
-    (n, j) => n + (live.metrics[j.id] ?? []).filter((m) => m.kind === "series").length + (j.status === "done" ? 1 : 0),
-    0,
-  )
-  useEffect(() => {
-    api<ForecasterView>(`/series/${name}`)
-      .then(setView)
-      .catch(() => setView(null))
-  }, [name, progress])
-  return view
-}
-
-const DEFAULT_PRETRAINING = "v1"
-
-const options = (v: Version) =>
-  [
-    (v.predict?.rates ?? []).some((r) => r !== 1) ? "multi-rate" : "",
-    v.predict?.routing ? "routing" : "",
-    v.fit?.quantile_boosting ? "quantile boosting" : "",
-    v.fit?.pretraining && v.fit.pretraining !== DEFAULT_PRETRAINING ? `pretraining ${v.fit.pretraining}` : "",
-    v.fit?.lab_method ? `lab ${v.fit.lab_method}` : "",
-  ]
-    .filter((o) => o)
-    .join(", ") || "-"
-
-const seconds = (s?: number) => (s == null ? "-" : `${s.toFixed(1)} s`)
-const millis = (s?: number) => (s == null ? "-" : `${s.toFixed(1)} ms`)
 
 function Stats({ f }: { f: ForecasterView }) {
   const promoted = f.versions?.find((v) => v.name === f.promoted)
@@ -132,190 +37,11 @@ function Stats({ f }: { f: ForecasterView }) {
       />
       <StatCard
         label="Training"
-        value={seconds(recipe?.train_s)}
+        value={trainTime(recipe?.train_s)}
         detail={`${promoted.recipe}, one model for ${Object.keys(f.configs ?? {}).length} datasets`}
       />
-      <StatCard label="Per forecast" value={millis(recipe?.ms_per_forecast)} detail="CPU" />
+      <StatCard label="Per forecast" value={ms(recipe?.ms_per_forecast)} detail="CPU" />
     </div>
-  )
-}
-
-function Board({ f, running }: { f: ForecasterView; running: boolean }) {
-  const models = Object.entries(f.overall ?? {}).sort(([a, x], [b, y]) => Number(isRival(a)) - Number(isRival(b)) || x.mase - y.mase)
-  const total = Object.keys(f.configs ?? {}).length
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Against the rivals</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <ChartContainer config={chart} className="h-56 w-full">
-          <BarChart data={models.map(([name, s]) => ({ name, mase: s.mase }))} margin={{ top: 20, left: 8, right: 8 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} fontSize={11} />
-            <YAxis tickLine={false} axisLine={false} width={36} tickFormatter={(v) => Number(v).toFixed(2)} />
-            <ReferenceLine y={1} strokeDasharray="4 4" />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="mase" radius={4}>
-              {models.map(([name]) => (
-                <Cell key={name} fill={isRival(name) ? RIVAL_FILL : OURS_FILL} />
-              ))}
-              <LabelList dataKey="mase" position="top" fontSize={11} className="fill-foreground" formatter={(v) => score(Number(v))} />
-            </Bar>
-          </BarChart>
-        </ChartContainer>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Model</TableHead>
-              <TableHead />
-              <TableHead className="text-right">Datasets</TableHead>
-              <TableHead className="text-right">Calib MASE</TableHead>
-              <TableHead className="text-right">Test MASE</TableHead>
-              <TableHead className="text-right">Test CRPS</TableHead>
-              <TableHead className="text-right">Train</TableHead>
-              <TableHead className="text-right">Per forecast</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {models.map(([name, s]) => (
-              <TableRow key={name}>
-                <TableCell className="font-medium">{name}</TableCell>
-                <TableCell>
-                  <Who name={name} f={f} s={s} />
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  <Coverage s={s} total={total} />
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{score(s.calib_mase)}</TableCell>
-                <TableCell className="text-right tabular-nums">{score(s.mase)}</TableCell>
-                <TableCell className="text-right tabular-nums">{score(s.crps)}</TableCell>
-                <TableCell className="text-right tabular-nums">{seconds(s.train_s)}</TableCell>
-                <TableCell className="text-right tabular-nums">{millis(s.ms_per_forecast)}</TableCell>
-              </TableRow>
-            ))}
-            {(running ? (f.pending ?? []) : []).map((name) => (
-              <TableRow key={name}>
-                <TableCell className="text-muted-foreground flex items-center gap-2">
-                  <Loader2 className="size-3.5 animate-spin" />
-                  {name}
-                </TableCell>
-                <TableCell colSpan={7} className="text-muted-foreground text-right">
-                  training
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  )
-}
-
-const progress = {
-  test: { label: "Test MASE", color: "var(--chart-1)" },
-  calib: { label: "Calib MASE", color: "var(--chart-2)" },
-} satisfies ChartConfig
-
-function Progress({ f }: { f: ForecasterView }) {
-  const versions = f.versions ?? []
-  if (versions.length < 2) return null
-  return (
-    <ChartContainer config={progress} className="h-48 w-full">
-      <LineChart data={versions.map((v) => ({ name: v.name, test: v.test, calib: v.calib }))} margin={{ top: 8, left: 8, right: 8 }}>
-        <CartesianGrid vertical={false} />
-        <XAxis dataKey="name" tickLine={false} axisLine={false} />
-        <YAxis tickLine={false} axisLine={false} width={40} domain={["auto", "auto"]} tickFormatter={(v) => Number(v).toFixed(2)} />
-        {f.rival?.score != null && f.rival.datasets === f.rival.of && (
-          <ReferenceLine y={f.rival.score} strokeDasharray="4 4" label={{ value: rivalName(f.rival.name), position: "insideTopRight", fontSize: 11 }} />
-        )}
-        <ChartTooltip content={<ChartTooltipContent />} />
-        <ChartLegend content={<ChartLegendContent />} />
-        <Line dataKey="test" stroke="var(--color-test)" strokeWidth={2} dot />
-        <Line dataKey="calib" stroke="var(--color-calib)" strokeWidth={2} dot />
-      </LineChart>
-    </ChartContainer>
-  )
-}
-
-function Versions({ f }: { f: ForecasterView }) {
-  return (
-    <Card>
-      <CardContent className="grid gap-4">
-        <Progress f={f} />
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Version</TableHead>
-              <TableHead>Recipe</TableHead>
-              <TableHead>Options</TableHead>
-              <TableHead className="text-right">Training</TableHead>
-              <TableHead className="text-right">Calib MASE</TableHead>
-              <TableHead className="text-right">Test MASE</TableHead>
-              <TableHead className="text-right">95% CI</TableHead>
-              <TableHead className="text-right">Built</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[...(f.versions ?? [])].reverse().map((v) => (
-              <TableRow key={v.name}>
-                <TableCell className="font-medium">
-                  {v.name}
-                  {v.name === f.promoted && <Badge className="ml-2">promoted</Badge>}
-                </TableCell>
-                <TableCell>{v.recipe}</TableCell>
-                <TableCell>{options(v)}</TableCell>
-                <TableCell className="text-right tabular-nums">{2 ** (v.effort ?? 0)}x</TableCell>
-                <TableCell className="text-right tabular-nums">{score(v.calib)}</TableCell>
-                <TableCell className="text-right tabular-nums">{score(v.test)}</TableCell>
-                <TableCell className="text-right tabular-nums">{v.ci ? `${score(v.ci[0])} to ${score(v.ci[1])}` : "-"}</TableCell>
-                <TableCell className="text-right text-xs tabular-nums">
-                  {new Date(v.at * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  )
-}
-
-function Datasets({ f }: { f: ForecasterView }) {
-  const models = Object.keys(f.overall ?? {})
-  const routes = f.routes ?? {}
-  const routed = Object.keys(routes).length > 0
-  return (
-    <Card>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Dataset</TableHead>
-              {routed && <TableHead>Routed to</TableHead>}
-              {models.map((m) => (
-                <TableHead key={m} className="text-right">
-                  {m}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Object.entries(f.configs ?? {}).map(([config, row]) => (
-              <TableRow key={config}>
-                <TableCell className="font-medium">{config}</TableCell>
-                {routed && <TableCell>{routes[config] ?? "-"}</TableCell>}
-                {models.map((m) => (
-                  <TableCell key={m} className="text-right tabular-nums">
-                    {score(row[m]?.mase)}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
   )
 }
 

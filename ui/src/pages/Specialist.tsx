@@ -1,5 +1,6 @@
 import { InfoTip } from "@/components/info-tip"
-import { Forecaster, useForecaster } from "./Forecaster"
+import { Forecaster } from "./Forecaster"
+import { useForecaster } from "./forecaster-api"
 import { ForecastPage } from "./ForecastPage"
 import { useForecasts } from "./forecast-api"
 import { RunningHere } from "./RunningHere"
