@@ -2581,3 +2581,9 @@ promoted forecasters, not archived, lowest health score first, and the two lowes
 are picked when a proposal fits both (`chosen` in `byosm/scout/routing.py`, which also holds `lab_fits`, `ask` and
 `mark_sent`, moved out of `proposals.py`). The lab kinds are `text` and `series`; any other kind, such as audio, is
 still refused with a 422.
+
+**On the page.** A forecaster has a Lab tab after Versions, the same component as a specialist's with the kind's rule
+in its tooltip and its score named calib MASE; the sure lead badge stays a classifier's. The Versions table's Options
+column shows `lab <id>` for a version trained with a method. The Techniques page offers Try it on forecasting
+techniques and says "No lab for audio yet" only for kinds the lab does not write. Not screenshotted: these pages were
+type-checked and formatted, not opened in the app.

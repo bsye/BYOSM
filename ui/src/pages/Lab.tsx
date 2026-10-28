@@ -25,14 +25,20 @@ type Method = {
   paper?: string | null
 }
 
+type LabKind = "classifier" | "forecaster"
+
 const STATUS = { pending: "outline", approved: "default", rejected: "secondary" } as const
+const PROMOTION: Record<LabKind, { rule: string; badge: string; score: string }> = {
+  classifier: { rule: "it then trains like any experiment and is promoted only on a sure lead", badge: "sure lead", score: "calib" },
+  forecaster: { rule: "it then refits the patch transformers, and the new version is promoted only on a lower calib MASE", badge: "", score: "calib MASE" },
+}
 const ERROR_TAIL = 400
 
 function busy(jobs: ReturnType<typeof useLive>["jobs"], args: string[]) {
   return Object.values(jobs).some((j) => args.every((a, i) => j.args[i] === a) && (j.status === "running" || j.status === "queued"))
 }
 
-function MethodCard({ name, m, refresh }: { name: string; m: Method; refresh: () => void }) {
+function MethodCard({ name, kind, m, refresh }: { name: string; kind: LabKind; m: Method; refresh: () => void }) {
   const jobs = useLive().jobs
   const running = busy(jobs, ["lab", "run", name, m.id])
   const decide = (status: "approved" | "rejected") => post(`/specialists/${name}/lab/${m.id}`, { status }).then(refresh)
@@ -43,7 +49,7 @@ function MethodCard({ name, m, refresh }: { name: string; m: Method; refresh: ()
         <CardTitle className="flex items-center gap-2">
           {m.name}
           <Badge variant={STATUS[m.status]}>{m.status}</Badge>
-          {result?.won && <Badge>sure lead</Badge>}
+          {result?.won && PROMOTION[kind].badge && <Badge>{PROMOTION[kind].badge}</Badge>}
           {m.parent && <Badge variant="outline">revision of {m.parent}</Badge>}
         </CardTitle>
         <CardDescription>
@@ -79,7 +85,7 @@ function MethodCard({ name, m, refresh }: { name: string; m: Method; refresh: ()
         {m.problems.length > 0 && <p className="text-destructive">Fails its checks: {m.problems.join("; ")}</p>}
         {result && (
           <p className="text-muted-foreground">
-            {result.experiment}: calib {result.calib == null ? "-" : result.calib.toFixed(4)}, {result.won ? "promoted" : "not promoted"}
+            {result.experiment}: {PROMOTION[kind].score} {result.calib == null ? "-" : result.calib.toFixed(4)}, {result.won ? "promoted" : "not promoted"}
           </p>
         )}
         {m.error && <p className="text-destructive font-mono text-xs whitespace-pre-wrap">{m.error.slice(-ERROR_TAIL)}</p>}
@@ -99,7 +105,7 @@ function MethodCard({ name, m, refresh }: { name: string; m: Method; refresh: ()
   )
 }
 
-export function Lab({ name }: { name: string }) {
+export function Lab({ name, kind }: { name: string; kind: LabKind }) {
   const [methods, setMethods] = useState<Method[] | null>(null)
   const [ask, setAsk] = useState("")
   const jobs = useLive().jobs
@@ -116,10 +122,7 @@ export function Lab({ name }: { name: string }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             Lab
-            <InfoTip>
-              An LLM writes a new training method as code. Nothing runs until you approve that exact code; it then trains like any experiment and is promoted
-              only on a sure lead.
-            </InfoTip>
+            <InfoTip>An LLM writes a new training method as code. Nothing runs until you approve that exact code; {PROMOTION[kind].rule}.</InfoTip>
           </CardTitle>
           <CardAction>
             <Button onClick={write} disabled={writing}>
@@ -144,7 +147,7 @@ export function Lab({ name }: { name: string }) {
         </Empty>
       )}
       {methods?.map((m) => (
-        <MethodCard key={m.id} name={name} m={m} refresh={refresh} />
+        <MethodCard key={m.id} name={name} kind={kind} m={m} refresh={refresh} />
       ))}
     </div>
   )

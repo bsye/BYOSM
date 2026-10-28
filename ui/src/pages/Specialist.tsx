@@ -309,7 +309,7 @@ function Model({ name }: { name: string }) {
         <TabsContent value="runs">
           <Runs d={d} />
         </TabsContent>
-        <TabsContent value="lab">{canLab(d) && <Lab name={name} />}</TabsContent>
+        <TabsContent value="lab">{canLab(d) && <Lab name={name} kind="classifier" />}</TabsContent>
         <TabsContent value="data" className="space-y-4">
           {d.data && d.task_type === "classify" && <LabelChart data={d.data} />}
           <YourData name={name} />

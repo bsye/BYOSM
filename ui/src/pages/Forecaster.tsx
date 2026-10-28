@@ -16,6 +16,7 @@ import { rivalName, score, signed } from "@/format"
 import { openJob } from "@/job-sheet"
 import { SeriesTry } from "./SeriesTry"
 import { Health, type HealthReport } from "./Health"
+import { Lab } from "./Lab"
 import { RunningHere } from "./RunningHere"
 import { leadOf, rivalScope, titleOf } from "./specialist-groups"
 
@@ -30,7 +31,7 @@ type Score = {
   ours_on_shared?: number
 }
 type Predict = { rates?: number[]; routing?: boolean }
-type Fit = { pretraining?: string; quantile_boosting?: boolean }
+type Fit = { pretraining?: string; quantile_boosting?: boolean; lab_method?: string | null }
 type Version = {
   name: string
   recipe: string
@@ -103,6 +104,7 @@ const options = (v: Version) =>
     v.predict?.routing ? "routing" : "",
     v.fit?.quantile_boosting ? "quantile boosting" : "",
     v.fit?.pretraining && v.fit.pretraining !== DEFAULT_PRETRAINING ? `pretraining ${v.fit.pretraining}` : "",
+    v.fit?.lab_method ? `lab ${v.fit.lab_method}` : "",
   ]
     .filter((o) => o)
     .join(", ") || "-"
@@ -346,6 +348,7 @@ export function Forecaster({ f }: { f: ForecasterView }) {
             <TabsTrigger value="board">Board</TabsTrigger>
             <TabsTrigger value="try">Try it</TabsTrigger>
             <TabsTrigger value="versions">Versions</TabsTrigger>
+            <TabsTrigger value="lab">Lab</TabsTrigger>
             <TabsTrigger value="datasets">Datasets</TabsTrigger>
           </TabsList>
           <TabsContent value="board">
@@ -356,6 +359,9 @@ export function Forecaster({ f }: { f: ForecasterView }) {
           </TabsContent>
           <TabsContent value="versions">
             <Versions f={f} />
+          </TabsContent>
+          <TabsContent value="lab">
+            <Lab name={f.name} kind="forecaster" />
           </TabsContent>
           <TabsContent value="datasets">
             <Datasets f={f} />
