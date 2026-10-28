@@ -77,7 +77,7 @@ def _distill_student(s: Session, st: dict, meta: dict) -> None:
     teacher = st["exp"]
     exp = dst.create(s.name, teacher)
     try:
-        build(s.name, exp, s.echo)
+        build(s.name, exp, s.echo, promote=False)
     except Exception as ex:
         s.p.promote(teacher)
         s.log("distill", exp, f"student build failed ({type(ex).__name__}: {ex}) -> keep the teacher {teacher}")

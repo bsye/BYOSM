@@ -106,7 +106,7 @@ def test_a_student_is_kept_when_it_scores_within_the_tolerance_of_its_teacher(ws
         return "v2"
 
     monkeypatch.setattr(distill, "create", create)
-    monkeypatch.setattr(pipeline, "build", lambda name, exp, echo: p.promote(exp))
+    monkeypatch.setattr(pipeline, "build", lambda name, exp, echo, **_k: p.promote(exp))
     monkeypatch.setattr(autopilot, "standing", lambda name, margin: {**LOST, "ours": student})
     s = session(p, spec)
     autopilot._distill_student(s, {**LOST, "ours": 0.905}, {"params": 50e6})

@@ -65,7 +65,7 @@ def ablate(name: str, base: str, change: dict[str, Any], seeds: list[int], log: 
     for seed, off, on in _pairs(p, base, change, seeds):
         for exp in (off, on):
             if exp not in p.experiments():
-                build(name, exp, log)
+                build(name, exp, log, promote=False)
         board = p.board()
         a, b = board[on][prim], board[off][prim]
         cmp = {s: compare(spec, a, b, s) for s in SPLITS}
