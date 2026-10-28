@@ -1,0 +1,258 @@
+- id: real-data
+  title: More real data
+  effect: "Adds or widens a labelled public source, so the model sees real inputs from the domain it is scored on."
+  paths: [data.hf_sources, "data.hf_sources.*.per_label|max_rows|max_files|partition", data.hf_queries]
+  cost: 1.5
+  prior: 0.6
+  evidence: [https://arxiv.org/abs/2209.06640]
+  status: available
+
+- id: data-size
+  title: Split sizes
+  effect: "Changes how many rows each split holds; a bigger calib or test set tells close models apart."
+  paths: ["data.train_size|dev_size|test_size"]
+  cost: 1.5
+  prior: 0.4
+  evidence: [https://arxiv.org/abs/2103.03098]
+  status: available
+
+- id: synthetic-data
+  title: LLM-written data
+  effect: "Lets an LLM write training rows along named axes of variation; gains saturate after a few rows per label."
+  paths: ["data.synthetic|per_call|judge", diversity_axes]
+  modalities: [text]
+  cost: 1.5
+  prior: 0.3
+  evidence: [https://arxiv.org/abs/2311.06102, https://arxiv.org/abs/2310.07849]
+  status: available
+
+- id: targeted-data
+  title: Rows aimed at errors
+  effect: "Writes hard cases and refine rounds aimed at the labels the model confuses on dev."
+  paths: [hard_cases, "train.refine_rounds|refine_examples"]
+  modalities: [text]
+  cost: 1.5
+  prior: 0.5
+  evidence: [https://arxiv.org/abs/2310.13671]
+  status: available
+
+- id: audio-mix
+  title: Audio mixing
+  effect: "Changes how clips are mixed and labelled: noise level, gap filling, events per clip, clip length."
+  paths: ["data.audio.snr_db|fill_ms|max_events|label_by_energy|clip_seconds"]
+  modalities: [audio]
+  cost: 1.2
+  prior: 0.5
+  evidence: []
+  status: available
+
+- id: backbone
+  title: Backbone
+  effect: "Swaps the pretrained encoder, for a domain-pretrained one or the next size up."
+  paths: [backbone, "document.text_backbone|image_backbone"]
+  cost: 2.0
+  prior: 0.5
+  evidence: [https://arxiv.org/abs/2507.11412]
+  status: available
+
+- id: schedule
+  title: Training schedule
+  effect: "Changes epochs, learning rates and batch size; a stable recipe matters, wide sweeps rarely do."
+  paths: ["train.epochs|lr_backbone|lr_head|batch_size"]
+  cost: 1.0
+  prior: 0.4
+  evidence: [https://arxiv.org/abs/2006.05987, https://arxiv.org/abs/2106.09204]
+  status: available
+
+- id: pretraining
+  title: In-domain pretraining
+  effect: "Runs self-supervised steps on the task's own inputs before fine-tuning."
+  paths: ["train.pretrain_steps|pretrain_lambda"]
+  cost: 1.5
+  prior: 0.3
+  evidence: [https://arxiv.org/abs/2010.02194]
+  status: available
+
+- id: head
+  title: Head and freezing
+  effect: "Freezes the encoder, probes the head first, or changes how tokens are pooled."
+  paths: ["train.freeze_backbone|probe_epochs|pool"]
+  cost: 0.8
+  prior: 0.4
+  evidence: [https://arxiv.org/abs/2202.10054]
+  status: available
+
+- id: regularisation
+  title: Regularisation
+  effect: "Layer-wise learning-rate decay and weight averaging; gains fade once the recipe is stable."
+  paths: ["train.layer_decay_floor|ema"]
+  cost: 1.0
+  prior: 0.15
+  evidence: [https://arxiv.org/abs/2006.05987]
+  status: available
+
+- id: precision
+  title: Numeric precision
+  effect: "Trains in lower precision to save time and memory."
+  paths: [train.precision]
+  cost: 0.8
+  prior: 0.1
+  evidence: []
+  status: available
+
+- id: document-views
+  title: Document views
+  effect: "Changes how a document is read: text, image or both, pages, resolution, OCR and view dropout."
+  paths: ["document.route|max_pages|max_len|image_size|ocr|dim|modality_dropout"]
+  modalities: [document]
+  cost: 1.5
+  prior: 0.5
+  evidence: []
+  status: available
+
+- id: multi-rate-forecast
+  title: Multi-rate forecasting
+  effect: "Forecasts at several sampling rates and mixes the results per quantile, weighted by recent accuracy."
+  paths: []
+  modalities: [series]
+  cost: 0.1
+  prior: 0.7
+  evidence: [https://huggingface.co/IUseAMouse/timessm-2.5m]
+  status: planned
+
+- id: forecast-routing
+  title: Model per configuration
+  effect: "Picks the patch, boosted, ensemble or seasonal naive model per dataset configuration on calib windows."
+  paths: []
+  modalities: [series]
+  cost: 0.1
+  prior: 0.7
+  evidence: [https://github.com/SalesforceAIResearch/gift-eval]
+  status: planned
+
+- id: input-layouts
+  title: Varied input layouts
+  effect: "Trains on several layouts of the same input, with tool names masked and requests paraphrased."
+  paths: []
+  modalities: [text]
+  cost: 1.2
+  prior: 0.6
+  evidence: [https://arxiv.org/abs/2608.16502]
+  status: planned
+
+- id: near-miss-negatives
+  title: Near-miss negatives
+  effect: "Mines negatives that look like positives and has the strongest judge relabel each one."
+  paths: []
+  modalities: [text]
+  cost: 1.3
+  prior: 0.6
+  evidence: [https://arxiv.org/abs/2310.14192]
+  status: planned
+
+- id: embedding-head
+  title: Embedding-model head
+  effect: "Fits a logistic head on a frozen sentence-embedding model, a floor that trains in seconds."
+  paths: []
+  modalities: [text]
+  cost: 0.2
+  prior: 0.5
+  evidence: [https://arxiv.org/abs/2209.11055]
+  status: planned
+
+- id: setfit
+  title: Contrastive few-shot
+  effect: "Fine-tunes the embedding model on label pairs before the head; strongest below about 30 real rows per label."
+  paths: []
+  modalities: [text]
+  cost: 0.6
+  prior: 0.5
+  evidence: [https://arxiv.org/abs/2209.11055]
+  status: planned
+
+- id: label-noise
+  title: Label-noise cleaning
+  effect: "Ranks training rows by out-of-fold loss and has a judge from another model family relabel the worst."
+  paths: []
+  modalities: [text]
+  cost: 2.0
+  prior: 0.4
+  evidence: [https://arxiv.org/abs/2205.12702]
+  status: planned
+
+- id: weight-averaging
+  title: Seed soups and distillation
+  effect: "Averages the weights of seeded finalists or distils their ensemble into one student."
+  paths: []
+  cost: 0.3
+  prior: 0.4
+  evidence: [https://arxiv.org/abs/2203.05482, https://arxiv.org/abs/2212.05956]
+  status: planned
+
+- id: learning-curve
+  title: Learning-curve check
+  effect: "Trains on nested subsets of a source and extrapolates before asking for more of it."
+  paths: []
+  cost: 2.0
+  prior: 0.3
+  evidence: [https://arxiv.org/abs/2209.06640]
+  status: planned
+
+- id: forecaster-pretraining
+  title: Forecaster pretraining v2
+  effect: "More training quantiles, contiguous patch masking, augmentation, arcsinh scaling and a synthetic corpus."
+  paths: []
+  modalities: [series]
+  cost: 5.0
+  prior: 0.5
+  evidence: [https://arxiv.org/abs/2505.23719]
+  status: planned
+
+- id: reinit-top
+  title: Re-initialised top layers
+  effect: "Re-initialises the top encoder layers or starts pair tasks from an NLI or reranker checkpoint."
+  paths: []
+  modalities: [text]
+  cost: 1.0
+  prior: 0.3
+  evidence: [https://arxiv.org/abs/2006.05987]
+  status: planned
+
+- id: small-search
+  title: Small hyperparameter search
+  effect: "Five to ten short trials over learning rate, epochs and warmup, halving the weakest at each rung."
+  paths: []
+  cost: 3.0
+  prior: 0.3
+  evidence: [https://arxiv.org/abs/1810.05934]
+  status: planned
+
+- id: consistency
+  title: R-Drop and mixup
+  effect: "Adds a dropout-consistency loss or mixes hidden states of two rows."
+  paths: []
+  modalities: [text]
+  cost: 1.5
+  prior: 0.2
+  evidence: [https://arxiv.org/abs/2106.14448, https://arxiv.org/abs/2010.02394]
+  status: planned
+
+- id: quantile-boosting
+  title: Quantile boosting with covariates
+  effect: "Fits LightGBM quantile objectives with known-future covariates."
+  paths: []
+  modalities: [series]
+  cost: 0.5
+  prior: 0.3
+  evidence: [https://github.com/autogluon/fev]
+  status: planned
+
+- id: self-training
+  title: Self-training
+  effect: "Labels an unlabelled in-domain pool with the current model and retrains on the confident rows."
+  paths: []
+  modalities: [text]
+  cost: 2.0
+  prior: 0.2
+  evidence: [https://arxiv.org/abs/2210.17541]
+  status: planned

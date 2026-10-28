@@ -1,7 +1,7 @@
 from .analyst import LLM_SYSTEM, llm_proposals
 from .cost import INGEST_S, estimate
 from .diagnosis import diagnose
-from .paths import ALLOWED, allowed, apply_ops
+from .paths import allowed, apply_ops
 from .proposals import AlreadyTriedError, apply, propose
 from .registry import RULES, rule, rule_proposals
 from .rules_data import more_data, real_data
@@ -16,7 +16,6 @@ from .rules_fit import (
 )
 
 __all__ = [
-    "ALLOWED",
     "AlreadyTriedError",
     "DOMAIN_ENCODERS",
     "INGEST_S",

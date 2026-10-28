@@ -1638,3 +1638,18 @@ To share trials out by gain per GPU-hour, the cost of each experiment has to be 
 (`byosm/train/gpu.py`) adds up how long a process holds a GPU slot, and `build` stores the difference over the build
 as `gpu_hours` in the experiment's metadata; a training on the CPU records zero. The Runs tab shows it next to the
 training time.
+
+## The proposer picks from a technique catalogue
+
+The proposer could only edit a flat list of spec paths, and its prompt told it to prefer data fixes everywhere, so its
+proposals fell into about six families and repeated. `byosm/improve/techniques.yaml` now lists every technique family
+with its editable paths, the kinds it fits, a relative cost in trainings, a prior, the evidence behind it and whether it
+is available or still planned. The editable paths are the union of the available families' paths
+(`allowed_paths` in `byosm/improve/techniques.py`), so a family that is not built yet cannot be proposed. Every
+proposal and every past experiment is tagged with the family of the paths it edits (`family`), and the LLM reads the
+families that fit the specialist with how often each was tried, and is asked to spread its proposals over them.
+`train.seed` left the editable paths: seeds are trained by the replicas, not proposed.
+
+Planned families (multi-rate forecasting, routing, input layouts, near-miss negatives, an embedding-model head,
+SetFit, label-noise cleaning, weight averaging, learning curves, forecaster pretraining v2, re-initialised layers, a
+small search, R-Drop and mixup, quantile boosting, self-training) become available as each one lands in the pipeline.

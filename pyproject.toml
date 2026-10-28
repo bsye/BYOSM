@@ -48,6 +48,7 @@ include = ["byosm*"]
 
 [tool.setuptools.package-data]
 "byosm.app" = ["static/**/*"]
+"byosm.improve" = ["*.yaml"]
 
 [tool.ruff]
 line-length = 120

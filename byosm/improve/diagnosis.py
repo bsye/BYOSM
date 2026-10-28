@@ -7,6 +7,7 @@ from typing import Any
 from ..data.store import STORED_SPLITS, read
 from ..project import Project
 from ..spec import TaskSpec
+from .techniques import family
 
 
 def _confusions(p: Project, exp: str, suite: str, spec: TaskSpec, k: int = 6) -> list[tuple[str, str, int]]:
@@ -116,11 +117,13 @@ def tried(p: Project, board: dict, prim: str) -> list[dict]:
     for exp in p.attempts():
         pr = p.proposal(exp) or {}
         r = board.get(exp, {}).get(prim, {})
+        ops = [o for a in pr.get("applied", []) for o in a.get("ops", [])]
         out.append(
             {
                 "experiment": exp,
                 "parent": pr.get("parent"),
-                "changes": [_change(o) for a in pr.get("applied", []) for o in a.get("ops", [])],
+                "family": family(ops) if ops else None,
+                "changes": [_change(o) for o in ops],
                 "calib": r.get("calib_objective"),
                 "test": r.get("objective"),
                 "promoted": exp == p.promoted,

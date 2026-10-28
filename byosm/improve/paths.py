@@ -6,21 +6,6 @@ from typing import Any
 from ..spec import TaskSpec
 from ..spec.sections import HUB_PREFIX
 
-ALLOWED = [
-    "data.hf_sources",
-    "data.hf_sources.*.per_label|max_rows|max_files|partition",
-    "data.hf_queries",
-    "data.train_size|dev_size|test_size",
-    "data.audio.snr_db|fill_ms|max_events|label_by_energy|clip_seconds",
-    "data.synthetic|per_call|judge",
-    "hard_cases",
-    "diversity_axes",
-    "backbone",
-    "train.epochs|pretrain_steps|pretrain_lambda|lr_backbone|lr_head|batch_size|freeze_backbone|refine_rounds"
-    "|refine_examples|pool|layer_decay_floor|probe_epochs|ema|precision|seed",
-    "document.route|text_backbone|image_backbone|max_pages|max_len|image_size|ocr|dim|modality_dropout",
-]
-
 BACKBONE_PATHS = ("backbone", "document.text_backbone", "document.image_backbone")
 
 
@@ -30,16 +15,17 @@ def _segment_matches(pattern: str, part: str) -> bool:
     return part in pattern.split("|")
 
 
-def _matches(pattern: str, parts: list[str]) -> bool:
-    segments = pattern.split(".")
+def matches(pattern: str, path: str) -> bool:
+    segments, parts = pattern.split("."), path.split(".")
     if len(segments) != len(parts):
         return False
     return all(_segment_matches(s, p) for s, p in zip(segments, parts, strict=True))
 
 
 def allowed(path: str) -> bool:
-    parts = path.split(".")
-    return any(_matches(a, parts) for a in ALLOWED)
+    from .techniques import allowed_paths
+
+    return any(matches(a, path) for a in allowed_paths())
 
 
 def _apply_op(d: dict, o: dict) -> None:

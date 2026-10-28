@@ -26,6 +26,7 @@ function Experiment({ name, p, start }: { name: string; p: Proposal; start: Star
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{p.id}</span>
+          {p.family && <Badge variant="secondary">{p.family}</Badge>}
           {p.cost && <Badge variant="outline">about {Math.round(p.cost.minutes)} min</Badge>}
         </div>
         <p className="text-muted-foreground text-xs">{p.why}</p>

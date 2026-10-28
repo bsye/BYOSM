@@ -15,6 +15,7 @@ from .cost import estimate
 from .diagnosis import diagnose
 from .paths import apply_ops
 from .registry import rule_proposals, unique
+from .techniques import family
 
 PROPOSALS = "proposals"
 LOG_BINS_PER_DECADE = 4
@@ -56,6 +57,7 @@ def propose(name: str, use_llm: bool = True, log: Callable[[str], None] = print)
     props = [pr for pr in found if _valid(base, pr, log)]
     for pr in props:
         pr["cost"] = estimate(dg, pr)
+        pr["family"] = family(pr["ops"])
     p.save_report(PROPOSALS, {"from": dg["experiment"], "proposals": props})
     return dg, props
 

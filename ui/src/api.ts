@@ -172,6 +172,7 @@ export type Proposal = {
   why: string
   ops: { op: string; path: string; value: unknown }[]
   cost?: { minutes: number; new_items: number }
+  family?: string
 }
 
 export type Need = { train_min: number; train_recommended: number; test_needed: number }
