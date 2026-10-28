@@ -36,19 +36,20 @@ function stats(items: Summary[], healths: Healths): Stat[] {
   const [blocker, blocks] = counted(known.flatMap((k) => k.h.blockers))[0] ?? [null, 0]
   const notReady = known.filter((k) => !k.h.ready).map((k) => k.s.name)
   const blocked = known.filter((k) => blocker && k.h.blockers.includes(blocker)).map((k) => k.s.name)
+  const checking = `checking ${pending} more`
   return [
     {
       label: "Ready for production",
       value: `${ready} / ${items.length}`,
       badge: items.length ? `${Math.round((ready / items.length) * 100)}%` : undefined,
-      line: pending ? `checking ${pending} more` : `${items.length - ready} need work`,
+      line: pending ? checking : `${items.length - ready} need work`,
       action: notReady.length ? { label: "Auto", run: (llm, progress) => untilReady(notReady, llm, progress) } : undefined,
     },
     {
       label: "Average health",
       value: mean == null ? "-" : String(mean),
       badge: mean == null ? undefined : `goal ${known[0].h.ready_score}+`,
-      line: `across ${known.length} models`,
+      line: known.length ? `across ${known.length} models` : checking,
       action: known.length
         ? {
             label: "Run all",
@@ -64,14 +65,14 @@ function stats(items: Summary[], healths: Healths): Stat[] {
     {
       label: "Closest to ready",
       value: close ? String(close.h.score) : "-",
-      line: close ? close.s.title || close.s.name : "every model is ready",
+      line: close ? close.s.title || close.s.name : pending ? checking : "every model is ready",
       hint: close ? `blocked by ${close.h.blockers.join(", ") || "a low score"}` : undefined,
       action: close ? { label: "Auto", run: (llm, progress) => untilReady([close.s.name], llm, progress) } : undefined,
     },
     {
       label: "Top blocker",
       value: blocker ?? "None",
-      line: blocker ? `holds back ${blocks} of ${known.length} models` : "nothing blocks production",
+      line: blocker ? `holds back ${blocks} of ${known.length} models` : pending ? checking : "nothing blocks production",
       action: blocker ? { label: "Fix all", run: (llm, progress) => unblock(blocked, blocker, llm, progress) } : undefined,
     },
   ]
@@ -106,9 +107,9 @@ export function SectionCards({ items, healths }: { items: Summary[]; healths: He
             <CardTitle
               className={i === PRIMARY ? "text-3xl font-semibold tabular-nums @[250px]/card:text-4xl" : "line-clamp-1 text-2xl font-semibold tabular-nums"}
             >
-              {loading && i > PRIMARY ? <Skeleton className="h-8 w-24" /> : s.value}
+              {loading ? <Skeleton className={i === PRIMARY ? "h-10 w-28" : "h-8 w-24"} /> : s.value}
             </CardTitle>
-            {s.badge && (
+            {s.badge && !loading && (
               <CardAction>
                 <Badge variant="outline">{s.badge}</Badge>
               </CardAction>
