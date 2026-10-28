@@ -9,8 +9,8 @@ from .backbones import DINOV2_SMALL, MINILM
 Modality = Literal["text", "audio", "image", "document"]
 TaskType = Literal["classify", "frame"]
 Metric = Literal["f1", "macro_f1", "accuracy", "recall_at_precision", "precision_at_recall", "span_f1"]
-TrainMethod = Literal["finetune", "embedding-head"]
-FINETUNE, EMBEDDING_HEAD = get_args(TrainMethod)
+TrainMethod = Literal["finetune", "embedding-head", "setfit"]
+FINETUNE, EMBEDDING_HEAD, SETFIT = get_args(TrainMethod)
 
 
 HUB_PREFIX = "hf:"
@@ -152,3 +152,5 @@ class TrainCfg(BaseModel):
     distill_temperature: float = 2.0
     distill_unlabeled: int = 20000
     prefix_rate: float = 0.0
+    pairs_per_row: int = 40
+    lr_pairs: float = 2e-5

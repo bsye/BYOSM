@@ -9,7 +9,7 @@ from typing import Any
 import torch
 
 from ..modalities import Modality
-from ..model import SpecialistModel, count_params
+from ..model import Head, SpecialistModel, count_params
 from ..spec import TaskSpec
 
 LAYER_SEGMENTS = {"layer", "layers", "blocks", "block", "h", "stages"}
@@ -38,6 +38,10 @@ def to_device(inputs: dict[str, torch.Tensor], dev: str) -> dict[str, torch.Tens
 
 def build_model(spec: TaskSpec, mod: Modality) -> SpecialistModel:
     return SpecialistModel(mod.build_backbone(), {spec.name: (len(spec.labels), spec.task_type, spec.train.pool)})
+
+
+def head_of(model: SpecialistModel) -> Head:
+    return next(iter(model.heads.values()))
 
 
 def sized_model(spec: TaskSpec, mod: Modality, dev: str, log: Callable[[str], None]) -> tuple[SpecialistModel, int]:

@@ -1805,3 +1805,20 @@ from an embedding-head teacher is fine-tuned (`byosm/distill.py`). The spec refu
 frame tasks and attention pooling. Fine-tuning and the embedding methods share how rows are split and seeded
 (`prepare` in `byosm/train/rows.py`) and how a run is saved (`finish` in `byosm/train/outputs.py`), and the teacher
 and embedding caches open their database with `cache_db` (`byosm/config.py`).
+
+## SetFit: label pairs before the logistic head
+
+`train.method: setfit` (`byosm/train/contrastive.py`) first fine-tunes the encoder on sentence pairs built from the
+labelled rows, then fits the same logistic head as `embedding-head` on the tuned embeddings. Each row gets
+`pairs_per_row` pairs (40), half with another row of its label (target cosine 1) and half with a row of another label
+(target 0), as in the paper's 20 iterations of one positive and one negative pair; the loss is the mean squared error
+between the cosine of the two mean-pooled embeddings and the target. One pass over the pairs at `lr_pairs` (2e-5, the
+paper's rate) with `WARMUP_SHARE` 10% warmup and cosine decay, at `batch_size` pairs per step, in fp32. SetFit beat
+standard RoBERTa-large fine-tuning by 19.3 points at 8 rows per label and 5.6 at 64
+([SetFit](https://arxiv.org/abs/2209.11055)), so it pays where a specialist has few real rows per label. It has not
+been measured in BYOSM yet.
+
+Gotchas: a big training set would make the pass slow for little gain, so the pairs are capped at `MAX_PAIRS`
+(20,000) by giving each row fewer; a label with one row gets only different-label pairs. Tuned embeddings change with
+every run, so only `embedding-head` reads the embedding cache. Seeds change which pairs are drawn, so seed replicas
+differ, unlike `embedding-head`, whose replicas are identical.

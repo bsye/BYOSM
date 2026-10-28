@@ -12,12 +12,14 @@ from sklearn.metrics import log_loss
 
 from ..events import emit
 from ..modalities import Modality
-from ..model import Head, SpecialistModel
+from ..model import SpecialistModel
 from ..spec import TaskSpec
-from .common import sized_model, targets_of, to_device
+from ..spec.sections import SETFIT
+from .common import head_of, sized_model, targets_of, to_device
+from .contrastive import contrastive
 from .evaluate import evaluate_rows
 from .outputs import build_meta, finish, snapshot
-from .rows import prepare
+from .rows import Prepared, prepare
 from .trainer import class_weight
 from .vectors import cached_embeddings
 
@@ -25,10 +27,6 @@ LOGISTIC_C = 1.0
 LOGISTIC_MAX_ITER = 1000
 ABSENT_LOGIT = -1e4
 ENCODE_BATCH = 64
-
-
-def head_of(model: SpecialistModel) -> Head:
-    return next(iter(model.heads.values()))
 
 
 @torch.no_grad()
@@ -77,6 +75,15 @@ def _record(spec: TaskSpec, ev: dict[str, Any], loss: float, exp: str, log: Call
     return entry
 
 
+def _train_embeddings(
+    spec: TaskSpec, s: Prepared, model: SpecialistModel, raws: list[str], y: list[int], dev: str, log: Callable
+) -> np.ndarray:
+    if spec.train.method != SETFIT:
+        return cached_embeddings(spec, raws, lambda xs: pooled(model, s.mod, xs, dev), log)
+    contrastive(spec, s.mod, model, raws, y, s.rng, dev, log)
+    return pooled(model, s.mod, raws, dev)
+
+
 def fit_embedding(
     spec: TaskSpec,
     data_dir: Path,
@@ -93,8 +100,7 @@ def fit_embedding(
     model, n_params = sized_model(spec, s.mod, dev, log)
     model.to(dev)
     t0 = time.time()
-    emb = cached_embeddings(spec, train_raw, lambda xs: pooled(model, s.mod, xs, dev), log)
-    loss = fit_head(spec, model, emb, y)
+    loss = fit_head(spec, model, _train_embeddings(spec, s, model, train_raw, y, dev, log), y)
     ev = evaluate_rows(model, s.mod, spec, s.dev, dev_raw, dev, None, calibrate=True)
     history = [_record(spec, ev, loss, run_dir.name, log)]
     best = snapshot(model, 0, ev)

@@ -15,7 +15,8 @@ from byosm.pipeline import build
 from byosm.project import WEIGHTS, Project
 from byosm.spec import Label, TaskSpec, TrainCfg
 from byosm.train import build_model, fit
-from byosm.train.embedding import ABSENT_LOGIT, logistic_weights
+from byosm.train.contrastive import DIFFERENT, MAX_PAIRS, SAME, contrastive, pairs
+from byosm.train.embedding import ABSENT_LOGIT, logistic_weights, pooled
 from byosm.train.vectors import cached_embeddings
 
 WORDS = ["pasta", "train", "python", "rain", "museum", "bug", "coffee", "flight", "merge", "garden"]
@@ -89,19 +90,53 @@ def test_each_text_is_encoded_once_per_encoder(cache):
     assert first[:, 0].tolist() == [2, 3, 2] and again[:, 0].tolist() == [3, 4]
 
 
-def test_an_embedding_head_keeps_the_encoder_frozen_and_trains_in_one_pass(ws, cache, tiny_bert, monkeypatch):
+def label_gap(emb, y):
+    unit = emb / np.linalg.norm(emb, axis=1, keepdims=True)
+    sim, same = unit @ unit.T, np.equal.outer(y, y)
+    return sim[same & ~np.eye(len(y), dtype=bool)].mean() - sim[~same].mean()
+
+
+def test_pairs_mix_same_and_different_labels_and_never_pair_a_row_with_itself():
+    labels = [0, 0, 0, 1, 1, 2]
+    found = pairs(labels, 4, random.Random(0))
+    assert all(a != b and (labels[a] == labels[b]) == (t == SAME) for a, b, t in found)
+    per_row = {i: [t for a, _, t in found if a == i] for i in range(len(labels))}
+    assert per_row[0].count(SAME) == per_row[0].count(DIFFERENT) == 2
+    assert per_row[5] == [DIFFERENT, DIFFERENT]
+
+
+def test_pairs_stay_under_the_cap_on_big_datasets():
+    labels = [i % 7 for i in range(3000)]
+    assert len(pairs(labels, 40, random.Random(0))) <= MAX_PAIRS
+
+
+def test_contrastive_training_pulls_rows_of_one_label_together(tiny_bert):
+    spec = head_spec(tiny_bert, method="setfit", pairs_per_row=8, batch_size=16, lr_pairs=1e-4)
+    mod = get_modality(spec)
+    model = build_model(spec, mod)
+    rng = random.Random(0)
+    rows = [utterance(rng) for _ in range(32)]
+    raws, y = [r["input"] for r in rows], [spec.label_index[r["label"]] for r in rows]
+    before = label_gap(pooled(model, mod, raws, "cpu"), y)
+    contrastive(spec, mod, model, raws, y, random.Random(0), "cpu", lambda _: None)
+    assert label_gap(pooled(model, mod, raws, "cpu"), y) > before
+
+
+@pytest.mark.parametrize("method", ["embedding-head", "setfit"])
+def test_only_setfit_moves_the_encoder_and_both_train_in_one_pass(ws, cache, tiny_bert, monkeypatch, method):
     monkeypatch.setenv("BYOSM_DEVICE", "cpu")
-    spec = head_spec(tiny_bert)
+    spec = head_spec(tiny_bert, method=method, pairs_per_row=10)
     write_rows(ws / "data")
     meta, _ = fit(spec, ws / "data", ws / "run", log=lambda _: None)
     state = torch.load(ws / "run" / WEIGHTS)
     fresh = build_model(spec, get_modality(spec)).backbone.state_dict()
-    assert all(torch.equal(state[f"backbone.{k}"], v) for k, v in fresh.items())
+    assert all(torch.equal(state[f"backbone.{k}"], v) for k, v in fresh.items()) == (method == "embedding-head")
     assert len(meta["history"]) == 1 and meta["best_epoch"] == 0 and meta["dev"]["objective"] > 0.9
 
 
-def test_an_embedding_head_is_scored_and_exported_like_a_finetuned_model(ws, cache, tiny_bert, load_runtime):
-    spec = head_spec(tiny_bert)
+@pytest.mark.parametrize("method", ["embedding-head", "setfit"])
+def test_an_embedding_method_is_scored_and_exported_like_a_finetuned_model(ws, cache, tiny_bert, load_runtime, method):
+    spec = head_spec(tiny_bert, method=method, pairs_per_row=10)
     p = Project("isq").ensure()
     p.save_spec(spec)
     write_rows(p.data_dir_for(spec))
