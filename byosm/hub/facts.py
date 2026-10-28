@@ -39,8 +39,8 @@ def lineage(p: Project, exp: str) -> list[dict]:
 
 def suite_dataset(spec: TaskSpec, suite: str) -> tuple[str, str]:
     s = next(e for e in spec.evals if e.name == suite)
-    if s.kind == "hf" and s.source:
-        return s.source.dataset, s.source.dataset
+    if s.origin:
+        return s.origin, s.origin
     return f"{spec.name}-{suite}", f"byosm/{spec.name}-{suite}"
 
 
@@ -123,7 +123,7 @@ def load_facts(name: str, repo_id: str, license: str) -> CardFacts:
     spec = p.exp_spec(exp)
     used = used_sources(p, spec, exp)
     hub = {k.removeprefix(HUB_SOURCE) for split in used.values() for k in split if k.startswith(HUB_SOURCE)}
-    datasets = sorted(hub | {e.source.dataset for e in base.evals if e.source})
+    datasets = sorted(hub | {e.origin for e in base.evals if e.origin})
     return CardFacts(
         p=p,
         repo_id=repo_id,

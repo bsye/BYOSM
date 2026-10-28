@@ -2134,3 +2134,13 @@ budget, and `byosm/evals/cutoffs.py` ports that sweep for suites whose rows carr
 `byosm board --detail` shows the held-out cutoff rates. A detector that always answers "finished" fires at once in
 every span, so its policy reduces to a silence timeout: its cutoff rate at a budget is the share of pauses longer than
 the budget, which is eot-bench's published "VAD baseline" and the protocol check of the eot-bench suite.
+
+## A suite names the public dataset it came from and its licence
+
+A suite made from a public benchmark is frozen as a `local` suite, so its rows no longer point back at the Hub the way
+an `hf` suite's `source` does. `EvalSuite.dataset` and `EvalSuite.licence` record the Hugging Face dataset and the
+licence on its card when the suite is written, and `EvalSuite.origin` (the dataset, or an `hf` suite's source) is the
+one place the model card reads: `suite_dataset` names it in the results tables, `load_facts` lists it among the
+card's `datasets`, and the caveats list each public suite with its licence. `byosm suite ls` shows it too. The card
+licence lookup moved from the data release to `licence` in `byosm/data/hf_source/cards.py`, next to the other
+dataset-card reads, so the release card and new suites read licences the same way.

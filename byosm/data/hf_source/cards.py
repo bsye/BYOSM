@@ -7,6 +7,7 @@ CARD_CHARS = 280
 DESCRIBED = 20
 WORKERS = 8
 CARD_FIELDS = ("task_categories", "license", "size_categories", "language")
+UNKNOWN_LICENCE = "licence not stated on its card"
 
 
 def card(hit: dict) -> dict[str, Any]:
@@ -51,3 +52,13 @@ def listing(cards: list[dict]) -> str:
             f"- {c['id']} ({c.get('downloads') or 0} downloads; {facts}{gated}): {c.get('title') or ''} {c.get('about') or ''}".rstrip()
         )
     return "\n".join(rows)
+
+
+def licence(dataset: str) -> str:
+    from huggingface_hub import HfApi
+
+    try:
+        card = HfApi().dataset_info(dataset).card_data
+    except Exception:
+        return UNKNOWN_LICENCE
+    return (card.get("license") if card else None) or UNKNOWN_LICENCE

@@ -100,6 +100,9 @@ def caveats(f: CardFacts) -> str:
         )
     sizes = ", ".join(f"{s} ({r['n_test']} test items)" for s, r in f.results.items())
     out.append(f"- Evaluated on {sizes}. Small suites have wide confidence intervals.")
+    public = [f"`{e.name}` from `{e.dataset}` ({e.licence})" for e in f.base.evals if e.dataset and e.licence]
+    if public:
+        out.append(f"- Public benchmark suites, each under its own licence: {', '.join(public)}.")
     return "\n".join(out)
 
 

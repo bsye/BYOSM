@@ -135,12 +135,18 @@ class EvalSuite(BaseModel):
     primary: bool = False
     written_by: str | None = None
     judged_by: str | None = None
+    dataset: str | None = None
+    licence: str | None = None
 
     @model_validator(mode="after")
     def _public_primary(self) -> EvalSuite:
         if self.primary and self.kind == "generated":
             raise ValueError(f"suite {self.name}: an LLM-written suite cannot be the primary benchmark")
         return self
+
+    @property
+    def origin(self) -> str | None:
+        return self.dataset or (self.source.dataset if self.source else None)
 
     def label_space(self, names: list[str]) -> list[str]:
         targets = {b for _, b in self.source.label_map} if self.source else set()

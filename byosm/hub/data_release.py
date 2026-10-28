@@ -7,6 +7,7 @@ from pathlib import Path
 
 import yaml
 
+from ..data.hf_source.cards import licence
 from ..data.store import BASE_TRAIN, CALIB, Dataset
 from ..evals.test_sets import held_out_set, test_sets
 from ..evals.workbench import OURS
@@ -14,7 +15,6 @@ from ..model_refs import model_ref
 from .facts import HUB_SOURCE, CardFacts
 
 SUFFIX = "-data"
-UNKNOWN_LICENCE = "licence not stated on its card"
 MAIN_SPLITS = ("train", "validation", "test")
 FIELDS = ("id", "input", "label", "source")
 LLM_SOURCE = "llm:"
@@ -106,17 +106,7 @@ def _source_lines(found: dict[str, list[dict]]) -> str:
             if str(r["source"]).startswith(HUB_SOURCE)
         }
     )
-    return "\n".join(f"- [`{d}`](https://huggingface.co/datasets/{d}): {_licence(d)}" for d in hub) or "- none"
-
-
-def _licence(dataset: str) -> str:
-    from huggingface_hub import HfApi
-
-    try:
-        card = HfApi().dataset_info(dataset).card_data
-    except Exception:
-        return UNKNOWN_LICENCE
-    return (card.get("license") if card else None) or UNKNOWN_LICENCE
+    return "\n".join(f"- [`{d}`](https://huggingface.co/datasets/{d}): {licence(d)}" for d in hub) or "- none"
 
 
 def _summary(rows: list[dict]) -> str:

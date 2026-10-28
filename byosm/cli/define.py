@@ -126,7 +126,7 @@ def _append_suite(p: Project, spec: TaskSpec, es: EvalSuite) -> None:
 @suite_app.command("ls")
 def suite_ls(name: str) -> None:
     for e in _spec(name)[1].evals:
-        where = e.source.dataset if e.source else e.path or "own dev/test"
+        where = e.origin or e.path or "own dev/test"
         log(f"{e.name:12s} {e.kind:8s} {where}{'  (primary)' if e.primary else ''}")
 
 
