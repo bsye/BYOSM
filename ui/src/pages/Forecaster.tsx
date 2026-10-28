@@ -37,6 +37,7 @@ export type ForecasterView = Summary & {
   versions?: Version[]
   health?: HealthReport | null
   live?: string | null
+  routes?: Record<string, string>
 }
 
 const RIVALS = ["seasonal naive", "Timestral"]
@@ -251,6 +252,8 @@ function Versions({ f }: { f: ForecasterView }) {
 
 function Datasets({ f }: { f: ForecasterView }) {
   const models = Object.keys(f.overall ?? {})
+  const routes = f.routes ?? {}
+  const routed = Object.keys(routes).length > 0
   return (
     <Card>
       <CardContent>
@@ -258,6 +261,7 @@ function Datasets({ f }: { f: ForecasterView }) {
           <TableHeader>
             <TableRow>
               <TableHead>Dataset</TableHead>
+              {routed && <TableHead>Routed to</TableHead>}
               {models.map((m) => (
                 <TableHead key={m} className="text-right">
                   {m}
@@ -269,6 +273,7 @@ function Datasets({ f }: { f: ForecasterView }) {
             {Object.entries(f.configs ?? {}).map(([config, row]) => (
               <TableRow key={config}>
                 <TableCell className="font-medium">{config}</TableCell>
+                {routed && <TableCell>{routes[config] ?? "-"}</TableCell>}
                 {models.map((m) => (
                   <TableCell key={m} className="text-right tabular-nums">
                     {score(row[m]?.mase)}

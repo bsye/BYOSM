@@ -1732,3 +1732,19 @@ and the calib pick decides whether a twin serves. The next training starts from 
 twin that wins stays on. Two gotchas: twice the candidates leans the calib pick slightly optimistic, and a trained
 model has seen the backtest windows in training, which can favour the native rate. TimeSSM reports 0.545 to 0.513
 CRPS from this on a 2.5M model (self-reported); it has not been measured on our forecasters yet.
+
+## A model per dataset, picked on calib
+
+One recipe per domain cannot use the patch model on one dataset, boosting on another and seasonal naive where nothing
+beats it. With `predict.routing` on (default off), `route` in `byosm/series/routing.py` picks, for each dataset
+configuration (GIFT-Eval's dataset and frequency; every domain here is short term), the candidate with the lowest calib
+MASE among our models, their ensemble, their multi-rate twins and seasonal naive, and the pick joins the board as the
+candidate `routed per dataset`. Its calib score is cross-fitted: the calib windows are split into `FOLDS` (2)
+interleaved halves and each half is scored with the model picked on the other, because the plain per-dataset minimum
+would always win the calib pick. Its test score uses the pick made on every calib window.
+
+Each dataset's pick is stored as `route` in its routed row. The board (`promoted_board`) and the specialist card
+(`summary`) list them as `routes`, the Datasets tab shows them, and the saved version (`Routed`) serves a live forecast
+with the model of the dataset it names, or with the model most datasets were routed to for a pasted series. A dataset
+routed to seasonal naive counts as not beating seasonal naive on the health check. GIFT-Eval entries that combine or
+route models gain 8% to 12% CRPS over their base model; it has not been measured on our forecasters yet.

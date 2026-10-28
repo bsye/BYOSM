@@ -42,10 +42,18 @@ def _json(values: np.ndarray) -> list[float | None]:
     return [None if np.isnan(v) else float(v) for v in values]
 
 
-def forecast(ws: Path, domain: str, version: str, history: list[float | None], freq: str) -> dict[str, Any]:
+def load_model(ws: Path, domain: str, version: str) -> Any:
     import joblib
 
-    model = joblib.load(path(ws, domain, version))
+    return joblib.load(path(ws, domain, version))
+
+
+def forecast(
+    ws: Path, domain: str, version: str, history: list[float | None], freq: str, config: str | None = None
+) -> dict[str, Any]:
+    from .routing import served
+
+    model = served(load_model(ws, domain, version), config)
     values = np.asarray([np.nan if v is None else v for v in history], dtype=float)
     h = horizon(freq)
     quantiles = model.predict_many([values], season(freq), h)[0]

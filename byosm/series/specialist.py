@@ -9,10 +9,13 @@ from .metrics import geomean
 NAIVE = "seasonal naive"
 METRIC = "MASE vs naive"
 KIND = "forecast"
+MODALITY = "series"
 RIVAL_NAMES = (NAIVE, "Timestral")
 CI_DRAWS = 500
 CI_SEED = 0
 PREDICT = "predict"
+ROUTED = "routed per dataset"
+ROUTE = "route"
 
 
 def is_rival(model: str) -> bool:
@@ -21,6 +24,12 @@ def is_rival(model: str) -> bool:
 
 def promoted_version(report: dict[str, Any]) -> dict[str, Any] | None:
     return next((v for v in report.get("versions", []) if v["name"] == report.get("promoted")), None)
+
+
+def routes(version: dict[str, Any] | None) -> dict[str, str]:
+    if not version or version.get("recipe") != ROUTED:
+        return {}
+    return {c: r[ROUTED][ROUTE] for c, r in (version.get("configs") or {}).items() if ROUTE in r.get(ROUTED, {})}
 
 
 def choose(overall: dict[str, dict[str, Any]]) -> str | None:
@@ -82,7 +91,7 @@ def summary(report: dict[str, Any]) -> dict[str, Any]:
         "title": f"{domain.capitalize()} forecasting",
         "created": report.get("created"),
         "description": " · ".join(DOMAINS.get(domain, [domain])),
-        "modality": "series",
+        "modality": MODALITY,
         "task_type": KIND,
         "labels": 0,
         "metric": METRIC,
@@ -92,6 +101,7 @@ def summary(report: dict[str, Any]) -> dict[str, Any]:
         "promoted": report.get("promoted"),
         "score": promoted["test"] if promoted else None,
         "rival": best_rival(report),
+        "routes": routes(promoted),
         "experiments": [v["name"] for v in versions],
         "exported": False,
         "part_of": None,

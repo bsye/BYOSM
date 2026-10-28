@@ -74,7 +74,7 @@ export function SeriesTry({ f }: { f: ForecasterView }) {
     setForecast(null)
     api<Example>(`/series/${f.name}/example?config=${encodeURIComponent(config)}&index=${index}`).then((e) => {
       setExample(e)
-      post<Forecast>(`/series/${f.name}/forecast`, { history: e.history, freq: e.freq }).then(setForecast)
+      post<Forecast>(`/series/${f.name}/forecast`, { history: e.history, freq: e.freq, config: e.config }).then(setForecast)
     })
   }, [f.name, f.live, config, index])
 

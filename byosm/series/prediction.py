@@ -12,6 +12,7 @@ MULTI_RATES = [1, 2, 4]
 
 class PredictCfg(BaseModel):
     rates: list[int] = Field(default_factory=lambda: list(NATIVE), min_length=1)
+    routing: bool = False
 
     @property
     def multi_rate(self) -> bool:

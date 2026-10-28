@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from conftest import Flat
 
 from byosm.series.board import reports
 from byosm.series.gifteval import Series, horizon, season, splits, unit, windows
@@ -207,30 +208,15 @@ def test_one_model_per_recipe_is_trained_for_all_datasets_and_the_ensemble_avera
     t = np.arange(400.0)
     series = [Series(f"s{i}", "H", 10 + np.sin(2 * np.pi * t / 24) + rng.normal(0, 0.3, len(t))) for i in range(3)]
 
-    fits = []
-
-    class Flat:
-        def __init__(self, name, level):
-            self.name, self.level = name, level
-
-        def fit(self, groups):
-            fits.append((self.name, len(groups)))
-
-        def predict_many(self, histories, season, horizon):
-            return [np.full((len(QUANTILES), horizon), h[-1] + self.level) for h in histories]
-
+    ours = [Flat("gradient boosting", 1.0), Flat("patch transformer", -1.0)]
     monkeypatch.setattr("byosm.series.scoring.load", lambda config: series)
-    monkeypatch.setattr(
-        fit,
-        "candidates",
-        lambda effort: [SeasonalNaive(), Flat("gradient boosting", 1.0), Flat("patch transformer", -1.0)],
-    )
+    monkeypatch.setattr(fit, "candidates", lambda effort: [SeasonalNaive(), *ours])
     events = []
     monkeypatch.setattr(fit, "emit", lambda kind, **data: events.append((kind, data["recipe"], data["index"])))
     out, trained = fit.fit_domain(["a", "b"], 0, lambda _: None, lambda per, pending: None, PredictCfg())
     assert [e[1:] for e in events] == [("seasonal naive", 1), ("gradient boosting", 2), ("patch transformer", 3)]
     assert set(trained) == {"gradient boosting", "patch transformer", Ensemble.name}
-    assert fits == [("gradient boosting", 2), ("patch transformer", 2)]
+    assert [m.fits for m in ours] == [[2], [2]]
     for row in out.values():
         assert row[Ensemble.name]["mase"] < min(row["gradient boosting"]["mase"], row["patch transformer"]["mase"])
 

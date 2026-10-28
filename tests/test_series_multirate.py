@@ -1,4 +1,5 @@
 import numpy as np
+from conftest import Flat
 
 from byosm.series.gifteval import Series
 from byosm.series.metrics import QUANTILES
@@ -7,17 +8,6 @@ from byosm.series.multirate import MultiRate, coarse, native, twin_name
 from byosm.series.prediction import MULTI_RATES, PredictCfg
 
 MEDIAN = QUANTILES.index(0.5)
-
-
-class Flat:
-    def __init__(self, name, level):
-        self.name, self.level = name, level
-
-    def fit(self, groups):
-        pass
-
-    def predict_many(self, histories, season, horizon):
-        return [np.full((len(QUANTILES), horizon), h[-1] + self.level) for h in histories]
 
 
 class RightAtHalfRate:

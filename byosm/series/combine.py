@@ -3,10 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from .models import Ensemble, average
+from .models import Ensemble, SeasonalNaive, average
 from .multirate import MultiRate, twin_name
 from .prediction import PredictCfg
+from .routing import Routed, route
 from .scoring import Scored, score_model
+from .specialist import NAIVE, ROUTE, ROUTED
 
 TIMING = ("train_s", "ms_per_forecast")
 
@@ -31,8 +33,19 @@ def _twins(s: Scored, ours: list[Any], rates: list[int], log: Callable[[str], No
     return {t.name: t for t in twins} | _ensemble(s, twins, twin_name(Ensemble.name))
 
 
+def _routed(s: Scored, models: dict[str, Any]) -> Routed:
+    picked = {}
+    for p in s.prepared:
+        name, held, test = route(p, {n: s.made[n][p.config] for n in models})
+        s.add(p, ROUTED, held, test, {k: s.per[p.config][name][k] for k in TIMING} | {ROUTE: name})
+        picked[p.config] = name
+    return Routed(models, picked)
+
+
 def combine(s: Scored, ours: list[Any], cfg: PredictCfg, log: Callable[[str], None]) -> dict[str, Any]:
     trained = {m.name: m for m in ours} | _ensemble(s, ours, Ensemble.name)
     if cfg.multi_rate:
         trained |= _twins(s, ours, cfg.rates, log)
+    if cfg.routing and ours:
+        trained[ROUTED] = _routed(s, {**trained, NAIVE: SeasonalNaive()})
     return trained

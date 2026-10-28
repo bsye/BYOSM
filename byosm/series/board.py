@@ -7,7 +7,7 @@ import numpy as np
 
 from .gifteval import DOMAINS
 from .metrics import geomean, ratio_interval
-from .specialist import CI_DRAWS, CI_SEED, NAIVE, promoted_version
+from .specialist import CI_DRAWS, CI_SEED, NAIVE, promoted_version, routes
 
 REPORT = "series:"
 SCORES = ("mase", "crps", "calib_mase", "calib_crps")
@@ -68,7 +68,7 @@ def promoted_board(report: dict[str, Any]) -> dict[str, Any]:
         shared = {c: r for c, r in configs.items() if name in r and version["recipe"] in r}
         if s["datasets"] < len(configs) and shared:
             s["ours_on_shared"] = overall(shared)[version["recipe"]]["mase"]
-    return {"configs": configs, "overall": board}
+    return {"configs": configs, "overall": board, "routes": routes(version)}
 
 
 def reports(ws: Path) -> list[dict[str, Any]]:

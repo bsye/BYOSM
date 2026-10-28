@@ -108,6 +108,19 @@ class FakeLLM:
         return {"text": (f"what about {w}?" if q else f"i like {w}."), "label": "question" if q else "statement"}
 
 
+class Flat:
+    def __init__(self, name, level=0.0):
+        self.name, self.level, self.fits = name, level, []
+
+    def fit(self, groups):
+        self.fits.append(len(groups))
+
+    def predict_many(self, histories, season, horizon):
+        from byosm.series.metrics import QUANTILES
+
+        return [np.full((len(QUANTILES), horizon), h[-1] + self.level) for h in histories]
+
+
 def import_runtime(out):
     s = importlib.util.spec_from_file_location("byosm_rt", out / "byosm_rt.py")
     rt = importlib.util.module_from_spec(s)

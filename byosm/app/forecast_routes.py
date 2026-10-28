@@ -11,6 +11,7 @@ from pydantic import BaseModel
 class History(BaseModel):
     history: list[float | None]
     freq: str
+    config: str | None = None
 
 
 class Entity(BaseModel):
@@ -87,7 +88,7 @@ def forecast_router(ws: Path) -> APIRouter:
         version = live_version(ws, domain, found)
         if version is None:
             raise HTTPException(409, "train a version first: Keep training saves the model it builds")
-        return {"version": version, **forecast(ws, domain, version, body.history, body.freq)}
+        return {"version": version, **forecast(ws, domain, version, body.history, body.freq, body.config)}
 
     @router.get("/api/forecasts/{name}/inputs")
     def inputs(name: str) -> dict[str, Any]:
