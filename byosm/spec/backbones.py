@@ -1,4 +1,9 @@
 MINILM = "hf:sentence-transformers/all-MiniLM-L6-v2"
+MULTILINGUAL_MINILM = "hf:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+EMBEDDING_MODEL = MINILM
+MULTILINGUAL_EMBEDDING_MODEL = MULTILINGUAL_MINILM
+SENTENCE_ENCODERS = {MINILM, MULTILINGUAL_MINILM}
+ENGLISH = {"en"}
 DINOV2_SMALL = "hf:facebook/dinov2-small"
 TINY_CRNN = "tiny-crnn"
 TINY_CNN = "tiny-cnn"
@@ -15,7 +20,7 @@ BACKBONES: dict[str, list[dict]] = {
             "note": "strong small English encoder",
         },
         {
-            "id": "hf:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+            "id": MULTILINGUAL_MINILM,
             "params_m": 118,
             "langs": "50+",
             "note": "small multilingual (most params are embeddings)",
@@ -105,5 +110,10 @@ BACKBONES: dict[str, list[dict]] = {
         },
     ],
 }
+
+
+def embedding_model(languages: list[str]) -> str:
+    return EMBEDDING_MODEL if set(languages) <= ENGLISH else MULTILINGUAL_EMBEDDING_MODEL
+
 
 DEFAULT_BACKBONE: dict[str, str] = {"text": MINILM, "audio": TINY_CRNN, "document": DOCUMENT_ROUTES, "image": TINY_CNN}

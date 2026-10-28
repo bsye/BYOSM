@@ -21,7 +21,7 @@ def _wins(p: Project, spec: TaskSpec) -> dict[str, dict]:
         if other == p.name or kind(q.spec()) != kind(spec):
             continue
         for o in outcomes(q):
-            ops = [op for op in o["ops"] if transferable(op["path"])] if o["won"] else []
+            ops = [op for op in o["ops"] if transferable(op)] if o["won"] else []
             if ops:
                 found.setdefault(proposal_key({"ops": ops}), {"ops": ops, "won_on": set()})["won_on"].add(other)
     return found

@@ -1,7 +1,11 @@
+import pytest
+
+from byosm.distill import TINY_TEXT as TINY
 from byosm.improve.analyst import _prompt
-from byosm.improve.paths import allowed
+from byosm.improve.paths import allowed, apply_ops
 from byosm.improve.techniques import OTHER, eligible, family, techniques
 from byosm.spec import Label, TaskSpec
+from byosm.spec.backbones import EMBEDDING_MODEL, MINILM, MULTILINGUAL_EMBEDDING_MODEL
 
 EDITABLE = [
     "data.hf_sources",
@@ -19,6 +23,8 @@ EDITABLE = [
     "train.refine_rounds",
     "train.freeze_backbone",
     "train.layer_decay_floor",
+    "train.pairs_per_row",
+    "train.lr_pairs",
     "train.precision",
     "document.route",
     "document.image_backbone",
@@ -44,8 +50,13 @@ RANKED = [
 ]
 
 
-def _spec(modality="text"):
-    return TaskSpec(name="t", description="", modality=modality, labels=[Label(name=n, definition="") for n in "ab"])
+def _spec(modality="text", **fields):
+    labels = [Label(name=n, definition="") for n in "ab"]
+    return TaskSpec(name="t", description="", modality=modality, labels=labels, **fields)
+
+
+def _method(value):
+    return {"op": "set", "path": "train.method", "value": value}
 
 
 def test_every_editable_path_belongs_to_one_available_family_and_seeds_are_left_to_replicas():
@@ -63,8 +74,39 @@ def test_every_ranked_technique_has_an_entry_and_a_planned_one_adds_no_editable_
 def test_a_family_is_offered_only_to_the_kinds_it_fits():
     text = {t.id for t in eligible(_spec())}
     audio = {t.id for t in eligible(_spec("audio"))}
-    assert "targeted-data" in text and "audio-mix" not in text
+    tagger = {t.id for t in eligible(_spec(task_type="frame"))}
+    assert {"targeted-data", "embedding-head", "setfit"} <= text and "audio-mix" not in text
     assert "audio-mix" in audio and "targeted-data" not in audio
+    assert "targeted-data" in tagger and not {"embedding-head", "setfit"} & tagger
+
+
+def test_a_path_pinned_to_a_value_tags_only_edits_that_set_that_value():
+    assert allowed("train.method")
+    assert family([_method("embedding-head")]) == "embedding-head"
+    assert family([_method("setfit"), {"op": "set", "path": "train.pairs_per_row", "value": 20}]) == "setfit"
+    assert family([_method("finetune")]) == OTHER
+
+
+@pytest.mark.parametrize(
+    ("fields", "ops", "backbone"),
+    [
+        ({"backbone": TINY}, [_method("setfit")], EMBEDDING_MODEL),
+        ({"backbone": TINY, "languages": ["en", "it"]}, [_method("embedding-head")], MULTILINGUAL_EMBEDDING_MODEL),
+        ({"backbone": TINY}, [_method("setfit"), {"op": "set", "path": "backbone", "value": TINY}], TINY),
+        ({"backbone": MULTILINGUAL_EMBEDDING_MODEL}, [_method("setfit")], MULTILINGUAL_EMBEDDING_MODEL),
+        ({"backbone": TINY}, [{"op": "set", "path": "train.epochs", "value": 3}], TINY),
+        ({"backbone": MINILM}, [_method("finetune")], MINILM),
+    ],
+)
+def test_switching_to_an_embedding_method_picks_a_sentence_encoder_unless_one_is_named(fields, ops, backbone):
+    assert apply_ops(_spec(**fields), ops).backbone == backbone
+
+
+def test_editing_an_embedding_experiment_keeps_its_encoder():
+    spec = apply_ops(
+        _spec(backbone=TINY), [_method("embedding-head"), {"op": "set", "path": "backbone", "value": TINY}]
+    )
+    assert apply_ops(spec, [{"op": "set", "path": "train.seed", "value": 1}]).backbone == TINY
 
 
 def test_the_proposer_reads_the_catalogue_with_how_often_each_family_was_tried():
@@ -78,3 +120,4 @@ def test_the_proposer_reads_the_catalogue_with_how_often_each_family_was_tried()
     prompt = _prompt(dg)
     assert '"family": "schedule"' in prompt and '"tried": 2' in prompt
     assert "audio-mix" not in prompt and "multi-rate-forecast" not in prompt
+    assert '"train.method=setfit"' in prompt and "=v means set that path to exactly v" in prompt

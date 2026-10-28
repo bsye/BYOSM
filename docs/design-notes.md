@@ -1780,6 +1780,11 @@ Planned families (multi-rate forecasting, routing, input layouts, near-miss nega
 SetFit, label-noise cleaning, weight averaging, learning curves, forecaster pretraining v2, re-initialised layers, a
 small search, R-Drop and mixup, quantile boosting, self-training) become available as each one lands in the pipeline.
 
+Planned families (multi-rate forecasting, routing, input layouts, near-miss negatives, label-noise cleaning, weight
+averaging, learning curves, forecaster pretraining v2, re-initialised layers, a small search, R-Drop and mixup,
+quantile boosting, self-training) become available as each one lands in the pipeline. The embedding-model head and
+SetFit are available.
+
 ## A logistic head on a frozen sentence-embedding model
 
 `train.method: embedding-head` (`byosm/train/embedding.py`) trains no encoder weight. It mean-pools the backbone's
@@ -1822,3 +1827,22 @@ Gotchas: a big training set would make the pass slow for little gain, so the pai
 (20,000) by giving each row fewer; a label with one row gets only different-label pairs. Tuned embeddings change with
 every run, so only `embedding-head` reads the embedding cache. Seeds change which pairs are drawn, so seed replicas
 differ, unlike `embedding-head`, whose replicas are identical.
+
+## Embedding methods in the proposer's catalogue
+
+Both embedding methods edit `train.method`, and a family used to be matched on the path alone, so a SetFit proposal
+would have been tagged as an embedding head. A catalogue path can now pin a value: `train.method=setfit` claims only the
+edits that set that value (`claims` in `byosm/improve/paths.py`), while `allowed` still checks the path without it, and
+the proposer's prompt explains the `=v` form. SetFit also owns `train.pairs_per_row` and `train.lr_pairs`. A family can
+name the task types it fits, so taggers are not offered either method (`task_types` in
+`byosm/improve/techniques.py`).
+
+A head on a frozen MLM encoder is the weak variant: on Banking77 at 10 rows per label, frozen BERT with a small head
+reached 67.55 against 85.19 for frozen sentence encoders ([Casanueva et al.](https://arxiv.org/abs/2003.04807)). So an
+edit that switches a specialist to an embedding method without naming a backbone also switches its encoder to
+`EMBEDDING_MODEL` (all-MiniLM-L6-v2), or to `MULTILINGUAL_EMBEDDING_MODEL` (paraphrase-multilingual-MiniLM-L12-v2)
+when the spec lists a language other than English, unless it already runs one of the `SENTENCE_ENCODERS`
+(`byosm/spec/backbones.py`, `_embedding_encoder` in `byosm/improve/paths.py`). Both are mean-pooled
+sentence-transformers checkpoints, the pooling the head uses. The switch happens in `apply_ops`, which `byosm exp
+create --set`, proposals, ablations and Keep training all go through, so the stored spec always names the encoder that
+ran. A backbone named in the same edit is kept, and later edits to an embedding experiment leave its encoder alone.

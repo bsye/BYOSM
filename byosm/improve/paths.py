@@ -4,9 +4,11 @@ import copy
 from typing import Any
 
 from ..spec import TaskSpec
-from ..spec.sections import HUB_PREFIX
+from ..spec.backbones import SENTENCE_ENCODERS, embedding_model
+from ..spec.sections import FINETUNE, HUB_PREFIX
 
 BACKBONE_PATHS = ("backbone", "document.text_backbone", "document.image_backbone")
+VALUE_MARK = "="
 
 
 def _segment_matches(pattern: str, part: str) -> bool:
@@ -22,10 +24,15 @@ def matches(pattern: str, path: str) -> bool:
     return all(_segment_matches(s, p) for s, p in zip(segments, parts, strict=True))
 
 
+def claims(pattern: str, op: dict) -> bool:
+    where, mark, value = pattern.partition(VALUE_MARK)
+    return matches(where, op["path"]) and (not mark or str(op.get("value")) == value)
+
+
 def allowed(path: str) -> bool:
     from .techniques import allowed_paths
 
-    return any(matches(a, path) for a in allowed_paths())
+    return any(matches(a.partition(VALUE_MARK)[0], path) for a in allowed_paths())
 
 
 def _apply_op(d: dict, o: dict) -> None:
@@ -40,11 +47,18 @@ def _apply_op(d: dict, o: dict) -> None:
         cur[key] = o["value"]
 
 
+def _embedding_encoder(old: TaskSpec, new: TaskSpec, ops: list[dict]) -> TaskSpec:
+    switched = new.train.method not in (old.train.method, FINETUNE)
+    if not switched or new.backbone in SENTENCE_ENCODERS or any(o["path"] == "backbone" for o in ops):
+        return new
+    return new.model_copy(update={"backbone": embedding_model(new.languages)})
+
+
 def apply_ops(spec: TaskSpec, ops: list[dict]) -> TaskSpec:
     d = copy.deepcopy(spec.model_dump(mode="json"))
     for o in ops:
         _apply_op(d, o)
-    return TaskSpec.model_validate(d)
+    return _embedding_encoder(spec, TaskSpec.model_validate(d), ops)
 
 
 def untrainable(ops: list[dict]) -> list[str]:

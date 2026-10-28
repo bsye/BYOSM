@@ -21,14 +21,17 @@ class Technique(BaseModel):
     effect: str
     paths: list[str] = Field(default_factory=list)
     modalities: list[str] = Field(default_factory=list)
+    task_types: list[str] = Field(default_factory=list)
     cost: float = 1.0
     prior: float = 0.5
     evidence: list[str] = Field(default_factory=list)
     status: Literal["available", "built-in", "planned"] = "planned"
     transferable: bool = False
 
-    def fits(self, modality: str) -> bool:
-        return self.status == AVAILABLE and (not self.modalities or modality in self.modalities)
+    def fits(self, modality: str, task_type: str | None = None) -> bool:
+        kind = not self.modalities or modality in self.modalities
+        task = not self.task_types or task_type is None or task_type in self.task_types
+        return self.status == AVAILABLE and kind and task
 
 
 @cache
@@ -41,22 +44,22 @@ def allowed_paths() -> list[str]:
 
 
 def eligible(spec: TaskSpec) -> list[Technique]:
-    return [t for t in techniques() if t.fits(spec.modality)]
+    return [t for t in techniques() if t.fits(spec.modality, spec.task_type)]
 
 
-def family_of_path(path: str) -> str:
-    from .paths import matches
+def family_of_op(op: dict) -> str:
+    from .paths import claims
 
-    return next((t.id for t in techniques() for pattern in t.paths if matches(pattern, path)), OTHER)
+    return next((t.id for t in techniques() for pattern in t.paths if claims(pattern, op)), OTHER)
 
 
 def family(ops: list[dict]) -> str:
-    found = Counter(family_of_path(o["path"]) for o in ops)
+    found = Counter(family_of_op(o) for o in ops)
     return found.most_common(1)[0][0] if found else OTHER
 
 
-def transferable(path: str) -> bool:
-    fid = family_of_path(path)
+def transferable(op: dict) -> bool:
+    fid = family_of_op(op)
     return any(t.id == fid and t.transferable for t in techniques())
 
 

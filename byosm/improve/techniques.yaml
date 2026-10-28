@@ -159,22 +159,24 @@
 - id: embedding-head
   title: Embedding-model head
   effect: "Fits a logistic head on a frozen sentence-embedding model, a floor that trains in seconds."
-  paths: []
+  paths: ["train.method=embedding-head"]
   modalities: [text]
+  task_types: [classify]
   cost: 0.2
   prior: 0.5
-  evidence: [https://arxiv.org/abs/2209.11055]
-  status: planned
+  evidence: [https://arxiv.org/abs/2209.11055, https://arxiv.org/abs/2003.04807]
+  status: available
 
 - id: setfit
   title: Contrastive few-shot
   effect: "Fine-tunes the embedding model on label pairs before the head; strongest below about 30 real rows per label."
-  paths: []
+  paths: ["train.method=setfit", "train.pairs_per_row|lr_pairs"]
   modalities: [text]
+  task_types: [classify]
   cost: 0.6
   prior: 0.5
   evidence: [https://arxiv.org/abs/2209.11055]
-  status: planned
+  status: available
 
 - id: label-noise
   title: Label-noise cleaning

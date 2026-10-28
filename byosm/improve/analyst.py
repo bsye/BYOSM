@@ -58,7 +58,8 @@ def _prompt(dg: dict[str, Any]) -> str:
         f"Experiments tried so far, what each changed from its parent and how it scored on the primary suite "
         f"(calib picks, test is only reported). Do not repeat a change that did not help; combine and build on "
         f"what helped:\n{json.dumps(dg.get('history', []), indent=1)}\n\n"
-        f"Technique catalogue (paths: dotted, | separates alternatives for one segment, * is a list index; "
+        f"Technique catalogue (paths: dotted, | separates alternatives for one segment, * is a list index, "
+        f"=v means set that path to exactly v; "
         f"tried: experiments of this specialist in that family):\n{json.dumps(_catalogue(dg), indent=1)}"
     )
 
