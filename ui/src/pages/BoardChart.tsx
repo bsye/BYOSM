@@ -1,4 +1,5 @@
 import { Bar, BarChart, CartesianGrid, ErrorBar, LabelList, XAxis, YAxis } from "recharts"
+import { INTERVAL_BAR } from "@/chart-size"
 import type { Result } from "@/api"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 
@@ -34,7 +35,7 @@ export function BoardChart({ rows }: { rows: Row[] }) {
         <ChartTooltip content={<ChartTooltipContent />} />
         <ChartLegend content={<ChartLegendContent />} />
         <Bar dataKey="test" fill="var(--color-test)" radius={4}>
-          <ErrorBar dataKey="ci" width={4} strokeWidth={1} />
+          <ErrorBar dataKey="ci" {...INTERVAL_BAR} />
           <LabelList dataKey="reach" position="top" className="fill-muted-foreground" fontSize={11} formatter={(v) => (v == null ? "" : String(v))} />
         </Bar>
         <Bar dataKey="calib" fill="var(--color-calib)" radius={4} />

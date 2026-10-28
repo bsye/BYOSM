@@ -1,5 +1,6 @@
 import { CircleCheck, CircleX, ScanSearch, TriangleAlert, type LucideIcon } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, ErrorBar, XAxis, YAxis } from "recharts"
+import { INTERVAL_BAR } from "@/chart-size"
 import { runJob, type Detail, type Finding, type OverfitReport, type Severity } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { Button } from "@/components/ui/button"
@@ -52,7 +53,7 @@ function Scores({ d, r }: { d: Detail; r: OverfitReport }) {
         <YAxis domain={[low, 1]} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => Number(v).toFixed(2)} />
         <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
         <Bar dataKey="score" fill="var(--color-score)" radius={4}>
-          <ErrorBar dataKey="ci" width={4} strokeWidth={1} />
+          <ErrorBar dataKey="ci" {...INTERVAL_BAR} />
         </Bar>
       </BarChart>
     </ChartContainer>

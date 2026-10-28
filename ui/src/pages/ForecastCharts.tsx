@@ -1,5 +1,6 @@
 import { ShieldAlert } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, ErrorBar, LabelList, Line, LineChart, XAxis, YAxis } from "recharts"
+import { INTERVAL_BAR } from "@/chart-size"
 import { Badge } from "@/components/ui/badge"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -53,7 +54,7 @@ export function ScoreChart({ scores }: { scores: Record<string, Score> }) {
         <YAxis domain={[0.4, 1]} tickLine={false} axisLine={false} width={36} tickFormatter={(v) => Number(v).toFixed(1)} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="auc" fill="var(--color-auc)" radius={4}>
-          <ErrorBar dataKey="ci" width={4} strokeWidth={1} />
+          <ErrorBar dataKey="ci" {...INTERVAL_BAR} />
           <LabelList dataKey="label" position="top" className="fill-muted-foreground" fontSize={11} />
         </Bar>
       </BarChart>

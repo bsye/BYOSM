@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, ErrorBar, XAxis, YAxis } from "recharts"
+import { INTERVAL_BAR } from "@/chart-size"
 import { api } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,7 +59,7 @@ export function OptionsCard({ name }: { name: string }) {
             <ChartLegend content={<ChartLegendContent />} />
             {keys.map((k) => (
               <Bar key={k} dataKey={k} fill={`var(--color-${k})`} radius={4}>
-                <ErrorBar dataKey={`${k}ci`} width={4} strokeWidth={1} />
+                <ErrorBar dataKey={`${k}ci`} {...INTERVAL_BAR} />
               </Bar>
             ))}
           </BarChart>
