@@ -11,9 +11,16 @@ def test_the_next_rung_is_the_smallest_larger_backbone_not_tried_yet(ws):
     p, spec = make_project(ws)
     s = session(p, spec)
     assert p.exp_spec("v1").backbone == MINILM
-    assert escalate.bigger_backbone(s) == "hf:distilbert/distilbert-base-cased"
-    p.save_experiment("v2", spec=spec.model_copy(update={"backbone": "hf:distilbert/distilbert-base-cased"}))
-    assert escalate.bigger_backbone(s) == "hf:microsoft/deberta-v3-xsmall"
+    climbed = []
+    for i in range(4):
+        climbed.append(escalate.bigger_backbone(s))
+        p.save_experiment(f"v{i + 2}", spec=spec.model_copy(update={"backbone": climbed[-1]}))
+    assert climbed == [
+        "hf:jhu-clsp/ettin-encoder-32m",
+        "hf:distilbert/distilbert-base-cased",
+        "hf:jhu-clsp/ettin-encoder-68m",
+        "hf:microsoft/deberta-v3-xsmall",
+    ]
 
 
 def test_a_non_english_specialist_only_climbs_to_backbones_that_speak_its_language(ws):

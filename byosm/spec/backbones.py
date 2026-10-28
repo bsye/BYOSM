@@ -3,6 +3,7 @@ DINOV2_SMALL = "hf:facebook/dinov2-small"
 TINY_CRNN = "tiny-crnn"
 TINY_CNN = "tiny-cnn"
 DOCUMENT_ROUTES = "doc"
+PAIRS = "pairs"
 
 BACKBONES: dict[str, list[dict]] = {
     "text": [
@@ -30,6 +31,38 @@ BACKBONES: dict[str, list[dict]] = {
             "params_m": 71,
             "langs": "en",
             "note": "strongest small English encoder for token tagging (most params are its 128k vocabulary)",
+        },
+        {
+            "id": "hf:jhu-clsp/ettin-encoder-17m",
+            "params_m": 17,
+            "langs": "en",
+            "note": "Ettin: ModernBERT-style, 8k context, MIT",
+        },
+        {
+            "id": "hf:jhu-clsp/ettin-encoder-32m",
+            "params_m": 32,
+            "langs": "en",
+            "note": "Ettin: ModernBERT-style, 8k context, MIT",
+        },
+        {
+            "id": "hf:jhu-clsp/ettin-encoder-68m",
+            "params_m": 68,
+            "langs": "en",
+            "note": "Ettin: ModernBERT-style, 8k context, MIT",
+        },
+        {
+            "id": "hf:cross-encoder/ms-marco-MiniLM-L-6-v2",
+            "params_m": 22,
+            "langs": "en",
+            "note": "reranker start for a pair of texts, such as a request and a tool",
+            "for": PAIRS,
+        },
+        {
+            "id": "hf:cross-encoder/nli-deberta-v3-xsmall",
+            "params_m": 71,
+            "langs": "en",
+            "note": "NLI start for a pair of texts: does the second follow from the first",
+            "for": PAIRS,
         },
         {"id": "hf:distilbert-base-multilingual-cased", "params_m": 135, "langs": "104", "note": "distilled mBERT"},
         {"id": "hf:google-bert/bert-base-multilingual-cased", "params_m": 178, "langs": "104", "note": "mBERT"},

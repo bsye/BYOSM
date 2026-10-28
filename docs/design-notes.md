@@ -1705,3 +1705,12 @@ the lined-up batch, and the autopilot screens the first `screen_eta` proposals o
 A candidate dropped at the rung keeps its attempt, so it counts as a try without a win for the bandit and is not
 proposed again. Rung runs and ablation arms are `auxiliary` runs, hidden from the Runs tab. A rung is a planned
 budget, not a cancellation: every short run finishes.
+
+## Ettin encoders and pair checkpoints join the backbones
+
+Encoders beat same-size decoders on classification, and the Ettin encoders (17M, 32M, 68M, MIT licence) are
+ModernBERT-style models trained on the same recipe at every size, so they fill the gaps in the escalation ladder: from
+MiniLM the next rungs are now Ettin-32M, DistilBERT, Ettin-68M and DeBERTa-v3-xsmall. Two checkpoints trained on pairs
+of texts, the MS MARCO MiniLM reranker (the tool-choice backbone) and an NLI DeBERTa-v3-xsmall, are listed with
+`"for": "pairs"`: the proposer can pick them for a pair task, and the escalation ladder skips them for single-text
+tasks. None of the three Ettin sizes has been trained by BYOSM yet.

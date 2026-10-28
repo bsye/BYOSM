@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from ..spec.backbones import BACKBONES
+from ..spec.backbones import BACKBONES, PAIRS
 from .standing import standing
 from .state import Session
 
@@ -21,7 +21,11 @@ def bigger_backbone(s: Session) -> str | None:
     options = BACKBONES.get(spec.modality, [])
     size = next((b["params_m"] for b in options if b["id"] == spec.backbone), 0)
     tried = {s.p.exp_spec(e).backbone for e in s.p.attempts()}
-    larger = [b for b in options if b["params_m"] > size and b["id"] not in tried and _speaks(b, spec.languages)]
+    larger = [
+        b
+        for b in options
+        if b["params_m"] > size and b["id"] not in tried and _speaks(b, spec.languages) and b.get("for") != PAIRS
+    ]
     return min(larger, key=lambda b: b["params_m"])["id"] if larger else None
 
 
