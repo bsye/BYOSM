@@ -2627,3 +2627,14 @@ A forecaster's promoted version trained before models were saved has nothing to 
 that version's models again with the method, at the same effort, and promotes the result only on a lower calib
 MASE; the same function backs Keep training (`_fit_version` in `byosm/series/run.py`). A run that is refused (no
 promoted version, or the method already in use) records why on the draft, shown on its card and in its step.
+
+## A latency timed on a busy machine does not count
+
+CPU per input is the median of single-input runs taken while the suite is scored, whatever else the machine does.
+tool-choice-held's `v2-r1` showed 670.5 ms against 110.5 ms for `v1`, same size, scored while another training and a
+test run held the CPU: a number that would fail "Fast enough" and line up a distillation the model does not need.
+Scoring now records the load per core next to each latency (`latency_load`, from `load_per_core` in
+`byosm/machine.py`, the same reader as the machine page). Above `BUSY_LOAD` (1.0 per core) the timing is not fair:
+`fair_ms` in `byosm/evals/scoring.py` returns nothing for it, so the speed check says unknown instead of slow and the
+speed rule in promotion ignores it, and the board marks it busy. Timings scored before this have no load and keep
+their value.

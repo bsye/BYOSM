@@ -11,6 +11,7 @@ from ..data.store import STORED_SPLITS, Dataset
 from ..data.sufficiency import data_check
 from ..dataset_search import saved_suggestions
 from ..evals.overfit import OVERFIT
+from ..evals.scoring import busy
 from ..health import health
 from ..hub.facts import suite_dataset
 from ..improve.bandit import search_summary
@@ -40,7 +41,12 @@ def _result(o: Objective, r: dict) -> dict[str, Any]:
     m = r.get("metrics", {})
     per_label = m.get("per_label", {})
     caught = {k: v.get("recall") for k, v in per_label.items()} if len(per_label) == 2 else None
-    return {**{k: r.get(k) for k in RESULT_FIELDS}, "ci": m.get("ci95"), "unreached": unreached(o, m), "caught": caught}
+    shaped = {k: r.get(k) for k in RESULT_FIELDS} | {
+        "ci": m.get("ci95"),
+        "unreached": unreached(o, m),
+        "caught": caught,
+    }
+    return shaped | {"latency_load": r.get("latency_load"), "timed_busy": busy(r)}
 
 
 def _benchmark(spec: TaskSpec, suite: str) -> str:

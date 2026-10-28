@@ -115,6 +115,10 @@ def memory() -> dict[str, Any]:
     }
 
 
+def load_per_core() -> float:
+    return round(os.getloadavg()[0] / (os.cpu_count() or 1), 2)
+
+
 def machine(ws: Path) -> dict[str, Any]:
     import psutil
 
@@ -126,7 +130,7 @@ def machine(ws: Path) -> dict[str, Any]:
         "cpu": {
             "name": _cpu_name(),
             "cores": cores,
-            "load": round(os.getloadavg()[0] / cores, 2),
+            "load": load_per_core(),
             "percent": psutil.cpu_percent(interval=CPU_SAMPLE_S),
         },
         "memory": {

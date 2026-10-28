@@ -77,6 +77,8 @@ export type Result = {
   ci: { lo: number; hi: number } | null
   unreached: number | null
   caught: Record<string, number | null> | null
+  latency_load: number | null
+  timed_busy: boolean
 }
 
 export type Summary = {

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from byosm.promotion import fixes_speed
@@ -15,6 +17,8 @@ SLOW, FAST = {"latency_ms": 163.0}, {"latency_ms": 10.0}
         (FAST, FAST, 0.978, False),
         ({"latency_ms": 150.0}, SLOW, 0.978, False),
         ({}, SLOW, 0.978, False),
+        (FAST, {**SLOW, "latency_load": 3.0}, 0.978 - TOLERANCE, False),
+        ({**FAST, "latency_load": 0.4}, {**SLOW, "latency_load": 0.4}, 0.978 - TOLERANCE, True),
     ],
 )
 def test_a_model_is_promoted_for_speed_only_when_it_meets_the_budget_the_current_one_misses(mine, cur, value, promoted):
@@ -60,3 +64,27 @@ def test_a_faster_student_is_promoted_from_the_board_when_it_is_within_the_toler
     save_board(p, {"v1": {"builtin": result(0.978, 163.0)}, "distill-v1": {"builtin": result(0.956, 10.3)}})
     maybe_promote(p, "distill-v1", lambda _: None)
     assert p.promoted == "distill-v1"
+
+
+def test_a_latency_timed_while_the_machine_was_busy_is_unknown_not_slow(monkeypatch):
+    from byosm.evals import scoring
+    from byosm.health import _speed
+
+    labels = [Label(name="a", definition=""), Label(name="b", definition="")]
+    spec = TaskSpec(name="gate", description="", modality="text", labels=labels, latency_budget_ms=100)
+    assert _speed(spec, {**SLOW, "latency_load": 0.3})["status"] == "warn"
+    busy = _speed(spec, {**SLOW, "latency_load": 2.5})
+    assert busy["status"] == "unknown" and "busy" in busy["value"]
+
+    class Timed:
+        def stream_chunk_ms(self):
+            return None
+
+        def latency_ms(self, x):
+            return 12.0
+
+    monkeypatch.setattr("byosm.machine.load_per_core", lambda: 1.7)
+    monkeypatch.setattr(scoring, "get_modality", lambda spec, root: type("M", (), {"load": staticmethod(lambda r: r)}))
+    out = {}
+    scoring._add_speed(out, Timed(), spec, [{"input": "x"}], Path("."))
+    assert out == {"latency_ms": 12.0, "latency_load": 1.7} and scoring.fair_ms(out) is None

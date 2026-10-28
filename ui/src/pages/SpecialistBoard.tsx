@@ -105,7 +105,14 @@ export function Board({ d }: { d: Detail }) {
                     </TableCell>
                   ))}
                   <TableCell className="text-foreground/70 tabular-nums">{params(res.params)}</TableCell>
-                  <TableCell className="text-foreground/70 tabular-nums">{ms(res.latency_ms)}</TableCell>
+                  <TableCell className="text-foreground/70 tabular-nums">
+                    {ms(res.latency_ms)}
+                    {res.timed_busy && (
+                      <Badge variant="outline" className="text-muted-foreground ml-2 font-normal" title={`Timed at ${res.latency_load} load per core`}>
+                        busy
+                      </Badge>
+                    )}
+                  </TableCell>
                 </TableRow>
               )
             })}

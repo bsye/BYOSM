@@ -15,6 +15,7 @@ from ..rt import hysteresis
 from ..spec import TaskSpec
 from .grouped import grouped_metrics
 
+BUSY_LOAD = 1.0
 FramePairs = list[tuple[np.ndarray, np.ndarray]]
 ACTIVATION_GRID = np.linspace(0.1, 0.9, 33)
 CI_RESAMPLES = 500
@@ -133,6 +134,15 @@ def _add_threshold_free(m: dict[str, Any], spec: TaskSpec, yt: np.ndarray, pt: n
         m["avg_precision"] = float(average_precision_score(binary, pt[:, spec.pos_index]))
 
 
+def busy(result: dict[str, Any]) -> bool:
+    load = result.get("latency_load")
+    return load is not None and load > BUSY_LOAD
+
+
+def fair_ms(result: dict[str, Any]) -> float | None:
+    return None if busy(result) else result.get("latency_ms")
+
+
 def _add_speed(out: dict[str, Any], pred: Predictor, spec: TaskSpec, test: list[dict], root: Path) -> None:
     ck = pred.stream_chunk_ms()
     if ck is not None:
@@ -142,6 +152,10 @@ def _add_speed(out: dict[str, Any], pred: Predictor, spec: TaskSpec, test: list[
     timed = (spec.task_type == "classify" or spec.modality == "text") and not getattr(pred, "wants_rows", False)
     lat = pred.latency_ms(mod.load(test[0])) if timed else None
     out["latency_ms"] = round(lat, 3) if lat is not None and not math.isnan(lat) else None
+    if out["latency_ms"] is not None:
+        from ..machine import load_per_core
+
+        out["latency_load"] = load_per_core()
 
 
 def score(

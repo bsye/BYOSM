@@ -8,6 +8,7 @@ from .evals.fresh import overfit_health
 from .evals.overfit import OVERFIT
 from .evals.real import real_check
 from .evals.robust import robust_check
+from .evals.scoring import busy
 from .evals.selection import SURE_LEAD, compare
 from .export.bundle import exported_current
 from .health_score import CHECK_TITLES, FAIL, OK, UNKNOWN, WARN, check, graded, report
@@ -139,6 +140,12 @@ def _speed(spec: TaskSpec, mine: dict) -> dict:
         return check(
             "speed", CHECK_TITLES["speed"], 1, UNKNOWN, "not timed", "No latency measured for the current model."
         )
+    if busy(mine):
+        why = (
+            f"Timed while the machine ran at {mine['latency_load']:g} load per core, so it is not a fair CPU latency. "
+            "Score it again when the machine is quiet."
+        )
+        return check("speed", CHECK_TITLES["speed"], 1, UNKNOWN, f"{ms:.1f} ms, timed while busy", why)
     status = graded(ms, budget, budget * SLOW_FACTOR, False)
     return check(
         "speed",

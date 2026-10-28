@@ -5,6 +5,7 @@ from statistics import mean
 from typing import Any
 
 from . import evals
+from .evals.scoring import fair_ms
 from .project import Project
 from .replicas import beyond_seed_noise, clean_runs, recipe_runs, replicate, runs, seed_sd
 from .soup import shipped
@@ -14,7 +15,7 @@ Log = Callable[[str], None]
 
 
 def fixes_speed(spec: TaskSpec, mine: dict, cur: dict, mine_value: float, cur_value: float) -> bool:
-    ms, was, budget = mine.get("latency_ms"), cur.get("latency_ms"), spec.latency_budget_ms
+    ms, was, budget = fair_ms(mine), fair_ms(cur), spec.latency_budget_ms
     in_budget = ms is not None and was is not None and ms <= budget < was
     return in_budget and mine_value >= cur_value - spec.speed_tolerance
 
