@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from functools import cache
+from functools import cache, reduce
 from pathlib import Path
 from typing import Literal
 
@@ -22,6 +22,7 @@ class Technique(BaseModel):
     paths: list[str] = Field(default_factory=list)
     modalities: list[str] = Field(default_factory=list)
     task_types: list[str] = Field(default_factory=list)
+    requires: list[str] = Field(default_factory=list)
     cost: float = 1.0
     prior: float = 0.5
     evidence: list[str] = Field(default_factory=list)
@@ -34,6 +35,10 @@ class Technique(BaseModel):
         return self.status == AVAILABLE and kind and task
 
 
+def present(spec: TaskSpec, path: str) -> bool:
+    return reduce(lambda part, key: getattr(part, key, None), path.split("."), spec) is not None
+
+
 @cache
 def techniques() -> tuple[Technique, ...]:
     return tuple(Technique.model_validate(t) for t in yaml.safe_load(CATALOGUE.read_text()))
@@ -44,7 +49,9 @@ def allowed_paths() -> list[str]:
 
 
 def eligible(spec: TaskSpec) -> list[Technique]:
-    return [t for t in techniques() if t.fits(spec.modality, spec.task_type)]
+    return [
+        t for t in techniques() if t.fits(spec.modality, spec.task_type) and all(present(spec, r) for r in t.requires)
+    ]
 
 
 def family_of_op(op: dict) -> str:

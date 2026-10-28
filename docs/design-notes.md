@@ -1652,10 +1652,14 @@ proposal and every past experiment is tagged with the family of the paths it edi
 families that fit the specialist with how often each was tried, and is asked to spread its proposals over them.
 `train.seed` left the editable paths: seeds are trained by the replicas, not proposed.
 
-Planned families (input layouts, near-miss negatives, an embedding-model head, SetFit, label-noise cleaning, weight
-averaging, learning curves, forecaster pretraining v2, re-initialised layers, a small search, R-Drop and mixup,
-quantile boosting, self-training) become available as each one lands in the pipeline. Multi-rate forecasting and
-routing are available to forecasters through Keep training (below).
+Planned families (an embedding-model head, SetFit, label-noise cleaning, weight averaging, learning curves,
+forecaster pretraining v2, re-initialised layers, a small search, R-Drop and mixup, quantile boosting, self-training)
+become available as each one lands in the pipeline. Multi-rate forecasting and routing are available to forecasters
+through Keep training (below). Input layouts (`data.pairs.layouts`, `mask_names`, `paraphrases`) and near-miss
+negatives (`data.pairs.near_misses`) are available. A family can also list `requires`, spec paths that must be set for
+it to fit (`eligible`): both pair families require `data.pairs`, so they are offered only to a specialist made by
+`byosm options new`, whose pair table they rewrite. The held-out fields (`held_out_apis`, `held_out_layouts`) are in no
+family, because they decide calib and test.
 
 ## A bandit shares the trials out over technique families
 

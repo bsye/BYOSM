@@ -4,7 +4,7 @@ from byosm.distill import TINY_TEXT as TINY
 from byosm.improve.analyst import _prompt
 from byosm.improve.paths import allowed, apply_ops
 from byosm.improve.techniques import OTHER, eligible, family, techniques
-from byosm.spec import Label, TaskSpec
+from byosm.spec import Label, PairPlan, TaskSpec
 from byosm.spec.backbones import EMBEDDING_MODEL, MINILM, MULTILINGUAL_EMBEDDING_MODEL
 
 EDITABLE = [
@@ -30,6 +30,10 @@ EDITABLE = [
     "document.image_backbone",
     "predict.rates",
     "predict.routing",
+    "data.pairs.layouts",
+    "data.pairs.mask_names",
+    "data.pairs.paraphrases",
+    "data.pairs.near_misses",
 ]
 RANKED = [
     "multi-rate-forecast",
@@ -121,3 +125,22 @@ def test_the_proposer_reads_the_catalogue_with_how_often_each_family_was_tried()
     assert '"family": "schedule"' in prompt and '"tried": 2' in prompt
     assert "audio-mix" not in prompt and "multi-rate-forecast" not in prompt
     assert '"train.method=setfit"' in prompt and "=v means set that path to exactly v" in prompt
+
+
+PAIR_FAMILIES = {"input-layouts", "near-miss-negatives"}
+
+
+def test_pair_families_are_offered_only_to_a_specialist_with_a_pair_plan_and_their_edits_make_a_valid_spec():
+    plain, pairs = _spec(), _spec()
+    pairs.data.pairs = PairPlan()
+    assert not PAIR_FAMILIES & {t.id for t in eligible(plain)} and {t.id for t in eligible(pairs)} >= PAIR_FAMILIES
+    ops = [
+        {"op": "set", "path": "data.pairs.layouts", "value": ["marked", "json", "openai"]},
+        {"op": "set", "path": "data.pairs.mask_names", "value": 0.3},
+        {"op": "set", "path": "data.pairs.paraphrases", "value": 2},
+        {"op": "set", "path": "data.pairs.near_misses", "value": ["nearest", "removed"]},
+    ]
+    assert [family([o]) for o in ops] == ["input-layouts"] * 3 + ["near-miss-negatives"]
+    edited = apply_ops(pairs, ops).data.pairs
+    assert (edited.layouts, edited.mask_names, edited.paraphrases) == (["marked", "json", "openai"], 0.3, 2)
+    assert edited.near_misses == ["nearest", "removed"]

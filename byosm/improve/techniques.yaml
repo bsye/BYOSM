@@ -138,23 +138,25 @@
 
 - id: input-layouts
   title: Varied input layouts
-  effect: "Trains on several layouts of the same input, with tool names masked and requests paraphrased."
-  paths: []
+  effect: "Trains on several layouts of each pair (marked, json, openai, prose), masks tool names on a share of rows and adds LLM paraphrases of each request."
+  paths: ["data.pairs.layouts|mask_names|paraphrases"]
+  requires: [data.pairs]
   modalities: [text]
   cost: 1.2
   prior: 0.6
   evidence: [https://arxiv.org/abs/2608.16502]
-  status: planned
+  status: available
 
 - id: near-miss-negatives
   title: Near-miss negatives
-  effect: "Mines negatives that look like positives and has the strongest judge relabel each one."
-  paths: []
+  effect: "Mines negatives that look like positives (nearest, same_category, missing_parameter, removed) and has the judge relabel each one."
+  paths: [data.pairs.near_misses]
+  requires: [data.pairs]
   modalities: [text]
   cost: 1.3
   prior: 0.6
   evidence: [https://arxiv.org/abs/2310.14192]
-  status: planned
+  status: available
 
 - id: embedding-head
   title: Embedding-model head
