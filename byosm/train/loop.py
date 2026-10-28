@@ -12,7 +12,7 @@ from ..data.store import BASE_TRAIN, CALIB
 from ..events import emit, stage
 from ..spec import TaskSpec
 from ..spec.sections import FINETUNE
-from .common import sized_model, targets_of
+from .common import sized_model
 from .embedding import fit_embedding
 from .evaluate import evaluate_rows
 from .gpu import gpu_slot
@@ -107,10 +107,7 @@ def _fit(
     s = prepare(spec, data_dir, log, seed, splits)
     if spec.train.init_from:
         s.train += replay(spec, s.train, s.dev + s.ds.load(CALIB) + s.ds.load("test"), s.rng, log)
-    log(f"  loading {len(s.train)} train / {len(s.dev)} dev examples")
-    train_raw = s.mod.load_many(s.train)
-    dev_raw = s.mod.load_many(s.dev)
-    train_t = targets_of(spec, s.mod, s.train)
+    train_raw, dev_raw, train_t = s.loaded(spec, log)
     model, n_params = sized_model(spec, s.mod, dev, log)
     if spec.train.init_from:
         warm_start(model, spec, log)

@@ -15,7 +15,7 @@ from ..modalities import Modality
 from ..model import SpecialistModel
 from ..spec import TaskSpec
 from ..spec.sections import SETFIT
-from .common import head_of, sized_model, targets_of, to_device
+from .common import head_of, sized_model, to_device
 from .contrastive import contrastive
 from .evaluate import evaluate_rows
 from .outputs import build_meta, finish, snapshot
@@ -94,9 +94,7 @@ def fit_embedding(
     dev: str,
 ) -> tuple[dict[str, Any], list[Any]]:
     s = prepare(spec, data_dir, log, seed, splits)
-    log(f"  loading {len(s.train)} train / {len(s.dev)} dev examples")
-    train_raw, dev_raw = s.mod.load_many(s.train), s.mod.load_many(s.dev)
-    y = targets_of(spec, s.mod, s.train)
+    train_raw, dev_raw, y = s.loaded(spec, log)
     model, n_params = sized_model(spec, s.mod, dev, log)
     model.to(dev)
     t0 = time.time()

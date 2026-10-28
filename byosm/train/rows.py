@@ -4,12 +4,14 @@ import random
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import torch
 
 from ..data.store import BASE_TRAIN, Dataset
 from ..modalities import Modality, get_modality
 from ..spec import TaskSpec
+from .common import targets_of
 
 
 def split_rows(
@@ -42,6 +44,10 @@ class Prepared:
     train: list[dict]
     dev: list[dict]
     n_folded: int
+
+    def loaded(self, spec: TaskSpec, log: Callable[[str], None]) -> tuple[list[Any], list[Any], list[Any]]:
+        log(f"  loading {len(self.train)} train / {len(self.dev)} dev examples")
+        return self.mod.load_many(self.train), self.mod.load_many(self.dev), targets_of(spec, self.mod, self.train)
 
     def counts(self, n_teacher_only: int = 0) -> dict[str, int]:
         return {
