@@ -2594,3 +2594,13 @@ read from `byosm/series/steps.py` through `/api/next-steps/<name>`; each fix say
 LLM" writes a lab method, and there is no "Do all" because the ready loop drives specialists only. A forecaster's
 method that fails or loses gets a revision for approval like any other; one its promoted version already trains with
 is refused (`RefusedError`) without an error on the draft or a revision.
+
+## A manual experiment that repeats another attempt is refused
+
+The ready loop's LLM proposed near-miss negatives for tool-choice-held and created `v2` with them a minute before a
+manual `byosm exp create ... --set data.pairs.near_misses=[...]` made the same change as `near-miss`: the GPU then
+trained one idea twice. `improve --apply` already refused a proposal whose changes an earlier attempt makes;
+`exp create` did not. Both now go through `same_attempt` in `byosm/improve/proposals.py`, which compares the
+normalised changes (`proposal_key`). A manual experiment is refused when a different attempt makes the same changes,
+with the command that builds that one; recreating the same experiment name is allowed, so a next step can be run
+again, and `--force` trains the changes again on purpose.

@@ -155,6 +155,21 @@ def test_a_proposal_that_already_ran_is_refused_unless_forced(ws):
     assert improve.apply("t", ["longer"], force=True) != first
 
 
+def test_a_manual_experiment_with_the_changes_of_another_attempt_is_refused_unless_forced(ws):
+    from typer.testing import CliRunner
+
+    from byosm.cli import app
+
+    p, spec = make_project(ws)
+    _saved(p, {"id": "longer", "why": "", "ops": [{"op": "set", "path": "train.epochs", "value": 9}]})
+    first = improve.apply("t", ["longer"])
+    create = ["exp", "create", "t", "again", "--set", "train.epochs=9"]
+    refused = CliRunner().invoke(app, create)
+    assert refused.exit_code != 0 and first in refused.output and "again" not in p.attempts()
+    assert CliRunner().invoke(app, ["exp", "create", "t", first, "--set", "train.epochs=9"]).exit_code == 0
+    assert CliRunner().invoke(app, [*create, "--force"]).exit_code == 0 and "again" in p.attempts()
+
+
 def test_a_proposal_whose_build_never_finished_reuses_its_experiment(ws):
     p, spec = make_project(ws)
     _saved(p, {"id": "longer", "why": "", "ops": [{"op": "set", "path": "train.epochs", "value": 9}]})

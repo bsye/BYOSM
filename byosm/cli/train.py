@@ -147,11 +147,13 @@ def exp_create(
         str | None, typer.Option(help="start from this experiment's spec (default: base spec.yaml)")
     ] = None,
     run: Annotated[bool, typer.Option("--run", help="build the experiment right after creating it")] = False,
+    force: Annotated[bool, typer.Option("--force", help="create it even if an attempt makes the same changes")] = False,
 ) -> None:
     """e.g. byosm exp create doctype visual --set document.route=visual"""
     import yaml
 
     from ..improve import apply_ops
+    from ..improve.proposals import same_attempt
 
     p, spec = _spec(name)
     if base:
@@ -162,6 +164,9 @@ def exp_create(
         ops.append({"op": "set", "path": k, "value": yaml.safe_load(v)})
     created = apply_ops(spec, ops)
     proposal = {"parent": base, "applied": [{"id": "manual", "why": " ".join(set_), "ops": ops}]}
+    if (same := same_attempt(p, proposal["applied"])) not in (None, exp) and not force:
+        built = "built" if same in p.experiments() else f"not built yet: byosm build {name} --exp {same}"
+        raise typer.BadParameter(f"{same} already makes these changes ({built}); pass --force to train it again")
     p.save_experiment(exp, spec=created, proposal=proposal)
     log(f"created {name}/{exp} ({', '.join(set_)}); data key {created.data_key()} -> byosm build {name} --exp {exp}")
     if run:

@@ -83,7 +83,8 @@ def _applied(p: Project, exp: str) -> list[dict]:
     return (p.proposal(exp) or {}).get("applied", [])
 
 
-def _same_attempt(p: Project, keys: set[str]) -> str | None:
+def same_attempt(p: Project, chosen: list[dict]) -> str | None:
+    keys = {proposal_key(pr) for pr in chosen}
     return next((e for e in p.attempts() if {proposal_key(a) for a in _applied(p, e)} == keys), None)
 
 
@@ -101,7 +102,7 @@ def apply(name: str, ids: list[str], exp: str | None = None, force: bool = False
     chosen = [pr for pr in saved["proposals"] if pr["id"] in ids]
     if len(chosen) != len(ids):
         raise KeyError(f"unknown proposal ids: {set(ids) - {pr['id'] for pr in chosen}}")
-    if (same := _same_attempt(p, {proposal_key(pr) for pr in chosen})) and not force:
+    if (same := same_attempt(p, chosen)) and not force:
         if same not in p.experiments():
             return same
         raise AlreadyTriedError(f"{', '.join(ids)} already ran as {same}")
