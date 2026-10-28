@@ -15,6 +15,7 @@ type Proposal = {
   effect: string
   paper: string
   kinds: string[] | null
+  lab: boolean
   gain: string | null
   how: string | null
   status: "proposed" | "accepted" | "rejected"
@@ -25,7 +26,6 @@ type Proposal = {
 type Scan = { read: number; proposed: number; kept: number }
 type Scouted = { last_run: number | null; due: boolean; every_days: number; proposals: Proposal[]; last_scan?: Scan | null }
 
-const LAB_KINDS = ["text", "audio", "image", "document", "series"]
 const KIND_NAMES: Record<string, string> = { text: "text classifiers", series: "forecasters", audio: "audio", image: "images", document: "documents" }
 const kindNames = (kinds: string[] | null) => (kinds ?? []).map((k) => KIND_NAMES[k] ?? k).join(", ") || "this kind"
 const dayOf = (t: number) => new Date(t * 1000).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
@@ -38,7 +38,7 @@ function byDay(items: Proposal[]): [string, Proposal[]][] {
 
 function TryIt({ p, refresh }: { p: Proposal; refresh: () => void }) {
   const [busy, setBusy] = useState(false)
-  if (!(p.kinds ?? []).some((k) => LAB_KINDS.includes(k)))
+  if (!p.lab)
     return (
       <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
         No lab for {kindNames(p.kinds)} yet

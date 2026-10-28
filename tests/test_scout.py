@@ -116,11 +116,17 @@ def test_a_forecasting_technique_goes_to_the_labs_of_the_forecasters_with_the_lo
     monkeypatch.setattr("byosm.series.published.scores", lambda config, naive_mase: {})
     series = {"id": "s1", "title": "DHF", "paper": "https://arxiv.org/abs/2", "effect": "e", "kinds": ["series"]}
     audio = {"id": "a1", "title": "VAD", "paper": "https://arxiv.org/abs/3", "effect": "e", "kinds": ["audio"]}
-    save_workspace_report(ws, "scout", {"last_run": 1, "seen": [], "proposals": [series, audio]})
+    risk = {"id": "r1", "title": "Survival", "paper": "https://arxiv.org/abs/4", "effect": "e", "kinds": ["table"]}
+    save_workspace_report(ws, "scout", {"last_run": 1, "seen": [], "proposals": [series, audio, risk]})
     submitted = []
     app = create_app(ws, "")
     app.state.runner.submit = lambda args: submitted.append(args)
     with TestClient(app, base_url="http://127.0.0.1") as c:
+        assert {p["id"]: p["lab"] for p in c.get("/api/scout").json()["proposals"]} == {
+            "s1": True,
+            "a1": True,
+            "r1": False,
+        }
         assert c.post("/api/scout/s1/try").status_code == 422
         for domain, ours in (("ahead", 0.7), ("behind", 0.95), ("near", 0.82)):
             save_forecaster(ws, domain, ours=ours, rival=0.8)
