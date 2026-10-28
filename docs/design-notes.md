@@ -2067,3 +2067,12 @@ from twice the data. The `more-data` rule stays silent while the stored curve of
 below the seed noise (or 0.002 when the noise is unknown). Curve runs are auxiliary: they never promote and are hidden
 from the Runs tab. New sources found by the dataset search are still offered, since they bring other data rather than
 more of the same.
+
+## A student learns from the average of its teacher's seeds
+
+Distilling an ensemble of finalists into one student is worth about as much as the ensemble without its serving cost.
+A distilled student now takes its soft targets from the teacher and up to `train.distill_seeds - 1` (2 by default)
+of the teacher recipe's trained seed runs, averaged row by row (`teachers` and `averaged` in `byosm/train/teacher.py`);
+a teacher with no seed runs teaches alone as before, and `distill_seeds: 1` restores the single teacher. Since a
+recipe has seed runs only after it reached the finalist vote, this is the merge step for the seeded finalists. Not
+measured on a specialist yet.

@@ -23,29 +23,45 @@ def _teacher_targets(
     dev: str,
     log: Callable[[str], None],
 ) -> tuple[list[Any], list[Any], list[Any]]:
-    from ..predictors import ExperimentPredictor
     from ..project import Project
 
-    p, name = Project(spec.name), teacher_dir.name
-    tspec = p.exp_spec(name)
-    teacher_dev = dev if spec.task_type == "classify" else "cpu"
-    teacher = ExperimentPredictor(tspec, p.meta(name), teacher_dir, name, device=teacher_dev)
-    tmod = get_modality(tspec, str(data_dir))
+    p = Project(spec.name)
     seen = {str(r["input"]) for r in train_rows}
     unlabeled = [r for r in ds.unlabeled() if r.get("source") != TRAIN_INPUTS and str(r["input"]) not in seen]
     extra = unlabeled[: spec.train.distill_unlabeled]
     rows = train_rows + extra
-    log(
-        f"  distill: teacher {teacher_dir.name} ({teacher.params / 1e6:.1f}M) "
-        f"labels {len(train_rows)} train + {len(extra)} unlabeled inputs"
+    names = teachers(p, teacher_dir.name, spec.train.distill_seeds)
+    log(f"  distill: {' + '.join(names)} label {len(train_rows)} train + {len(extra)} unlabeled inputs, averaged")
+    soft = averaged([_probs(spec, p, teacher_dir.parent / n, data_dir, rows, dev) for n in names])
+    extra_t = (
+        [[IGNORE] * len(s) for s in soft[len(train_rows) :]] if spec.task_type == "frame" else [IGNORE] * len(extra)
     )
-    if spec.task_type == "frame":
-        soft = [teacher.frame_probs(tmod.load(r)) for r in rows]
-        extra_t = [[IGNORE] * len(s) for s in soft[len(train_rows) :]]
-    else:
-        soft = list(teacher.probs_batch(tmod.load_many(rows)))
-        extra_t = [IGNORE] * len(extra)
     return soft, mod.load_many(extra), extra_t
+
+
+def teachers(p: Any, name: str, k: int) -> list[str]:
+    from ..replicas import recipe_runs
+
+    seeds = [e for e in recipe_runs(p, name) if e != name and p.meta(e)]
+    return [name, *seeds][: max(1, k)]
+
+
+def averaged(per_teacher: list[list[Any]]) -> list[Any]:
+    return [np.mean(np.stack(row), axis=0) for row in zip(*per_teacher, strict=True)]
+
+
+def _probs(spec: TaskSpec, p: Any, run_dir: Path, data_dir: Path, rows: list[dict], dev: str) -> list[Any]:
+    from ..predictors import ExperimentPredictor
+
+    name = run_dir.name
+    tspec = p.exp_spec(name)
+    teacher = ExperimentPredictor(
+        tspec, p.meta(name), run_dir, name, device=dev if spec.task_type == "classify" else "cpu"
+    )
+    tmod = get_modality(tspec, str(data_dir))
+    if spec.task_type == "frame":
+        return [teacher.frame_probs(tmod.load(r)) for r in rows]
+    return list(teacher.probs_batch(tmod.load_many(rows)))
 
 
 def soft_batch(

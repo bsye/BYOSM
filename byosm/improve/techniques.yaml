@@ -201,12 +201,12 @@
 
 - id: ensemble-distillation
   title: Ensemble distillation
-  effect: "Distils the averaged predictions of the top finalists into one student of the shipped size."
+  effect: "A student distilled from a seeded recipe learns the averaged predictions of up to three of its seed runs."
   paths: []
-  cost: 1.0
+  cost: 0.0
   prior: 0.3
   evidence: [https://arxiv.org/html/2506.15692]
-  status: planned
+  status: built-in
 
 - id: learning-curve
   title: Learning-curve check
