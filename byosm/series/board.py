@@ -74,3 +74,10 @@ def reports(ws: Path) -> list[dict[str, Any]]:
 
     found = {r["domain"]: with_published(r) for r in workspace_reports(ws, REPORT).values() if r}
     return [found.get(d) or {"domain": d, "at": None} for d in [*DOMAINS, *(k for k in found if k not in DOMAINS)]]
+
+
+def promoted_reports(ws: Path) -> list[dict[str, Any]]:
+    from ..archive import archived
+
+    shelved = archived(ws)
+    return [r for r in reports(ws) if r["at"] and r.get("promoted") and r["domain"] not in shelved]

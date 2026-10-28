@@ -4,10 +4,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from ..series.steps import PRETRAINING, pretraining_step
+
 CPU, GPU = "cpu", "gpu"
 MODEL, FORECAST = "model", "forecast"
-PRETRAINING = "pretraining-v2"
-FORECAST_ROUNDS = 2
 
 
 @dataclass(frozen=True)
@@ -43,32 +43,13 @@ def _models(ws: Path, names: list[str] | None) -> list[str]:
 
 
 def _forecasters(ws: Path, names: list[str] | None) -> list[dict[str, Any]]:
-    from ..archive import archived
-    from ..series.board import reports
+    from ..series.board import promoted_reports
 
-    shelved = archived(ws)
-    found = [r for r in reports(ws) if r["at"] and r.get("promoted") and r["domain"] not in shelved]
-    return [r for r in found if names is None or r["domain"] in names]
+    return [r for r in promoted_reports(ws) if names is None or r["domain"] in names]
 
 
 def known(ws: Path) -> set[str]:
     return {*_models(ws, None), *(r["domain"] for r in _forecasters(ws, None))}
-
-
-def _forecast_step(report: dict[str, Any]) -> dict[str, Any] | None:
-    from ..series.escalation import tried
-    from ..series.patch import pretrained
-    from ..series.recipe import V2
-
-    if tried(report, V2):
-        return None
-    found = {"id": PRETRAINING, "model": report["promoted"]}
-    if pretrained(V2) is None:
-        why = "No forecaster was trained on the v2 recipe yet. Pretrains its base once, for every domain."
-        return {**found, "why": why, "args": ["series", "pretrain", "--recipe", V2.name]}
-    domain = report["domain"]
-    why = f"No version of {domain} was trained on the v2 base. Adds versions until one beats the best rival; v2 comes once more training stops helping."
-    return {**found, "why": why, "args": ["series", "run", domain, "--until-rival", "--rounds", str(FORECAST_ROUNDS)]}
 
 
 def steps(ws: Path, specialist: str, kind: str) -> list[dict[str, Any]]:
@@ -76,7 +57,7 @@ def steps(ws: Path, specialist: str, kind: str) -> list[dict[str, Any]]:
     from ..project import Project
 
     if kind == FORECAST:
-        return [s for r in _forecasters(ws, [specialist]) if (s := _forecast_step(r))]
+        return [s for r in _forecasters(ws, [specialist]) if (s := pretraining_step(r))]
     model = Project(specialist, ws).promoted
     return [{**s, "model": model} for s in suggestions_or_none(specialist, ws) if s["id"] in MEASUREMENTS]
 
@@ -109,5 +90,5 @@ def plan(ws: Path, names: list[str] | None = None) -> list[dict[str, Any]]:
     if names and (unknown := sorted(set(names) - known(ws))):
         raise KeyError(f"no specialist or forecaster named {', '.join(unknown)}")
     models = [cell(n, MODEL, s) for n in _models(ws, names) for s in steps(ws, n, MODEL)]
-    forecasts = [cell(r["domain"], FORECAST, s) for r in _forecasters(ws, names) if (s := _forecast_step(r))]
+    forecasts = [cell(r["domain"], FORECAST, s) for r in _forecasters(ws, names) if (s := pretraining_step(r))]
     return ordered(models + forecasts)

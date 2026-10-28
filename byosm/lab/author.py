@@ -7,7 +7,7 @@ from typing import Any
 from ..project import Project
 from .contract import CONTRACTS
 from .drafts import drafts, save_draft, update
-from .owners import Owner, kind_of, owner
+from .owners import Forecaster, Owner, kind_of, owner
 
 ROLE = "lab"
 ERROR_CHARS = 800
@@ -15,6 +15,9 @@ FENCE = "```"
 EARLIER = "Methods written before, with their outcome or error; fix or avoid what failed:"
 HEALTH = "Health of the promoted model; the method should clear what is not ok:"
 STEPS = "Next steps the system lines up on its own:"
+FORECASTING = """Forecasting domain {name}: one model per recipe is trained on all of its datasets ({datasets}) at once.
+Scores are MASE and CRPS on held-out windows, lower is better; the board divides each by seasonal naive's, a version
+is picked and promoted on the calib windows, and test is only reported."""
 SYSTEM = """You are a machine-learning researcher. Write one new training method for {model}, aimed at {goal}, and
 different from what was tried. Return a short name, the hypothesis it tests, and the code of the module.
 
@@ -65,8 +68,23 @@ def _loop(dg: dict[str, Any]) -> list[str]:
     return [f"{HEALTH}\n{json.dumps(dg.get('health', []))}", f"{STEPS}\n{json.dumps(dg.get('next_steps', []))}"]
 
 
+def _forecaster_facts(f: Forecaster) -> list[str]:
+    from ..series.diagnosis import diagnose
+
+    dg = diagnose(f.ws, f.name)
+    return [
+        FORECASTING.format(name=f.name, datasets=", ".join(dg["datasets"])),
+        f"Promoted version and its options:\n{json.dumps(dg['promoted'])}",
+        f"Best rival on the datasets both were scored on, both relative to seasonal naive:\n{json.dumps(dg['rival'])}",
+        f"Scores per dataset of every model the promoted version was scored with:\n{json.dumps(dg['board'])}",
+        *_loop(dg),
+        f"Versions trained so far:\n{json.dumps(dg['versions'])}",
+    ]
+
+
 def _prompt(found: Owner, instruction: str, paper: str = "", log: Callable[[str], None] = print) -> str:
-    parts = [*_classifier_facts(found), f"{EARLIER}\n{json.dumps(_earlier(found))}", *_paper(paper, log)]
+    facts = _forecaster_facts(found) if isinstance(found, Forecaster) else _classifier_facts(found)
+    parts = [*facts, f"{EARLIER}\n{json.dumps(_earlier(found))}", *_paper(paper, log)]
     return "\n\n".join(parts + ([f"The owner asks: {instruction}"] if instruction else []))
 
 

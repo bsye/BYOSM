@@ -73,3 +73,44 @@ def test_the_app_lists_and_approves_the_methods_of_a_forecaster(ws):
         assert [m["kind"] for m in c.get("/api/specialists/demo/lab").json()] == [FORECASTER]
         assert c.post(f"/api/specialists/demo/lab/{d['id']}", json={"status": "approved"}).json()["status"] == APPROVED
         assert c.get("/api/specialists/nothing/lab").status_code == 404
+
+
+def test_a_failing_rival_check_points_at_the_next_technique_then_at_the_lab(ws, monkeypatch):
+    from byosm.series.health import health
+    from byosm.series.steps import next_steps
+
+    monkeypatch.setenv("BYOSM_CACHE", str(ws / "cache"))
+
+    def rival(report):
+        return next(c for c in health(report)["checks"] if c["id"] == "rival")
+
+    behind = save_forecaster(ws, "demo", ours=0.9, rival=0.8)
+    assert rival(behind)["techniques"] == ["Multi-rate forecasting"] and rival(behind)["args"][:2] == ["series", "run"]
+    monkeypatch.setattr("byosm.series.prediction.next_technique", lambda report: None)
+    assert rival(behind)["techniques"] == ["Lab method"] and rival(behind)["args"] == ["lab", "write", "demo"]
+    steps = next_steps(behind)
+    assert steps[0]["args"] == ["lab", "write", "demo"] and steps[-1]["id"] == "pretraining-v2"
+    ahead = save_forecaster(ws, "ahead", ours=0.7, rival=0.8)
+    assert rival(ahead)["args"] is None and "techniques" not in rival(ahead)
+
+
+def test_the_author_writes_a_forecaster_method_from_its_board_health_and_next_steps(ws, monkeypatch):
+    from byosm.lab import author
+
+    monkeypatch.setenv("BYOSM_CACHE", str(ws / "cache"))
+    save_forecaster(ws, "demo")
+    asked = []
+
+    class Writer:
+        def json(self, system, prompt, schema):
+            asked.append((system, prompt))
+            return {"name": "jitter", "hypothesis": "scale noise", "code": JITTER}
+
+    monkeypatch.setattr("byosm.llm.get_llm", lambda role: Writer())
+    d = author.write("demo", "decouple the horizons", lambda _: None)
+    system, prompt = asked[0]
+    assert d["kind"] == FORECASTER and not d["problems"] and drafts(owner("demo"))[0]["id"] == d["id"]
+    assert "patch transformers" in system and "def window(" in system and "def rows(" not in system
+    for part in ("datasets (a)", "Scores per dataset", "Timestral-5M", "Beats the best rival", "Try Multi-rate"):
+        assert part in prompt, part
+    assert "Methods written before" in prompt and prompt.endswith("The owner asks: decouple the horizons")

@@ -5,10 +5,12 @@ from typing import Any
 
 from ..health_score import FAIL, OK, UNKNOWN, WARN, check, report
 from .specialist import NAIVE, best_rival, promoted_version
+from .steps import keep_training, write_method
 
 AGREE_OK, AGREE_WARN = 0.10, 0.25
 WIDTH_OK, WIDTH_WARN = 0.05, 0.15
 RIVAL_NEAR = 0.05
+LAB_METHOD = "lab-method"
 
 
 def _naive(configs: dict[str, Any], ours: str) -> dict:
@@ -51,6 +53,16 @@ def _certainty(version: dict[str, Any]) -> dict:
     return check("certainty", "Precise score", 1, status, f"±{width / 2:.3f}", why)
 
 
+def _next_fix(report_: dict[str, Any]) -> dict[str, Any]:
+    from ..improve.techniques import techniques
+    from .prediction import next_technique
+
+    titles, found, domain = {t.id: t.title for t in techniques()}, next_technique(report_), report_["domain"]
+    if found:
+        return {"techniques": [titles[found[0]]], "args": keep_training(domain)}
+    return {"techniques": [titles[LAB_METHOD]], "args": write_method(domain)}
+
+
 def _rival(report_: dict[str, Any]) -> dict:
     rival = best_rival(report_)
     why = "The hardest rival on the datasets both were scored on, as MASE relative to seasonal naive."
@@ -58,7 +70,8 @@ def _rival(report_: dict[str, Any]) -> dict:
         return check("rival", "Beats the best rival", 3, UNKNOWN, "no rival scored", why)
     ahead = rival["score"] - rival["ours"]
     status = OK if ahead > 0 else WARN if ahead > -RIVAL_NEAR else FAIL
-    return check("rival", "Beats the best rival", 3, status, f"{ahead:+.3f} vs {rival['name']}", why)
+    found = check("rival", "Beats the best rival", 3, status, f"{ahead:+.3f} vs {rival['name']}", why)
+    return found if status == OK else {**found, **_next_fix(report_)}
 
 
 def health(report_: dict[str, Any]) -> dict[str, Any] | None:

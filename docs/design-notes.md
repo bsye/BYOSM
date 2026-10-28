@@ -2564,3 +2564,14 @@ versions built from a promoted one, so Keep training goes on training the patch 
 method is rejected later, those rounds stop with "not approved" instead of training without it. The catalogue's
 `lab-method` entry now covers `fit.lab_method` and targets `rival`. Not measured: no lab method has run on a GIFT-Eval
 forecaster yet; the tests use fakes and a tiny patch transformer on the CPU.
+
+**Writing a forecaster's method.** `byosm lab write <domain>` (and "Write a method" on the forecaster's Lab tab) gives
+the `lab` role the forecaster contract and `diagnose` from `byosm/series/diagnosis.py`: the datasets, the promoted
+version with its options, the best rival on the datasets both were scored on, calib MASE, test MASE and CRPS per
+dataset for every model the promoted version was scored with, the health checks, the next steps and every version so
+far, then the earlier methods with their outcome or error and the owner's ask. Its goal is a lower calib MASE than the
+promoted version, to beat the rival and clear the checks that are not ok. The classifier prompt now reads its next
+steps as well. To close the loop, a forecaster's "Beats the best rival" check, when it is not ok, names its fix: the
+technique Keep training tries next ("Try Multi-rate forecasting", `series run <domain> --until-rival`) or, once none is
+left at the promoted effort, "Try Lab method" (`lab write <domain>`). `next_steps` in `byosm/series/steps.py` lists
+those fixes and the pretraining v2 step, which moved there from the measure plan, so both read one rule.
