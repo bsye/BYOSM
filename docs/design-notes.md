@@ -1675,3 +1675,12 @@ The Runs tab shows the search: families tried, sure leads, GPU time per sure lea
 sure leads per family. Experiments from before verdicts were recorded count as a win only if they are the promoted
 model. Numeric values inside a family are still the proposer's choice; a TPE sampler is left for the short-run rungs
 of step 5, since it needs Optuna or a hand-written sampler.
+
+## Label noise is cleaned by out-of-fold loss and the judge
+
+LLM-written and panel-labelled training rows carry some wrong labels, and the model learns them. With
+`data.clean_labels: true` (off by default, a `label-noise` family the proposer can choose), the data build scores
+every training row with a cheap character n-gram TF-IDF and logistic-regression model trained on the other folds
+(`byosm/data/noise.py`, five folds), sends the 10% with the highest out-of-fold loss (at most 2,000) to the judge model,
+and drops the ones the judge labels differently. Only train is cleaned: calib and test keep their rows so the clean-up
+cannot flatter the score. It has not been measured on a specialist yet.

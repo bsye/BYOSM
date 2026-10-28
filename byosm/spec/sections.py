@@ -84,6 +84,7 @@ class DataPlan(BaseModel):
     per_call: int = 25
     max_minutes: float = 120.0
     judge: bool = True
+    clean_labels: bool = False
     hf_queries: list[str] = Field(default_factory=list)
     hf_sources: list[HFSource] = Field(default_factory=list)
     local_dir: str | None = None

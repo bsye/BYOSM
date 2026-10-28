@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from ..spec import HFSource, TaskSpec
-from . import audio_mix, budget, hf_source, panel, segments
+from . import audio_mix, budget, hf_source, noise, panel, segments
 from .splits import HELD, _group_split3, _hold_out, _split3, carve_calib
 from .store import CALIB, TEST_SHARE, TRAIN_INPUTS, Dataset, dedupe, record, write
 from .table import is_table, table_rows
@@ -186,6 +186,7 @@ def build(
         labelled = panel.label_pool(spec, splits, unlabeled, data_dir, log, reviewed)
         held = splits["dev"] + splits[CALIB] + splits["test"]
         splits["train"] += dedupe(labelled, against=held) if spec.modality == "text" else labelled
+    splits["train"] = noise.cleaned(spec, splits["train"], cfg, log)
     for s, rows in splits.items():
         ds.save(s, rows)
     unlabeled += [record(r["input"], None, TRAIN_INPUTS) for r in splits["train"]]

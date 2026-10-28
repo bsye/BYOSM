@@ -178,13 +178,13 @@
 
 - id: label-noise
   title: Label-noise cleaning
-  effect: "Ranks training rows by out-of-fold loss and has a judge from another model family relabel the worst."
-  paths: []
+  effect: "Ranks training rows by out-of-fold loss and drops the worst ones the judge model disagrees with."
+  paths: [data.clean_labels]
   modalities: [text]
-  cost: 2.0
+  cost: 1.3
   prior: 0.4
   evidence: [https://arxiv.org/abs/2205.12702]
-  status: planned
+  status: available
 
 - id: weight-averaging
   title: Seed soups and distillation
