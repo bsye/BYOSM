@@ -1609,3 +1609,17 @@ Each training records `calib_held` in its metadata. A model trained before the s
 picked its epoch, so it can no longer win a promotion on a builtin suite (`clean_selection` in
 `byosm/evals/selection.py`); it stays promoted until a model trained on the new dev beats it. The existing datasets
 were split once, and builtin scores carry the split in their fingerprint so every model is scored again on calib.
+
+## A lead must beat seed noise before it wins
+
+A single training per experiment let a lucky seed win promotion and an unlucky one bury a good idea. When a new model
+leads the promoted one on calib, `maybe_promote` (`byosm/promotion.py`) now trains both recipes again on other seeds
+until each has `finalist_seeds` (3 by default, in `spec.yaml`) runs whose calib was held out. Replicas are named
+`<recipe>-s<k>` (`byosm/replicas.py`) and never promote themselves. The vote then uses the mean calib score over seeds,
+a paired bootstrap that resamples the same calib rows for every seed of both sides (`bootstrap_runs` in
+`byosm/resample.py`), and a seed-noise bar: the lead must exceed 1.96 pooled seed standard deviations times
+sqrt(1/n_a + 1/n_b). The pooled standard deviation comes from every recipe with more than one clean run, so it is
+measured once per specialist and reused.
+
+The health page shows the noise as "Seed noise measured", a warning rather than a blocker while the promoted model has
+one seed, and `byosm seeds <name>` trains the missing seeds.

@@ -45,6 +45,7 @@ class TaskSpec(BaseModel):
     backbone: str = MINILM
     latency_budget_ms: float = 10.0
     speed_tolerance: float = 0.01
+    finalist_seeds: int = 3
     frame_hop_ms: float = 10.0
     data: DataPlan = Field(default_factory=DataPlan)
     train: TrainCfg = Field(default_factory=TrainCfg)

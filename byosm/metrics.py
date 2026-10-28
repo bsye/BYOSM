@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_recall_fscore_support, roc_auc_score
 
-from .resample import bootstrap_stats
+from .resample import bootstrap_runs
 from .rt import spans
 from .spec import Objective, TaskSpec
 
@@ -185,8 +185,15 @@ def objective_of_units(spec: TaskSpec, u: dict[str, Any]) -> float:
     return _objective_of_stats(spec, _unit_stats(spec, u).sum(0))
 
 
+def bootstrap_seeds(
+    spec: TaskSpec, a: list[dict[str, Any]], b: list[dict[str, Any]] | None = None, n: int = 1000, seed: int = 0
+) -> dict[str, float]:
+    sb = [_unit_stats(spec, u) for u in b] if b is not None else None
+    sa = [_unit_stats(spec, u) for u in a]
+    return bootstrap_runs(sa, sb, lambda summed: _objective_of_stats(spec, summed), n, seed)
+
+
 def bootstrap(
     spec: TaskSpec, a: dict[str, Any], b: dict[str, Any] | None = None, n: int = 1000, seed: int = 0
 ) -> dict[str, float]:
-    sb = _unit_stats(spec, b) if b is not None else None
-    return bootstrap_stats(_unit_stats(spec, a), sb, lambda summed: _objective_of_stats(spec, summed), n, seed)
+    return bootstrap_seeds(spec, [a], None if b is None else [b], n, seed)

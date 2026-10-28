@@ -31,14 +31,14 @@ def test_near_duplicates_and_clips_of_one_recording_stay_on_the_same_side():
 
 def _spec():
     labels = [Label(name="a", definition=""), Label(name="b", definition="")]
-    return TaskSpec(name="tc", description="", modality="text", labels=labels)
+    return TaskSpec(name="tc", description="", modality="text", labels=labels, finalist_seeds=1)
 
 
 def test_a_model_trained_before_calib_was_held_out_cannot_win_promotion_on_the_builtin_suite(ws):
     from conftest import save_board
 
-    from byosm.pipeline import maybe_promote
     from byosm.project import Project
+    from byosm.promotion import maybe_promote
 
     p = Project("tc").ensure()
     p.save_spec(_spec())

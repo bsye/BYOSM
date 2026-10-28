@@ -14,6 +14,7 @@ from .data.store import CALIB, Dataset, refine_split, rounds_split
 from .events import stage
 from .held_out import adopt_data, bigger_held_out
 from .project import WEIGHTS, Project
+from .promotion import maybe_promote
 from .spec import TaskSpec
 from .train import fit
 from .train.input_length import fitted_max_len
@@ -87,6 +88,7 @@ def build(
     log: Callable[[str], None] = print,
     force_data: bool = False,
     data_seconds: float | None = None,
+    promote: bool = True,
 ) -> dict[str, Any]:
     p = Project(name).ensure()
     cfg = load_config(p.ws)
@@ -126,47 +128,11 @@ def build(
 
     log("[eval] scoring on every suite (+ baselines, cached)")
     evals.run(name, log=log)
+    if not promote:
+        return p.board().get(exp, {})
     bigger = bigger_held_out(p)
     if bigger and bigger[0] == exp:
         log(f"[benchmark] {exp} built a held-out set big enough to tell models apart; adopting it")
         adopt_data(name, exp, log)
         return p.board().get(exp, {})
     return maybe_promote(p, exp, log)
-
-
-def fixes_speed(spec: TaskSpec, mine: dict, cur: dict, mine_value: float, cur_value: float) -> bool:
-    ms, was, budget = mine.get("latency_ms"), cur.get("latency_ms"), spec.latency_budget_ms
-    in_budget = ms is not None and was is not None and ms <= budget < was
-    return in_budget and mine_value >= cur_value - spec.speed_tolerance
-
-
-def maybe_promote(p: Project, exp: str, log: Callable[[str], None] = print) -> dict[str, Any]:
-    base = p.spec()
-    prim = base.primary_suite()
-    board = p.board()
-    a, b = board.get(exp, {}).get(prim), board.get(p.promoted or "", {}).get(prim) if p.promoted else None
-    mine, cur = evals.selection_value(a), evals.selection_value(b)
-    mine = -1 if mine is None else mine
-    cur = -1 if cur is None else cur
-    cmp = evals.compare(base, a, b) if b else None
-    sig = f", P(better)={cmp['p_better']:.2f}" if cmp else ""
-    test = f"; test {a['objective']:.4f}" if a else ""
-    if p.promoted and not evals.clean_selection(p, base, exp):
-        log(
-            f"  kept {p.promoted}: {exp} trained before calib was held out of dev, so its calib score is not a fair vote"
-        )
-    elif mine > cur and evals.sure_lead(cmp):
-        p.promote(exp)
-        log(f"  promoted {exp}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{sig}){test}")
-    elif a and b and fixes_speed(base, a, b, mine, cur):
-        was = p.promoted
-        p.promote(exp)
-        log(
-            f"  promoted {exp}: within {base.speed_tolerance} of {was} on {prim} calib ({mine:.4f} vs {cur:.4f}) "
-            f"and inside the {base.latency_budget_ms:g} ms budget that {was} misses{test}"
-        )
-    elif mine > cur:
-        log(f"  kept {p.promoted}: {exp}'s calib lead {mine:.4f} over {cur:.4f} is not sure{sig}{test}")
-    else:
-        log(f"  kept {p.promoted}: {prim} calib {cur:.4f} >= {exp} {mine:.4f}{sig}{test}")
-    return board.get(exp, {})

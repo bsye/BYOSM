@@ -11,6 +11,7 @@ from .health_score import FAIL, OK, UNKNOWN, WARN, check, graded, report
 from .metrics import CONSTRAINED, unreached
 from .model_refs import family, llm_model, model_ref
 from .project import Project
+from .replicas import seeds_check
 from .spec import TaskSpec
 
 TARGET_NEAR = 0.05
@@ -205,6 +206,7 @@ def checks(p: Project, spec: TaskSpec) -> list[dict]:
         _robustness(p, spec, board, prim),
         _data(p, spec),
         _certainty(mine),
+        seeds_check(p, prim),
         _weakest(mine),
         _speed(spec, mine),
         _size(p, board, prim, mine),

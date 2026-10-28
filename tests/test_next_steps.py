@@ -40,7 +40,7 @@ def test_the_untried_proposals_form_one_experiments_step(ws):
 def test_unscored_rivals_a_missing_overfit_check_one_suite_and_a_stale_export_are_suggested_in_order(ws):
     _specialist(ws, n_test=500, n_calib=200)
     ids = [s["id"] for s in suggestions("qa")]
-    assert ids == ["score-rivals", "propose", "overfit", "robust", "export"]
+    assert ids == ["score-rivals", "propose", "overfit", "robust", "seeds", "export"]
 
 
 def test_a_specialist_with_no_model_is_built_first(ws):

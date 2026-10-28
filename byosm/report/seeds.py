@@ -3,17 +3,12 @@ from __future__ import annotations
 from statistics import mean, stdev
 
 from ..project import Project
+from ..replicas import SEED_SEP, recipe_of
 from .cells import STALE, fold_note, folded, stale_ids, stale_note, train_rows
 
 SEEDS = "seeds"
-SEED_SEP = "-s"
 MIN_SEEDS = 2
 IGNORED = {"seed"}
-
-
-def _group(pid: str) -> str | None:
-    head, sep, tail = pid.rpartition(SEED_SEP)
-    return head if sep and head and tail.isdigit() else None
 
 
 def scored(p: Project, suite: str) -> dict[str, dict]:
@@ -23,7 +18,7 @@ def scored(p: Project, suite: str) -> dict[str, dict]:
 def _by_recipe_and_fingerprint(by: dict[str, dict]) -> dict[str, dict[str, list[str]]]:
     out: dict[str, dict[str, list[str]]] = {}
     for pid in sorted(by):
-        g = _group(pid)
+        g = recipe_of(pid)
         if g:
             out.setdefault(g, {}).setdefault(str(by[pid].get("fingerprint")), []).append(pid)
     return out

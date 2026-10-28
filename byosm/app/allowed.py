@@ -24,6 +24,7 @@ ALLOWED_COMMANDS = (
     "request-data",
     "check-data",
     "promote",
+    "seeds",
     "exp",
     "suite",
     "baseline",

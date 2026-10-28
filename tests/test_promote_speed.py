@@ -1,6 +1,6 @@
 import pytest
 
-from byosm.pipeline import fixes_speed
+from byosm.promotion import fixes_speed
 from byosm.spec import Label, TaskSpec
 
 TOLERANCE = 0.01
@@ -34,8 +34,8 @@ def test_a_specialist_can_trade_more_accuracy_for_meeting_its_latency_budget():
 def test_a_faster_student_is_promoted_from_the_board_when_it_is_within_the_tolerance(ws):
     from conftest import save_board
 
-    from byosm.pipeline import maybe_promote
     from byosm.project import Project
+    from byosm.promotion import maybe_promote
 
     p = Project("tc").ensure()
     labels = [Label(name="a", definition=""), Label(name="b", definition="")]

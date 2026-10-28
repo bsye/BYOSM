@@ -32,12 +32,14 @@ STEP_CHECKS = {
     "faster": ("speed",),
     "robust": ("robust",),
     "export": ("export",),
+    "seeds": ("seeds",),
 }
 FIX_TITLES = {
     "overfit": "Check for overfitting",
     "robust": "Score on inputs it never saw",
     "export": "Export the current model",
     "size": "Distill into a smaller model",
+    "seeds": "Measure seed noise",
 }
 COMMAND_TITLES = {"continue": "Train on varied inputs"}
 
