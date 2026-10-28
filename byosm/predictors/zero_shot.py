@@ -83,7 +83,7 @@ class ZeroShotLLM(Predictor):
         return text, imgs
 
     def _prompt(self, chunk: list[dict], mod: Any) -> tuple[str, list[bytes]]:
-        from ..data.synth_text import _context
+        from ..data.prompts import task_context
 
         items, images = [], []
         for j, r in enumerate(chunk):
@@ -93,7 +93,7 @@ class ZeroShotLLM(Predictor):
             ref = image_ref(first, len(images), len(imgs))
             items.append(f"Item {j + 1}{ref}:" + (f"\n{text}" if text else ""))
         body = "\n\n".join(items)
-        prompt = f"{_context(self.spec, self.label_space)}\n\n{body}\n\nReturn one label for each of the {len(chunk)} items, each with its item number n."
+        prompt = f"{task_context(self.spec, self.label_space)}\n\n{body}\n\nReturn one label for each of the {len(chunk)} items, each with its item number n."
         return prompt, images
 
     def _labels(self, chunk: list[dict], mod: Any, schema: dict) -> list[str]:
@@ -124,7 +124,7 @@ class ZeroShotLLM(Predictor):
         return out
 
     def _tags(self, chunk: list[dict]) -> list[list[str]]:
-        from ..data.synth_text import _context
+        from ..data.prompts import task_context
 
         words = [str(r["input"]).split() for r in chunk]
         body = "\n".join(f"Item {j + 1} words: {json.dumps(w, ensure_ascii=False)}" for j, w in enumerate(words))
@@ -132,7 +132,7 @@ class ZeroShotLLM(Predictor):
         tag = {"type": "array", "items": {"type": "string", "enum": self.spec.label_names}}
         item = {"type": "object", "properties": {"tags": tag}}
         schema = {"type": "object", "properties": {"items": {"type": "array", "items": item}}}
-        got = self.llm.json(SYSTEM, f"{_context(self.spec)}\n\n{body}\n\n{ask}", schema).get("items", [])
+        got = self.llm.json(SYSTEM, f"{task_context(self.spec)}\n\n{body}\n\n{ask}", schema).get("items", [])
         return [(got[j].get("tags", []) if j < len(got) else []) for j in range(len(chunk))]
 
     def frame_rows(self, rows: list[dict], mod: Any) -> list[np.ndarray]:

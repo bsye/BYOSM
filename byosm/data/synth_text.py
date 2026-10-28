@@ -8,7 +8,8 @@ from typing import Any
 from ..events import emit
 from ..llm import get_llm, parallel_calls, pmap
 from ..spec import TaskSpec
-from .prompts import ANALYZE_SYSTEM, EVAL_SYSTEM, GEN_SYSTEM, JUDGE_SYSTEM, REFINE_SCHEMA
+from .judge import judge
+from .prompts import ANALYZE_SYSTEM, EVAL_SYSTEM, GEN_SYSTEM, REFINE_SCHEMA, task_context
 from .store import dedupe, record
 
 USER_INSTRUCTIONS = "\n\nFollow these extra instructions from the user: "
@@ -20,17 +21,6 @@ def role(split: str) -> str:
 
 def calls(n: int, per_call: int) -> int:
     return max(1, -(-n // per_call))
-
-
-def _label_block(spec: TaskSpec, names: list[str] | None = None) -> str:
-    return "\n".join(f'- "{lab.name}": {lab.definition}' for lab in spec.labels if names is None or lab.name in names)
-
-
-def _context(spec: TaskSpec, names: list[str] | None = None) -> str:
-    return (
-        f"Task: {spec.summary or spec.description}\nInputs: {spec.input_description}\nLanguages: {', '.join(spec.languages)}\n"
-        f"Labels:\n{_label_block(spec, names)}"
-    )
 
 
 def _schema(spec: TaskSpec) -> dict:
@@ -88,44 +78,9 @@ def _gen_prompt(spec: TaskSpec, job: dict, adversarial: bool, avoid: list[str]) 
     else:
         target = f'Write {job["k"]} examples. About 70% labeled "{job["label"]}", ~30% near-misses that look like "{job["label"]}" but truly belong to another label (labeled correctly).'
     return (
-        f"{_context(spec)}\n\nSituation for this batch: {combo}\n\nHard cases to weave in where natural:\n{hard}\n\n"
+        f"{task_context(spec)}\n\nSituation for this batch: {combo}\n\nHard cases to weave in where natural:\n{hard}\n\n"
         f"Do NOT resemble these existing examples (style, opening, structure):\n{avoid_s}\n\n{target}\n(variation seed {job['seed']})"
     )
-
-
-def judge(
-    spec: TaskSpec,
-    rows: list[dict],
-    cfg: dict | None = None,
-    workers: int | None = None,
-    log: Callable[[str], None] = print,
-) -> list[dict]:
-    if spec.task_type == "frame" or not rows:
-        return rows
-    llm = get_llm("judge", cfg)
-    verdict = {"n": {"type": "integer"}, "label": {"type": "string", "enum": [*spec.label_names, "__drop__"]}}
-    schema = {
-        "type": "object",
-        "properties": {"labels": {"type": "array", "items": {"type": "object", "properties": verdict}}},
-    }
-    chunks = [rows[i : i + 40] for i in range(0, len(rows), 40)]
-
-    def run(chunk: list[dict]) -> list[dict]:
-        listing = "\n".join(f"{i + 1}. {r['input']}" for i, r in enumerate(chunk))
-        ask = f"Return {len(chunk)} labels, each with its input's number n."
-        out = llm.json(JUDGE_SYSTEM, f"{_context(spec)}\n\nInputs:\n{listing}\n\n{ask}", schema)
-        labs = {v.get("n"): v.get("label") for v in out.get("labels", []) if isinstance(v, dict)}
-        return [r for i, r in enumerate(chunk, 1) if labs.get(i) == r["label"]]
-
-    kept = [
-        r
-        for part in pmap(
-            run, chunks, workers or parallel_calls(cfg), on_error=lambda e: log(f"  judge batch failed: {e}")
-        )
-        for r in part
-    ]
-    log(f"  judge kept {len(kept)}/{len(rows)} ({len(kept) / max(1, len(rows)):.0%} agreement)")
-    return kept
 
 
 def generate(
@@ -174,7 +129,7 @@ def generate(
 def _pattern_prompt(spec: TaskSpec, p: dict, k: int, combo: dict) -> str:
     situation = "; ".join(f"{a}={v}" for a, v in combo.items())
     return (
-        f"{_context(spec)}\n\nThe model systematically fails on this pattern:\n{p['name']}: {p['explanation']}\n\n"
+        f"{task_context(spec)}\n\nThe model systematically fails on this pattern:\n{p['name']}: {p['explanation']}\n\n"
         f"Write {k} new, varied training examples following this recipe: {p['data_recipe']}\n"
         f"Situation: {situation}. Include both sides of the boundary, labeled correctly."
     )
@@ -197,7 +152,7 @@ def refine_jobs(spec: TaskSpec, errors: list[dict], n: int, cfg: dict | None = N
         f"[{e['id']}] gold={e['gold']} pred={e['pred']} p={e['confidence']:.2f}: {str(e['input'])[:300]}"
         for e in errors[:150]
     )
-    prompt = f"{_context(spec)}\n\nDev errors ({len(errors)} total):\n{listing}"
+    prompt = f"{task_context(spec)}\n\nDev errors ({len(errors)} total):\n{listing}"
     out = get_llm("analyze", cfg).json(ANALYZE_SYSTEM, prompt, REFINE_SCHEMA)
     pats = [p for p in out.get("patterns", []) if p.get("data_recipe")]
     return _pattern_jobs(spec, pats, n, random.Random(len(errors))), out

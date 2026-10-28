@@ -5,8 +5,9 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..config import TESTSET_PER_LABEL, TESTSET_SUITE, load_config
+from ..data.judge import JUDGE_ROLE, judge
 from ..data.store import STORED_SPLITS, Dataset, append, dedupe, label_counts, read
-from ..data.synth_text import generate, judge
+from ..data.synth_text import generate
 from ..db.rows import splits
 from ..events import stage
 from ..llm import role_model
@@ -15,7 +16,6 @@ from ..spec import EvalSuite, TaskSpec
 from .suites import CALIB_EVERY_NTH_ITEM, freeze, suite_dir
 
 WRITER_ROLE = "eval"
-JUDGE_ROLE = "judge"
 WRITTEN_SPLIT = "test"
 OVERSAMPLE = 2
 MAX_ROUNDS = 4

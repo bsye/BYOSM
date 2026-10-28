@@ -76,8 +76,9 @@ def probe(texts: list[str], labels: list[str]) -> dict[str, Any] | None:
 
 def judge(spec: TaskSpec, texts: list[str], suspects: list[dict], cfg: dict | None) -> list[dict]:
     from ..llm import get_llm, parallel_calls, pmap
+    from .judge import JUDGE_ROLE
 
-    llm = get_llm("judge", cfg)
+    llm = get_llm(JUDGE_ROLE, cfg)
     defs = "\n".join(f"- {lab.name}: {lab.definition}" for lab in spec.labels)
     schema = {
         "type": "object",

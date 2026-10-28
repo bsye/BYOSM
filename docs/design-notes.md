@@ -102,9 +102,11 @@ baseline graded on test sets it wrote. Point `eval` and `baseline` at other mode
 the separation (see "LLM roles fall back to `default`" for how a role entry is merged).
 
 **A second labeller removes label noise.**
-`byosm/data/synth_text.py` `judge`: the `judge` role relabels each generated row blind, and only rows where both labels
+`byosm/data/judge.py` `judge`: the `judge` role relabels each generated row blind, and only rows where both labels
 agree are kept. Label noise caps the precision a tiny model can reach, and this is cheap insurance. It is a second
-opinion only when `judge` is configured as a different model.
+opinion only when `judge` is configured as a different model. `judge_labels` returns the judge's own label for each
+input in order (none where a batch failed or the judge dropped it), so a step that needs the judge's label rather than
+its agreement, such as relabelling mined near-miss pairs, asks it the same way.
 
 **Refinement learns from dev errors.**
 `byosm/pipeline.py` `refine`, `byosm/data/synth_text.py` `refine_jobs`: the `analyze` role reads the dev errors and

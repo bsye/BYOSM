@@ -1,3 +1,19 @@
+from __future__ import annotations
+
+from ..spec import TaskSpec
+
+
+def label_block(spec: TaskSpec, names: list[str] | None = None) -> str:
+    return "\n".join(f'- "{lab.name}": {lab.definition}' for lab in spec.labels if names is None or lab.name in names)
+
+
+def task_context(spec: TaskSpec, names: list[str] | None = None) -> str:
+    return (
+        f"Task: {spec.summary or spec.description}\nInputs: {spec.input_description}\nLanguages: {', '.join(spec.languages)}\n"
+        f"Labels:\n{label_block(spec, names)}"
+    )
+
+
 GEN_SYSTEM = """You write training data for a tiny, single-purpose classifier. Inputs must look exactly like what the \
 deployed model will receive in production: realistic, varied, messy where reality is messy (typos, fragments, slang, \
 code-switching, missing punctuation) and never templated. Vary length, structure, vocabulary and openings aggressively. \
