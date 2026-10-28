@@ -4,6 +4,7 @@ from typing import Any
 
 from .auto.standing import best_baseline
 from .data.sufficiency import ENOUGH, MIN_TEST_ITEMS, THIN, data_check
+from .evals.fresh import overfit_health
 from .evals.overfit import OVERFIT
 from .evals.selection import SURE_LEAD, compare
 from .export.bundle import exported_current
@@ -97,14 +98,6 @@ def _target(p: Project, spec: TaskSpec, mine: dict) -> dict:
         why += f" Unreachable at this budget: the autopilot tried every larger backbone ({', '.join(stuck['tried'])})."
         value += ", unreachable at this budget"
     return check("target", "Meets the target", 2, status, value, why)
-
-
-def _overfit(p: Project) -> dict:
-    r = p.report(OVERFIT)
-    if not r or r.get("experiment") != p.promoted:
-        why = "No overfitting check for the current model."
-        return check("overfit", "No overfitting", 2, UNKNOWN, "not checked", why, ["overfit", p.name])
-    return check("overfit", "No overfitting", 2, r["verdict"], r["verdict"], r["summary"])
 
 
 def _data(p: Project, spec: TaskSpec) -> dict | None:
@@ -202,7 +195,7 @@ def checks(p: Project, spec: TaskSpec) -> list[dict]:
     found = [
         _rival(p, spec, board, prim, mine),
         _target(p, spec, mine),
-        _overfit(p),
+        overfit_health(p, spec, p.report(OVERFIT)),
         _robustness(p, spec, board, prim),
         _data(p, spec),
         _certainty(mine),

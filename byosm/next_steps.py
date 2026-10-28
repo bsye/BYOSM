@@ -45,7 +45,7 @@ FIX_TITLES = {
     "size": "Distill into a smaller model",
     "seeds": "Measure seed noise",
 }
-COMMAND_TITLES = {"continue": "Train on varied inputs"}
+COMMAND_TITLES = {"continue": "Train on varied inputs", "testset": "Write new test cases"}
 
 
 def _step(sid: str, title: str, why: str, args: list[str]) -> dict[str, Any]:

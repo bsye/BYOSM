@@ -15,6 +15,7 @@ from ..improve.diagnosis import scored_experiment, training_summary
 from ..project import Project
 from ..spec import EvalSuite, TaskSpec
 from ..train.rows import split_rows
+from . import fresh
 from . import overfit_checks as checks
 from .board import experiment_predictor
 from .dumps import _dumps
@@ -24,7 +25,7 @@ from .suites import fingerprint, stored
 
 TRAIN_SAMPLE = 1000
 SAMPLE_SEED = 0
-OVERFIT_VERSION = "1"
+OVERFIT_VERSION = "2"
 OVERFIT = "overfit"
 VERDICTS = {
     "ok": "No sign of overfitting or leakage.",
@@ -120,9 +121,14 @@ def _report(p: Project, base: TaskSpec, exp: str, train: dict, train_rows: list[
     scores |= {"calib": r.get("calib_objective"), "test": r["objective"]}
     findings = [checks.gap(scores["train"], scores["dev"], scores["calib"], scores["test"])]
     findings += _drifts(base, results) + _overlaps(p, base, spec, train_rows, results)
-    findings += _selection(base, board, exp, prim) + [_curve(p, exp, spec)]
+    findings += _selection(base, board, exp, prim) + [_curve(p, exp, spec)] + fresh.finding(base, results)
     verdict = checks.worst(findings)
     skipped = [] if spec.modality == "text" else ["train/test overlap, because only text inputs are compared"]
+    skipped += (
+        []
+        if fresh.required(spec)
+        else ["new test cases, because writing a test set is supported for classification only"]
+    )
     head = {"specialist": p.name, "experiment": exp, "suite": prim, "metric": base.objective.metric}
     verdicts = {"verdict": verdict, "summary": VERDICTS[verdict], "scores": scores, "train": train}
     return {**head, **verdicts, "findings": findings, "skipped": skipped}

@@ -28,6 +28,7 @@ TITLES = {
     "overlap": "Train/test overlap",
     "selection": "Selection pressure",
     "curve": "Learning curve",
+    "fresh": "New test cases",
 }
 
 

@@ -2231,3 +2231,16 @@ Adding BFCL, When2Call or eot-bench took a command nobody would know to type. Th
 public benchmarks" (`suite public <name>`) whenever a public benchmark fits the specialist's labels and language and is
 not one of its suites yet (`_public` in `byosm/next_steps.py`), so the ready loop adds them, after their protocol
 check, before it judges the rival and robustness checks.
+
+## New test cases are a mandatory part of the overfitting check
+
+A model can learn the quirks of its own benchmark (its layout, its source, its label conventions) and still score
+well on that benchmark's test split. The overfitting check now has a sixth finding, "New test cases"
+(`byosm/evals/fresh.py`): the drop from the primary suite's test score to the score on an LLM-written suite
+(`byosm testset`, rows written for the task and deduplicated against the training data) is ok up to 0.05, a warning up
+to 0.15 and a failure beyond. For classifiers it is mandatory: while the promoted model has not been scored on such a
+suite, the "No overfitting" health check stays unknown, which blocks production readiness, and its step writes the test
+set ("Write new test cases"); once the suite is scored, the step runs the check again. Kinds that cannot write test sets
+yet (taggers, forecasters) are judged without it, and the report lists the check as skipped. The drop also reflects
+how much the written cases differ from the benchmark, so a warning is a prompt to read the failures, not proof of
+memorisation by itself.
