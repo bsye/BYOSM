@@ -59,33 +59,38 @@ def eval_(
     board(name, detail=True)
 
 
-def _board_table(name: str, metric: str, suites: list[str], prim: str, detail: bool) -> Table:
+def _board_table(name: str, metric: str, suites: list[str], prim: str, details: dict[str, bool]) -> Table:
     t = Table(title=f"{name} - test {metric} per suite (primary: {prim}; selection uses its calib split)")
     t.add_column("")
     t.add_column("params", justify="right")
     t.add_column("cpu", justify="right")
     for s in suites:
         t.add_column(s, justify="right")
+        t.add_column("rows", justify="right", style="dim")
         if s == prim:
             t.add_column("calib", justify="right", style="dim")
-        if detail:
+        if s in details:
             t.add_column("95% CI", justify="right", style="dim")
             t.add_column("P/R", justify="right", style="dim")
         t.add_column("auc", justify="right", style="dim")
+        if details.get(s):
+            t.add_column("per request or span", style="dim")
     return t
 
 
-def _suite_cells(r: dict, s: str, best: float | None, prim: str, detail: bool) -> list[str]:
+def _suite_cells(r: dict, s: str, best: float | None, prim: str, details: dict[str, bool]) -> list[str]:
     v = r.get(s)
     pr = r.get(f"{s}:p/r")
     auc = r.get(f"{s}:auc")
-    cells = ["-" if v is None else (f"[bold]{v:.4f}[/]" if v == best else f"{v:.4f}")]
+    cells = ["-" if v is None else (f"[bold]{v:.4f}[/]" if v == best else f"{v:.4f}"), fmt(r.get(f"{s}:n"), 0, "-")]
     if s == prim:
         cells.append(fmt(r.get(f"{s}:calib"), 4, "-"))
-    if detail:
+    if s in details:
         cells.append(interval(r.get(f"{s}:ci")))
         cells.append(f"{pr[0]:.3f}/{pr[1]:.3f}" if pr and pr[0] is not None else "")
     cells.append(f"{auc:.3f}" if auc else "")
+    if details.get(s):
+        cells.append(r.get(f"{s}:more") or "")
     return cells
 
 
@@ -119,14 +124,15 @@ def board(
     p, spec = _spec(name)
     suites, rows = evals.board_rows(name)
     prim = spec.primary_suite()
-    t = _board_table(name, spec.objective.metric, suites, prim, detail)
+    details = {s: any(r.get(f"{s}:more") for r in rows) for s in suites} if detail else {}
+    t = _board_table(name, spec.objective.metric, suites, prim, details)
     best = {s: max((r[s] for r in rows if r.get(s) is not None), default=None) for s in suites}
     for r in rows:
         star = " *" if r["promoted"] else ""
         colour = "green" if r["kind"] == "experiment" else "yellow"
         cells = [f"[{colour}]{r['id']}{star}[/]", params(r.get("params")), cpu(r)]
         for s in suites:
-            cells += _suite_cells(r, s, best[s], prim, detail)
+            cells += _suite_cells(r, s, best[s], prim, details)
         t.add_row(*cells)
     console.print(t)
     log("* = promoted (used by predict / export / serve)")

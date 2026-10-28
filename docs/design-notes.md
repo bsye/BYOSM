@@ -2094,3 +2094,18 @@ ends the turn at the first moment allowed, which is a plain silence timeout. Tha
 of the protocol check that every public suite passes before it is added: our conversion and scoring must give it the
 value the labels imply, or the benchmark's own published number for the same baseline. It is not added to a spec's
 baselines, so it never becomes a specialist's "best outside baseline".
+
+## Pair suites are scored per request, and the board says how many rows each model was scored on
+
+A pair suite scores one (request, tool) row at a time, but what a user of the decision sees is the set of tools chosen
+for a request. Whenever a suite's rows carry the request they belong to (`meta.group`) and the specialist's labels are
+`fits` and `no_fit`, `score` (`byosm/evals/scoring.py`) also groups the calibrated decisions by request
+(`byosm/evals/grouped.py`, reusing `evaluate` from `byosm/options/select.py`): `exact` (exactly the fitting tools
+chosen), `tool_needed` (the same, on requests where a tool fits) and `no_tool` (nothing chosen, on requests where none
+fits), each with a bootstrap interval, for the whole suite and per `meta.category`. On BFCL, `no_tool` over the
+irrelevance requests is BFCL's own irrelevance score. Builtin tool-choice suites get the same numbers, since their rows
+already carry the request.
+
+`byosm board` shows the test rows each model was scored on beside its score on every suite (`<suite>:n` in
+`board_rows`), so a rival scored on a smaller or older version of a suite stands out, and `--detail` adds the
+per-request summary for suites that have one.

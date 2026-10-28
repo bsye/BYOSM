@@ -13,6 +13,7 @@ from ..modalities import get_modality
 from ..predictors import Predictor
 from ..rt import hysteresis
 from ..spec import TaskSpec
+from .grouped import grouped_metrics
 
 FramePairs = list[tuple[np.ndarray, np.ndarray]]
 ACTIVATION_GRID = np.linspace(0.1, 0.9, 33)
@@ -163,6 +164,7 @@ def score(
         out["units"]["calib"] = metrics.units(n_labels, yc, dec_c, _groups(perc), names)
         out["calib_objective"] = metrics.objective_of_units(spec, out["units"]["calib"])
     _add_threshold_free(m, spec, yt, pt)
+    m.update(grouped_metrics(spec, calib, test, pc, pt, dec_t))
     out.update(
         metrics=m, objective=m["objective"], n_test=len(test), n_calib=len(calib), seconds=round(time.time() - t0, 1)
     )

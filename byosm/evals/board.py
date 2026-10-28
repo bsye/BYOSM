@@ -8,6 +8,7 @@ from ..events import emit, stage
 from ..predictors import ExperimentPredictor, Predictor, get_baseline
 from ..project import Project
 from ..spec import EvalSuite, TaskSpec
+from .grouped import summary
 from .identity import baseline_identity, experiment_identity
 from .scoring import score
 from .suites import fingerprint, materialize
@@ -112,6 +113,8 @@ def _board_row(pid: str, by_suite: dict[str, dict], suites: list[str], promoted:
     row.update({f"{s}:auc": by_suite.get(s, {}).get("metrics", {}).get("roc_auc") for s in suites})
     row.update({f"{s}:calib": by_suite.get(s, {}).get("calib_objective") for s in suites})
     row.update({f"{s}:ci": by_suite.get(s, {}).get("metrics", {}).get("ci95") for s in suites})
+    row.update({f"{s}:n": by_suite.get(s, {}).get("n_test") for s in suites})
+    row.update({f"{s}:more": summary(by_suite.get(s, {}).get("metrics") or {}) for s in suites})
     for s in suites:
         m = by_suite[s]["metrics"] if s in by_suite else None
         row[f"{s}:p/r"] = (m.get("precision"), m.get("recall")) if m is not None else None
