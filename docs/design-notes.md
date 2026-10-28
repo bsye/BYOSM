@@ -2261,3 +2261,11 @@ as code, in the spirit of a coding agent, with a person in the loop:
 Loaded code gets a reduced set of builtins and an import guard, but this is not a sandbox: the approval is the real
 gate, and container isolation of jobs is the next layer. A method that wins is still an experiment: to become a
 default it has to be rewritten into the pipeline with tests, like any other result.
+
+## Added public benchmarks are scored as a next step too
+
+`suite public` only adds a suite; the scores come from `byosm eval`, and the robustness check asks for that only while
+the model has no other suite scored. Once every fitting public benchmark is a suite, `_public` in
+`byosm/next_steps.py` now offers "Score on hard public benchmarks" as `eval <name> --suite <each>` for the public
+suites the promoted model has no result on, so the ready loop (and the measurement plan) adds a benchmark and then
+scores it, and a newly promoted model is scored on them as well.

@@ -124,4 +124,7 @@ def test_a_tool_choice_specialist_is_offered_the_hard_public_benchmarks_it_does_
     assert step["args"] == ["suite", "public", "qa"] and "bfcl" in step["why"] and "when2call" in step["why"]
     spec.evals += [EvalSuite(name=n, kind="local") for n in ("bfcl", "bfcl-live", "when2call")]
     p.save_spec(spec)
+    step = next(s for s in suggestions("qa") if s["id"] == "public-suites")
+    assert step["args"] == ["eval", "qa", "--suite", "bfcl", "--suite", "bfcl-live", "--suite", "when2call"]
+    save_board(p, {"v1": {n: {"kind": "experiment", "objective": 0.5} for n in ("bfcl", "bfcl-live", "when2call")}})
     assert all(s["id"] != "public-suites" for s in suggestions("qa"))

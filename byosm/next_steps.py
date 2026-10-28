@@ -92,12 +92,18 @@ def _finetuned(p: Project, spec: TaskSpec) -> dict[str, Any] | None:
 
 def _public(p: Project) -> dict[str, Any] | None:
     from .benchmarks.add import chosen
+    from .benchmarks.catalog import BENCHMARKS
 
-    missing = [b.name for b in chosen(p, [])]
-    if not missing:
+    if missing := [b.name for b in chosen(p, [])]:
+        why = f"{', '.join(missing)}: public sets where strong models score below ceiling. Each is added after a protocol check, then every model and rival is scored on it."
+        return _step("public-suites", "Score on hard public benchmarks", why, ["suite", "public", p.name])
+    scored = p.board().get(p.promoted or "", {})
+    unscored = [e.name for e in p.spec().evals if e.name in BENCHMARKS and e.name not in scored]
+    if not unscored:
         return None
-    why = f"{', '.join(missing)}: public sets where strong models score below ceiling. Each is added after a protocol check, then every model and rival is scored on it."
-    return _step("public-suites", "Score on hard public benchmarks", why, ["suite", "public", p.name])
+    why = f"{', '.join(unscored)} passed the protocol check but the current model is not scored on it yet."
+    args = ["eval", p.name, *(a for s in unscored for a in ("--suite", s))]
+    return _step("public-suites", "Score on hard public benchmarks", why, args)
 
 
 def _rivals(p: Project, spec: TaskSpec, prim: str) -> dict[str, Any] | None:
