@@ -51,10 +51,11 @@ def test_a_scan_keeps_only_new_techniques_that_cite_a_paper_it_read_and_reads_ea
     llm = Reader()
     new = scan(ws, lambda _: None, llm, fake_get)
     assert [p["title"] for p in new] == ["Contrastive head", "Another idea"] and new[0]["status"] == "proposed"
-    assert state(ws)["last_scan"] == {"read": 3, "proposed": 4, "kept": 2}
+    assert state(ws)["last_scan"] == {"read": 3, "proposed": 8, "kept": 2}
     assert '"id": "setfit"' in llm.prompts[0]
     said = []
-    assert scan(ws, said.append, llm, fake_get) == [] and len(llm.prompts) == 1
+    asked = len(llm.prompts)
+    assert scan(ws, said.append, llm, fake_get) == [] and len(llm.prompts) == asked
     assert state(ws)["last_scan"]["read"] == 0
     assert decide(ws, new[0]["id"], ACCEPTED)["status"] == ACCEPTED
     assert state(ws)["proposals"][0]["status"] == ACCEPTED

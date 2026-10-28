@@ -98,8 +98,15 @@ def scan(ws: Path | None, log: Callable[[str], None] = print, llm: Any = None, g
     save_workspace_report(ws, SCOUT, {**st, "last_run": time.time()})
     seen = set(st["seen"])
     papers = [p for p in (fetch(log, get) if get else fetch(log)) if p.url not in seen]
-    raw = (llm or get_llm(ROLE)).json(SYSTEM, _prompt(papers), SCHEMA).get("proposals", []) if papers else []
-    new = _kept(raw, papers, log)
+    reader = llm or get_llm(ROLE)
+    areas = sorted({p.area for p in papers})
+    raw = [
+        r
+        for a in areas
+        for r in reader.json(SYSTEM, _prompt([p for p in papers if p.area == a]), SCHEMA).get("proposals", [])
+    ]
+    known = {p["id"] for p in st["proposals"]}
+    new = [p for p in {p["id"]: p for p in _kept(raw, papers, log)}.values() if p["id"] not in known]
     st = {"last_run": time.time(), "seen": [*st["seen"], *(p.url for p in papers)][-MAX_SEEN:]}
     st["last_scan"] = {"read": len(papers), "proposed": len(raw), "kept": len(new)}
     save_workspace_report(ws, SCOUT, {**st, "proposals": state(ws)["proposals"] + new})
