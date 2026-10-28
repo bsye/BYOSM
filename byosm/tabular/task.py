@@ -186,6 +186,6 @@ def scored_path(ws: Path, name: str) -> Path:
 
 
 def forecasts(ws: Path) -> list[dict[str, Any]]:
-    with session(ws) as s:
-        rows = s.scalars(select(WorkspaceReport.data).where(WorkspaceReport.kind.startswith(PREFIX))).all()
-    return sorted((r for r in rows if r), key=lambda r: r["name"])
+    from ..db.workspace import workspace_reports
+
+    return sorted((r for r in workspace_reports(ws, PREFIX).values() if r), key=lambda r: r["name"])

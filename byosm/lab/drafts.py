@@ -4,7 +4,7 @@ import hashlib
 import time
 from typing import Any
 
-from ..project import Project
+from .owners import Owner, kind_of
 from .static import problems
 
 LAB = "lab:"
@@ -16,35 +16,36 @@ def draft_id(code: str) -> str:
     return hashlib.sha1(code.encode()).hexdigest()[:10]
 
 
-def save_draft(p: Project, name: str, hypothesis: str, code: str, author: str, parent: str | None = None) -> dict:
-    did = draft_id(code)
-    found = {"id": did, "name": name, "hypothesis": hypothesis, "code": code, "author": author, "parent": parent}
-    found |= {"status": PENDING, "problems": problems(code), "created": time.time(), "experiment": None, "error": None}
-    p.save_report(LAB + did, found)
+def save_draft(owner: Owner, name: str, hypothesis: str, code: str, author: str, parent: str | None = None) -> dict:
+    did, kind = draft_id(code), kind_of(owner)
+    found = {"id": did, "kind": kind, "name": name, "hypothesis": hypothesis, "code": code, "author": author}
+    found |= {"parent": parent, "status": PENDING, "problems": problems(code, kind), "created": time.time()}
+    found |= {"experiment": None, "error": None}
+    owner.save_report(LAB + did, found)
     return found
 
 
-def drafts(p: Project) -> list[dict[str, Any]]:
-    return sorted(p.reports(LAB).values(), key=lambda d: -d["created"])
+def drafts(owner: Owner) -> list[dict[str, Any]]:
+    return sorted(owner.reports(LAB).values(), key=lambda d: -d["created"])
 
 
-def draft(p: Project, did: str) -> dict[str, Any] | None:
-    return p.report(LAB + did)
+def draft(owner: Owner, did: str) -> dict[str, Any] | None:
+    return owner.report(LAB + did)
 
 
-def update(p: Project, did: str, **fields: Any) -> dict[str, Any]:
-    found = draft(p, did)
+def update(owner: Owner, did: str, **fields: Any) -> dict[str, Any]:
+    found = draft(owner, did)
     if found is None:
         raise KeyError(f"no lab method {did}")
     found |= fields
-    p.save_report(LAB + did, found)
+    owner.save_report(LAB + did, found)
     return found
 
 
-def decide(p: Project, did: str, status: str) -> dict[str, Any]:
-    found = draft(p, did)
+def decide(owner: Owner, did: str, status: str) -> dict[str, Any]:
+    found = draft(owner, did)
     if found is None:
         raise KeyError(f"no lab method {did}")
     if status == APPROVED and found["problems"]:
         raise ValueError(f"{did} fails its checks: {'; '.join(found['problems'])}")
-    return update(p, did, status=status, decided=time.time())
+    return update(owner, did, status=status, decided=time.time())

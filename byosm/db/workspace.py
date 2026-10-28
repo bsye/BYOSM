@@ -17,3 +17,11 @@ def workspace_report(ws: Path, kind: str) -> Any:
 def save_workspace_report(ws: Path, kind: str, data: Any) -> None:
     with session(ws) as s:
         get_or_add(s, WorkspaceReport, kind=kind).data = data
+
+
+def workspace_reports(ws: Path, prefix: str) -> dict[str, Any]:
+    found = select(WorkspaceReport.kind, WorkspaceReport.data).where(
+        WorkspaceReport.kind.startswith(prefix, autoescape=True)
+    )
+    with session(ws) as s:
+        return dict(s.execute(found).all())

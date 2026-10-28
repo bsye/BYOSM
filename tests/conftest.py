@@ -127,6 +127,23 @@ class Flat:
         return [np.full((len(QUANTILES), horizon), h[-1] + self.level) for h in histories]
 
 
+def save_forecaster(ws, domain="demo", ours=0.9, rival=0.8, model="patch transformer"):
+    from byosm.series.board import save_report
+    from byosm.series.prediction import Options
+    from byosm.series.specialist import NAIVE
+
+    row = {
+        NAIVE: {"mase": 1.0, "calib_mase": 1.0, "crps": 1.0},
+        model: {"mase": ours, "calib_mase": ours, "crps": 0.5},
+        "Timestral-5M": {"mase": rival, "crps": 0.4},
+    }
+    scores = {"calib": ours, "test": ours, "crps": 0.5, "ci": [ours - 0.01, ours + 0.01], "at": 1.0}
+    version = {"name": "v1", "recipe": model, "effort": 0, **Options().model_dump(), **scores, "configs": {"a": row}}
+    report = {"domain": domain, "at": 1.0, "configs": {"a": row}, "versions": [version], "promoted": "v1"}
+    save_report(ws, report)
+    return report
+
+
 def import_runtime(out):
     s = importlib.util.spec_from_file_location("byosm_rt", out / "byosm_rt.py")
     rt = importlib.util.module_from_spec(s)

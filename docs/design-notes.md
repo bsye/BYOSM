@@ -2526,3 +2526,23 @@ against 0.948 for the fused one.
 
 Every view reads the same exported bundle through one cache keyed by the manifest's modification time
 (`byosm/app/bundles.py`), shared with Predict, so a new export is picked up without a restart.
+
+## The lab writes training methods for forecasters too
+
+A forecasting technique from the scout was a dead end: the lab only wrote code for text classifiers. A lab method now
+belongs to a specialist or to a forecaster domain, and each kind has its own contract behind the same gate.
+
+| | Text classifier | Forecaster |
+|---|---|---|
+| Drafts live in | the specialist's reports, `lab:<id>` | workspace reports `forecaster:<domain>:lab:<id>` (`Forecaster` in `byosm/lab/owners.py`) |
+| Hooks | `rows(train, rng)`, `loss(logits, targets, weight, step)`, `after_step(model, step, total)` | `window(values, context, rng)`, `loss(pred, target, known, levels, step)`, `after_step(model, step, total)` |
+
+`byosm/lab/contract.py` keeps one `Contract` per kind: the hooks, their descriptions, what stays fixed, the model the
+method trains and the goal the author is given. Everything else is shared once: the allowed imports, the blocked calls
+and attributes, the safe builtins, the opening paragraph, the rules paragraph (now written from the allow-list, so the
+text and the check cannot drift apart) and `after_step`. The AST check (`problems(code, kind)`) asks for at least one
+hook of that kind, and the loader returns only that kind's hooks. A name resolves to a specialist first, then to a
+forecaster domain that has run (`owner`); the kind comes from the owner (`kind_of`) and is recorded on every draft. The
+Lab routes, `byosm lab write|ls|show|approve|run` and the approval of the exact code hash work the same for both.
+Listing workspace reports by prefix is one helper now (`workspace_reports`, with `LIKE` escaping, since dataset names
+such as `car_parts_with_missing` contain `_`), shared by the forecaster board and the event-risk forecasts.

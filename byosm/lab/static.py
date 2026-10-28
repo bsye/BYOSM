@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 
-from .contract import ALLOWED_IMPORTS, BLOCKED_ATTRS, BLOCKED_CALLS, HOOKS
+from .contract import ALLOWED_IMPORTS, BLOCKED_ATTRS, BLOCKED_CALLS, CONTRACTS
 
 TOP_LEVEL = (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.Assign, ast.AnnAssign, ast.Expr)
 
@@ -28,7 +28,7 @@ def _node_problems(node: ast.AST) -> list[str]:
     return out
 
 
-def _top_level_problems(tree: ast.Module) -> list[str]:
+def _top_level_problems(tree: ast.Module, hooks: tuple[str, ...]) -> list[str]:
     out = [
         f"line {n.lineno}: only imports, constants and functions may run at import time"
         for n in tree.body
@@ -40,14 +40,15 @@ def _top_level_problems(tree: ast.Module) -> list[str]:
         if isinstance(n, ast.Expr) and not isinstance(n.value, ast.Constant)
     ]
     defined = {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
-    if not defined & set(HOOKS):
-        out.append(f"define at least one of {', '.join(HOOKS)}")
+    if not defined & set(hooks):
+        out.append(f"define at least one of {', '.join(hooks)}")
     return out
 
 
-def problems(code: str) -> list[str]:
+def problems(code: str, kind: str) -> list[str]:
     try:
         tree = ast.parse(code)
     except SyntaxError as e:
         return [f"line {e.lineno}: {e.msg}"]
-    return _top_level_problems(tree) + [p for node in ast.walk(tree) for p in _node_problems(node)]
+    found = _top_level_problems(tree, CONTRACTS[kind].hooks)
+    return found + [p for node in ast.walk(tree) for p in _node_problems(node)]

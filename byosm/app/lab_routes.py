@@ -12,15 +12,15 @@ class Decision(BaseModel):
 
 
 def lab_router(ws: Path) -> APIRouter:
-    from ..project import Project
+    from ..lab.owners import Owner, owner
 
     router = APIRouter()
 
-    def _project(name: str) -> Project:
-        p = Project(name, ws)
-        if not p.exists():
-            raise HTTPException(404, f"no specialist {name!r}")
-        return p
+    def _owner(name: str) -> Owner:
+        try:
+            return owner(name, ws)
+        except KeyError as e:
+            raise HTTPException(404, str(e).strip("'\"")) from e
 
     @router.get("/api/lab/proven")
     def proven() -> list[dict]:
@@ -32,14 +32,14 @@ def lab_router(ws: Path) -> APIRouter:
     def methods(name: str) -> list[dict]:
         from ..lab.drafts import drafts
 
-        return drafts(_project(name))
+        return drafts(_owner(name))
 
     @router.post("/api/specialists/{name}/lab/{method}")
     def decide(name: str, method: str, body: Decision) -> dict:
         from ..lab.drafts import decide as decided
 
         try:
-            return decided(_project(name), method, body.status)
+            return decided(_owner(name), method, body.status)
         except KeyError as e:
             raise HTTPException(404, str(e)) from e
         except ValueError as e:

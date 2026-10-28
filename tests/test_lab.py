@@ -4,6 +4,7 @@ import pytest
 
 from byosm.data.store import record, write
 from byosm.lab.author import unfenced
+from byosm.lab.contract import CLASSIFIER
 from byosm.lab.drafts import APPROVED, PENDING, REJECTED, decide, draft_id, drafts, save_draft
 from byosm.lab.plugin import load
 from byosm.lab.static import problems
@@ -39,11 +40,11 @@ LABELS = [Label(name="statement", definition=""), Label(name="question", definit
     ],
 )
 def test_code_that_could_reach_files_processes_or_run_at_import_fails_its_checks(code):
-    assert problems(code)
+    assert problems(code, CLASSIFIER)
 
 
 def test_a_method_with_hooks_and_allowed_imports_passes(tmp_path):
-    assert problems(FOCAL) == []
+    assert problems(FOCAL, CLASSIFIER) == []
 
 
 def _project(**train):
@@ -56,6 +57,7 @@ def test_only_approved_code_loads_and_a_method_that_fails_its_checks_cannot_be_a
     p = _project()
     d = save_draft(p, "focal", "focus on hard rows", FOCAL, "test")
     assert d["id"] == draft_id(FOCAL) and d["status"] == PENDING and drafts(p)[0]["id"] == d["id"]
+    assert d["kind"] == CLASSIFIER
     with pytest.raises(PermissionError):
         load(p, d["id"])
     decide(p, d["id"], APPROVED)

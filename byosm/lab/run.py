@@ -5,11 +5,13 @@ from typing import Any
 
 from ..project import Project
 from .drafts import APPROVED, draft, update
+from .owners import Owner, owner
 
 MAX_REVISIONS = 2
 LAB_PATH = "train.lab_method"
 LAB_PREFIX = "lab-"
 ERROR_CHARS = 4000
+Log = Callable[[str], None]
 
 
 def _experiment(p: Project, found: dict[str, Any]) -> str:
@@ -25,43 +27,48 @@ def _experiment(p: Project, found: dict[str, Any]) -> str:
     return exp
 
 
-def revisions(p: Project, did: str) -> int:
-    depth, found = 0, draft(p, did)
+def revisions(found_owner: Owner, did: str) -> int:
+    depth, found = 0, draft(found_owner, did)
     while found and found.get("parent"):
-        depth, found = depth + 1, draft(p, found["parent"])
+        depth, found = depth + 1, draft(found_owner, found["parent"])
     return depth
 
 
-def revise(name: str, found: dict[str, Any], why: str, log: Callable[[str], None]) -> dict[str, Any] | None:
+def revise(name: str, found: dict[str, Any], why: str, log: Log) -> dict[str, Any] | None:
     from .author import write
 
-    if revisions(Project(name), found["id"]) >= MAX_REVISIONS:
+    if revisions(owner(name), found["id"]) >= MAX_REVISIONS:
         log(f"[lab] {found['name']} was revised {MAX_REVISIONS} times already; no new version")
         return None
     ask = f"Revise the method {found['name']} ({found['id']}): {why}. Keep what worked, change what the outcome points at."
     return write(name, ask, log, found.get("paper") or "", parent=found["id"])
 
 
-def run(name: str, did: str, log: Callable[[str], None] = print) -> dict[str, Any]:
+def _classifier(p: Project, found: dict[str, Any], log: Log) -> dict[str, Any]:
     from ..improve.bandit import VERDICT
     from ..pipeline import build
 
-    p = Project(name)
-    found = draft(p, did)
-    if not found or found["status"] != APPROVED:
-        raise PermissionError(f"lab method {did} is not approved")
     exp = _experiment(p, found)
-    update(p, did, experiment=exp, error=None)
-    log(f"[lab] {did} {found['name']} -> experiment {exp}")
-    try:
-        build(name, exp, log)
-    except Exception as e:
-        update(p, did, error=f"{type(e).__name__}: {e}"[:ERROR_CHARS])
-        revise(name, found, f"its run failed with {type(e).__name__}: {str(e)[:ERROR_CHARS]}", log)
-        raise
+    update(p, found["id"], experiment=exp, error=None)
+    log(f"[lab] {found['id']} {found['name']} -> experiment {exp}")
+    build(p.name, exp, log)
     verdict = p.report(VERDICT + exp) or {}
     calib = (p.board().get(exp, {}).get(p.spec().primary_suite()) or {}).get("calib_objective")
-    result = update(p, did, result={"experiment": exp, "won": verdict.get("won"), "calib": calib})
-    if not verdict.get("won"):
-        revise(name, found, f"it reached calib {calib} and did not beat the promoted model", log)
-    return result
+    return {"experiment": exp, "won": verdict.get("won"), "calib": calib}
+
+
+def run(name: str, did: str, log: Log = print) -> dict[str, Any]:
+    found_owner = owner(name)
+    found = draft(found_owner, did)
+    if not found or found["status"] != APPROVED:
+        raise PermissionError(f"lab method {did} is not approved")
+    try:
+        result = _classifier(found_owner, found, log)
+    except Exception as e:
+        update(found_owner, did, error=f"{type(e).__name__}: {e}"[:ERROR_CHARS])
+        revise(name, found, f"its run failed with {type(e).__name__}: {str(e)[:ERROR_CHARS]}", log)
+        raise
+    updated = update(found_owner, did, result=result)
+    if not result["won"]:
+        revise(name, found, f"it reached calib {result['calib']} and did not beat the promoted model", log)
+    return updated

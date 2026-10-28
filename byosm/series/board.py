@@ -70,12 +70,7 @@ def promoted_board(report: dict[str, Any]) -> dict[str, Any]:
 
 
 def reports(ws: Path) -> list[dict[str, Any]]:
-    from sqlalchemy import select
+    from ..db.workspace import workspace_reports
 
-    from ..db import session
-    from ..db.models import WorkspaceReport
-
-    with session(ws) as s:
-        rows = s.scalars(select(WorkspaceReport.data).where(WorkspaceReport.kind.startswith(REPORT))).all()
-    found = {r["domain"]: with_published(r) for r in rows if r}
+    found = {r["domain"]: with_published(r) for r in workspace_reports(ws, REPORT).values() if r}
     return [found.get(d) or {"domain": d, "at": None} for d in [*DOMAINS, *(k for k in found if k not in DOMAINS)]]

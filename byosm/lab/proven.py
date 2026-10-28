@@ -69,12 +69,13 @@ def _family(entry: dict[str, Any], name: str) -> str:
 
 
 def _test(name: str) -> str:
-    return f'''from byosm.lab.plugin import builtin, builtin_code
+    return f'''from byosm.lab.contract import CLASSIFIER
+from byosm.lab.plugin import builtin, builtin_code
 from byosm.lab.static import problems
 
 
 def test_the_{name}_method_passes_its_checks_and_loads():
-    assert not problems(builtin_code("{name}")) and builtin("{name}")
+    assert not problems(builtin_code("{name}"), CLASSIFIER) and builtin("{name}")
 '''
 
 

@@ -1,10 +1,22 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 
-from .base import _spec, lab_app, log
+from .base import lab_app, log
+
+if TYPE_CHECKING:
+    from ..lab.owners import Owner
+
+
+def _owner(name: str) -> Owner:
+    from ..lab.owners import owner
+
+    try:
+        return owner(name)
+    except KeyError as e:
+        raise typer.BadParameter(str(e)) from e
 
 
 @lab_app.command("write")
@@ -13,22 +25,25 @@ def lab_write(
     ask: Annotated[str, typer.Option(help="what the method should try")] = "",
     paper: Annotated[str, typer.Option(help="arXiv link of a paper whose method sections the LLM reads")] = "",
 ) -> None:
-    """Have the LLM write a new training method for the specialist; it waits for approval before it can run."""
+    """Have the LLM write a new training method for the specialist or forecaster; it waits for approval before it can run."""
     from ..lab.author import write
 
-    _spec(name)
+    _owner(name)
     write(name, ask, log, paper)
 
 
 @lab_app.command("ls")
 def lab_ls(name: str) -> None:
     """List the written methods with their status and result."""
+    from ..lab.contract import CONTRACTS
     from ..lab.drafts import drafts
+    from ..lab.owners import kind_of
 
-    p, _ = _spec(name)
-    for d in drafts(p):
+    found = _owner(name)
+    won = CONTRACTS[kind_of(found)].won
+    for d in drafts(found):
         result = d.get("result") or {}
-        outcome = "sure lead" if result.get("won") else result.get("experiment") or d.get("error") or ""
+        outcome = won if result.get("won") else result.get("experiment") or d.get("error") or ""
         log(f"{d['id']}  {d['status']:9s}  {d['name']}: {d['hypothesis'][:80]}  {outcome}")
 
 
@@ -37,8 +52,7 @@ def lab_show(name: str, method: str) -> None:
     """Print a method's code, checks and result."""
     from ..lab.drafts import draft
 
-    p, _ = _spec(name)
-    d = draft(p, method)
+    d = draft(_owner(name), method)
     if d is None:
         raise typer.BadParameter(f"no lab method {method}")
     log(f"{d['name']} ({d['status']}): {d['hypothesis']}\n\n{d['code']}\n")
@@ -50,9 +64,8 @@ def lab_approve(name: str, method: str) -> None:
     """Approve a method's exact code so it can run."""
     from ..lab.drafts import APPROVED, decide
 
-    p, _ = _spec(name)
     try:
-        decide(p, method, APPROVED)
+        decide(_owner(name), method, APPROVED)
     except (KeyError, ValueError) as e:
         raise typer.BadParameter(str(e)) from e
     log(f"approved {method}: run it with `byosm lab run {name} {method}`")
@@ -60,10 +73,10 @@ def lab_approve(name: str, method: str) -> None:
 
 @lab_app.command("run")
 def lab_run(name: str, method: str) -> None:
-    """Train the promoted recipe with an approved method and vote on it like any experiment."""
+    """Train with an approved method: a specialist's promoted recipe, voted on like any experiment, or a forecaster's patch transformers, promoted only on a better calib score."""
     from ..lab.run import run
 
-    _spec(name)
+    _owner(name)
     try:
         run(name, method, log)
     except PermissionError as e:
