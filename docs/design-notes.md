@@ -2698,3 +2698,15 @@ total after each one; the job's current step reads "Scoring v4-r1 on bfcl-live t
 Predictors that take whole rows (an LLM rival, the teacher panel) are not chunked: they batch and parallelise their
 own calls and already report each call. The specialist page's Running now card shows the same current step as the
 job list (`stepNow`).
+
+## The seed spread is drawn next to the board
+
+A promotion decides on the mean of several seeds of a recipe, but the board showed each seed as an unrelated row, so a
+lead and the noise behind it could not be compared by eye. `seed_spread` (`byosm/replicas.py`) returns the clean runs
+of every recipe on the primary suite, grouped exactly as the vote groups them (`clean_runs`: the same recipe, the same
+suite version, calib held out), with the pooled `seed_sd`. A recipe is shown when it has more than one run, and the
+promoted recipe always, so a candidate's seeds sit next to what it must beat. Soups are left out: they are an average
+of the seeds, not a seed. The Board tab draws one row per recipe, a dot per seed on calib and a tick at the mean
+(`SeedSpread.tsx`); it comes with the specialist detail, so it updates with the board and has no loading state. On the
+tool-choice specialist it showed near-miss's two seeds at 0.931 and 0.959, a spread as wide as the leads being voted
+on.

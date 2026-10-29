@@ -139,9 +139,16 @@ export type Ablation = {
   test: number | null
 }
 
+export type SeedRun = { id: string; calib: number; test: number | null }
+
+export type SeedRecipe = { recipe: string; promoted: boolean; mean: number; runs: SeedRun[] }
+
+export type Seeds = { suite: string; sd: number | null; recipes: SeedRecipe[] }
+
 export type Detail = Summary & {
   lab: boolean
   ablations: Ablation[]
+  seeds: Seeds
   data_check: unknown
   health: unknown
   data_suggestions: unknown

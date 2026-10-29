@@ -85,3 +85,32 @@ def test_a_single_lucky_seed_is_replicated_and_loses_on_the_seed_average(ws, mon
     assert p.promoted == "v1"
     assert "over 3 vs 3 seeds" in said[-2] and said[-1].startswith("[seeds] scoring v2-s1, v2-s2")
     assert rest == [(["v2-s1", "v2-s2"], [])]
+
+
+def test_the_seed_spread_groups_clean_runs_of_a_recipe_and_always_shows_the_promoted_one(ws):
+    from conftest import save_board
+
+    from byosm.project import Project
+    from byosm.replicas import seed_spread
+
+    p = Project("tc").ensure()
+    p.save_spec(_spec())
+    for e in ("v1", "v2", "v2-s1", "v2-soup", "v3", "v4", "v4-s1"):
+        p.save_experiment(e, meta=HELD)
+    p.save_experiment("v4-s2", meta={})
+    p.promote("v1")
+    stale = {**_result(0.99), "fingerprint": "old"}
+    save_board(
+        p, {"v1": {"builtin": _result(0.90)}, "v2": {"builtin": _result(0.93)}, "v2-s1": {"builtin": _result(0.91)}}
+    )
+    save_board(
+        p, {"v2-soup": {"builtin": _result(0.95)}, "v3": {"builtin": _result(0.80)}, "v4": {"builtin": _result(0.85)}}
+    )
+    save_board(p, {"v4-s1": {"builtin": stale}, "v4-s2": {"builtin": _result(0.86)}})
+    found = seed_spread(p)
+    assert found["suite"] == "builtin"
+    assert [(r["recipe"], r["promoted"], [u["id"] for u in r["runs"]]) for r in found["recipes"]] == [
+        ("v2", False, ["v2", "v2-s1"]),
+        ("v1", True, ["v1"]),
+    ]
+    assert found["recipes"][0]["mean"] == pytest.approx(0.92)

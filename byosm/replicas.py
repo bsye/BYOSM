@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from statistics import mean, variance
+from typing import Any
 
 from .evals.selection import clean_selection, selection_value
 from .health_score import CHECK_TITLES, OK, WARN, check
@@ -96,6 +97,30 @@ def seed_sd(p: Project, suite: str) -> float | None:
     spread = [(len(v) - 1, variance(v)) for v in groups.values() if len(v) > 1]
     dof = sum(d for d, _ in spread)
     return math.sqrt(sum(d * v for d, v in spread) / dof) if dof else None
+
+
+def _spread_row(recipe: str, ids: list[str], board: dict, suite: str, promoted: bool) -> dict[str, Any]:
+    runs = [{"id": e, "calib": selection_value(board[e][suite]), "test": board[e][suite].get("objective")} for e in ids]
+    return {"recipe": recipe, "promoted": promoted, "mean": mean(r["calib"] for r in runs), "runs": runs}
+
+
+def seed_spread(p: Project) -> dict[str, Any]:
+    suite, board = p.spec().primary_suite(), p.board()
+    anchors: dict[str, str] = {}
+    for e in p.experiments():
+        if not is_soup(e) and suite in board.get(e, {}):
+            anchors.setdefault(recipe_of(e) or e, e)
+    shipped = recipe_of(p.promoted or "") or p.promoted
+    groups = {
+        r: [e for e in clean_runs(p, e, suite) if selection_value(board[e][suite]) is not None]
+        for r, e in anchors.items()
+    }
+    rows = [
+        _spread_row(r, ids, board, suite, r == shipped)
+        for r, ids in groups.items()
+        if len(ids) > 1 or (ids and r == shipped)
+    ]
+    return {"suite": suite, "sd": seed_sd(p, suite), "recipes": sorted(rows, key=lambda row: -row["mean"])}
 
 
 def beyond_seed_noise(mine: list[float], theirs: list[float], sd: float | None) -> bool:

@@ -21,6 +21,7 @@ from ..metrics import metric_label, unreached
 from ..model_refs import model_refs
 from ..next_steps import suggestions, suggestions_or_none
 from ..project import Project, list_projects
+from ..replicas import seed_spread
 from ..rungs import auxiliary
 from ..spec import Objective, TaskSpec
 
@@ -141,6 +142,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "health": health(p, spec),
         "data_suggestions": saved_suggestions(p),
         "ablations": ablation_summaries(p),
+        "seeds": seed_spread(p),
         "lab": spec.modality in SPECIALIST_MODALITIES,
     }
 
