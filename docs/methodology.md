@@ -24,6 +24,9 @@ How we keep it honest:
 - **Choose on calib.** Promotion, the autopilot's keep/revert and the int8 export check all decide on calib, and the
   calib score is cross-fitted so a threshold never grades itself.
 - **Report test once**, with a 95% bootstrap CI.
+- **One threshold per suite.** Each suite's decision threshold is calibrated on that suite's own calib split, for our
+  models and the rivals alike. A deployed model runs at one threshold, so a score on a suite other than the primary is
+  an upper bound on what the primary's threshold would give there.
 - **Compare paired.** Every "ours vs theirs" is a paired bootstrap over the same items (P(better)), not two point
   estimates side by side.
 
