@@ -108,7 +108,7 @@ def test_the_seed_spread_groups_clean_runs_of_a_recipe_and_always_shows_the_prom
     )
     save_board(p, {"v4-s1": {"builtin": stale}, "v4-s2": {"builtin": _result(0.86)}})
     found = seed_spread(p)
-    assert found["suite"] == "builtin"
+    assert found["suite"] == "builtin" and found["wanted"] == p.spec().finalist_seeds
     assert [(r["recipe"], r["promoted"], [u["id"] for u in r["runs"]]) for r in found["recipes"]] == [
         ("v2", False, ["v2", "v2-s1"]),
         ("v1", True, ["v1"]),

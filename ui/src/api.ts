@@ -143,7 +143,7 @@ export type SeedRun = { id: string; calib: number; test: number | null }
 
 export type SeedRecipe = { recipe: string; promoted: boolean; mean: number; runs: SeedRun[] }
 
-export type Seeds = { suite: string; sd: number | null; recipes: SeedRecipe[] }
+export type Seeds = { suite: string; sd: number | null; wanted: number; recipes: SeedRecipe[] }
 
 export type Promotion = { before: string | null; after: string; why: string; by: string; at: number }
 

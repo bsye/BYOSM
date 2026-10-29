@@ -120,7 +120,12 @@ def seed_spread(p: Project) -> dict[str, Any]:
         for r, ids in groups.items()
         if len(ids) > 1 or (ids and r == shipped)
     ]
-    return {"suite": suite, "sd": seed_sd(p, suite), "recipes": sorted(rows, key=lambda row: -row["mean"])}
+    return {
+        "suite": suite,
+        "sd": seed_sd(p, suite),
+        "wanted": p.spec().finalist_seeds,
+        "recipes": sorted(rows, key=lambda row: -row["mean"]),
+    }
 
 
 def beyond_seed_noise(mine: list[float], theirs: list[float], sd: float | None) -> bool:
