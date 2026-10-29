@@ -39,6 +39,8 @@ ALLOWED_COMMANDS = (
     "ablate",
     "next",
     "continue",
+    "hard-cases",
+    "vote",
     "ready",
     "ideas",
     "opendata",
@@ -49,5 +51,7 @@ ALLOWED_COMMANDS = (
     "datasets",
     "system",
 )
+
+CLI_ONLY = ("app", "bench", "db", "init", "measure", "predict", "serve", "store")
 
 PERSON_ONLY = (("lab", "approve"),)

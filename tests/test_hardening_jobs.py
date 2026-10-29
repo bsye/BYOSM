@@ -133,3 +133,13 @@ def test_a_silent_job_that_keeps_the_cpu_busy_is_not_stopped():
     assert not watch.stuck()
     watch.heard[0] -= 20
     assert watch.stuck()
+
+
+def test_every_command_is_either_runnable_as_a_job_or_kept_to_the_terminal():
+    from byosm.app.allowed import ALLOWED_COMMANDS, CLI_ONLY
+    from byosm.cli.base import app
+
+    names = {c.name or c.callback.__name__.replace("_", "-") for c in app.registered_commands}
+    names |= {g.name for g in app.registered_groups}
+    assert names == set(ALLOWED_COMMANDS) | set(CLI_ONLY)
+    assert not set(ALLOWED_COMMANDS) & set(CLI_ONLY)
