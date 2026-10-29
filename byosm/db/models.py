@@ -7,7 +7,10 @@ from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from .json_field import JsonField
+
 Json = JSON(none_as_null=True).with_variant(JSONB(none_as_null=True), "postgresql")
+ROW_LABEL = "label"
 
 
 def now() -> datetime:
@@ -89,6 +92,9 @@ class Row(Base):
     split: Mapped[str] = mapped_column(String(50))
     position: Mapped[int] = mapped_column(Integer)
     data: Mapped[dict[str, Any]]
+
+
+ROWS_BY_LABEL = Index("rows_label", Row.specialist_id, Row.collection, Row.split, JsonField(Row.data, ROW_LABEL))
 
 
 class Job(Base):

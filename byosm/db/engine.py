@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import Engine, create_engine, event, func, select, type_coerce
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.schema import CreateIndex
 
 from ..config import STATE_DIR
 
@@ -56,6 +57,9 @@ def engine(url: str) -> Engine:
     else:
         eng = create_engine(url, pool_pre_ping=True, json_serializer=_json)
     Base.metadata.create_all(eng)
+    with eng.begin() as c:
+        for index in (i for t in Base.metadata.sorted_tables for i in t.indexes):
+            c.execute(CreateIndex(index, if_not_exists=True))
     return eng
 
 

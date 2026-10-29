@@ -5,11 +5,12 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete, func, insert, select
+from sqlalchemy import delete, func, insert, select, type_coerce
 
 from ..config import find_workspace
 from .engine import session
-from .models import Row, Specialist
+from .json_field import JsonField
+from .models import Json, Row, Specialist
 
 SUFFIX = ".jsonl"
 SPECIALISTS_DIR = "specialists"
@@ -43,7 +44,7 @@ def read(path: Path) -> list[dict]:
 
 def tally(path: Path, key: str) -> list[tuple[Any, int]]:
     ws, owner, collection, split = _key(path)
-    value = Row.data[key]
+    value = type_coerce(JsonField(Row.data, key), Json)
     with session(ws) as s:
         q = select(value, func.count()).where(*_where(s, owner, collection, split)).group_by(value)
         return [(v, n) for v, n in s.execute(q).all()]

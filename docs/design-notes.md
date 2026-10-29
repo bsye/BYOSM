@@ -2773,3 +2773,19 @@ opened next answers in about 20 ms. One health request takes 0.1 to 0.3 s instea
 While planning this, `maybe_promote` turned out to count a missing paired comparison as a sure lead whenever the
 promoted model had runs but either side had no units. It now fails closed: with runs on both sides and no paired
 comparison, the lead is not sure.
+
+## Label counts come from an index
+
+The data check in Health counts each label in the promoted model's training rows. For topic that is 90,000 rows,
+and SQLite parsed every row's JSON to find its label: 0.43 s of a 0.98 s health request, plus the same again in next
+steps. `rows_label` indexes the label next to the row's owner, collection and split, so the count reads only the
+index (topic's summary went from about 0.5 s to 0.011 s, health plus next steps from 1.3 s to 0.1 s).
+
+- **The query and the index share one expression.** SQLite uses an index on an expression only when the query spells
+  it the same way, and a JSON path sent as a bound parameter does not count: with it the count still took 0.28 s.
+  `JsonField` writes the key into the SQL (a key that is not an identifier is refused) and renders
+  `json_quote(json_extract(data, '$.label'))` on SQLite and `(data -> 'label')` on Postgres. The Postgres form is
+  checked as compiled SQL only; it has not been run against a Postgres server here.
+- **Declared indexes are created when the engine starts.** `create_all` creates missing tables but not a new index on
+  a table that exists, so the engine also runs `CREATE INDEX IF NOT EXISTS` for every index the models declare. On
+  this 1.2 million row database the first start built it in 4 to 10 s; later starts find it and do nothing.

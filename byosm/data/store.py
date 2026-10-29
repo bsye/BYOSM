@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+from ..db.models import ROW_LABEL
 from ..db.rows import append, exists, read, tally, write
 from ..text import normalize
 
@@ -148,5 +149,5 @@ class Dataset:
         return exists(self.path("train"))
 
     def summary(self) -> dict[str, Any]:
-        tallies = {s: tally(self.path(s), "label") for s in STORED_SPLITS}
+        tallies = {s: tally(self.path(s), ROW_LABEL) for s in STORED_SPLITS}
         return {s: {"n": sum(n for _, n in t), "labels": count_labels(t)} for s, t in tallies.items()}
