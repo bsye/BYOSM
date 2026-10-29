@@ -2755,8 +2755,10 @@ server was still working through the previous page's queue.
 - **The live stream is applied in batches.** On connect the server sends every job as its own message (244 here).
   Each message used to re-render the app and change eleven hand-written "finished jobs" counts, and every page
   refetched on each change: 57 health, 17 specialist and 10 next-step requests for one Home load. `LiveProvider` now
-  applies messages every `FLUSH_MS` and keeps one `finished` count that only rises when a job seen running ends;
-  every page reads it through `useFinished`.
+  applies messages every `FLUSH_MS` and counts, per command, the jobs it saw running that have ended; every page
+  reads it through `useFinished`, and forecasts and open data read only their own command's count. They used to
+  count finished jobs of their kind, which jumps from 0 when the job list first arrives, so each fetched twice on
+  load (`/api/forecasts` is 225 KB).
 - **Per-item requests run four at a time and stop when the page is left** (`useEach`), so health and next steps for
   24 specialists no longer queue ahead of whatever page comes next.
 - **A read request sees one board.** Health read the board 11 to 22 times, each decoding every item's units (95% of
