@@ -34,6 +34,7 @@ import { openJob } from "@/job-sheet"
 import { Lab } from "./Lab"
 import { SpecEditor } from "./SpecEditor"
 import { Board } from "./SpecialistBoard"
+import { CasesChart } from "./CasesChart"
 import { SeedSpread } from "./SeedSpread"
 import { SuitesChart } from "./SuitesChart"
 import { Versus } from "./Versus"
@@ -162,6 +163,7 @@ function Model({ name, tab }: { name: string; tab?: string }) {
           <OptionsCard name={d.name} />
           <Board d={d} />
           <SuitesChart d={d} />
+          <CasesChart d={d} />
           <Versus d={d} />
           <SeedSpread seeds={d.seeds} />
           <DataSize d={d} />

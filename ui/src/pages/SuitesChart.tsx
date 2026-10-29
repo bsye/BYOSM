@@ -5,9 +5,8 @@ import { InfoTip } from "@/components/info-tip"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { rivalName, score } from "@/format"
-import { suiteSeries } from "./suite-rows"
+import { SERIES_TONES, suiteSeries } from "./suite-rows"
 
-const TONES = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"]
 const FLOOR_STEP = 0.1
 const WIDE_SPAN = 0.5
 const WIDE_STEP = 0.2
@@ -18,7 +17,7 @@ export function SuitesChart({ d }: { d: Detail }) {
   const { models, rows } = suiteSeries(d)
   if (!models.length) return null
   const config = Object.fromEntries(
-    models.map((m, i) => [`s${i}`, { label: d.baselines.includes(m) ? rivalName(m) : m, color: TONES[i] }]),
+    models.map((m, i) => [`s${i}`, { label: d.baselines.includes(m) ? rivalName(m) : m, color: SERIES_TONES[i] }]),
   ) satisfies ChartConfig
   const values = rows.flatMap((r) => models.map((_, i) => r[`s${i}`])).filter((v): v is number => typeof v === "number")
   const low = Math.max(0, Math.floor(Math.min(...values) / FLOOR_STEP) * FLOOR_STEP - FLOOR_STEP)

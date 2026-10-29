@@ -1,6 +1,7 @@
 import type { Detail } from "@/api"
 
 export const MAX_SERIES = 4
+export const SERIES_TONES = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"]
 const MIN_SUITES = 2
 
 export type SuiteRow = { suite: string } & Record<string, number | [number, number] | string | undefined>

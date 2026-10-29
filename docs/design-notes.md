@@ -2731,3 +2731,12 @@ module) or `terminal` for a command typed by hand. The reason is required: the v
 `byosm promote` each say what they did. The Runs tab lists them newest first, with the job's name linked. There is no
 backfill: the old promotions left no record, and `specialists.updated` also changes when the spec is saved, so a date
 taken from it would be a guess. The log starts with this change.
+
+## A suite's score is broken down by kind of request
+
+The tool-choice specialist failed "Holds on new inputs" by 0.45 on When2Call, and nothing on screen said why, although
+scoring already stores exact accuracy per category for pair suites (`grouped.per_request`). The detail payload now
+passes it as `cases` and the Board tab draws it per suite ("By case"): one bar per model and kind of request with its
+95% interval, the models and colours taken from "Every suite" so a model keeps its colour. On When2Call it shows that
+the gap is one case: when a required detail is missing and the right answer is to ask for it, every model calls the
+tool anyway (near-miss 0.32, v1 0.30), while "cannot answer" rose from 0.66 to 0.77 with near-miss negatives.

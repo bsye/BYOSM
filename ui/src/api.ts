@@ -68,6 +68,8 @@ export type Isolation = {
   fallback?: string
 }
 
+export type Case = { accuracy: number | null; ci: [number, number]; n: number }
+
 export type Result = {
   objective: number | null
   calib_objective: number | null
@@ -77,6 +79,7 @@ export type Result = {
   ci: { lo: number; hi: number } | null
   unreached: number | null
   caught: Record<string, number | null> | null
+  cases: Record<string, Case> | null
   latency_load: number | null
   timed_busy: boolean
 }
