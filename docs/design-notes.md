@@ -2801,6 +2801,26 @@ function calls.
   published scores by reading the seasonal naive and both Timestral tables again for every dataset: 159 file reads
   of 3 files per list request, now 3.
 
+## A request missing a required argument does not fit yet
+
+Tool choice's labels said only "this option is one the request should use". The near-miss miner writes requests with
+one required argument left out and labels them no fit, but the Haiku judge relabels every mined pair from the label
+definitions, and under that wording the tool is the right one: it turned all 797 of them into fits. When2Call scores
+the same situation the other way (ask for the argument, call nothing), so the training data taught the opposite of
+the benchmark, and "ask for missing info" stayed at 0.26 to 0.34 exact in every run while near-miss lifted "no tool
+fits" from 0.66 to 0.75. The other kinds were flipped far less (nearest 26%, same category 10%, removed 7%).
+
+- **The pair labels are defined once** (`byosm/options/situations.py` `DEFINITIONS`) and say that a request which
+  leaves out a required argument should not call the option yet. New option specialists get them from `spec_for`;
+  tool choice and tool choice held were moved to them. The LLM rivals read the same definitions, so a rival scored
+  before the change was judged under the old wording.
+- **Data an LLM labels is keyed by the label definitions.** The data key took the definitions into account only for
+  synthetic data, so rows the judge relabelled, cleaned or a teacher panel labelled kept their key after a definition
+  change and would have been reused with the old labels. `DataPlan.labelled_by_llm` (synthetic, clean labels,
+  teachers, near misses) now puts the definitions into the key. That moved the data of 12 experiments (tool choice
+  held's near-miss and clean-label recipes, bank panel's teacher panel); their rows and folders were copied once to
+  the new keys, and the old copies stay until the jobs that started on the old code have ended.
+
 ## Spend is summed in the database
 
 The Costs page priced every LLM call one by one: 27,000 call events read row by row, four JSON fields decoded

@@ -87,8 +87,10 @@ class TaskSpec(BaseModel):
             "d": self.data.model_dump(mode="json", exclude_defaults=True, exclude=DATA_RUN_SETTINGS),
             "desc": "",
         }
+        if self.data.labelled_by_llm:
+            blob["l"] = dump["labels"]
         if self.data.synthetic:
-            blob |= {"l": dump["labels"], "desc": self.description, **{k: dump[k] for k in SYNTH_FIELDS}}
+            blob |= {"desc": self.description, **{k: dump[k] for k in SYNTH_FIELDS}}
         return hashlib.sha1(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:10]
 
     def synth_key(self) -> str:

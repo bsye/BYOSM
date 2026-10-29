@@ -2,6 +2,7 @@ import pytest
 
 from byosm.llm import PROVIDERS, get_llm
 from byosm.spec import Axis, DataPlan, Label, TaskSpec
+from byosm.spec.sections import PairPlan
 
 SYNTH_EDITS = {
     "hard_cases": ["a confuser"],
@@ -27,6 +28,28 @@ def test_synthetic_key_tracks_generation_inputs(field):
 @pytest.mark.parametrize("field", sorted(SYNTH_EDITS))
 def test_real_data_key_ignores_generation_inputs(field):
     assert _spec(False).data_key() == _spec(False, **{field: SYNTH_EDITS[field]}).data_key()
+
+
+LLM_LABELLED = {
+    "near misses": {"pairs": PairPlan(near_misses=["missing_parameter"])},
+    "clean labels": {"clean_labels": True},
+    "teachers": {"teachers": ["llm"]},
+}
+
+
+def _defined(definition: str, **data) -> TaskSpec:
+    labels = [Label(name="a", definition=definition), Label(name="b", definition="y")]
+    return TaskSpec(name="t", description="d", modality="text", labels=labels, data=DataPlan(synthetic=False, **data))
+
+
+@pytest.mark.parametrize("plan", sorted(LLM_LABELLED))
+def test_real_data_an_llm_labels_gets_a_new_key_when_a_label_definition_changes(plan):
+    data = LLM_LABELLED[plan]
+    assert _defined("x", **data).data_key() != _defined("x, and more", **data).data_key()
+
+
+def test_real_data_no_llm_labels_keeps_its_key_when_a_label_definition_changes():
+    assert _defined("x").data_key() == _defined("x, and more").data_key()
 
 
 class _Fake:

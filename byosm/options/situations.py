@@ -6,6 +6,12 @@ from dataclasses import dataclass
 from typing import Any
 
 FITS, NO_FIT = "fits", "no_fit"
+DEFINITIONS = {
+    FITS: "the request should call this option now: it does what the request asks, and the request gives every "
+    "argument the option requires",
+    NO_FIT: "the request should not call this option now: it does something else, or the request leaves out an "
+    "argument the option requires, so the assistant should ask for it first",
+}
 NONE_SHARE = 0.15
 TEST_SHARE = 0.15
 DEV_SHARE = 0.1

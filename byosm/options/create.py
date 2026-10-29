@@ -8,7 +8,7 @@ from ..config import STATE_DIR
 from ..spec import Label, PairPlan, TaskSpec
 from ..spec.sections import DataPlan, Objective
 from .pairs import write
-from .situations import FITS, NO_FIT, xlam
+from .situations import DEFINITIONS, FITS, NO_FIT, xlam
 
 SOURCES = {"lockon/xlam-function-calling-60k": xlam}
 LAYA = "hf:convaiinnovations/laya"
@@ -44,10 +44,7 @@ def spec_for(name: str, table: Path, source: str, plan: PairPlan, backbone: str 
     from ..spec.compiler import train_cfg
 
     train = train_cfg("text", backbone).model_copy(update={"epochs": EPOCHS, "batch_size": BATCH})
-    labels = [
-        Label(name=FITS, definition="this option is one the request should use"),
-        Label(name=NO_FIT, definition="this option should not be used for the request"),
-    ]
+    labels = [Label(name=n, definition=DEFINITIONS[n]) for n in (FITS, NO_FIT)]
     data = DataPlan(synthetic=False, local_dir=str(table), local_source=f"{HUB_SOURCE}{source}", pairs=plan)
     return TaskSpec(
         name=name,

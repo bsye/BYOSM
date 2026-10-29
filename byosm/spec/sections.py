@@ -116,6 +116,10 @@ class DataPlan(BaseModel):
     audio: AudioCfg = Field(default_factory=AudioCfg)
     pairs: PairPlan | None = None
 
+    @property
+    def labelled_by_llm(self) -> bool:
+        return self.synthetic or self.clean_labels or bool(self.teachers) or bool(self.pairs and self.pairs.near_misses)
+
 
 class Decision(BaseModel):
     kind: Literal["threshold", "hysteresis"] = "threshold"

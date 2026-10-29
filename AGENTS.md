@@ -58,6 +58,8 @@ its domain, measured on public benchmarks. Every change should serve that thesis
   paired bootstrap against the baseline.
 - Never claim what has not been run. If a feature exists but has not been measured, say so.
 - Measure speed and accuracy before and after a change that could affect them.
+- **Label definitions are what an LLM labels by.** They must state the edge cases the benchmark scores the same way
+  the benchmark does; under a vague "fits" the judge relabelled 797 missing-argument rows the wrong way.
 - A published reference score counts only after a protocol check: our run of a shared baseline (seasonal naive, base
   rate) must reproduce the published one on the same split. Compare with a reference only on the datasets both were
   scored on, and say on how many.
