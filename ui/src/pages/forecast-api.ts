@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { api, runJob } from "@/api"
-import { useLive } from "@/events"
+import { useFinished, useLive } from "@/events"
 import { openJob } from "@/job-sheet"
 import type { Today } from "./ForecastToday"
 
@@ -30,7 +30,7 @@ export const best = (f: Forecast) => f.result?.scores["gradient boosting"]
 export function useForecasts(): [Forecast[] | null, Set<string>, () => void] {
   const jobs = Object.values(useLive().jobs).filter((j) => j.args[0] === "forecast")
   const running = new Set(jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => j.args[2]))
-  const done = jobs.filter((j) => j.status === "done").length
+  const done = useFinished("forecast")
   const [rows, setRows] = useState<Forecast[] | null>(null)
   const [saved, setSaved] = useState(0)
   useEffect(() => {

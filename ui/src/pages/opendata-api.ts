@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { api, post, runJob } from "@/api"
-import { useLive } from "@/events"
+import { useFinished, useLive } from "@/events"
 import { openJob } from "@/job-sheet"
 
 const POLL_MS = 3000
@@ -31,7 +31,7 @@ export const keep = (dataset: OpenDataset, file: OpenFile) => post<Kept[]>("/ope
 export const forget = (url: string) => post<Kept[]>("/opendata/library/remove", { url })
 
 export function useLibrary(): [Kept[] | null, (k: Kept[]) => void] {
-  const fetched = Object.values(useLive().jobs).filter((j) => j.args[0] === "opendata" && j.status === "done").length
+  const fetched = useFinished("opendata")
   const [kept, setKept] = useState<Kept[] | null>(null)
   useEffect(() => {
     api<Kept[]>("/opendata/library").then(setKept, () => setKept([]))
@@ -48,13 +48,13 @@ export function useAsks(): [DataAsk[] | null, (a: DataAsk[]) => void] {
   const jobs = Object.values(useLive().jobs).filter((j) => j.args[0] === "opendata" && j.args[1] === "find")
   const running = jobs.some((j) => j.status === "running" || j.status === "queued")
   const [asks, setAsks] = useState<DataAsk[] | null>(null)
-  const signal = jobs.map((j) => j.status).join()
+  const ended = useFinished("opendata")
   useEffect(() => {
     const load = () => api<DataAsk[]>("/opendata/requests").then(setAsks, () => setAsks([]))
     load()
     if (!running) return
     const timer = setInterval(load, POLL_MS)
     return () => clearInterval(timer)
-  }, [signal, running])
+  }, [ended, running])
   return [asks, setAsks]
 }
