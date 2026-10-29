@@ -2792,6 +2792,11 @@ function calls.
   request; read paths do not write into them.
 - **Reports are not remembered.** Health writes the paired lead it computes into a report during a read, and a
   remembered report would hide that write from the rest of the request.
+- **A proposal is read on its own.** Next steps, the technique board, the TPE search and diagnosis loop over every
+  attempt for its proposal, and each call used to read the whole experiment row (spec, meta and errors too). `proposal` selects
+  only that column. The technique board went from about 0.6 s to 0.35 s of CPU; loading all proposals at once
+  instead was rejected because jobs call `proposal` in loops outside a request, where it would read every row per
+  call.
 - **Published reference tables are read once per request.** The forecasters' cards compared against GIFT-Eval's
   published scores by reading the seasonal naive and both Timestral tables again for every dataset: 159 file reads
   of 3 files per list request, now 3.

@@ -29,7 +29,7 @@ def test_a_snapshot_reads_the_board_once_and_outside_one_every_read_is_fresh(ws,
     assert p.board()["v1"]["builtin"]["objective"] == 0.7 and len(reads) == 2
 
 
-READS = ("_spec_row", "_promoted", "_read_experiment", "_experiments", "_attempts")
+READS = ("_spec_row", "_promoted", "_read_experiment", "_read_proposal", "_experiments", "_attempts")
 
 
 def test_a_snapshot_reads_the_specialist_and_each_experiment_once(ws, monkeypatch):
@@ -40,8 +40,8 @@ def test_a_snapshot_reads_the_specialist_and_each_experiment_once(ws, monkeypatc
         monkeypatch.setattr(Project, name, lambda self, *a, real=real, name=name: calls.append(name) or real(self, *a))
     with snapshot():
         for _ in range(3):
-            seen = (p.spec().name, p.promoted, p.meta("v1"), p.experiments(), p.attempts())
-            assert seen == ("t", None, {}, ["v1"], ["v1"])
+            seen = (p.spec().name, p.promoted, p.meta("v1"), p.proposal("v1"), p.experiments(), p.attempts())
+            assert seen == ("t", None, {}, None, ["v1"], ["v1"])
     assert sorted(calls) == sorted(READS)
 
 

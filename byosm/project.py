@@ -177,7 +177,12 @@ class Project:
         return (e or {}).get("meta") or {}
 
     def proposal(self, exp: str) -> dict | None:
-        return (self.experiment(exp) or {}).get("proposal")
+        return self._once(lambda: self._read_proposal(exp), "proposal", exp)
+
+    def _read_proposal(self, exp: str) -> dict | None:
+        with session(self.ws) as s:
+            mine = Experiment.specialist_id == self._need(s), Experiment.name == exp
+            return s.scalar(select(Experiment.proposal).where(*mine))
 
     def save_experiment(self, exp: str, **fields: Any) -> None:
         if "spec" in fields and not isinstance(fields["spec"], dict):
