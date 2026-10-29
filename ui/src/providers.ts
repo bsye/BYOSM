@@ -11,11 +11,20 @@ export type Provider = {
   hint?: string
 }
 
+let inFlight: Promise<Provider[]> | null = null
+
+const loadProviders = () =>
+  (inFlight ??= api<{ providers: Provider[] }>("/llm/providers")
+    .then((r) => r.providers)
+    .finally(() => {
+      inFlight = null
+    }))
+
 export function useProviders(): Provider[] | null {
   const [list, setList] = useState<Provider[] | null>(null)
   useEffect(() => {
-    api<{ providers: Provider[] }>("/llm/providers")
-      .then((r) => setList(r.providers))
+    loadProviders()
+      .then(setList)
       .catch(() => setList([]))
   }, [])
   return list
