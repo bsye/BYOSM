@@ -38,6 +38,10 @@ def per_request(spec: TaskSpec, rows: list[dict], dec: np.ndarray) -> dict[str, 
     return {"all": evaluate(_requests(rows, lambda m: True), pick), "by_category": by}
 
 
+def request_accuracy(m: dict[str, Any]) -> float | None:
+    return ((m.get(REQUESTS) or {}).get("all") or {}).get("exact", {}).get("accuracy")
+
+
 def cases(m: dict[str, Any]) -> dict[str, Any] | None:
     by = (m.get(REQUESTS) or {}).get("by_category")
     return {c: v["exact"] for c, v in by.items()} if by else None

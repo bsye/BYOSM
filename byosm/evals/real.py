@@ -3,6 +3,7 @@ from __future__ import annotations
 from ..health_score import CHECK_TITLES, DROP_OK, DROP_WARN, OK, UNKNOWN, WARN, check, graded
 from ..project import Project
 from ..spec import TaskSpec
+from .drop import worst_drop
 
 REAL_KINDS = ("hf", "local")
 TITLE = CHECK_TITLES["real"]
@@ -45,10 +46,10 @@ def real_check(p: Project, spec: TaskSpec, board: dict) -> dict | None:
         origin = next(e.origin for e in spec.evals if e.name == spec.primary_suite())
         return check("real", TITLE, WEIGHT, OK, f"benchmark is {origin}", WHY)
     mine, real = board.get(p.promoted or "", {}), real_suites(spec)
-    scored = {s: mine[s]["objective"] for s in real if mine.get(s, {}).get("objective") is not None}
-    if not scored:
+    scored = {s: mine[s] for s in real if mine.get(s, {}).get("objective") is not None}
+    found = worst_drop(mine[spec.primary_suite()], scored, spec.objective.metric) if scored else None
+    if found is None:
         return _missing(p, spec, real)
-    suite, worst = min(scored.items(), key=lambda kv: kv[1])
-    drop = mine[spec.primary_suite()]["objective"] - worst
+    suite, drop, metric = found
     status = graded(drop, DROP_OK, DROP_WARN, False)
-    return check("real", TITLE, WEIGHT, status, f"{-drop:+.3f} on {suite} ({len(scored)} real sets)", WHY)
+    return check("real", TITLE, WEIGHT, status, f"{-drop:+.3f} {metric} on {suite} ({len(scored)} real sets)", WHY)

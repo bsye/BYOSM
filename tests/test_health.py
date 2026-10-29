@@ -42,8 +42,30 @@ def test_a_big_drop_on_another_suite_fails_robustness(ws):
     }
     p, spec = _specialist(ws, rows)
     checks = {c["id"]: c for c in health(p, spec)["checks"]}
-    assert checks["robust"]["status"] == "fail" and checks["robust"]["value"] == "-0.370 on llm-written"
+    assert checks["robust"]["status"] == "fail" and checks["robust"]["value"] == "-0.370 macro_f1 on llm-written"
     assert checks["rival"]["status"] == "warn"
+
+
+def _requests(accuracy):
+    return {"requests": {"all": {"exact": {"accuracy": accuracy, "ci": [0.0, 1.0], "n": 900}}}}
+
+
+def test_suites_that_both_count_whole_requests_are_compared_on_requests_not_on_pairs(ws):
+    rows = {
+        "v1": {"builtin": _result(0.92, metrics=_requests(0.88)), "llm-written": _result(0.47, metrics=_requests(0.52))}
+    }
+    p, spec = _specialist(ws, rows)
+    robust = {c["id"]: c for c in health(p, spec)["checks"]}["robust"]
+    assert robust["value"] == "-0.360 exact requests on llm-written" and robust["status"] == "fail"
+
+
+def test_a_failing_robustness_check_asks_the_proposer_when_dev_has_too_few_errors_to_aim_at(ws):
+    rows = {"v1": {"builtin": _result(0.97), "llm-written": _result(0.6)}}
+    p, spec = _specialist(ws, rows)
+    assert {c["id"]: c for c in health(p, spec)["checks"]}["robust"]["args"] == ["improve", "qa"]
+    p.save_experiment("v1", errors=[{"input": f"e{i}", "gold": "question", "pred": "statement"} for i in range(20)])
+    robust = {c["id"]: c for c in health(p, spec)["checks"]}["robust"]
+    assert robust["args"] == ["continue", "qa", "--run"] and "aimed at the dev errors" in robust["why"]
 
 
 def test_the_robustness_check_names_the_weakest_kind_of_request_on_the_hardest_suite(ws):

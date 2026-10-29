@@ -2836,6 +2836,20 @@ A screening run (`-r1`, a third of the epochs) is ranked by its primary calib sc
 every suite: on tool choice held that took 1 to 6 h per run, as long as the training. Rungs now build with
 `suites=[primary]`; a proposal that wins the screen gets its full training, which is scored on every suite.
 
+## Robustness compares whole requests when both suites count them
+
+"Holds on new inputs" and "Tested on real inputs" took the drop in the objective from the primary suite to the worst
+other one. For tool choice the objective is F1 over (request, tool) pairs, whose value depends on the share of pairs
+that fit: 57% on the builtin suite, 12% on When2Call, so F1 fell from 0.924 to 0.470 partly by arithmetic. Both checks
+now share `worst_drop` (`byosm/evals/drop.py`), which compares exact requests (all offered tools right) when both
+suites report them and the objective otherwise, and names the metric in the value: -0.364 exact requests on When2Call
+instead of -0.453. The drop is still a fail; it is now one users would see.
+
+The fix the robustness check names used to be Keep training, which writes rows aimed at the promoted model's dev
+errors. Tool choice held's dev split has the training distribution and 8 errors, so there is nothing to aim at; with
+fewer than `AIMABLE_ERRORS` (20) the check names the proposer instead, which reads this check and the techniques in
+the catalogue that target it.
+
 ## Spend is summed in the database
 
 The Costs page priced every LLM call one by one: 27,000 call events read row by row, four JSON fields decoded
