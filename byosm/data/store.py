@@ -79,6 +79,11 @@ class ShingleIndex:
         scored = [(i, c / len(s | self.ref[i])) for i, c in hits.most_common(NEAR_CANDIDATES)]
         return max(scored, key=lambda t: t[1], default=None)
 
+    def contained(self, text: str) -> float:
+        s = shingles(text)
+        hits = Counter(i for g in s for i in self.index.get(g, ()))
+        return max(hits.values(), default=0) / len(s)
+
 
 def near_groups(texts: list[Any], near: float = NEAR_DUPLICATE) -> list[int]:
     index, of_text, out = ShingleIndex([]), [], []

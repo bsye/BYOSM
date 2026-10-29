@@ -20,15 +20,20 @@ def weakest_case(result: dict, suite: str) -> str:
 
 
 def _fix(p: Project) -> tuple[list[str], str]:
+    from ..hard_cases import HARD_STEP, spent
+    from ..pools import pools_for
+
     errors = len((p.experiment(p.promoted or "") or {}).get("errors") or [])
     if errors >= AIMABLE_ERRORS:
+        why = " Keep training writes rows that vary phrasing and context, aimed at the dev errors."
+        return ["continue", p.name, "--run"], why
+    few = f" Dev has only {errors} errors, too few for Keep training to aim at, so"
+    if pools_for(p.spec()) and not spent(p):
         return [
-            "continue",
+            HARD_STEP,
             p.name,
-            "--run",
-        ], " Keep training writes rows that vary phrasing and context, aimed at the dev errors."
-    why = f" Dev has only {errors} errors, too few for Keep training to aim at, so the proposer picks a technique aimed at this check."
-    return ["improve", p.name], why
+        ], f"{few} a hard-case round adds the rows it gets wrong from a pool that is never scored."
+    return ["improve", p.name], f"{few} the proposer picks a technique aimed at this check."
 
 
 def robust_check(p: Project, spec: TaskSpec, board: dict, prim: str) -> dict:

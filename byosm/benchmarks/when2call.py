@@ -13,7 +13,9 @@ from .source import download
 
 REPO = "nvidia/When2Call"
 TEST_FILE = "test/when2call_test_mcq.jsonl"
-CALL = "tool_call"
+TRAIN_FILES = ("train/when2call_train_pref.jsonl", "train/when2call_train_sft.jsonl")
+CALL, NO_CALL = "tool_call", "no_call"
+TOOLCALL_OPEN, TOOLCALL_CLOSE = "<TOOLCALL>", "</TOOLCALL>"
 
 
 def fetch(file: str) -> Path:
@@ -31,6 +33,24 @@ def cases() -> Iterator[Case]:
         if offered:
             situation = Situation(str(r["question"]).strip(), offered, chosen)
             yield Case(r["uuid"], r["correct_answer"], situation, r["source_id"])
+
+
+def called(reply: str) -> set[str]:
+    body = reply.strip()
+    if not body.startswith(TOOLCALL_OPEN):
+        return set()
+    return {c["name"] for c in json.loads(body.removeprefix(TOOLCALL_OPEN).partition(TOOLCALL_CLOSE)[0])}
+
+
+def train_cases() -> Iterator[Case]:
+    for file in TRAIN_FILES:
+        for i, r in enumerate(read_file(fetch(file))):
+            offered = [tool(t) for t in r["tools"]]
+            reply = (r.get("chosen_response") or r["messages"][-1])["content"]
+            question = next(m["content"] for m in r["messages"] if m["role"] == "user")
+            chosen = called(reply)
+            if offered:
+                yield Case(f"{file}:{i}", CALL if chosen else NO_CALL, Situation(str(question).strip(), offered, chosen))
 
 
 def rows(spec: TaskSpec, log: Callable[[str], None]) -> list[dict]:

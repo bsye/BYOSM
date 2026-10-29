@@ -346,3 +346,15 @@
   status: manual
   added: 2026-10-28
   targets: [rival]
+
+- id: hard-case-rounds
+  title: Hard-case rounds
+  effect: "Scores the promoted model on a pool of real rows that are never scored, adds the rows it gets most wrong to its data and trains the next version from its weights."
+  paths: []
+  modalities: [text]
+  cost: 2.0
+  prior: 0.5
+  evidence: [https://arxiv.org/abs/2007.00808, https://arxiv.org/abs/2504.18851]
+  status: built-in
+  added: 2026-10-29
+  targets: [robust, real]

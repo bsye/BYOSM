@@ -8,6 +8,16 @@ import typer
 from .base import _spec, app, log
 
 
+@app.command("hard-cases")
+def hard_cases(name: str) -> None:
+    """Score the promoted model on a pool of rows never used to select or report, add the rows it gets most wrong to its
+    data and train the next version from its weights."""
+    from ..hard_cases import hard_round
+
+    _spec(name)
+    hard_round(name, log)
+
+
 @app.command("request-data")
 def request_data(name: str) -> None:
     """Write a data request: a template (csv and xlsx), the rows needed per label and why."""

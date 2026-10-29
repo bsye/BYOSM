@@ -5,6 +5,7 @@ from collections.abc import Callable
 from statistics import mean, variance
 from typing import Any
 
+from .data.store import Dataset, refine_split
 from .evals.selection import clean_selection, selected, selection_mean
 from .health_score import CHECK_TITLES, OK, WARN, check
 from .project import Project
@@ -78,6 +79,8 @@ def replicate(name: str, exp: str, n: int, log: Callable[[str], None] = print) -
             rep, spec=seeded, proposal={"parent": exp, "applied": [{"id": SEED_STEP, "why": why, "ops": []}]}
         )
         log(f"[seeds] {rep}: {why}")
+        data = Dataset(p.data_dir_for(seeded))
+        data.save(refine_split(rep), data.load(refine_split(exp)))
         build(name, rep, log, promote=False, suites=suites)
         made.append(rep)
     return made

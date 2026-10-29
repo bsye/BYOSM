@@ -2863,6 +2863,29 @@ each suite's delta. Test stays report-only. Tool choice held selects on builtin,
 LLM-written suite has 8 calib items. `byosm vote NAME EXP` reruns the decision for a trained experiment, which jobs
 started on older code need. The plan and the second half (hard-case rounds) are in `docs/HARD_CASES.md`.
 
+## Hard-case rounds add the rows the model gets wrong
+
+Rows aimed at dev errors cannot reach a gap that dev does not show (tool choice held: 8 dev errors at 0.99, "ask for
+info" at 0.30 on When2Call), and LLM-written fixes drifted before. A hard-case round (`byosm hard-cases NAME`,
+`byosm/hard_cases.py`) does what retrieval calls hard-negative mining ([ANCE](https://arxiv.org/abs/2007.00808)):
+
+- **The pool is real and never scored.** `byosm/pools.py` names the pools a spec can mine; tool choice mines
+  When2Call's training split, whose preference file marks the chosen reply as a `<TOOLCALL>` with the tools it
+  calls or as a question or refusal, so every (request, tool) pair has a gold label without a judge. Pool requests
+  that are near copies of any calib or test row (`ShingleIndex.contained`, most of the request's shingles inside one
+  row) are left out: 939 of 20,916 When2Call training requests were, since the set is built from the same sources as
+  BFCL-live.
+- **Mining keeps the highest loss.** The promoted model scores 4,000 sampled requests (`POOL_REQUESTS`, about 10,000
+  pairs) and the 3,000 pairs it gets most wrong (`HARD_ROWS`) are kept, logged per kind of request and label.
+- **Rows carry forward with their experiment.** The round writes the parent's added rows plus the new ones to its own
+  `refine-<exp>` split, which `fit` trains on next to `train`, and warm-starts from the parent (`continued`). Seed
+  replicas now copy their recipe's added rows: before, a replica of a Keep training experiment trained without the
+  rows its recipe wrote, so it was not the same recipe.
+- **It stops on its own.** The promotion vote decides on the selection suites with seeds; a round that did not win
+  makes `spent` refuse another round from the same promoted model, and the robustness check then names the proposer.
+  While dev has fewer than 20 errors and a pool fits, "Holds on new inputs" names the round as its next step, so the
+  ready loop runs it.
+
 ## An LLM rival's cached score depends on its prompt
 
 A rival's cached score is reused while the suite's rows, the label names, the decision rule and the rival's identity
