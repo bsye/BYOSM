@@ -2778,6 +2778,24 @@ While planning this, `maybe_promote` turned out to count a missing paired compar
 promoted model had runs but either side had no units. It now fails closed: with runs on both sides and no paired
 comparison, the lead is not sure.
 
+## A read request sees each specialist row once
+
+After the label index, the health and next steps behind one Specialists page still made 3,016 queries in-process:
+1,205 specialist id lookups, 412 promoted lookups, 410 spec reads and 372 experiment reads, plus 20,658 JSON decodes.
+Every `Project` read now goes through `_once`, the same per-request `snapshot` the board uses: inside a GET request
+the id, spec row, promoted model, experiment lists and each experiment row are read once; outside one (jobs, writes)
+every read is fresh. The whole page's health and next steps went from 1.14 s to 0.89 s in-process, with half the
+function calls.
+
+- **Returned values are copies at the top.** `experiment` returns a new dict and the lists are new lists, so a caller
+  that reassigns a field does not change the next read. Nested values (an experiment's `meta`) are shared within the
+  request; read paths do not write into them.
+- **Reports are not remembered.** Health writes the paired lead it computes into a report during a read, and a
+  remembered report would hide that write from the rest of the request.
+- **Published reference tables are read once per request.** The forecasters' cards compared against GIFT-Eval's
+  published scores by reading the seasonal naive and both Timestral tables again for every dataset: 159 file reads
+  of 3 files per list request, now 3.
+
 ## Label counts come from an index
 
 The data check in Health counts each label in the promoted model's training rows. For topic that is 90,000 rows,

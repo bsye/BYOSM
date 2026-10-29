@@ -3,6 +3,8 @@ from __future__ import annotations
 import csv
 from typing import Any
 
+from ..reads import remembered
+
 RESULTS = "https://raw.githubusercontent.com/SalesforceAIResearch/gift-eval/main/results/{model}/all_results.csv"
 NAIVE_MODEL = "Seasonal_Naive"
 RIVALS = ("Timestral-209M", "Timestral-5M")
@@ -14,6 +16,10 @@ PROTOCOL_TOLERANCE = 0.02
 
 
 def _table(model: str) -> dict[str, dict[str, str]]:
+    return remembered(("published", model), lambda: _read_table(model))
+
+
+def _read_table(model: str) -> dict[str, dict[str, str]]:
     from ..opendata.cache import fetch, table
 
     url = RESULTS.format(model=model)

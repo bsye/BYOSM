@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable, Hashable
 from datetime import UTC
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from sqlalchemy import delete, select
 
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 
     from .spec import TaskSpec
 
+T = TypeVar("T")
 WEIGHTS = "model.pt"
 UNITS = "units"
 FROM_TERMINAL = "terminal"
@@ -29,8 +31,11 @@ class Project:
         self.name = name
         self.root = self.ws / "specialists" / name
 
+    def _once(self, read: Callable[[], T], *key: Hashable) -> T:
+        return remembered((*key, str(self.ws), self.name), read)
+
     def _id(self, s: Session) -> int | None:
-        return s.scalar(select(Specialist.id).where(Specialist.name == self.name))
+        return self._once(lambda: s.scalar(select(Specialist.id).where(Specialist.name == self.name)), "id")
 
     def _need(self, s: Session) -> int:
         sid = self._id(s)
@@ -45,12 +50,15 @@ class Project:
     def spec(self) -> TaskSpec:
         from .spec import TaskSpec
 
-        with session(self.ws) as s:
-            row = s.execute(select(Specialist.spec, Specialist.created).where(Specialist.name == self.name)).first()
+        row = self._once(self._spec_row, "spec")
         if row is None:
             raise KeyError(f"no specialist {self.name!r}")
         spec, created = row
         return TaskSpec.model_validate({**spec, "created": spec.get("created") or created.replace(tzinfo=UTC)})
+
+    def _spec_row(self) -> Any:
+        with session(self.ws) as s:
+            return s.execute(select(Specialist.spec, Specialist.created).where(Specialist.name == self.name)).first()
 
     def save_spec(self, spec: TaskSpec) -> None:
         data = spec.model_dump(mode="json")
@@ -76,6 +84,9 @@ class Project:
 
     @property
     def promoted(self) -> str | None:
+        return self._once(self._promoted, "promoted")
+
+    def _promoted(self) -> str | None:
         with session(self.ws) as s:
             return s.scalar(select(Specialist.promoted).where(Specialist.id == self._need(s)))
 
@@ -130,17 +141,27 @@ class Project:
         return s.scalar(select(Experiment).where(Experiment.specialist_id == self._need(s), Experiment.name == exp))
 
     def experiments(self) -> list[str]:
+        return list(self._once(self._experiments, "experiments"))
+
+    def _experiments(self) -> list[str]:
         with session(self.ws) as s:
             sid = self._id(s)
             mine = Experiment.specialist_id == sid
             return sorted(s.scalars(select(Experiment.name).where(mine, Experiment.meta.is_not(None)))) if sid else []
 
     def attempts(self) -> list[str]:
+        return list(self._once(self._attempts, "attempts"))
+
+    def _attempts(self) -> list[str]:
         with session(self.ws) as s:
             sid = self._id(s)
             return sorted(s.scalars(select(Experiment.name).where(Experiment.specialist_id == sid))) if sid else []
 
     def experiment(self, exp: str) -> dict[str, Any] | None:
+        found = self._once(lambda: self._read_experiment(exp), "experiment", exp)
+        return dict(found) if found else None
+
+    def _read_experiment(self, exp: str) -> dict[str, Any] | None:
         with session(self.ws) as s:
             e = self._experiment(s, exp)
             return {k: getattr(e, k) for k in EXPERIMENT_FIELDS} if e else None
@@ -169,7 +190,7 @@ class Project:
                 setattr(e, k, v)
 
     def board(self, units: bool = True) -> dict[str, Any]:
-        return remembered(("board", str(self.ws), self.name, units), lambda: self._board(units))
+        return self._once(lambda: self._board(units), "board", units)
 
     def _board(self, units: bool) -> dict[str, Any]:
         if not self.exists():

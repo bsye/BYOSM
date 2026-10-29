@@ -29,6 +29,38 @@ def test_a_snapshot_reads_the_board_once_and_outside_one_every_read_is_fresh(ws,
     assert p.board()["v1"]["builtin"]["objective"] == 0.7 and len(reads) == 2
 
 
+READS = ("_spec_row", "_promoted", "_read_experiment", "_experiments", "_attempts")
+
+
+def test_a_snapshot_reads_the_specialist_and_each_experiment_once(ws, monkeypatch):
+    p = _project()
+    calls = []
+    for name in READS:
+        real = getattr(Project, name)
+        monkeypatch.setattr(Project, name, lambda self, *a, real=real, name=name: calls.append(name) or real(self, *a))
+    with snapshot():
+        for _ in range(3):
+            seen = (p.spec().name, p.promoted, p.meta("v1"), p.experiments(), p.attempts())
+            assert seen == ("t", None, {}, ["v1"], ["v1"])
+    assert sorted(calls) == sorted(READS)
+
+
+def test_outside_a_snapshot_every_read_sees_the_latest_write(ws):
+    p = _project()
+    assert p.promoted is None
+    p.promote("v1", "test")
+    p.save_experiment("v2", meta={"x": 1})
+    assert p.promoted == "v1" and p.experiments() == ["v1", "v2"] and p.meta("v2") == {"x": 1}
+
+
+def test_changing_a_remembered_read_does_not_change_the_next_one(ws):
+    p = _project()
+    with snapshot():
+        p.experiment("v1")["meta"] = {"changed": True}
+        p.experiments().append("v9")
+        assert p.experiment("v1")["meta"] == {} and p.experiments() == ["v1"]
+
+
 def test_only_read_requests_share_one_board_read(ws, monkeypatch):
     _project()
     reads = []
