@@ -46,6 +46,18 @@ def test_a_big_drop_on_another_suite_fails_robustness(ws):
     assert checks["rival"]["status"] == "warn"
 
 
+def test_the_robustness_check_names_the_weakest_kind_of_request_on_the_hardest_suite(ws):
+    def exact(accuracy, n):
+        return {"exact": {"accuracy": accuracy, "ci": [0.0, 1.0], "n": n}}
+
+    by = {"tool_call": exact(0.56, 1054), "request_for_info": exact(0.32, 856), "none_needed": exact(None, 0)}
+    metrics = {"requests": {"all": exact(0.55, 1910), "by_category": by}}
+    rows = {"v1": {"builtin": _result(0.97), "llm-written": _result(0.6, metrics=metrics)}}
+    p, spec = _specialist(ws, rows)
+    robust = {c["id"]: c for c in health(p, spec)["checks"]}["robust"]
+    assert "Weakest kind of request on llm-written: request for info, 0.32 exact over 856 requests." in robust["why"]
+
+
 def test_no_promoted_score_gives_no_health(ws):
     p, spec = _specialist(ws, {})
     assert health(p, spec) is None

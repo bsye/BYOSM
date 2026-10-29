@@ -38,6 +38,11 @@ def per_request(spec: TaskSpec, rows: list[dict], dec: np.ndarray) -> dict[str, 
     return {"all": evaluate(_requests(rows, lambda m: True), pick), "by_category": by}
 
 
+def cases(m: dict[str, Any]) -> dict[str, Any] | None:
+    by = (m.get(REQUESTS) or {}).get("by_category")
+    return {c: v["exact"] for c, v in by.items()} if by else None
+
+
 def grouped_metrics(
     spec: TaskSpec, calib: list[dict], test: list[dict], pc: Any, pt: np.ndarray, dec: np.ndarray
 ) -> dict[str, Any]:

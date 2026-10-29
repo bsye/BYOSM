@@ -3,8 +3,18 @@ from __future__ import annotations
 from ..health_score import CHECK_TITLES, DROP_OK, DROP_WARN, OK, UNKNOWN, check, graded
 from ..project import Project
 from ..spec import TaskSpec
+from .grouped import cases
 
 HUB_RIVAL = "hf:"
+
+
+def weakest_case(result: dict, suite: str) -> str:
+    found = {c: e for c, e in (cases(result.get("metrics") or {}) or {}).items() if e["accuracy"] is not None}
+    if not found:
+        return ""
+    name, exact = min(found.items(), key=lambda kv: kv[1]["accuracy"])
+    readable = name.replace("_", " ")
+    return f" Weakest kind of request on {suite}: {readable}, {exact['accuracy']:.2f} exact over {exact['n']} requests."
 
 
 def robust_check(p: Project, spec: TaskSpec, board: dict, prim: str) -> dict:
@@ -23,15 +33,17 @@ def robust_check(p: Project, spec: TaskSpec, board: dict, prim: str) -> dict:
             )
         return check("robust", CHECK_TITLES["robust"], 2, UNKNOWN, "one suite only", why, args)
     suite, worst = min(others.items(), key=lambda kv: kv[1])
+    hint = weakest_case(by_suite[suite], suite)
     found = [r[suite]["objective"] for pid, r in board.items() if pid.startswith(HUB_RIVAL) and suite in r]
     if found := [v for v in found if v is not None]:
         why = "On a test set written by an LLM every trained model drops, so it is judged against the best model fine-tuned on the benchmark."
+        why += hint
         status = graded(worst - max(found), -DROP_OK, -DROP_WARN)
         args = ["continue", p.name, "--run"] if status != OK else None
         value = f"{worst:.3f} vs {max(found):.3f} for rivals on {suite}"
         return check("robust", CHECK_TITLES["robust"], 2, status, value, why, args)
     drop = by_suite[prim]["objective"] - worst
-    why = f"Drop from the primary benchmark to the hardest other suite ({len(others)} scored)."
+    why = f"Drop from the primary benchmark to the hardest other suite ({len(others)} scored).{hint}"
     status = graded(drop, DROP_OK, DROP_WARN, False)
     if status != OK:
         why += " Keep training writes rows that vary phrasing and context, aimed at the dev errors."

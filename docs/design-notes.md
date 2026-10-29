@@ -2740,3 +2740,8 @@ passes it as `cases` and the Board tab draws it per suite ("By case"): one bar p
 95% interval, the models and colours taken from "Every suite" so a model keeps its colour. On When2Call it shows that
 the gap is one case: when a required detail is missing and the right answer is to ask for it, every model calls the
 tool anyway (near-miss 0.32, v1 0.30), while "cannot answer" rose from 0.66 to 0.77 with near-miss negatives.
+
+The same breakdown closes the loop: `robust_check` adds the weakest kind of request on the hardest suite to its reason
+("Weakest kind of request on when2call: request for info, 0.30 exact over 856 requests"), so Health, the next step and
+the proposer and lab LLMs, which read the checks, see which case to aim at rather than only the drop. `grouped.cases`
+is the one reader of the stored breakdown for both the detail payload and the check.

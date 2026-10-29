@@ -10,7 +10,7 @@ from ..auto.standing import best_baseline
 from ..data.store import STORED_SPLITS, Dataset
 from ..data.sufficiency import data_check
 from ..dataset_search import saved_suggestions
-from ..evals.grouped import REQUESTS
+from ..evals.grouped import cases
 from ..evals.overfit import OVERFIT
 from ..evals.scoring import busy
 from ..health import health
@@ -39,11 +39,6 @@ def project(ws: Path, name: str) -> Project:
     return p
 
 
-def _cases(m: dict) -> dict[str, Any] | None:
-    by = (m.get(REQUESTS) or {}).get("by_category")
-    return {c: v["exact"] for c, v in by.items()} if by else None
-
-
 def _result(o: Objective, r: dict) -> dict[str, Any]:
     m = r.get("metrics", {})
     per_label = m.get("per_label", {})
@@ -52,7 +47,7 @@ def _result(o: Objective, r: dict) -> dict[str, Any]:
         "ci": m.get("ci95"),
         "unreached": unreached(o, m),
         "caught": caught,
-        "cases": _cases(m),
+        "cases": cases(m),
     }
     return shaped | {"latency_load": r.get("latency_load"), "timed_busy": busy(r)}
 
