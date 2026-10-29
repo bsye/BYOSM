@@ -4,8 +4,11 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from ..deadline import BudgetSpentError, until
+
 MAX_ROUNDS = 12
 BUDGET_H = 6.0
+BUDGET_SPENT = "time budget spent"
 
 
 def _next(name: str, tried: set[tuple], model: str | None = None, blockers: list[str] = ()) -> dict[str, Any] | None:
@@ -33,11 +36,18 @@ def until_ready(
     rounds: int = MAX_ROUNDS,
     budget_h: float = BUDGET_H,
 ) -> dict[str, Any]:
-    from ..events import stage
-    from ..health import health
     from ..project import Project
 
-    p, deadline, tried, moved = Project(name), time.time() + budget_h * 3600, set(), []
+    deadline = time.time() + budget_h * 3600
+    with until(deadline):
+        return _rounds(Project(name), run, log, rounds, deadline)
+
+
+def _rounds(p: Any, run: Callable[[list[str]], Any], log: Callable[[str], None], rounds: int, deadline: float) -> dict:
+    from ..events import stage
+    from ..health import health
+
+    name, tried, moved = p.name, set(), []
     for n in range(rounds):
         h = health(p, p.spec()) or {"score": 0, "ready": False, "blockers": []}
         if moved:
@@ -48,13 +58,16 @@ def until_ready(
         model = p.promoted if p.exists() else None
         step = _next(name, tried, model, h["blockers"]) if time.time() < deadline else None
         if step is None:
-            reason = "time budget spent" if time.time() >= deadline else "no untried step left"
+            reason = BUDGET_SPENT if time.time() >= deadline else "no untried step left"
             return {"ready": False, "score": h["score"], "rounds": n, "stop": reason}
         tried.add((model, step["id"], *step["args"]))
         moved.append((step, {c["id"]: c["status"] for c in h.get("checks", [])}))
         try:
             with stage(step["title"]):
                 code = run(step["args"])
+        except BudgetSpentError as e:
+            log(f"[ready] {step['title']} stopped: {e}")
+            return {"ready": False, "score": h["score"], "rounds": n + 1, "stop": BUDGET_SPENT}
         except Exception as e:
             log(f"[ready] {step['title']} failed: {type(e).__name__}: {e}")
             continue

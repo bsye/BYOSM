@@ -1,6 +1,9 @@
+import time
+
 import byosm.health as health_module
 import byosm.next_steps as steps_module
 from byosm.auto.ready import until_ready
+from byosm.deadline import ensure_time_left
 
 
 def _patch(monkeypatch, steps, promoted):
@@ -24,6 +27,28 @@ def test_a_step_runs_again_once_the_promoted_model_changes(monkeypatch):
     out = until_ready("x", run, log=lambda _: None)
     assert ran == [["export", "x"], ["export", "x"]]
     assert out["stop"] == "no untried step left"
+
+
+def test_a_step_that_trains_several_models_stops_before_the_next_one_once_the_budget_is_spent(monkeypatch):
+    steps = [
+        {"id": "experiments", "title": "Run 3 experiments", "args": ["improve", "x"], "gain": 9},
+        {"id": "export", "title": "Export", "args": ["export", "x"], "gain": 5},
+    ]
+    _patch(monkeypatch, steps, {"v": "v1"})
+    clock = {"now": 1000.0}
+    monkeypatch.setattr(time, "time", lambda: clock["now"])
+    trained, logs = [], []
+
+    def run(args):
+        for exp in ("v2", "v3", "v4"):
+            ensure_time_left(f"training x/{exp}")
+            trained.append(exp)
+            clock["now"] += 3600
+
+    out = until_ready("x", run, log=logs.append, budget_h=1.5)
+    assert trained == ["v2", "v3"] and out["stop"] == "time budget spent"
+    assert "[ready] Run 3 experiments stopped: time budget spent, so training x/v4 was not started" in logs
+    ensure_time_left("a build outside the ready loop")
 
 
 def test_a_failing_step_is_logged_and_the_loop_moves_on(monkeypatch):

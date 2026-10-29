@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 
+from .deadline import BudgetSpentError
 from .evals.selection import selection_value
 from .project import Project
 from .spec import TaskSpec
@@ -42,7 +43,9 @@ def _rung_score(p: Project, exp: str, log: Callable[[str], None]) -> float | Non
         proposal = {"parent": exp, "applied": [{"id": RUNG_STEP, "why": why, "ops": []}]}
         p.save_experiment(rung, spec=short(p.exp_spec(exp)), proposal=proposal)
         try:
-            build(p.name, rung, log, promote=False)
+            build(p.name, rung, log, promote=False, suites=[p.spec().primary_suite()])
+        except BudgetSpentError:
+            raise
         except Exception as e:
             log(f"[screen] {rung} failed: {type(e).__name__}: {str(e)[:160]}")
             return None

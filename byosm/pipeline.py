@@ -11,6 +11,7 @@ from .config import load_config
 from .data import synth_text
 from .data.review import reviewed_labels
 from .data.store import CALIB, Dataset, refine_split, rounds_split
+from .deadline import ensure_time_left
 from .events import stage
 from .held_out import adopt_data, bigger_held_out
 from .project import WEIGHTS, Project
@@ -95,6 +96,7 @@ def build(
     p = Project(name).ensure()
     cfg = load_config(p.ws)
     exp = exp or next_exp(p)
+    ensure_time_left(f"training {name}/{exp}")
     spec = p.exp_spec(exp)
     ed = p.exp_dir(exp)
     ed.mkdir(parents=True, exist_ok=True)

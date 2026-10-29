@@ -2821,6 +2821,21 @@ fits" from 0.66 to 0.75. The other kinds were flipped far less (nearest 26%, sam
   held's near-miss and clean-label recipes, bank panel's teacher panel); their rows and folders were copied once to
   the new keys, and the old copies stay until the jobs that started on the old code have ended.
 
+## The ready loop's budget holds inside a step
+
+The ready loop checked its 6 h budget only between steps, and one step ("Run N experiments") trains a model per
+proposal, so tool choice held's loop ran for more than 26 h: the step started inside the budget and screened six
+proposals back to back. `until_ready` now runs under `deadline.until`, and `build` calls `ensure_time_left` before it
+trains anything, so a step stops before its next model once the budget is spent; the loop logs which model was not
+started and ends with "time budget spent". A build outside the ready loop has no deadline. Screening lets that stop
+through instead of logging it as a failed run.
+
+## Screening runs are scored on the primary suite only
+
+A screening run (`-r1`, a third of the epochs) is ranked by its primary calib score alone, yet each one was scored on
+every suite: on tool choice held that took 1 to 6 h per run, as long as the training. Rungs now build with
+`suites=[primary]`; a proposal that wins the screen gets its full training, which is scored on every suite.
+
 ## Spend is summed in the database
 
 The Costs page priced every LLM call one by one: 27,000 call events read row by row, four JSON fields decoded
