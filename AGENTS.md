@@ -31,6 +31,8 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 
 ## Code
 
+- **Never create a file with a shell redirect.** Use the file tool, which refuses to overwrite a file you have not
+  read; a `cat >` once replaced `byosm/app/snapshot.py` and stopped every new job from starting.
 - **No comments.** Names carry the meaning. The reasons behind a design go in `docs/design-notes.md`, not next to the
   code. The only docstrings allowed are the ones Typer prints as `--help` text for CLI commands.
 - **No regex.** Use string methods (`split`, `partition`, `startswith`, `strip`, `str.isalnum`, ...).
