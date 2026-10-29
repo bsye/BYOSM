@@ -3,7 +3,7 @@ from __future__ import annotations
 from statistics import mean, stdev
 
 from ..project import Project
-from ..replicas import SEED_SEP, recipe_of
+from ..replicas import SEED_SEP, is_soup, recipe_of
 from .cells import STALE, fold_note, folded, stale_ids, stale_note, train_rows
 
 SEEDS = "seeds"
@@ -15,10 +15,15 @@ def scored(p: Project, suite: str) -> dict[str, dict]:
     return {pid: by[suite] for pid, by in p.board().items() if by.get(suite, {}).get("kind") == "experiment"}
 
 
+def seed_recipe(pid: str) -> str | None:
+    return None if is_soup(pid) else recipe_of(pid)
+
+
 def _by_recipe_and_fingerprint(by: dict[str, dict]) -> dict[str, dict[str, list[str]]]:
+    named = {g for pid in by if (g := seed_recipe(pid))}
     out: dict[str, dict[str, list[str]]] = {}
     for pid in sorted(by):
-        g = recipe_of(pid)
+        g = seed_recipe(pid) or (pid if pid in named else None)
         if g:
             out.setdefault(g, {}).setdefault(str(by[pid].get("fingerprint")), []).append(pid)
     return out
@@ -62,7 +67,8 @@ def _top(top: str | None) -> str:
 
 def _note(prim: str, top: str | None, any_folded: bool, stale: set[str]) -> str:
     return (
-        f"Experiments named `<recipe>{SEED_SEP}<seed>` on suite `{prim}`, mean ± sample sd over seeds, sorted by calib "
+        f"A recipe and its runs named `<recipe>{SEED_SEP}<seed>` (the recipe itself is the first seed; a soup is not a "
+        f"seed) on suite `{prim}`, mean ± sample sd over seeds, sorted by calib "
         "(the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several "
         "gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; "
         f"{STALE} rows are listed last and never ranked against the promoted version); {_top(top)}. Columns after train rows are the `train` settings that differ "

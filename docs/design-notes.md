@@ -2710,3 +2710,12 @@ of the seeds, not a seed. The Board tab draws one row per recipe, a dot per seed
 (`SeedSpread.tsx`); it comes with the specialist detail, so it updates with the board and has no loading state. On the
 tool-choice specialist it showed near-miss's two seeds at 0.931 and 0.959, a spread as wide as the leads being voted
 on.
+
+## The seeds table counts the recipe as its first seed
+
+`byosm seeds` and a promotion vote train `<recipe>-s1`, `<recipe>-s2` next to the recipe's own run, which is the first
+seed (`clean_runs`). The report's seeds table grouped only the runs named `-s<k>`, so it averaged one seed fewer than
+the vote, dropped a recipe with one replica (tool-choice near-miss had no row), and counted a soup as a seed, since
+`recipe_of` maps a soup to its recipe. `seed_recipe` (`byosm/report/seeds.py`) now names the recipe of a seed run and
+leaves soups out, and a recipe that has seed runs joins its own group. The main table still lists the recipe's own run
+and the soup and hides only the `-s<k>` replicas off the promoted lineage, so no run disappears from the page.

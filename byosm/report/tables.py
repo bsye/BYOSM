@@ -8,7 +8,7 @@ from ..project import Project
 from ..spec import TaskSpec
 from .cells import STALE, fold_note, folded, num, score, stale_ids, stale_note, train_rows
 from .origin import built_from
-from .seeds import SEEDS, recipes, scored
+from .seeds import SEEDS, recipes, scored, seed_recipe
 
 NO_BASELINE = "no outside baseline scored yet"
 SUMMARY_HEAD = (
@@ -20,7 +20,7 @@ SUMMARY_HEAD = (
 
 def _replicates(p: Project, prim: str) -> set[str]:
     line = {step["exp"] for step in lineage(p, p.promoted)} if p.promoted else set()
-    return {i for ids in recipes(scored(p, prim)).values() for i in ids} - line
+    return {i for ids in recipes(scored(p, prim)).values() for i in ids if seed_recipe(i)} - line
 
 
 def _row(p: Project, r: dict, prim: str, stale: set[str]) -> str:
@@ -37,7 +37,8 @@ def _listed(p: Project, hidden: int) -> str:
     if not hidden:
         return "Every scored experiment is listed."
     return (
-        f"Every scored experiment is listed, except {hidden} seed replicates off the promoted lineage, which are "
+        f"Every scored experiment is listed, except {hidden} seed {'replicate' if hidden == 1 else 'replicates'} off "
+        "the promoted lineage, which are "
         f"summarised in the recipe table (`{p.name}:{SEEDS}`)."
     )
 

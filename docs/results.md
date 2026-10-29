@@ -371,7 +371,7 @@ builtin suite's held-out split, so they see more data.
 | old | 3 | 7494 | false | auto | 1.0 | fp32 | 0 | 0 | 0 | 92.52 ± 0.25 | 93.67 ± 0.56 |
 | abl-pretrain-steps-200-on | 2 | 8964 (+1470 builtin test) | true | auto | 0.5 | auto | 200 | 0 | 0 | 93.66 ± 0.29 | 93.59 ± 0.80 |
 
-Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `abl-backbone-hf-baai-bge-small-en-v1-5-off`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+A recipe and its runs named `<recipe>-s<seed>` (the recipe itself is the first seed; a soup is not a seed) on suite `b77`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `abl-backbone-hf-baai-bge-small-en-v1-5-off`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:intent:seeds -->
 
 - The current default (EMA, layer decay floor 0.5, no probe epoch, mixed precision, `holdout_test: auto`) was picked
@@ -386,7 +386,7 @@ Experiments named `<recipe>-s<seed>` on suite `b77`, mean ± sample sd over seed
 | abl-pretrain-steps-0-off | 2 | 5241 (+781 builtin test) | 200 | 89.31 ± 0.71 | 90.11 ± 0.38 |
 | abl-pretrain-steps-0-on | 2 | 5241 (+781 builtin test) | 0 | 89.81 ± 0.09 | 89.30 ± 0.38 |
 
-Experiments named `<recipe>-s<seed>` on suite `bench`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `abl-pretrain-steps-0-off`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+A recipe and its runs named `<recipe>-s<seed>` (the recipe itself is the first seed; a soup is not a seed) on suite `bench`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `abl-pretrain-steps-0-off`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:emotion:seeds -->
 
 <!-- report:laya-sentiment -->
@@ -432,11 +432,20 @@ The same task with whole tool families and option layouts held out of training, 
 | model | built from | train rows | params | CPU | test f1 [95% CI] | calib f1 |
 |---|---|---|---|---|---|---|
 | v2-r1 | v2 + rung | 16622 | 394.79M | 677.13ms | 0.967 [0.958, 0.975] | 0.958 |
+| v4-r1 | v4 + rung | 16476 | 394.79M | 197.76ms | 0.963 [0.954, 0.971] | 0.957 |
 | near-miss | v1 + `data.pairs.near_misses=[nearest, same_category, missing_parameter, removed]` | 16622 | 394.79M | 596.28ms | 0.958 [0.949, 0.967] | 0.959 |
 | v3-r1 | v3 + rung | 8263 | 394.79M | 938.70ms | 0.955 [0.946, 0.964] | 0.943 |
 | **v1** (promoted) | no recorded parent | 8263 | 394.79M | 625.02ms | 0.924 [0.912, 0.935] | 0.913 |
 
-Suite `builtin` (tool-choice-held-builtin): 1616 test and 1624 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+Suite `builtin` (tool-choice-held-builtin): 1616 test and 1624 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 1 seed replicate off the promoted lineage, which are summarised in the recipe table (`tool-choice-held:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
 <!-- /report:tool-choice-held -->
 
 <p align="center"><a href="../README.md">Tour</a> · <a href="assumptions.md">Goal and bet</a> · <a href="methodology.md">Methodology</a> · <b>Results</b> · <a href="details.md">Details</a></p>
+
+<!-- report:tool-choice-held:seeds -->
+| recipe | seeds | train rows | test f1 % | calib f1 % |
+|---|---|---|---|---|
+| near-miss | 2 | 16622 | 94.67 ± 1.56 | 94.52 ± 1.98 |
+
+A recipe and its runs named `<recipe>-s<seed>` (the recipe itself is the first seed; a soup is not a seed) on suite `builtin`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `near-miss`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran).
+<!-- /report:tool-choice-held:seeds -->

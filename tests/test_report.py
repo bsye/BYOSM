@@ -194,3 +194,16 @@ def test_a_stale_recipe_is_never_ranked_top(toy):
     seeds = blocks()["toy:seeds"]
     assert seeds.index("| rec @new |") < seeds.index("| rec @old† |")
     assert "top on calib: `rec @new`" in seeds
+
+
+def test_a_recipe_counts_as_its_own_first_seed_and_a_soup_is_not_a_seed(toy):
+    p = Project("toy")
+    board = p.board()
+    for exp, acc in (("v2-s1", 0.7), ("v2-s2", 0.6), ("v2-soup", 0.9)):
+        p.exp_dir(exp).mkdir(parents=True, exist_ok=True)
+        p.save_experiment(exp, spec=_trained(p, {}), meta={})
+        board[exp] = {"bench": _result("experiment", acc, acc, BASE_UNITS, 2_000_000)}
+    save_board(p, board)
+    seeds, main = blocks()["toy:seeds"], blocks()["toy"]
+    assert "| **v2** | 3 |" in seeds and "v2-soup" not in seeds and "top on calib: `v2`" in seeds
+    assert "**v2** (promoted)" in main and "| v2-soup |" in main and "except 2 seed replicates" in main
