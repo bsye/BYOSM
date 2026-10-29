@@ -34,6 +34,10 @@ const VERBS: Record<string, string> = {
   ready: "Auto until ready",
   cloud: "Write AWS stack",
   "publish-data": "Publish dataset",
+  publish: "Publish",
+  deploy: "Deploy",
+  listen: "Listen in room",
+  scout: "Scout papers",
 }
 
 const INPUT_VERBS: Record<string, string> = { write: "Write inputs", sample: "Sample inputs", run: "Score inputs" }
@@ -44,6 +48,8 @@ const SUB_VERBS: Record<string, Record<string, string>> = {
   forecast: { run: "Run forecast", new: "Save forecast" },
   series: { run: "Train forecaster", pretrain: "Pretrain forecasters", corpus: "Download pretraining data" },
   opendata: { find: "Find open data", fetch: "Download open data", search: "Search open data" },
+  lab: { write: "Write method", run: "Run method" },
+  options: { new: "Create specialist", score: "Score choices", rival: "Compare with LLM" },
 }
 const NAMED_FLAGS = new Set(["--apply", "--suite"])
 export const EVENT_PREFIX = "@event "
