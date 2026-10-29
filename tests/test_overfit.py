@@ -31,7 +31,7 @@ class Scorer:
     def __init__(self):
         self.calls = 0
 
-    def __call__(self, pred, spec, calib, test, root, space=None):
+    def __call__(self, pred, spec, calib, test, root, space, suite):
         self.calls += 1
         return {"objective": TRAIN_SCORE, "metrics": {"ci95": {"lo": 0.98, "hi": 1.0}}}
 

@@ -69,7 +69,9 @@ def _train_score(
     log(f"  scoring {exp} on {len(sample)} of its {len(train_rows)} training rows...")
     t0 = time.time()
     space = suite.label_space(base.label_names)
-    r = score(experiment_predictor(p, base, exp), base, calib, _absolute(spec, sample, dd), root, space)
+    r = score(
+        experiment_predictor(p, base, exp), base, calib, _absolute(spec, sample, dd), root, space, "training rows"
+    )
     ci = r["metrics"]["ci95"]
     return {"objective": r["objective"], "ci95": ci, "n": len(sample), "seconds": round(time.time() - t0, 1)}
 

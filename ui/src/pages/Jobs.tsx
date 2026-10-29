@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
 import { took } from "@/format"
-import { currentStep, describe, llmUsed, timeLeft } from "@/jobs"
+import { describe, llmUsed, stepNow } from "@/jobs"
 import { openJob } from "@/job-sheet"
 import { go, href } from "@/route"
 import { JobDetail } from "./JobLog"
@@ -57,9 +57,7 @@ function useRows() {
     .map((j) => {
       const metrics = live.metrics[j.id] ?? []
       const active = j.status === "running" || j.status === "queued"
-      const left = active ? timeLeft(metrics) : null
-      const step = active ? currentStep(metrics, live.lines[j.id] ?? []) : null
-      return { job: j, now: step && left ? `${step}, ${left}` : step, llm: llmUsed(metrics) }
+      return { job: j, now: active ? stepNow(metrics, live.lines[j.id] ?? []) : null, llm: llmUsed(metrics) }
     })
 }
 

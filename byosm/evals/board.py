@@ -57,7 +57,7 @@ def _cached_or_scored(
         return cached
     log(f"  scoring {pid} on {suite} ({len(test)} test items)...")
     try:
-        r = score(make(), base, calib, test, root, space)
+        r = score(make(), base, calib, test, root, space, suite)
         identity = _identity(p, kind, pid)
     except Exception as ex:
         log(f"  {pid} failed on {suite}: {type(ex).__name__}: {ex}")

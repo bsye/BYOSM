@@ -110,9 +110,16 @@ export function currentStep(metrics: Metric[], lines: string[]): string {
   if (last?.kind === "teacher") return `${last.teacher} labelling ${last.done}/${last.total}`
   if (last?.kind === "writing") return `Writing ${last.split} data ${last.done}/${last.total}`
   if (last?.kind === "scored") return `Scored ${last.predictor} on ${last.suite}`
+  if (last?.kind === "scoring") return `Scoring ${last.predictor} on ${last.suite} ${last.split}, ${last.done}/${last.total}`
   if (last?.kind === "gpu") return "Waiting for the GPU: another job is training"
   if (last?.kind === "recovery") return `Recovering: ${last.why}`
   return openStage(metrics) ?? (lines.findLast((l) => l.trim() && !l.startsWith(EVENT_PREFIX))?.trim() || "Starting")
+}
+
+export function stepNow(metrics: Metric[], lines: string[]): string {
+  const step = currentStep(metrics, lines)
+  const left = timeLeft(metrics)
+  return left ? `${step}, ${left}` : step
 }
 
 export const jobRunning = (jobs: Record<string, Job>, args: string[]) =>
@@ -210,6 +217,7 @@ const PROGRESS_KINDS: Record<string, { done: string; total: string }> = {
   teacher: { done: "done", total: "total" },
   epoch: { done: "epoch", total: "epochs" },
   training: { done: "step", total: "steps" },
+  scoring: { done: "done", total: "total" },
 }
 
 export function timeLeft(metrics: Metric[]): string | null {

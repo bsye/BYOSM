@@ -2687,3 +2687,14 @@ scored on the primary suite inside `build(..., suites=[primary])`, the vote is l
 replicas on the other suites afterwards in the same job, so the spread of seeds on out-of-domain suites (bfcl-live
 calib 0.69 against 0.62 for two seeds of near-miss) is still measured, just after the decision. `byosm seeds` does the
 same. The soup is still scored on every suite before shipping, because a shipped soup is the promoted model.
+
+## Scoring reports how far it has got
+
+Scoring a 395M encoder on CPU takes hours on the bigger suites (when2call: 8797 test rows, 82 minutes), and the only
+event was `scored` at the end of a suite, so a job showed "Scored v4-r1 on bfcl" for over an hour while it scored
+bfcl-live. `_collect` now scores a local model's rows in chunks of `SCORE_CHUNK` (256, a multiple of every predictor's
+batch, so the batches and the scores are unchanged) and emits `scoring` with the suite, the split and rows done of
+total after each one; the job's current step reads "Scoring v4-r1 on bfcl-live test, 1024/5253" with a time left.
+Predictors that take whole rows (an LLM rival, the teacher panel) are not chunked: they batch and parallelise their
+own calls and already report each call. The specialist page's Running now card shows the same current step as the
+job list (`stepNow`).

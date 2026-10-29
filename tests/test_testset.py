@@ -91,7 +91,7 @@ def test_frame_tasks_are_refused(qa):
 def test_the_command_scores_the_baselines_on_the_new_suite_only(qa, monkeypatch):
     scored = []
 
-    def fake_score(pred, spec, calib, test, root, space=None):
+    def fake_score(pred, spec, calib, test, root, space, suite):
         scored.append((pred, len(test)))
         return {"kind": "baseline", "objective": 0.5, "calib_objective": 0.5, "metrics": {}}
 

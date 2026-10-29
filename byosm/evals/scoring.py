@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from .. import metrics
+from ..events import emit
 from ..modalities import get_modality
 from ..predictors import Predictor
 from ..rt import hysteresis
@@ -19,10 +20,11 @@ BUSY_LOAD = 0.3
 FramePairs = list[tuple[np.ndarray, np.ndarray]]
 ACTIVATION_GRID = np.linspace(0.1, 0.9, 33)
 CI_RESAMPLES = 500
+SCORE_CHUNK = 256
 
 
 def _collect(
-    pred: Predictor, spec: TaskSpec, rows: list[dict], root: Path
+    pred: Predictor, spec: TaskSpec, rows: list[dict], root: Path, where: dict[str, str]
 ) -> tuple[np.ndarray, np.ndarray, FramePairs]:
     mod = get_modality(spec, str(root))
     if spec.task_type == "frame":
@@ -36,7 +38,17 @@ def _collect(
         return np.concatenate([a for a, _ in per]), np.concatenate([b for _, b in per]), per
     idx = spec.label_index
     y = np.array([idx[r["label"]] for r in rows])
-    return _within(row_probs(pred, rows, mod), spec, pred.label_space), y, []
+    return _within(_probs(pred, rows, mod, where), spec, pred.label_space), y, []
+
+
+def _probs(pred: Predictor, rows: list[dict], mod: Any, where: dict[str, str]) -> np.ndarray:
+    if getattr(pred, "wants_rows", False):
+        return row_probs(pred, rows, mod)
+    parts = []
+    for start in range(0, len(rows), SCORE_CHUNK):
+        parts.append(row_probs(pred, rows[start : start + SCORE_CHUNK], mod))
+        emit("scoring", predictor=pred.id, **where, done=min(start + SCORE_CHUNK, len(rows)), total=len(rows))
+    return np.concatenate(parts)
 
 
 def row_probs(pred: Predictor, rows: list[dict], mod: Any) -> np.ndarray:
@@ -159,12 +171,18 @@ def add_speed(out: dict[str, Any], pred: Predictor, spec: TaskSpec, test: list[d
 
 
 def score(
-    pred: Predictor, spec: TaskSpec, calib: list[dict], test: list[dict], root: Path, space: list[str] | None = None
+    pred: Predictor,
+    spec: TaskSpec,
+    calib: list[dict],
+    test: list[dict],
+    root: Path,
+    space: list[str] | None,
+    suite: str,
 ) -> dict[str, Any]:
     t0 = time.time()
     pred.label_space = space if space and space != spec.label_names else None
-    pc, yc, perc = _collect(pred, spec, calib, root) if calib else (None, None, [])
-    pt, yt, pert = _collect(pred, spec, test, root)
+    pc, yc, perc = _collect(pred, spec, calib, root, {"suite": suite, "split": "calib"}) if calib else (None, None, [])
+    pt, yt, pert = _collect(pred, spec, test, root, {"suite": suite, "split": "test"})
     out: dict[str, Any] = {"predictor": pred.id, "kind": pred.kind, "params": pred.params}
     n_labels = len(spec.labels)
     if spec.decision.kind == "hysteresis" and spec.task_type == "frame":

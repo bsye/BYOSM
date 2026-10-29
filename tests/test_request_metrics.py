@@ -16,7 +16,7 @@ def test_pair_suites_are_also_scored_per_request_and_per_category(tmp_path):
     spec = binary("t", NO_FIT, FITS)
     test = [pair("a", 0, FITS), pair("a", 1, NO_FIT), pair("b", 0, NO_FIT, category="none"), pair("c", 0, FITS)]
     calib = [pair("d", 0, FITS, "calib"), pair("d", 1, NO_FIT, "calib")]
-    m = score(get_baseline(ALWAYS_POSITIVE, spec), spec, calib, test, tmp_path)["metrics"]
+    m = score(get_baseline(ALWAYS_POSITIVE, spec), spec, calib, test, tmp_path, None, "s")["metrics"]
     found = m["requests"]["all"]
     assert found["no_tool"]["accuracy"] == 0.0 and found["tool_needed"]["accuracy"] == 0.5
     assert m["requests"]["by_category"]["none"]["no_tool"]["n"] == 1 and m["f1"] == pytest.approx(2 * 0.5 / 1.5)
@@ -26,7 +26,7 @@ def test_pair_suites_are_also_scored_per_request_and_per_category(tmp_path):
 def test_rows_without_a_request_are_scored_as_plain_rows(tmp_path):
     spec = binary("t", "statement", "question")
     rows = [{"id": "a", "input": "is it?", "label": "question", "meta": {"group": "g"}}]
-    assert "requests" not in score(get_baseline(ALWAYS_POSITIVE, spec), spec, [], rows, tmp_path)["metrics"]
+    assert "requests" not in score(get_baseline(ALWAYS_POSITIVE, spec), spec, [], rows, tmp_path, None, "s")["metrics"]
 
 
 def test_the_board_shows_how_many_rows_each_model_was_scored_on(ws, monkeypatch):

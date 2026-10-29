@@ -43,7 +43,15 @@ def run(
     calib, test, root = materialize(p, spec, suite, log)
     found: dict[str, Any] = {"baseline": ALWAYS_POSITIVE, "n_test": len(test), "n_calib": len(calib), "checks": []}
     if test:
-        r = score(get_baseline(ALWAYS_POSITIVE, spec), spec, calib, test, root, suite.label_space(spec.label_names))
+        r = score(
+            get_baseline(ALWAYS_POSITIVE, spec),
+            spec,
+            calib,
+            test,
+            root,
+            suite.label_space(spec.label_names),
+            suite.name,
+        )
         found["checks"] = compared(expected, kind.observed(r))
     found["passed"] = bool(found["checks"]) and all(c["ok"] for c in found["checks"])
     if found["passed"] and kind.published:
