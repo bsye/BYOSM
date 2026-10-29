@@ -101,6 +101,21 @@ def test_the_lead_is_recomputed_when_a_new_rival_becomes_the_best(ws, monkeypatc
     assert {c["id"]: c for c in health(p, spec)["checks"]}["rival"]["value"].startswith("+0.020")
 
 
+def test_the_lead_is_recomputed_when_the_same_rival_is_scored_again_as_another_model(ws, monkeypatch):
+    import byosm.health as health_module
+
+    def fake_compare(spec, mine, theirs, split):
+        delta = mine["objective"] - theirs["objective"]
+        return {"delta": delta, "p_better": 0.5, "lo": delta, "hi": delta}
+
+    monkeypatch.setattr(health_module, "compare", fake_compare)
+    rival = {"jev": {"builtin": _result(0.7, kind="baseline", identity="old model")}}
+    p, spec = _specialist(ws, {"v1": {"builtin": _result(0.9)}, **rival})
+    assert {c["id"]: c for c in health(p, spec)["checks"]}["rival"]["value"].startswith("+0.200")
+    p.save_result("jev", "builtin", _result(0.85, kind="baseline", identity="new model"))
+    assert {c["id"]: c for c in health(p, spec)["checks"]}["rival"]["value"].startswith("+0.050")
+
+
 def test_a_specialist_bigger_than_its_rival_fails_the_size_check_without_blocking_production(ws):
     rows = {
         "v1": {"builtin": _result(0.97, params=110e6)},

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from .auto.standing import best_baseline
@@ -26,9 +27,13 @@ LEAD = "lead"
 SMALLER_OK = 4.0
 
 
+def _who(r: dict) -> str:
+    return hashlib.sha1(str(r.get("identity")).encode()).hexdigest()[:8]
+
+
 def _lead(p: Project, spec: TaskSpec, mine: dict, rival: str, theirs: dict) -> dict | None:
     saved = p.report(LEAD) or {}
-    key = f"{p.promoted}:{rival}:{mine.get('fingerprint')}"
+    key = f"{p.promoted}:{_who(mine)}:{rival}:{_who(theirs)}:{mine.get('fingerprint')}"
     if key not in saved:
         saved = {key: compare(spec, mine, theirs, "test")}
         p.save_report(LEAD, saved)

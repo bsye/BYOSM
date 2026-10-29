@@ -2863,6 +2863,11 @@ on its next eval, under the new definitions. Their stored identity also says `cl
 named and now configured as Claude Haiku: the role most likely fell back to an older default when it was scored, so
 the rescore is the first Haiku score there.
 
+The paired lead Health saves (`_lead`) was keyed by the promoted name, the rival's name and the suite fingerprint,
+which is the same for every predictor on a suite, so a rival scored again as another model, or a promoted model
+retrained under its own name, kept its old lead. The key now carries both identities; every saved lead is computed
+once more on the next Health read.
+
 ## Spend is summed in the database
 
 The Costs page priced every LLM call one by one: 27,000 call events read row by row, four JSON fields decoded
