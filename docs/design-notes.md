@@ -2745,3 +2745,31 @@ The same breakdown closes the loop: `robust_check` adds the weakest kind of requ
 ("Weakest kind of request on when2call: request for info, 0.30 exact over 856 requests"), so Health, the next step and
 the proposer and lab LLMs, which read the checks, see which case to aim at rather than only the drop. `grouped.cases`
 is the one reader of the stored breakdown for both the detail payload and the check.
+
+## Pages load from one read per request and a calm live stream
+
+Measured on a loaded machine (`docs/SPEED.md`): Home fired 108 requests and finished after about 41 s with 6.5 s of
+blocked main thread; Specialists took 31 s, and a light page opened next waited 1.2 s for its config because the
+server was still working through the previous page's queue.
+
+- **The live stream is applied in batches.** On connect the server sends every job as its own message (244 here).
+  Each message used to re-render the app and change eleven hand-written "finished jobs" counts, and every page
+  refetched on each change: 57 health, 17 specialist and 10 next-step requests for one Home load. `LiveProvider` now
+  applies messages every `FLUSH_MS` and keeps one `finished` count that only rises when a job seen running ends;
+  every page reads it through `useFinished`.
+- **Per-item requests run four at a time and stop when the page is left** (`useEach`), so health and next steps for
+  24 specialists no longer queue ahead of whatever page comes next.
+- **A read request sees one board.** Health read the board 11 to 22 times, each decoding every item's units (95% of
+  the stored bytes). GET requests run inside a `snapshot` (`byosm/reads.py`, `ReadSnapshot` middleware) in which the
+  first board read is kept for the rest of the request. Jobs and writes never run in one, so they always read fresh
+  scores. The specialist list reads boards without units (`board(units=False)`, the database drops the key), since
+  it shows scores only.
+- **A classifier no longer loads every forecaster** to learn it is not one: `report_of` reads its one report.
+
+Specialists asks for next steps per card like Home, and a card re-renders only when its own data changes
+(`memo`). After: Home has all its data at 7.2 s with 0.83 s blocked, Specialists at 6.4 s with 0.26 s, and a page
+opened next answers in about 20 ms. One health request takes 0.1 to 0.3 s instead of about 0.7 s.
+
+While planning this, `maybe_promote` turned out to count a missing paired comparison as a sure lead whenever the
+promoted model had runs but either side had no units. It now fails closed: with runs on both sides and no paired
+comparison, the lead is not sure.
