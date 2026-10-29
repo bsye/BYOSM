@@ -18,13 +18,17 @@ const STATUS_COLOR: Record<Job["status"], string> = {
 
 const config = { span: { label: "running" } } satisfies ChartConfig
 
+function shown(jobs: Job[]): Job[] {
+  const started = jobs.filter((j) => j.started != null)
+  const running = started.filter((j) => j.status === "running")
+  const rest = started.filter((j) => j.status !== "running").slice(0, Math.max(0, SHOWN - running.length))
+  return [...running, ...rest].sort((a, b) => (a.started as number) - (b.started as number))
+}
+
 const clock = (t: number) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
 export function Timeline({ jobs, titles }: { jobs: Job[]; titles: Record<string, string> }) {
-  const recent = jobs
-    .filter((j) => j.started != null)
-    .slice(0, SHOWN)
-    .reverse()
+  const recent = shown(jobs)
   const now = useNow(recent.some((j) => j.status === "running"))
   if (!recent.length) return null
   const data = recent.map((j) => ({
