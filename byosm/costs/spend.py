@@ -4,7 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from ..db import session
 from ..db.models import Job, JobEvent
@@ -35,23 +35,26 @@ def usage(ws: Path) -> dict[str, dict[str, Any]]:
     from ..app.store import JobStore
 
     known = JobStore(ws).targets()
+    role = JobEvent.data["role"].as_string()
+    tokens = [func.coalesce(func.sum(JobEvent.data[k].as_integer()), 0) for k in ("tokens_in", "tokens_out")]
+    done = JobEvent.data["state"].as_string() == DONE
     with session(ws) as s:
         owners = {j: known.get(j) or target_of(a) for j, a in s.execute(select(Job.id, Job.args))}
-        fields = [JobEvent.data[k] for k in ("state", "role", "tokens_in", "tokens_out")]
-        rows = s.execute(select(JobEvent.job, JobEvent.model, *fields).where(JobEvent.kind == "llm")).all()
+        found = select(JobEvent.job, JobEvent.model, role, func.count(), *tokens).where(JobEvent.kind == "llm", done)
+        rows = s.execute(found.group_by(JobEvent.job, JobEvent.model, role)).all()
     out: dict[str, dict[str, Any]] = defaultdict(
         lambda: {"build": _bucket(), "evaluate": _bucket(), "rival": _bucket()}
     )
-    for job, model, state, role, t_in, t_out in rows:
+    for job, model, role, calls, t_in, t_out in rows:
         name = owners.get(job)
-        if not name or state != DONE:
+        if not name:
             continue
-        role, t_in, t_out = str(role), int(t_in or 0), int(t_out or 0)
+        role = str(role)
         buckets = ["evaluate" if is_eval(role) else "build"] + (
             ["rival"] if role == "baseline" or role.startswith(RIVAL_PREFIX) else []
         )
         for b in buckets:
-            _add(out[name][b], str(model), t_in, t_out)
+            _add(out[name][b], str(model), int(t_in), int(t_out), calls)
     return dict(out)
 
 
@@ -59,13 +62,13 @@ def _bucket() -> dict[str, Any]:
     return {"calls": 0, "tokens_in": 0, "tokens_out": 0, "usd": 0.0, "unpriced": 0}
 
 
-def _add(b: dict[str, Any], model: str, t_in: int, t_out: int) -> None:
+def _add(b: dict[str, Any], model: str, t_in: int, t_out: int, calls: int = 1) -> None:
     usd = _usd(model, t_in, t_out)
-    b["calls"] += 1
+    b["calls"] += calls
     b["tokens_in"] += t_in
     b["tokens_out"] += t_out
     b["usd"] += usd or 0.0
-    b["unpriced"] += usd is None
+    b["unpriced"] += calls if usd is None else 0
 
 
 def job_cost(ws: Path, job: str) -> dict[str, Any]:

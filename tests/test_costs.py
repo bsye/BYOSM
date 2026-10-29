@@ -1,3 +1,5 @@
+from pytest import approx
+
 from byosm.costs import _compare, _per_item
 from byosm.costs.prices import bare, is_local
 from byosm.costs.spend import is_eval, target_of
@@ -36,3 +38,27 @@ def test_a_job_costs_its_finished_calls_at_list_price(ws, monkeypatch):
     store.event("j", {"kind": "llm", "model": "m", "state": "failed"})
     cost = spend.job_cost(ws, "j")
     assert cost["calls"] == 1 and abs(cost["usd"] - 0.002) < 1e-12
+
+
+def test_a_specialist_spend_sums_finished_calls_per_bucket_and_counts_unpriced_ones(ws, monkeypatch):
+    import byosm.costs.spend as spend
+    from byosm.app.store import JobStore
+
+    monkeypatch.setattr(spend, "price", lambda m: None if m == "unknown" else (1e-6, 2e-6))
+    store = JobStore(ws)
+    job = {"id": "j", "args": ["improve", "intent"], "status": "done", "created": 0.0, "started": 0.0}
+    store.save({**job, "ended": 1.0, "code": 0, "pid": None})
+    calls = [
+        {"role": "generate", "tokens_in": 1000, "tokens_out": 500},
+        {"role": "generate", "tokens_in": 1000, "tokens_out": 500},
+        {"role": "generate", "tokens_in": 7, "tokens_out": 7, "model": "unknown"},
+        {"role": "generate", "tokens_in": 99, "tokens_out": 99, "state": "failed"},
+        {"role": "rival-claude", "tokens_in": 10, "tokens_out": 5},
+        {"role": "card"},
+    ]
+    for c in calls:
+        store.event("j", {"kind": "llm", "model": "m", "state": "done", **c})
+    got = spend.usage(ws)["intent"]
+    assert got["build"] == {"calls": 3, "tokens_in": 2007, "tokens_out": 1007, "usd": approx(0.004), "unpriced": 1}
+    assert got["evaluate"] == {"calls": 2, "tokens_in": 10, "tokens_out": 5, "usd": approx(2e-5), "unpriced": 0}
+    assert got["rival"]["calls"] == 1

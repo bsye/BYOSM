@@ -2796,6 +2796,14 @@ function calls.
   published scores by reading the seasonal naive and both Timestral tables again for every dataset: 159 file reads
   of 3 files per list request, now 3.
 
+## Spend is summed in the database
+
+The Costs page priced every LLM call one by one: 27,000 call events read row by row, four JSON fields decoded
+each, then added up in Python (0.85 s). `usage` now asks the database for one row per job, model and role with the
+call count and the summed tokens (261 rows here) and prices each group once, which gives the same totals because a
+model's price per token is fixed (0.18 s). Calls that are not done are filtered in the query, and a group with no
+price counts all its calls as unpriced.
+
 ## Label counts come from an index
 
 The data check in Health counts each label in the promoted model's training rows. For topic that is 90,000 rows,
