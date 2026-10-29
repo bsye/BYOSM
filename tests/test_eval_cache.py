@@ -85,6 +85,19 @@ def test_changing_the_llm_rescores_only_the_llm_baseline(toy, tmp_path):
     assert toy.calls == ["llm", "llm"]
 
 
+def test_changing_a_label_definition_on_real_data_rescores_only_the_llm_baseline(toy):
+    p = Project("toy")
+    spec = p.spec()
+    spec.data.synthetic = False
+    p.save_spec(spec)
+    run("toy", log=lambda m: None)
+    toy.calls.clear()
+    spec.labels[0].definition += ", including the edge case the benchmark scores"
+    p.save_spec(spec)
+    run("toy", log=lambda m: None)
+    assert toy.calls == ["llm"]
+
+
 def test_hf_baselines_are_keyed_by_repo_not_by_the_local_hub_cache(toy, tmp_path):
     _set_hf_revision(tmp_path, "aaa")
     run("toy", log=lambda m: None)

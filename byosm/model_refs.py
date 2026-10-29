@@ -39,9 +39,13 @@ def _json(f: Path) -> Any:
 def llm_model(pid: str, identity: str | None = None) -> str | None:
     from .evals.identity import baseline_identity
 
-    if pid != LLM_PREFIX and not pid.startswith(f"{LLM_PREFIX}:"):
+    if not is_llm(pid):
         return None
     return json.loads(identity or baseline_identity(pid) or "{}").get("model")
+
+
+def is_llm(pid: str) -> bool:
+    return pid == LLM_PREFIX or pid.startswith(f"{LLM_PREFIX}:")
 
 
 def family(model: str) -> str:
@@ -73,7 +77,7 @@ def _baseline(pid: str) -> dict[str, Any]:
 
 
 def model_ref(p: Project, pid: str, result: dict | None = None) -> dict[str, Any]:
-    if pid == LLM_PREFIX or pid.startswith(f"{LLM_PREFIX}:"):
+    if is_llm(pid):
         return {"id": pid, **_llm(pid, (result or {}).get("identity"))}
     if pid in p.experiments():
         repos = [repo for repo, exp in published(p).items() if exp == pid]

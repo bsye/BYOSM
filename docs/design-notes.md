@@ -2850,6 +2850,19 @@ errors. Tool choice held's dev split has the training distribution and 8 errors,
 fewer than `AIMABLE_ERRORS` (20) the check names the proposer instead, which reads this check and the techniques in
 the catalogue that target it.
 
+## An LLM rival's cached score depends on its prompt
+
+A rival's cached score is reused while the suite's rows, the label names, the decision rule and the rival's identity
+stay the same. For an LLM rival the identity was its model configuration only, but its prompt also carries the task
+summary, the input description and the label definitions (`task_context`), so after the tool choice definitions
+changed its Claude Haiku score would have been reused as if nothing had happened. `rival_identity` adds a hash of
+the task context for LLM rivals, at the one place the cache check reads it (`byosm/evals/board.py` `_identity`).
+The 23 cached LLM rival scores whose task text has not changed since they were scored were stamped once with today's
+hash, so they are not rescored; plain tool choice's two Claude Haiku scores were left unstamped and are scored again
+on its next eval, under the new definitions. Their stored identity also says `claude-opus-5-5`, though the rival is
+named and now configured as Claude Haiku: the role most likely fell back to an older default when it was scored, so
+the rescore is the first Haiku score there.
+
 ## Spend is summed in the database
 
 The Costs page priced every LLM call one by one: 27,000 call events read row by row, four JSON fields decoded

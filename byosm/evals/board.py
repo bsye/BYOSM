@@ -9,7 +9,7 @@ from ..predictors import ExperimentPredictor, Predictor, get_baseline
 from ..project import Project
 from ..spec import EvalSuite, TaskSpec
 from .grouped import summary
-from .identity import baseline_identity, experiment_identity
+from .identity import experiment_identity, rival_identity
 from .scoring import score
 from .suites import fingerprint, materialize
 
@@ -34,7 +34,7 @@ def _jobs(p: Project, base: TaskSpec, suite: EvalSuite, exps: list[str], bls: li
 
 
 def _identity(p: Project, kind: str, pid: str) -> str | None:
-    return experiment_identity(p.meta(pid)) if kind == "experiment" else baseline_identity(pid)
+    return experiment_identity(p.meta(pid)) if kind == "experiment" else rival_identity(pid, p.spec())
 
 
 def _fresh(p: Project, pid: str, suite: str, cached: dict, fp: str, kind: str) -> bool:
