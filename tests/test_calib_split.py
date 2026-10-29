@@ -35,7 +35,7 @@ def _spec():
 
 
 def test_a_model_trained_before_calib_was_held_out_cannot_win_promotion_on_the_builtin_suite(ws):
-    from conftest import save_board
+    from conftest import paired, save_board
 
     from byosm.project import Project
     from byosm.promotion import maybe_promote
@@ -50,9 +50,9 @@ def test_a_model_trained_before_calib_was_held_out_cannot_win_promotion_on_the_b
     save_board(
         p,
         {
-            "v1": {"builtin": result | {"objective": 0.8, "calib_objective": 0.8}},
-            "v2": {"builtin": result | {"objective": 0.99, "calib_objective": 0.99}},
-            "v3": {"builtin": result | {"objective": 0.9, "calib_objective": 0.9}},
+            "v1": {"builtin": result | {"objective": 0.8, "calib_objective": 0.8} | paired(0.8)},
+            "v2": {"builtin": result | {"objective": 0.99, "calib_objective": 0.99} | paired(0.99)},
+            "v3": {"builtin": result | {"objective": 0.9, "calib_objective": 0.9} | paired(0.9)},
         },
     )
     said = []
@@ -84,3 +84,22 @@ def test_a_calib_the_source_already_marked_is_kept_and_dev_is_left_whole():
     carve_calib(splits)
     assert [r["input"] for r in splits["dev"]] == ["one", "two"]
     assert [r["input"] for r in splits[CALIB]] == ["three"]
+
+
+def test_a_lead_without_paired_units_against_a_promoted_model_is_not_sure(ws):
+    from conftest import save_board
+
+    from byosm.project import Project
+    from byosm.promotion import maybe_promote
+
+    p = Project("tc").ensure()
+    p.save_spec(_spec().model_copy(update={"finalist_seeds": 1}))
+    for e in ("v1", "v2"):
+        p.save_experiment(e, meta={"calib_held": True})
+    p.promote("v1", "test")
+    result = {"kind": "experiment", "n_test": 500, "n_calib": 200}
+    save_board(p, {"v1": {"builtin": result | {"objective": 0.8, "calib_objective": 0.8}}})
+    save_board(p, {"v2": {"builtin": result | {"objective": 0.95, "calib_objective": 0.95}}})
+    said = []
+    maybe_promote(p, "v2", said.append)
+    assert p.promoted == "v1" and "is not sure" in said[-1]

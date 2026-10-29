@@ -44,7 +44,7 @@ def test_a_method_that_won_once_is_offered_to_other_specialists_of_its_kind_and_
 
 
 def test_a_promotion_won_with_a_lab_method_records_the_win(ws):
-    from conftest import save_board
+    from conftest import paired, save_board
 
     from byosm.promotion import maybe_promote
 
@@ -59,7 +59,7 @@ def test_a_promotion_won_with_a_lab_method_records_the_win(ws):
     op = {"op": "set", "path": "train.lab_method", "value": d["id"]}
     p.save_experiment("v2", spec=spec, meta={"calib_held": True}, proposal={"applied": [{"id": "lab", "ops": [op]}]})
     result = {"kind": "experiment", "n_test": 500, "n_calib": 200}
-    save_board(p, {"v1": {"builtin": result | {"objective": 0.8, "calib_objective": 0.8}}})
-    save_board(p, {"v2": {"builtin": result | {"objective": 0.9, "calib_objective": 0.9}}})
+    save_board(p, {"v1": {"builtin": result | {"objective": 0.8, "calib_objective": 0.8} | paired(0.8)}})
+    save_board(p, {"v2": {"builtin": result | {"objective": 0.9, "calib_objective": 0.9} | paired(0.9)}})
     maybe_promote(p, "v2", lambda _: None)
     assert registry(ws)[d["id"]]["won_on"] == ["a"]

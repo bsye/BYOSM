@@ -60,7 +60,7 @@ def test_the_search_summary_counts_families_repeats_and_gpu_hours_per_sure_lead(
 
 
 def test_every_promotion_vote_leaves_a_verdict_for_the_bandit(ws):
-    from conftest import save_board
+    from conftest import paired, save_board
 
     from byosm.promotion import maybe_promote
 
@@ -75,8 +75,8 @@ def test_every_promotion_vote_leaves_a_verdict_for_the_bandit(ws):
     save_board(
         p,
         {
-            "v1": {"builtin": result | {"objective": 0.8, "calib_objective": 0.8}},
-            "v2": {"builtin": result | {"objective": 0.9, "calib_objective": 0.9}},
+            "v1": {"builtin": result | {"objective": 0.8, "calib_objective": 0.8} | paired(0.8)},
+            "v2": {"builtin": result | {"objective": 0.9, "calib_objective": 0.9} | paired(0.9)},
         },
     )
     maybe_promote(p, "v2", lambda _: None)

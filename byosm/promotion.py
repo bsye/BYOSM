@@ -82,7 +82,8 @@ def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:
     mine, cur = _seed_mean(mine_runs), _seed_mean(cur_runs)
     cmp = evals.compare_runs(base, mine_runs, cur_runs) if cur_runs else None
     noise = seed_sd(p, prim)
-    sure = evals.sure_lead(cmp) and beyond_seed_noise(_values(mine_runs), _values(cur_runs), noise)
+    paired = cmp is not None or not cur_runs
+    sure = paired and evals.sure_lead(cmp) and beyond_seed_noise(_values(mine_runs), _values(cur_runs), noise)
     seeds = f" over {len(mine_runs)} vs {len(cur_runs)} seeds" if len(mine_runs) + len(cur_runs) > 2 else ""
     sig = f", P(better)={cmp['p_better']:.2f}" if cmp else ""
     sig += f", seed sd {noise:.4f}" if noise is not None else ""

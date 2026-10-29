@@ -151,6 +151,15 @@ def import_runtime(out):
     return rt.load(out)
 
 
+PAIRED_ROWS = 200
+
+
+def paired(right: float) -> dict:
+    hits = round(right * PAIRED_ROWS)
+    split = {"y": [1] * PAIRED_ROWS, "pred": [1] * hits + [0] * (PAIRED_ROWS - hits)}
+    return {"units": {"calib": split, "test": split}}
+
+
 def save_board(p, board):
     for pid, by_suite in board.items():
         for suite, data in by_suite.items():
