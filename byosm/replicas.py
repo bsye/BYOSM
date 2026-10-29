@@ -73,9 +73,17 @@ def replicate(name: str, exp: str, n: int, log: Callable[[str], None] = print) -
             rep, spec=seeded, proposal={"parent": exp, "applied": [{"id": SEED_STEP, "why": why, "ops": []}]}
         )
         log(f"[seeds] {rep}: {why}")
-        build(name, rep, log, promote=False)
+        build(name, rep, log, promote=False, suites=[suite])
         made.append(rep)
     return made
+
+
+def score_rest(name: str, made: list[str], log: Callable[[str], None] = print) -> None:
+    from .evals import run
+
+    if made:
+        log(f"[seeds] scoring {', '.join(made)} on the other suites")
+        run(name, experiments=made, baselines=[], log=log)
 
 
 def seed_sd(p: Project, suite: str) -> float | None:

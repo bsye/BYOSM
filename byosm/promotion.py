@@ -7,7 +7,7 @@ from typing import Any
 from . import evals
 from .evals.scoring import fair_ms
 from .project import Project
-from .replicas import beyond_seed_noise, clean_runs, recipe_runs, replicate, runs, seed_sd
+from .replicas import beyond_seed_noise, clean_runs, recipe_runs, replicate, runs, score_rest, seed_sd
 from .soup import shipped
 from .spec import TaskSpec
 
@@ -29,11 +29,12 @@ def _seed_mean(rs: list[dict]) -> float:
     return mean(values) if values else -1
 
 
-def _settle(p: Project, exp: str, prim: str, log: Log) -> None:
-    n = p.spec().finalist_seeds
+def _settle(p: Project, exp: str, prim: str, log: Log) -> list[str]:
+    n, made = p.spec().finalist_seeds, []
     for e in (exp, p.promoted):
         if n > 1 and e and len(clean_runs(p, e, prim)) < n:
-            replicate(p.name, e, n, log)
+            made += replicate(p.name, e, n, log)
+    return made
 
 
 def _leads(p: Project, exp: str, prim: str) -> bool:
@@ -74,8 +75,7 @@ def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:
             f"  kept {p.promoted}: {exp} trained before calib was held out of dev, so its calib score is not a fair vote"
         )
         return p.board().get(exp, {})
-    if _leads(p, exp, prim):
-        _settle(p, exp, prim, log)
+    made = _settle(p, exp, prim, log) if _leads(p, exp, prim) else []
     board = p.board()
     a, b = board.get(exp, {}).get(prim), board.get(p.promoted or "", {}).get(prim) if p.promoted else None
     mine_runs, cur_runs = runs(p, exp, prim), runs(p, p.promoted, prim) if b else []
@@ -105,4 +105,5 @@ def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:
         log(f"  kept {p.promoted}: {exp}'s calib lead {mine:.4f} over {cur:.4f}{seeds} is not sure{sig}{test}")
     else:
         log(f"  kept {p.promoted}: {prim} calib {cur:.4f} >= {exp} {mine:.4f}{seeds}{sig}{test}")
+    score_rest(p.name, made, log)
     return board.get(exp, {})

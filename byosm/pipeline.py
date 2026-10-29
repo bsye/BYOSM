@@ -90,6 +90,7 @@ def build(
     force_data: bool = False,
     data_seconds: float | None = None,
     promote: bool = True,
+    suites: list[str] | None = None,
 ) -> dict[str, Any]:
     p = Project(name).ensure()
     cfg = load_config(p.ws)
@@ -129,8 +130,8 @@ def build(
     meta["gpu_hours"] = round((held_seconds() - held) / 3600, 4)
     p.save_experiment(exp, spec=spec, meta=meta, errors=errors)
 
-    log("[eval] scoring on every suite (+ baselines, cached)")
-    evals.run(name, log=log)
+    log(f"[eval] scoring on {', '.join(suites) if suites else 'every suite'} (+ baselines, cached)")
+    evals.run(name, suites=suites, log=log)
     if not promote:
         return p.board().get(exp, {})
     bigger = bigger_held_out(p)

@@ -57,7 +57,7 @@ def test_the_seed_sd_pools_every_recipe_with_more_than_one_clean_run(ws):
 def test_a_single_lucky_seed_is_replicated_and_loses_on_the_seed_average(ws, monkeypatch):
     from conftest import save_board
 
-    from byosm import pipeline
+    from byosm import evals, pipeline
     from byosm.project import Project
     from byosm.promotion import maybe_promote
 
@@ -70,15 +70,18 @@ def test_a_single_lucky_seed_is_replicated_and_loses_on_the_seed_average(ws, mon
     save_board(p, {"v1-s2": {"builtin": _result(0.89)}, "v2": {"builtin": _result(0.93)}})
     built = []
 
-    def fake_build(name, exp, log, promote=True):
-        assert not promote
+    def fake_build(name, exp, log, promote=True, suites=None):
+        assert not promote and suites == ["builtin"]
         built.append(exp)
         p.save_experiment(exp, meta=HELD)
         save_board(p, {exp: {"builtin": _result(0.88)}})
 
     monkeypatch.setattr(pipeline, "build", fake_build)
+    rest = []
+    monkeypatch.setattr(evals, "run", lambda name, experiments, baselines, log: rest.append((experiments, baselines)))
     said = []
     maybe_promote(p, "v2", said.append)
     assert built == ["v2-s1", "v2-s2"]
     assert p.promoted == "v1"
-    assert "over 3 vs 3 seeds" in said[-1]
+    assert "over 3 vs 3 seeds" in said[-2] and said[-1].startswith("[seeds] scoring v2-s1, v2-s2")
+    assert rest == [(["v2-s1", "v2-s2"], [])]

@@ -14,7 +14,7 @@ def seeds(
     n: Annotated[int | None, typer.Option(help="clean runs wanted (default: the spec's finalist_seeds)")] = None,
 ) -> None:
     """Train a recipe again on other seeds until it has n runs whose calib was held out, then print the seed noise."""
-    from ..replicas import replicate, seed_sd
+    from ..replicas import replicate, score_rest, seed_sd
 
     p, base = _spec(name)
     target = exp or p.promoted
@@ -23,6 +23,7 @@ def seeds(
     made = replicate(name, target, n or base.finalist_seeds, log)
     sd = seed_sd(p, base.primary_suite())
     log(f"trained {len(made)} seeds of {target}; seed sd on calib: {'unknown' if sd is None else f'{sd:.4f}'}")
+    score_rest(name, made, log)
 
 
 @app.command()

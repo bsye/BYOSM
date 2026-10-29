@@ -2676,3 +2676,14 @@ not a sure lead, so it is shown as "promoted" and does not count in the row's su
 two family charts count the catalogue's own families only: a classifier's lab experiments are already counted under
 "Lab method". A technique becomes a default only through the proven registry (sure leads on two specialists), so a
 forecaster's method cannot become one until forecaster promotion asks for a sure lead.
+
+## Seed runs are scored on the primary suite before the vote
+
+A promotion vote replicates the candidate and the promoted recipe on other seeds and reads only their calib score on
+the primary suite (`maybe_promote`, `seed_sd`, the seeds report). Each replica used to be scored on every suite before
+the vote, and on the tool-choice specialist the four other suites took about 2.7 of a replica's 3.2 scoring hours (job
+0efcab008d: near-miss-s1 scored builtin in 34 minutes, then bfcl, bfcl-live and when2call in 159). Replicas are now
+scored on the primary suite inside `build(..., suites=[primary])`, the vote is logged, and `score_rest` scores the
+replicas on the other suites afterwards in the same job, so the spread of seeds on out-of-domain suites (bfcl-live
+calib 0.69 against 0.62 for two seeds of near-miss) is still measured, just after the decision. `byosm seeds` does the
+same. The soup is still scored on every suite before shipping, because a shipped soup is the promoted model.
