@@ -9,7 +9,7 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import Engine, create_engine, event, select
+from sqlalchemy import Engine, create_engine, event, func, select, type_coerce
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..config import STATE_DIR
@@ -68,6 +68,13 @@ def _maker(url: str) -> sessionmaker[Session]:
 def session(ws: Path) -> Iterator[Session]:
     with _maker(database_url(ws)).begin() as s:
         yield s
+
+
+def json_without(s: Session, column: Any, key: str) -> Any:
+    from .models import Json
+
+    dropped = column.op("-")(key) if s.get_bind().dialect.name == "postgresql" else func.json_remove(column, f"$.{key}")
+    return type_coerce(dropped, Json)
 
 
 def get_or_add(s: Session, model: type, **keys: object) -> object:

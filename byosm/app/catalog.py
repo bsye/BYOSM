@@ -20,7 +20,7 @@ from ..improve.proposals import PROPOSALS
 from ..lab.contract import SPECIALIST_MODALITIES
 from ..metrics import metric_label, unreached
 from ..model_refs import model_refs
-from ..next_steps import suggestions, suggestions_or_none
+from ..next_steps import suggestions
 from ..project import Project, list_projects
 from ..replicas import seed_spread
 from ..rungs import auxiliary
@@ -66,7 +66,7 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
     p = project(ws, name)
     s = p.spec()
     prim = s.primary_suite()
-    board = p.board()
+    board = p.board(units=False)
     best = board.get(p.promoted or "", {}).get(prim, {})
     rival = best_baseline(board, prim)
     return {
@@ -160,10 +160,6 @@ def steps_of(ws: Path, name: str) -> list[dict[str, Any]]:
     from ..series.steps import of_domain
 
     return found if (found := of_domain(ws, name)) is not None else suggestions(project(ws, name).name, ws)
-
-
-def next_steps(ws: Path) -> dict[str, list[dict[str, Any]]]:
-    return {name: suggestions_or_none(name, ws) for name in list_projects(ws)}
 
 
 def save_spec(ws: Path, name: str, body: dict) -> dict[str, Any]:

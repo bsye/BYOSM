@@ -8,8 +8,9 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import delete, select
 
 from .config import find_workspace
-from .db import Experiment, Promotion, Report, Result, Specialist, get_or_add, session
+from .db import Experiment, Promotion, Report, Result, Specialist, get_or_add, json_without, session
 from .events import JOB_ENV
+from .reads import remembered
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
     from .spec import TaskSpec
 
 WEIGHTS = "model.pt"
+UNITS = "units"
 FROM_TERMINAL = "terminal"
 EXPERIMENT_FIELDS = ("spec", "meta", "proposal", "errors", "created")
 
@@ -166,7 +168,10 @@ class Project:
             for k, v in fields.items():
                 setattr(e, k, v)
 
-    def board(self) -> dict[str, Any]:
+    def board(self, units: bool = True) -> dict[str, Any]:
+        return remembered(("board", str(self.ws), self.name, units), lambda: self._board(units))
+
+    def _board(self, units: bool) -> dict[str, Any]:
         if not self.exists():
             return {}
         spec = self.spec()
@@ -174,11 +179,13 @@ class Project:
         prim = spec.primary_suite()
         order = [prim, *(e.name for e in spec.evals if e.name != prim)]
         with session(self.ws) as s:
-            rows = s.scalars(select(Result).where(Result.specialist_id == self._need(s))).all()
-        kept = sorted((r for r in rows if r.predictor in keep_ids and r.suite in order), key=lambda r: r.id)
+            data = Result.data if units else json_without(s, Result.data, UNITS)
+            found = select(Result.id, Result.predictor, Result.suite, data).where(Result.specialist_id == self._need(s))
+            rows = s.execute(found).all()
+        kept = sorted((r for r in rows if r[1] in keep_ids and r[2] in order), key=lambda r: r[0])
         out: dict[str, dict[str, Any]] = {}
-        for r in sorted(kept, key=lambda r: order.index(r.suite)):
-            out.setdefault(r.predictor, {})[r.suite] = r.data
+        for _, predictor, suite, result in sorted(kept, key=lambda r: order.index(r[2])):
+            out.setdefault(predictor, {})[suite] = result
         return out
 
     def result(self, pid: str, suite: str) -> dict | None:

@@ -28,6 +28,7 @@ from .models_routes import models_router
 from .opendata_routes import opendata_router
 from .page_routes import page_router
 from .publish_routes import publish_router
+from .read_snapshot import ReadSnapshot
 from .resources_routes import resources_router
 from .systems_routes import systems_router
 from .try_routes import try_router
@@ -61,10 +62,6 @@ def _routes(app: FastAPI, ws: Path, runner: Runner, hub: Hub, auth: Any) -> None
     @app.get("/api/specialists", dependencies=[auth])
     def specialists() -> list[dict]:
         return catalog.specialists(ws)
-
-    @app.get("/api/next-steps", dependencies=[auth])
-    def next_steps() -> dict:
-        return catalog.next_steps(ws)
 
     @app.get("/api/health/{name}", dependencies=[auth])
     def health_of(name: str) -> dict | None:
@@ -160,6 +157,7 @@ def create_app(
     app = FastAPI(title="byosm", summary="Local API over the BYOSM pipeline")
     app.state.token = token
     app.state.hosts = hosts or []
+    app.add_middleware(ReadSnapshot)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*LOCAL_HOSTS, *app.state.hosts])
     lock = claim(ws, port)
     hub = Hub()

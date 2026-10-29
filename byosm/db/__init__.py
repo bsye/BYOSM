@@ -1,4 +1,4 @@
-from .engine import database_url, get_or_add, session
+from .engine import database_url, get_or_add, json_without, session
 from .models import Base, Experiment, Promotion, Report, Result, Row, Specialist
 
 __all__ = [
@@ -11,5 +11,6 @@ __all__ = [
     "Specialist",
     "database_url",
     "get_or_add",
+    "json_without",
     "session",
 ]

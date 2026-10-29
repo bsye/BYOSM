@@ -77,7 +77,11 @@ def reports(ws: Path) -> list[dict[str, Any]]:
 
 
 def report_of(ws: Path, domain: str) -> dict[str, Any] | None:
-    return next((r for r in reports(ws) if r["domain"] == domain), None)
+    from ..db.workspace import workspace_report
+
+    if found := workspace_report(ws, REPORT + domain):
+        return with_published(found)
+    return {"domain": domain, "at": None} if domain in DOMAINS else None
 
 
 def promoted_reports(ws: Path) -> list[dict[str, Any]]:
