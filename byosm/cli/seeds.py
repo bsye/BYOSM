@@ -14,6 +14,7 @@ def seeds(
     n: Annotated[int | None, typer.Option(help="clean runs wanted (default: the spec's finalist_seeds)")] = None,
 ) -> None:
     """Train a recipe again on other seeds until it has n runs whose calib was held out, then print the seed noise."""
+    from ..evals.selection import selected
     from ..replicas import replicate, score_rest, seed_sd
 
     p, base = _spec(name)
@@ -21,9 +22,20 @@ def seeds(
     if not target:
         raise typer.BadParameter("nothing promoted yet; pass --exp")
     made = replicate(name, target, n or base.finalist_seeds, log)
-    sd = seed_sd(p, base.primary_suite())
+    sd = seed_sd(p, selected(base, p.board().get(target, {})))
     log(f"trained {len(made)} seeds of {target}; seed sd on calib: {'unknown' if sd is None else f'{sd:.4f}'}")
     score_rest(name, made, log)
+
+
+@app.command()
+def vote(name: str, exp: str) -> None:
+    """Decide again whether an experiment beats the promoted model on the selection suites, training the seeds the vote needs."""
+    from ..promotion import maybe_promote
+
+    p, _ = _spec(name)
+    if exp not in p.experiments():
+        raise typer.BadParameter(f"unknown experiment; have {p.experiments()}")
+    maybe_promote(p, exp, log)
 
 
 @app.command()

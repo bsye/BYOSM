@@ -2850,6 +2850,19 @@ errors. Tool choice held's dev split has the training distribution and 8 errors,
 fewer than `AIMABLE_ERRORS` (20) the check names the proposer instead, which reads this check and the techniques in
 the catalogue that target it.
 
+## Promotion can decide on several suites
+
+Ten tool choice held runs land at 0.93 to 0.96 on builtin calib, within seed noise of each other, while the recipes
+that top it (v5-r1, v6-r1) are among the worst on When2Call and BFCL-live calib. `selection_suites` in the spec names
+the suites a promotion decides on; empty means the primary alone, so every other specialist votes as before. The
+value is the mean of the calib scores over those suites (`selection_mean`), leaving out a suite with fewer than
+`MIN_CALIB_ITEMS` calib items (`selected`); the sure lead resamples each suite's calib items on its own and averages
+the per-suite deltas (`compare_suites`, `bootstrap_suites`), and one suite is the old paired bootstrap exactly. Seed
+replicas are built and counted on every selection suite, seed noise is the spread of the mean, and the reason names
+each suite's delta. Test stays report-only. Tool choice held selects on builtin, BFCL, BFCL-live and When2Call; the
+LLM-written suite has 8 calib items. `byosm vote NAME EXP` reruns the decision for a trained experiment, which jobs
+started on older code need. The plan and the second half (hard-case rounds) are in `docs/HARD_CASES.md`.
+
 ## An LLM rival's cached score depends on its prompt
 
 A rival's cached score is reused while the suite's rows, the label names, the decision rule and the rival's identity

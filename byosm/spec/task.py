@@ -55,8 +55,15 @@ class TaskSpec(BaseModel):
     decision: Decision = Field(default_factory=Decision)
     document: DocumentCfg = Field(default_factory=DocumentCfg)
     evals: list[EvalSuite] = Field(default_factory=lambda: [EvalSuite(name="builtin", primary=True)])
+    selection_suites: list[str] = Field(default_factory=list)
     baselines: list[str] = Field(default_factory=list)
     search: dict[str, list[str]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _selection_suites_exist(self) -> TaskSpec:
+        if unknown := set(self.selection_suites) - {e.name for e in self.evals}:
+            raise ValueError(f"selection suites {sorted(unknown)} are not among the spec's evals")
+        return self
 
     @model_validator(mode="after")
     def _method_fits_the_task(self) -> TaskSpec:
@@ -103,6 +110,9 @@ class TaskSpec(BaseModel):
     def primary_suite(self) -> str:
         public = (e.name for e in self.evals if e.kind != "generated")
         return next((e.name for e in self.evals if e.primary), next(public, "builtin"))
+
+    def selecting(self) -> list[str]:
+        return self.selection_suites or [self.primary_suite()]
 
     def trains_on_test_split(self) -> bool:
         h = self.train.holdout_test

@@ -38,6 +38,15 @@ def bootstrap_runs(sa: Runs, sb: Runs | None, objective: Objective, n: int = 100
     return out
 
 
+def bootstrap_suites(pairs: list[tuple[Runs, Runs]], objective: Objective, n: int = 1000, seed: int = 0) -> dict:
+    if any(len({r.shape for r in sa + sb}) > 1 for sa, sb in pairs):
+        raise ValueError("paired bootstrap needs the same units")
+    v = np.mean([_draws(sa, sb, objective, n, seed + i) for i, (sa, sb) in enumerate(pairs)], axis=0)
+    lo, hi = np.quantile(v, [0.025, 0.975])
+    delta = float(np.mean([_mean(sa, objective) - _mean(sb, objective) for sa, sb in pairs]))
+    return {"lo": float(lo), "hi": float(hi), "delta": delta, "p_better": float((v > 0).mean() + 0.5 * (v == 0).mean())}
+
+
 def bootstrap_stats(
     sa: np.ndarray, sb: np.ndarray | None, objective: Objective, n: int = 1000, seed: int = 0
 ) -> dict[str, float]:

@@ -55,7 +55,7 @@ def learning_curve(name: str, log: Callable[[str], None] = print) -> dict[str, A
     full = selection_value(p.board().get(exp, {}).get(prim))
     points = [pt for f in CURVE_FRACTIONS if (pt := _point(p, exp, f, log))] + [(p.meta(exp)["n_train"], full)]
     gain = slope(points) * math.log(2)
-    noise = seed_sd(p, prim)
+    noise = seed_sd(p, [prim])
     report = {
         "experiment": exp,
         "points": [[n, round(s, 4)] for n, s in points],

@@ -6,8 +6,9 @@ from typing import Any
 
 from . import evals
 from .evals.scoring import fair_ms
+from .evals.selection import selected, selection_mean, selection_value
 from .project import Project
-from .replicas import beyond_seed_noise, clean_runs, recipe_runs, replicate, runs, score_rest, seed_sd
+from .replicas import beyond_seed_noise, clean_runs_all, recipe_runs, replicate, score_rest, seed_sd, selection_runs
 from .soup import shipped
 from .spec import TaskSpec
 
@@ -20,27 +21,71 @@ def fixes_speed(spec: TaskSpec, mine: dict, cur: dict, mine_value: float, cur_va
     return in_budget and mine_value >= cur_value - spec.speed_tolerance
 
 
-def _values(rs: list[dict]) -> list[float]:
-    return [v for r in rs if (v := evals.selection_value(r)) is not None]
+def _values(board: dict, ids: list[str], suites: list[str]) -> list[float]:
+    return [v for e in ids if (v := selection_mean(board.get(e, {}), suites)) is not None]
 
 
-def _seed_mean(rs: list[dict]) -> float:
-    values = _values(rs)
+def _seed_mean(values: list[float]) -> float:
     return mean(values) if values else -1
 
 
-def _settle(p: Project, exp: str, prim: str, log: Log) -> list[str]:
+def _settle(p: Project, exp: str, suites: list[str], log: Log) -> list[str]:
     n, made = p.spec().finalist_seeds, []
     for e in (exp, p.promoted):
-        if n > 1 and e and len(clean_runs(p, e, prim)) < n:
+        if n > 1 and e and len(clean_runs_all(p, e, suites)) < n:
             made += replicate(p.name, e, n, log)
     return made
 
 
-def _leads(p: Project, exp: str, prim: str) -> bool:
+def _leads(p: Project, exp: str, suites: list[str]) -> bool:
     board = p.board()
-    a, b = board.get(exp, {}).get(prim), board.get(p.promoted or "", {}).get(prim)
-    return bool(a and b and exp != p.promoted and _seed_mean([a]) > _seed_mean([b]))
+    a, b = selection_mean(board.get(exp, {}), suites), selection_mean(board.get(p.promoted or "", {}), suites)
+    return a is not None and b is not None and exp != p.promoted and a > b
+
+
+def _by_suite(board: dict, ids: list[str], suites: list[str]) -> dict[str, list[dict]]:
+    return {s: [board[e][s] for e in ids] for s in suites}
+
+
+def _deltas(board: dict, mine: list[str], cur: list[str], suites: list[str]) -> str:
+    if len(suites) < 2 or not mine or not cur:
+        return ""
+    gap = {
+        s: mean(selection_value(board[e][s]) for e in mine) - mean(selection_value(board[e][s]) for e in cur)
+        for s in suites
+    }
+    return ", " + ", ".join(f"{s} {d:+.4f}" for s, d in gap.items())
+
+
+def _vote(p: Project, base: TaskSpec, exp: str, suites: list[str]) -> dict[str, Any]:
+    board, prim = p.board(), base.primary_suite()
+    a = board.get(exp, {}).get(prim)
+    b = board.get(p.promoted or "", {}).get(prim) if p.promoted else None
+    mine_ids, cur_ids = selection_runs(p, exp, suites), selection_runs(p, p.promoted, suites) if b else []
+    mine_v, cur_v = _values(board, mine_ids, suites), _values(board, cur_ids, suites)
+    cmp = (
+        evals.compare_suites(base, _by_suite(board, mine_ids, suites), _by_suite(board, cur_ids, suites))
+        if cur_ids
+        else None
+    )
+    noise = seed_sd(p, suites)
+    paired = cmp is not None or not cur_ids
+    sig = f", P(better)={cmp['p_better']:.2f}" if cmp else ""
+    sig += f", seed sd {noise:.4f}" if noise is not None else ""
+    return {
+        "board": board,
+        "a": a,
+        "b": b,
+        "ids": (mine_ids, cur_ids),
+        "cmp": cmp,
+        "mine": _seed_mean(mine_v),
+        "cur": _seed_mean(cur_v),
+        "sure": paired and evals.sure_lead(cmp) and beyond_seed_noise(mine_v, cur_v, noise),
+        "where": f"{prim} calib" if suites == [prim] else f"calib mean over {', '.join(suites)}",
+        "seeds": f" over {len(mine_ids)} vs {len(cur_ids)} seeds" if len(mine_ids) + len(cur_ids) > 2 else "",
+        "sig": sig + _deltas(board, mine_ids, cur_ids, suites),
+        "test": f"; test {a['objective']:.4f}" if a else "",
+    }
 
 
 def _record(p: Project, exp: str, won: bool, cmp: dict | None, runs_: tuple[list, list]) -> None:
@@ -69,42 +114,34 @@ def _record(p: Project, exp: str, won: bool, cmp: dict | None, runs_: tuple[list
 
 def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:
     base = p.spec()
-    prim = base.primary_suite()
     if p.promoted and not evals.clean_selection(p, base, exp):
         log(
             f"  kept {p.promoted}: {exp} trained before calib was held out of dev, so its calib score is not a fair vote"
         )
         return p.board().get(exp, {})
-    made = _settle(p, exp, prim, log) if _leads(p, exp, prim) else []
-    board = p.board()
-    a, b = board.get(exp, {}).get(prim), board.get(p.promoted or "", {}).get(prim) if p.promoted else None
-    mine_runs, cur_runs = runs(p, exp, prim), runs(p, p.promoted, prim) if b else []
-    mine, cur = _seed_mean(mine_runs), _seed_mean(cur_runs)
-    cmp = evals.compare_runs(base, mine_runs, cur_runs) if cur_runs else None
-    noise = seed_sd(p, prim)
-    paired = cmp is not None or not cur_runs
-    sure = paired and evals.sure_lead(cmp) and beyond_seed_noise(_values(mine_runs), _values(cur_runs), noise)
-    seeds = f" over {len(mine_runs)} vs {len(cur_runs)} seeds" if len(mine_runs) + len(cur_runs) > 2 else ""
-    sig = f", P(better)={cmp['p_better']:.2f}" if cmp else ""
-    sig += f", seed sd {noise:.4f}" if noise is not None else ""
-    test = f"; test {a['objective']:.4f}" if a else ""
-    won = (mine > cur and sure) or bool(a and b and fixes_speed(base, a, b, mine, cur))
-    _record(p, exp, won, cmp, (mine_runs, cur_runs))
-    if mine > cur and sure:
-        why = f"{prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{seeds}{sig}){test}"
-        p.promote(shipped(p, exp, mine_runs, log), why)
+    suites = selected(base, p.board().get(p.promoted or exp, {}))
+    made = _settle(p, exp, suites, log) if _leads(p, exp, suites) else []
+    v = _vote(p, base, exp, suites)
+    a, b, mine, cur, seeds, sig, test = v["a"], v["b"], v["mine"], v["cur"], v["seeds"], v["sig"], v["test"]
+    faster = bool(a and b and fixes_speed(base, a, b, mine, cur))
+    _record(p, exp, (mine > cur and v["sure"]) or faster, v["cmp"], v["ids"])
+    if mine > cur and v["sure"]:
+        why = f"{v['where']} {base.objective.metric} {mine:.4f} (was {cur:.4f}{seeds}{sig}){test}"
+        p.promote(shipped(p, exp, v["ids"][0], suites, log), why)
         log(f"  promoted {p.promoted}: {why}")
-    elif a and b and fixes_speed(base, a, b, mine, cur):
+    elif faster:
         was = p.promoted
         why = (
-            f"within {base.speed_tolerance} of {was} on {prim} calib ({mine:.4f} vs {cur:.4f}{seeds}) "
+            f"within {base.speed_tolerance} of {was} on {v['where']} ({mine:.4f} vs {cur:.4f}{seeds}) "
             f"and inside the {base.latency_budget_ms:g} ms budget that {was} misses{test}"
         )
         p.promote(exp, why)
         log(f"  promoted {exp}: {why}")
     elif mine > cur:
-        log(f"  kept {p.promoted}: {exp}'s calib lead {mine:.4f} over {cur:.4f}{seeds} is not sure{sig}{test}")
+        log(
+            f"  kept {p.promoted}: {exp}'s lead on {v['where']} {mine:.4f} over {cur:.4f}{seeds} is not sure{sig}{test}"
+        )
     else:
-        log(f"  kept {p.promoted}: {prim} calib {cur:.4f} >= {exp} {mine:.4f}{seeds}{sig}{test}")
+        log(f"  kept {p.promoted}: {v['where']} {cur:.4f} >= {exp} {mine:.4f}{seeds}{sig}{test}")
     score_rest(p.name, made, log)
-    return board.get(exp, {})
+    return v["board"].get(exp, {})

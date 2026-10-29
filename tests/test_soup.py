@@ -53,9 +53,9 @@ def test_a_soup_averages_the_float_weights_of_every_clean_seed_and_keeps_integer
 @pytest.mark.parametrize(("calib", "ships"), [(0.9, "v2-soup"), (0.7, "v2")])
 def test_the_soup_ships_only_when_it_scores_at_least_the_seed_mean_on_calib(ws, monkeypatch, calib, ships):
     from byosm import evals
-    from byosm.replicas import runs
+    from byosm.replicas import selection_runs
     from byosm.soup import shipped
 
     p = _seeded(ws)
     monkeypatch.setattr(evals, "run", _scored(p, calib))
-    assert shipped(p, "v2", runs(p, "v2", "builtin"), lambda _: None) == ships
+    assert shipped(p, "v2", selection_runs(p, "v2", ["builtin"]), ["builtin"], lambda _: None) == ships

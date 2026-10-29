@@ -183,7 +183,7 @@ def checks(p: Project, spec: TaskSpec, data: dict | None = None) -> list[dict]:
         real_check(p, spec, board),
         _data(data if data is not None else data_check(p, spec)),
         _certainty(mine),
-        seeds_check(p, prim),
+        seeds_check(p),
         _weakest(mine),
         _speed(spec, mine),
         _size(p, board, prim, mine),

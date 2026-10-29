@@ -47,8 +47,8 @@ def _seeds_measured(monkeypatch, name):
 
     real = health.seeds_check
 
-    def seeds(p, prim):
-        return check("seeds", "Seed noise measured", 1, OK, "sd 0.01", "measured") if p.name == name else real(p, prim)
+    def seeds(p):
+        return check("seeds", "Seed noise measured", 1, OK, "sd 0.01", "measured") if p.name == name else real(p)
 
     monkeypatch.setattr(health, "seeds_check", seeds)
 

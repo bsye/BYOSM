@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from statistics import mean
 
-from .evals.selection import selection_value
+from .evals.selection import selection_mean
 from .project import WEIGHTS, Project
 from .replicas import SOUP_SUFFIX, clean_runs, recipe_of
 
@@ -47,10 +47,11 @@ def make_soup(name: str, exp: str, log: Callable[[str], None] = print) -> str | 
     return out
 
 
-def shipped(p: Project, exp: str, runs: list[dict], log: Callable[[str], None] = print) -> str:
+def shipped(p: Project, exp: str, runs: list[str], suites: list[str], log: Callable[[str], None] = print) -> str:
     soup = make_soup(p.name, exp, log) if len(runs) >= MIN_MEMBERS else None
-    found = selection_value(p.board().get(soup or "", {}).get(p.spec().primary_suite()))
-    seeds = [v for r in runs if (v := selection_value(r)) is not None]
+    board = p.board()
+    found = selection_mean(board.get(soup or "", {}), suites)
+    seeds = [v for e in runs if (v := selection_mean(board.get(e, {}), suites)) is not None]
     if soup and found is not None and seeds and found >= mean(seeds):
         log(f"  shipping {soup}: calib {found:.4f} >= the {len(seeds)}-seed mean {mean(seeds):.4f}")
         return soup

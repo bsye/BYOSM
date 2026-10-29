@@ -51,7 +51,7 @@ def test_the_seed_sd_pools_every_recipe_with_more_than_one_clean_run(ws):
         p.save_experiment(e, meta=HELD)
     p.save_experiment("v4", meta={})
     save_board(p, {e: {"builtin": _result(v)} for e, v in values.items()} | {"v4": {"builtin": _result(0.1)}})
-    assert seed_sd(p, "builtin") == pytest.approx(np.sqrt(2e-4))
+    assert seed_sd(p, ["builtin"]) == pytest.approx(np.sqrt(2e-4))
 
 
 def test_a_single_lucky_seed_is_replicated_and_loses_on_the_seed_average(ws, monkeypatch):

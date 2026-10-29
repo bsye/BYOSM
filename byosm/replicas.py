@@ -5,7 +5,7 @@ from collections.abc import Callable
 from statistics import mean, variance
 from typing import Any
 
-from .evals.selection import clean_selection, selection_value
+from .evals.selection import clean_selection, selected, selection_mean
 from .health_score import CHECK_TITLES, OK, WARN, check
 from .project import Project
 
@@ -47,22 +47,26 @@ def clean_runs(p: Project, exp: str, suite: str) -> list[str]:
     return [e for e in same if clean_selection(p, spec, e)]
 
 
-def runs(p: Project, exp: str, suite: str) -> list[dict]:
-    board = p.board()
-    found = clean_runs(p, exp, suite) or ([exp] if suite in board.get(exp, {}) else [])
-    return [board[e][suite] for e in found]
+def clean_runs_all(p: Project, exp: str, suites: list[str]) -> list[str]:
+    each = [set(clean_runs(p, exp, s)) for s in suites[1:]]
+    return [e for e in clean_runs(p, exp, suites[0]) if all(e in found for found in each)]
+
+
+def selection_runs(p: Project, exp: str, suites: list[str]) -> list[str]:
+    scored = all(s in p.board().get(exp, {}) for s in suites)
+    return clean_runs_all(p, exp, suites) or ([exp] if scored else [])
 
 
 def replicate(name: str, exp: str, n: int, log: Callable[[str], None] = print) -> list[str]:
     from .pipeline import build
 
     p = Project(name)
-    suite = p.spec().primary_suite()
+    suites = selected(p.spec(), p.board().get(exp, {}))
     spec = p.exp_spec(exp)
     recipe = recipe_of(exp) or exp
     made: list[str] = []
     for k in range(1, 2 * n):
-        if len(clean_runs(p, exp, suite)) >= n:
+        if len(clean_runs_all(p, exp, suites)) >= n:
             break
         rep = replica(recipe, k)
         if p.experiment(rep) is not None:
@@ -74,7 +78,7 @@ def replicate(name: str, exp: str, n: int, log: Callable[[str], None] = print) -
             rep, spec=seeded, proposal={"parent": exp, "applied": [{"id": SEED_STEP, "why": why, "ops": []}]}
         )
         log(f"[seeds] {rep}: {why}")
-        build(name, rep, log, promote=False, suites=[suite])
+        build(name, rep, log, promote=False, suites=suites)
         made.append(rep)
     return made
 
@@ -87,11 +91,11 @@ def score_rest(name: str, made: list[str], log: Callable[[str], None] = print) -
         run(name, experiments=made, baselines=[], log=log)
 
 
-def seed_sd(p: Project, suite: str) -> float | None:
+def seed_sd(p: Project, suites: list[str]) -> float | None:
     board = p.board()
     groups: dict[str, list[float]] = {}
     for e in p.experiments():
-        value = selection_value(board.get(e, {}).get(suite))
+        value = selection_mean(board.get(e, {}), suites)
         if value is not None and not is_soup(e) and clean_selection(p, p.spec(), e):
             groups.setdefault(recipe_of(e) or e, []).append(value)
     spread = [(len(v) - 1, variance(v)) for v in groups.values() if len(v) > 1]
@@ -99,30 +103,33 @@ def seed_sd(p: Project, suite: str) -> float | None:
     return math.sqrt(sum(d * v for d, v in spread) / dof) if dof else None
 
 
-def _spread_row(recipe: str, ids: list[str], board: dict, suite: str, promoted: bool) -> dict[str, Any]:
-    runs = [{"id": e, "calib": selection_value(board[e][suite]), "test": board[e][suite].get("objective")} for e in ids]
+def _test_mean(by_suite: dict, suites: list[str]) -> float | None:
+    values = [by_suite[s].get("objective") for s in suites]
+    return None if None in values else mean(values)
+
+
+def _spread_row(recipe: str, ids: list[str], board: dict, suites: list[str], promoted: bool) -> dict[str, Any]:
+    runs = [{"id": e, "calib": selection_mean(board[e], suites), "test": _test_mean(board[e], suites)} for e in ids]
     return {"recipe": recipe, "promoted": promoted, "mean": mean(r["calib"] for r in runs), "runs": runs}
 
 
 def seed_spread(p: Project) -> dict[str, Any]:
-    suite, board = p.spec().primary_suite(), p.board()
+    board = p.board()
+    suites = selected(p.spec(), board.get(p.promoted or "", {}))
     anchors: dict[str, str] = {}
     for e in p.experiments():
-        if not is_soup(e) and suite in board.get(e, {}):
+        if not is_soup(e) and all(s in board.get(e, {}) for s in suites):
             anchors.setdefault(recipe_of(e) or e, e)
     shipped = recipe_of(p.promoted or "") or p.promoted
-    groups = {
-        r: [e for e in clean_runs(p, e, suite) if selection_value(board[e][suite]) is not None]
-        for r, e in anchors.items()
-    }
+    groups = {r: clean_runs_all(p, e, suites) for r, e in anchors.items()}
     rows = [
-        _spread_row(r, ids, board, suite, r == shipped)
+        _spread_row(r, ids, board, suites, r == shipped)
         for r, ids in groups.items()
         if len(ids) > 1 or (ids and r == shipped)
     ]
     return {
-        "suite": suite,
-        "sd": seed_sd(p, suite),
+        "suite": suites[0] if len(suites) == 1 else f"the mean of {', '.join(suites)}",
+        "sd": seed_sd(p, suites),
         "wanted": p.spec().finalist_seeds,
         "recipes": sorted(rows, key=lambda row: -row["mean"]),
     }
@@ -134,9 +141,10 @@ def beyond_seed_noise(mine: list[float], theirs: list[float], sd: float | None) 
     return mean(mine) - mean(theirs) > Z * sd * math.sqrt(1 / len(mine) + 1 / len(theirs))
 
 
-def seeds_check(p: Project, prim: str) -> dict:
-    n, have = p.spec().finalist_seeds, len(clean_runs(p, p.promoted or "", prim))
-    sd = seed_sd(p, prim)
+def seeds_check(p: Project) -> dict:
+    suites = selected(p.spec(), p.board().get(p.promoted or "", {}))
+    n, have = p.spec().finalist_seeds, len(clean_runs_all(p, p.promoted or "", suites))
+    sd = seed_sd(p, suites)
     if have >= n and sd is not None:
         why = (
             "Spread of calib scores when the promoted recipe is trained again on other seeds: a smaller lead is noise."
