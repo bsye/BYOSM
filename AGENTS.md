@@ -109,4 +109,5 @@ its domain, measured on public benchmarks. Every change should serve that thesis
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
 .venv/bin/byosm report                  # regenerate the result tables in docs/results.md
 .venv/bin/byosm report --check          # fails if the tables in docs/results.md are stale
+cd ui && npx tsc -b && npm run lint      # UI types and lint; `tsc -p .` checks nothing, the root tsconfig only references the app
 ```
