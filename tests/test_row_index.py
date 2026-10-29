@@ -24,6 +24,13 @@ def test_label_counts_include_every_tag_of_a_tagged_row(ws):
     assert d.summary()["train"] == {"n": 3, "labels": {"yes": 1, "no": 1, "B-LOC": 1, "O": 2}}
 
 
+def test_split_sizes_count_each_split_and_show_an_empty_one_as_zero(ws):
+    d = Dataset(ws / "data" / "k")
+    d.save("train", ROWS)
+    d.save("test", ROWS[:1])
+    assert d.sizes() == {"train": 3, "dev": 0, "calib": 0, "test": 1}
+
+
 @sqlite_only
 def test_label_counts_are_read_from_the_label_index(ws):
     d = Dataset(ws / "data" / "k")

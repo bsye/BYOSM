@@ -2824,3 +2824,6 @@ index (topic's summary went from about 0.5 s to 0.011 s, health plus next steps 
 - **Declared indexes are created when the engine starts.** `create_all` creates missing tables but not a new index on
   a table that exists, so the engine also runs `CREATE INDEX IF NOT EXISTS` for every index the models declare. On
   this 1.2 million row database the first start built it in 4 to 10 s; later starts find it and do nothing.
+- **Sizes alone are counted, not labelled.** The Datasets page and the training log show only how many rows each
+  split has, so they call `Dataset.sizes`, one count per split on the lookup index, instead of tallying every label
+  (the Datasets list went from 0.21 s to 0.09 s with the same output).

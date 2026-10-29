@@ -50,6 +50,13 @@ def tally(path: Path, key: str) -> list[tuple[Any, int]]:
         return [(v, n) for v, n in s.execute(q).all()]
 
 
+def sizes(directory: Path) -> dict[str, int]:
+    ws, owner, collection, _ = _key(directory / f"_{SUFFIX}")
+    with session(ws) as s:
+        q = select(Row.split, func.count()).where(*_where(s, owner, collection)).group_by(Row.split)
+        return dict(s.execute(q).all())
+
+
 def exists(path: Path) -> bool:
     ws, owner, collection, split = _key(path)
     with session(ws) as s:

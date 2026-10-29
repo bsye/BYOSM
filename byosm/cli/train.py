@@ -39,7 +39,7 @@ def data(name: str, exp: str | None = None, force: bool = False) -> None:
     p, base = _spec(name)
     spec = p.exp_spec(exp) if exp else base
     dd = ensure_data(p, spec, load_config(p.ws), log, force)
-    log(json.dumps({s: v["n"] for s, v in Dataset(dd).summary().items()}))
+    log(json.dumps(Dataset(dd).sizes()))
 
 
 @app.command("eval")

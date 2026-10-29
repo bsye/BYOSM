@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..db.models import ROW_LABEL
-from ..db.rows import append, exists, read, tally, write
+from ..db.rows import append, exists, read, sizes, tally, write
 from ..text import normalize
 
 DEV_SHARE = 0.1
@@ -147,6 +147,10 @@ class Dataset:
 
     def built(self) -> bool:
         return exists(self.path("train"))
+
+    def sizes(self) -> dict[str, int]:
+        found = sizes(self.dir)
+        return {s: found.get(s, 0) for s in STORED_SPLITS}
 
     def summary(self) -> dict[str, Any]:
         tallies = {s: tally(self.path(s), ROW_LABEL) for s in STORED_SPLITS}

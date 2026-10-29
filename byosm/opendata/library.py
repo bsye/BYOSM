@@ -45,14 +45,13 @@ def training(ws: Path) -> list[dict[str, Any]]:
         data = Dataset(p.data_dir_for(spec))
         if not data.built():
             continue
-        summary = data.summary()
         out.append(
             {
                 "name": name,
                 "title": spec.title or name,
                 "modality": spec.modality,
                 "labels": len(spec.labels),
-                "splits": {s: v["n"] for s, v in summary.items()},
+                "splits": data.sizes(),
                 "sources": sorted({s.dataset for s in spec.data.hf_sources}),
                 "exported": is_exported(p.root / "export"),
             }
