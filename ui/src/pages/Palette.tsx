@@ -38,6 +38,7 @@ export function Palette() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
   useEffect(() => {
+    if (!open) return
     api<Summary[]>("/specialists")
       .then(setItems)
       .catch(() => setItems([]))

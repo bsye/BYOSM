@@ -66,3 +66,20 @@ Same machine, same load, production bundle.
 Specialists now asks for next steps per card, like Home, and each card re-renders only when its own data changes. Not
 done yet: it finishes at 6.4 s, above the 5 s target, on a machine at load 9 to 13.
 The Postgres form of the board read without units is written but not run here.
+
+### Second pass
+
+"All data loaded" above is the last API response, which can be the sidebar's memory poll that repeats every 15 s.
+From here on it is the last of the page's own requests (the list, health and next steps). Machine at load 16 to 30:
+a training job plus the ready loop scoring a 395M model on 8,797 items on the CPU.
+
+| Measure | Before | After |
+|---|---|---|
+| Topic: health plus next steps (label index) | 1.3 s | 0.1 s |
+| Every card's health and next steps, one after another | 5.5 s or more (load 12) | 3.3 s (load 21 to 24) |
+| Specialists: page requests, list requests | 56, 2 | 47, 1 |
+| Specialists: page data loaded, two runs each | 5.19 s, 4.76 s | 4.37 s, 7.27 s |
+
+The timings swing with the load more than the two versions differ, so the browser runs do not separate them; the
+requests they drop take about 0.8 s of server time when timed alone. The page meets the 5 s target in three of
+four runs on a machine busier than the one measured above.

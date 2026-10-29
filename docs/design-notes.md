@@ -2767,7 +2767,9 @@ server was still working through the previous page's queue.
 - **A classifier no longer loads every forecaster** to learn it is not one: `report_of` reads its one report.
 
 Specialists asks for next steps per card like Home, and a card re-renders only when its own data changes
-(`memo`). After: Home has all its data at 7.2 s with 0.83 s blocked, Specialists at 6.4 s with 0.26 s, and a page
+(`memo`). It asks only for the cards on screen, in the order they are drawn, and `useEach` fetches a key once per
+refresh, so switching tabs and back fetches nothing again. The command palette loads the specialist list when it
+opens instead of on every page load. Together that drops 56 requests to 47 per load, about 0.8 s of server time. After: Home has all its data at 7.2 s with 0.83 s blocked, Specialists at 6.4 s with 0.26 s, and a page
 opened next answers in about 20 ms. One health request takes 0.1 to 0.3 s instead of about 0.7 s.
 
 While planning this, `maybe_promote` turned out to count a missing paired comparison as a sure lead whenever the

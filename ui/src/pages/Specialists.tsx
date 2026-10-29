@@ -83,11 +83,13 @@ export function Specialists() {
   const tabs = kindTabs(listed)
   const kind = tabs.some((t) => t.key === picked) ? picked : ALL
   const shown = kind === ALL ? listed : listed.filter((s) => kindKey(s) === kind)
-  const healths = useHealths(items)
+  const groups = byDate(shown)
+  const inOrder = groups.flatMap((g) => g.items)
+  const healths = useHealths(inOrder)
   const finished = useFinished()
   const busy = useActivity()
   const found = useEach<NextStep[]>(
-    (items ?? []).map((s) => s.name),
+    inOrder.map((s) => s.name),
     "/next-steps",
     finished,
   )
@@ -157,7 +159,7 @@ export function Specialists() {
           </ToggleGroup>
         </div>
       )}
-      {byDate(shown).map((g) => (
+      {groups.map((g) => (
         <Section key={g.key} group={g} busy={busy} showKind={kind === ALL} steps={steps} healths={healths} />
       ))}
     </div>
