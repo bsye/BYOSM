@@ -11,7 +11,8 @@ def techniques_router(ws: Path) -> APIRouter:
     @router.get("/api/techniques")
     def techniques() -> list[dict]:
         from ..improve.bandit import catalogue_board
+        from ..scout.tried import lab_families
 
-        return catalogue_board(ws)
+        return catalogue_board(ws) + lab_families(ws)
 
     return router

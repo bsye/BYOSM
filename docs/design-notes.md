@@ -2664,3 +2664,15 @@ chart as the catalogue's calib effect (`ForestChart.tsx`).
 On tool-choice-held it settled a question the separate intervals could not: the screening rung `v2-r1` (one epoch)
 scored 0.967 on test against 0.958 for the full three-epoch near-miss run, but on calib the lead is -0.001
 [-0.011, +0.008] with p 0.40, so the shorter schedule is not better; both lead `v1` by 0.046 on calib.
+
+## A technique leaves Proposed once it has been tried
+
+Proposed techniques is the scout's inbox: a paper's idea waits there to be accepted and sent to a lab. Approving a
+method's code says nothing about whether the idea works, so the move is keyed on its methods having run: a proposal
+with at least one method that reached a result leaves the card and joins the catalogue as a `lab` row
+(`byosm/scout/tried.py`), with its paper, the specialists it was tried on and one outcome per method, linked to that
+specialist's Lab tab. A classifier's win is a sure lead; a forecaster's is a promotion on a lower calib MASE, which is
+not a sure lead, so it is shown as "promoted" and does not count in the row's sure leads. The summary cards and the
+two family charts count the catalogue's own families only: a classifier's lab experiments are already counted under
+"Lab method". A technique becomes a default only through the proven registry (sure leads on two specialists), so a
+forecaster's method cannot become one until forecaster promotion asks for a sure lead.

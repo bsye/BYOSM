@@ -18,6 +18,7 @@ type Proposal = {
   paper: string
   kinds: string[] | null
   lab: boolean
+  tried: boolean
   gain: string | null
   how: string | null
   status: "proposed" | "accepted" | "rejected"
@@ -91,7 +92,8 @@ export function ScoutProposals() {
     refresh()
   }, [refresh, finished])
   const decide = (id: string, status: "accepted" | "rejected") => post(`/scout/${id}`, { status }).then(refresh)
-  const shown = (data?.proposals ?? []).filter((p) => p.status !== "rejected")
+  const kept = (data?.proposals ?? []).filter((p) => p.status !== "rejected")
+  const shown = kept.filter((p) => !p.tried)
   const scan = data?.last_scan
   const read = scan ? (scan.read ? `, ${scan.read} new papers read, ${scan.kept} of ${scan.proposed} ideas kept` : ", no new papers since the scan before") : ""
   const last = data?.last_run ? `${new Date(data.last_run * 1000).toLocaleString()}${read}` : "never"
@@ -115,7 +117,13 @@ export function ScoutProposals() {
       </CardHeader>
       <CardContent>
         {shown.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{scanning ? "Reading recent papers..." : "No proposals yet."}</p>
+          <p className="text-muted-foreground text-sm">
+            {scanning
+              ? "Reading recent papers..."
+              : kept.length
+                ? "Every proposed technique was tried: see the lab rows in the catalogue below."
+                : "No proposals yet."}
+          </p>
         ) : (
           <Table>
             <TableHeader>
