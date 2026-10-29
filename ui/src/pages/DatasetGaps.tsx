@@ -7,7 +7,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useLive } from "@/events"
+import { useFinished, useLive } from "@/events"
 import { compact } from "@/format"
 import { NewSpecialist } from "./NewSpecialist"
 
@@ -19,7 +19,7 @@ const SHOWN = 20
 function useGaps(): [Gaps | null, boolean] {
   const jobs = Object.values(useLive().jobs).filter((j) => j.args[0] === "dataset-gaps")
   const running = jobs.some((j) => j.status === "running" || j.status === "queued")
-  const done = jobs.filter((j) => j.status === "done").length
+  const done = useFinished()
   const [gaps, setGaps] = useState<Gaps | null>(null)
   useEffect(() => {
     api<Gaps>("/datasets/gaps").then(setGaps, () => setGaps({ at: null, rows: [] }))

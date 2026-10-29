@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useLive } from "@/events"
+import { useFinished } from "@/events"
 import { CheckReport } from "./CheckReport"
 import { openJob } from "@/job-sheet"
 
@@ -72,7 +72,7 @@ function Uploads({ name, req, onUploaded }: { name: string; req: DataRequest; on
 export function YourData({ name }: { name: string }) {
   const [req, setReq] = useState<DataRequest | null>(null)
   const [report, setReport] = useState<Report | null>(null)
-  const finished = Object.values(useLive().jobs).filter((j) => j.status === "done" || j.status === "failed").length
+  const finished = useFinished()
   const load = useCallback(() => {
     api<DataRequest>(`/specialists/${name}/request`)
       .then(setReq)

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useLive } from "@/events"
+import { useFinished, useLive } from "@/events"
 import { href } from "@/route"
 import { MethodActions, type MethodStatus } from "./MethodActions"
 import { toast } from "sonner"
@@ -86,7 +86,7 @@ export function ScoutProposals() {
   const [data, setData] = useState<Scouted | null>(null)
   const jobs = Object.values(useLive().jobs).filter((j) => j.args[0] === "scout")
   const scanning = jobs.some((j) => j.status === "running" || j.status === "queued")
-  const finished = jobs.filter((j) => j.status === "done").length
+  const finished = useFinished()
   const refresh = useCallback(() => api<Scouted>("/scout").then(setData, () => setData(null)), [])
   useEffect(() => {
     refresh()

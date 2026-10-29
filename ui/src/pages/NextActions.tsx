@@ -6,7 +6,8 @@ import { useShowMore } from "@/components/show-more"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useLive } from "@/events"
+import { useEach } from "@/each"
+import { useFinished } from "@/events"
 import { openJob } from "@/job-sheet"
 import { href } from "@/route"
 import type { Healths } from "./HealthList"
@@ -18,7 +19,7 @@ type Pending = NextStep & { owner: string; approve: string }
 export const best = (found: NextStep[]) => found.filter(runnable).sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0))[0] ?? null
 
 function usePending(): [Pending[], () => void] {
-  const finished = Object.values(useLive().jobs).filter((j) => j.args[0] === "lab" && j.status === "done").length
+  const finished = useFinished()
   const [found, setFound] = useState<Pending[]>([])
   const load = useCallback(() => void api<Pending[]>("/lab/pending").then(setFound, () => setFound([])), [])
   useEffect(() => {
@@ -28,18 +29,12 @@ function usePending(): [Pending[], () => void] {
 }
 
 function useSteps(items: Summary[]): Record<string, NextStep | null> {
-  const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
-  const [steps, setSteps] = useState<Record<string, NextStep | null>>({})
-  const names = items.map((s) => s.name).join("\n")
-  useEffect(() => {
-    for (const name of names.split("\n").filter(Boolean)) {
-      api<NextStep[]>(`/next-steps/${encodeURIComponent(name)}`).then(
-        (found) => setSteps((cur) => ({ ...cur, [name]: best(found) })),
-        () => setSteps((cur) => ({ ...cur, [name]: null })),
-      )
-    }
-  }, [names, finished])
-  return steps
+  const found = useEach<NextStep[]>(
+    items.map((s) => s.name),
+    "/next-steps",
+    useFinished(),
+  )
+  return Object.fromEntries(Object.entries(found).map(([name, steps]) => [name, steps ? best(steps) : null]))
 }
 
 function Change({ now, step }: { now: number | undefined; step: NextStep | null | undefined }) {

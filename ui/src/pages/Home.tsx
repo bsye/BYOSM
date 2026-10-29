@@ -5,7 +5,7 @@ import { LlmPicker, useLlmChoice } from "@/components/llm-picker"
 import { Button } from "@/components/ui/button"
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useLive } from "@/events"
+import { useFinished } from "@/events"
 import { openJob } from "@/job-sheet"
 import { href } from "@/route"
 import { Machine } from "./Machine"
@@ -27,7 +27,7 @@ const EXAMPLES = [
 const STAT_CARDS = 4
 
 function useItems(): Summary[] | null {
-  const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
+  const finished = useFinished()
   const [items, setItems] = useState<Summary[] | null>(null)
   useEffect(() => {
     api<Summary[]>("/specialists").then(

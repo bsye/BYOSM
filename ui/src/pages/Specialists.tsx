@@ -7,7 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useActivity, type Activity } from "@/activity"
-import { useLive } from "@/events"
+import { useEach } from "@/each"
+import { useFinished } from "@/events"
 import type { NextStep } from "./NextSteps"
 import { NewSpecialist } from "./NewSpecialist"
 import { SpecialistCard } from "./SpecialistCard"
@@ -83,15 +84,14 @@ export function Specialists() {
   const kind = tabs.some((t) => t.key === picked) ? picked : ALL
   const shown = kind === ALL ? listed : listed.filter((s) => kindKey(s) === kind)
   const healths = useHealths(items)
-  const jobs = Object.values(useLive().jobs)
-  const finished = jobs.filter((j) => j.status === "done").length
+  const finished = useFinished()
   const busy = useActivity()
-  const [steps, setSteps] = useState<Record<string, NextStep[]>>({})
-  useEffect(() => {
-    api<Record<string, NextStep[]>>("/next-steps")
-      .then(setSteps)
-      .catch(() => setSteps({}))
-  }, [finished])
+  const found = useEach<NextStep[]>(
+    (items ?? []).map((s) => s.name),
+    "/next-steps",
+    finished,
+  )
+  const steps = Object.fromEntries(Object.entries(found).flatMap(([name, s]) => (s ? [[name, s]] : [])))
   useEffect(() => {
     api<Summary[]>("/specialists")
       .then(setItems)

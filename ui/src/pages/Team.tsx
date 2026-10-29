@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { STAT_GRID, StatCard } from "@/components/stat-card"
-import { useLive } from "@/events"
+import { useFinished } from "@/events"
 import { signed, rivalName, score } from "@/format"
 import { href } from "@/route"
 import { useExamples } from "./Playground"
@@ -146,7 +146,7 @@ export function Team({ view }: { view: TeamView }) {
 
 export function useTeam(name: string): TeamView | null | undefined {
   const [view, setView] = useState<TeamView | null | undefined>(undefined)
-  const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
+  const finished = useFinished()
   useEffect(() => {
     api<TeamView>(`/systems/${name}`)
       .then(setView)

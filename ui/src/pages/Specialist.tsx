@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useLive } from "@/events"
+import { useFinished } from "@/events"
 import { signed, ms, params, rivalName, score } from "@/format"
 import { go } from "@/route"
 import { DataRows } from "./DataRows"
@@ -79,8 +79,7 @@ function Model({ name, tab }: { name: string; tab?: string }) {
   const repo = useExamples(name)?.repos[0]
   const [d, setD] = useState<Detail | null>(null)
   const [error, setError] = useState("")
-  const jobs = Object.values(useLive().jobs)
-  const finished = jobs.filter((j) => j.status === "done").length
+  const finished = useFinished()
   const load = useCallback(
     () =>
       api<Detail>(`/specialists/${name}`)

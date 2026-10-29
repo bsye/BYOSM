@@ -1,4 +1,5 @@
 import { Loader2, Minus, Play, TrendingDown, TrendingUp } from "lucide-react"
+import { memo } from "react"
 import type { Activity } from "@/activity"
 import { runJob, type Summary } from "@/api"
 import type { Health } from "./HealthList"
@@ -65,7 +66,7 @@ function Step({ steps }: { steps: NextStep[] }) {
   )
 }
 
-export function SpecialistCard({
+export const SpecialistCard = memo(function SpecialistCard({
   s,
   running,
   showKind,
@@ -123,4 +124,4 @@ export function SpecialistCard({
       </Card>
     </div>
   )
-}
+})

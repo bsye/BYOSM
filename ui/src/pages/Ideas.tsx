@@ -4,7 +4,7 @@ import { api, runJob } from "@/api"
 import { useShowMore } from "@/components/show-more"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useLive } from "@/events"
+import { useFinished, useLive } from "@/events"
 import { openJob } from "@/job-sheet"
 
 type Idea = { title: string; prompt: string; why: string; dataset: string; rival?: string }
@@ -13,7 +13,7 @@ type Saved = { at: number | null; ideas: Idea[] }
 function useIdeas(): [Saved | null, boolean] {
   const jobs = Object.values(useLive().jobs).filter((j) => j.args[0] === "ideas")
   const running = jobs.some((j) => j.status === "running" || j.status === "queued")
-  const done = jobs.filter((j) => j.status === "done").length
+  const done = useFinished()
   const [saved, setSaved] = useState<Saved | null>(null)
   useEffect(() => {
     api<Saved>("/ideas").then(setSaved, () => setSaved({ at: null, ideas: [] }))

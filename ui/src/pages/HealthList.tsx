@@ -1,6 +1,6 @@
 import { Loader2, Rocket } from "lucide-react"
-import { useEffect, useState } from "react"
-import { api, type Summary } from "@/api"
+import { useState } from "react"
+import type { Summary } from "@/api"
 import { InfoTip } from "@/components/info-tip"
 import { useShowMore } from "@/components/show-more"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +9,8 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useLive } from "@/events"
+import { useEach } from "@/each"
+import { useFinished } from "@/events"
 import { href } from "@/route"
 import { untilReady } from "./stat-actions"
 
@@ -17,17 +18,11 @@ export type Health = { score: number; ready: boolean; ready_score: number; block
 export type Healths = Record<string, Health | null>
 
 export function useHealths(items: Summary[] | null): Healths {
-  const finished = Object.values(useLive().jobs).filter((j) => j.status === "done").length
-  const [found, setFound] = useState<Healths>({})
-  useEffect(() => {
-    for (const s of items ?? []) {
-      api<Health | null>(`/health/${encodeURIComponent(s.name)}`).then(
-        (h) => setFound((cur) => ({ ...cur, [s.name]: h })),
-        () => setFound((cur) => ({ ...cur, [s.name]: null })),
-      )
-    }
-  }, [items, finished])
-  return found
+  return useEach<Health>(
+    (items ?? []).map((s) => s.name),
+    "/health",
+    useFinished(),
+  )
 }
 
 function Status({ h }: { h: Health | null | undefined }) {

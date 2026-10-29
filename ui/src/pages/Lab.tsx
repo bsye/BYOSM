@@ -8,7 +8,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
-import { useLive } from "@/events"
+import { useFinished, useLive } from "@/events"
 import { jobRunning } from "@/jobs"
 import { MethodActions, type MethodStatus } from "./MethodActions"
 
@@ -90,7 +90,7 @@ export function Lab({ name, kind }: { name: string; kind: LabKind }) {
   const [ask, setAsk] = useState("")
   const jobs = useLive().jobs
   const writing = jobRunning(jobs, ["lab", "write", name])
-  const finished = Object.values(jobs).filter((j) => j.args[0] === "lab" && j.args[2] === name && j.status !== "running" && j.status !== "queued").length
+  const finished = useFinished()
   const refresh = useCallback(() => api<Method[]>(`/specialists/${name}/lab`).then(setMethods, () => setMethods([])), [name])
   useEffect(() => {
     refresh()

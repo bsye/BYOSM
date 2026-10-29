@@ -10,17 +10,37 @@ type Live = {
   metrics: Record<string, Metric[]>
   received: Record<string, number>
   measured: number
+  finished: number
   connected: boolean
   unauthorized: boolean
 }
 
+type LiveEvent = { type: string; job: Job & string; data?: Metric; line?: string }
+
 const RECONNECT_MS = 2000
+const FLUSH_MS = 100
 const SEED_LINES = 50
 export const UNFINISHED = new Set(["running", "queued"])
+const ENDED = new Set(["done", "failed", "cancelled", "interrupted"])
 const UNAUTHORIZED = 4401
 const KEPT_LINES = 5000
-const EMPTY: Live = { jobs: {}, lines: {}, metrics: {}, received: {}, measured: 0, connected: false, unauthorized: false }
+const EMPTY: Live = { jobs: {}, lines: {}, metrics: {}, received: {}, measured: 0, finished: 0, connected: false, unauthorized: false }
 const LiveContext = createContext<Live>(EMPTY)
+
+function applied(l: Live, ev: LiveEvent, received: Record<string, number>): Live {
+  if (ev.type === "job") {
+    const before = l.jobs[ev.job.id]?.status
+    const ended = before !== undefined && UNFINISHED.has(before) && ENDED.has(ev.job.status)
+    return { ...l, jobs: { ...l.jobs, [ev.job.id]: ev.job }, finished: l.finished + (ended ? 1 : 0) }
+  }
+  if (ev.type === "metric") return { ...l, metrics: { ...l.metrics, [ev.job]: [...(l.metrics[ev.job] ?? []), ev.data as Metric] } }
+  if (ev.type === "measure") return { ...l, measured: l.measured + 1 }
+  return {
+    ...l,
+    lines: { ...l.lines, [ev.job]: [...(l.lines[ev.job] ?? []), ev.line as string].slice(-KEPT_LINES) },
+    received: { ...l.received, [ev.job]: received[ev.job] },
+  }
+}
 
 export function LiveProvider({ children }: { children: ReactNode }) {
   const [live, setLive] = useState<Live>(EMPTY)
@@ -28,7 +48,27 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     let sock: WebSocket | null = null
     const seeded = new Set<string>()
     const received: Record<string, number> = {}
+    let pending: LiveEvent[] = []
+    let flush: ReturnType<typeof setTimeout> | null = null
     let stop = false
+    const apply = () => {
+      const batch = pending
+      pending = []
+      flush = null
+      setLive((l) => batch.reduce((acc, ev) => applied(acc, ev, received), l))
+    }
+    const seed = (id: string) => {
+      seeded.add(id)
+      api<{ events?: Metric[]; lines: string[] }>(`/jobs/${id}`)
+        .then((d) =>
+          setLive((l) => ({
+            ...l,
+            metrics: { ...l.metrics, [id]: [...(d.events ?? []), ...(l.metrics[id] ?? [])] },
+            lines: { ...l.lines, [id]: [...d.lines.slice(-SEED_LINES), ...(l.lines[id] ?? [])] },
+          })),
+        )
+        .catch(() => seeded.delete(id))
+    }
     const open = () => {
       sock = new WebSocket(eventsUrl())
       sock.onopen = () => setLive((l) => ({ ...l, connected: true, unauthorized: false }))
@@ -37,39 +77,17 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         if (!stop) setTimeout(open, RECONNECT_MS)
       }
       sock.onmessage = (m) => {
-        const ev = JSON.parse(m.data)
-        if (ev.type === "job" && UNFINISHED.has(ev.job.status) && !seeded.has(ev.job.id)) {
-          seeded.add(ev.job.id)
-          const from = received[ev.job.id] ?? 0
-          api<{ events?: Metric[]; lines: string[] }>(`/jobs/${ev.job.id}`)
-            .then((d) =>
-              setLive((l) => ({
-                ...l,
-                metrics: { ...l.metrics, [ev.job.id]: [...(d.events ?? []), ...(l.metrics[ev.job.id] ?? [])] },
-                lines: {
-                  ...l.lines,
-                  [ev.job.id]: [...d.lines.slice(-SEED_LINES), ...since(l.lines[ev.job.id] ?? [], (received[ev.job.id] ?? 0) - from)],
-                },
-              })),
-            )
-            .catch(() => seeded.delete(ev.job.id))
-        }
-        const count = ev.type === "log" ? (received[ev.job] = (received[ev.job] ?? 0) + 1) : 0
-        setLive((l) => {
-          if (ev.type === "job") return { ...l, jobs: { ...l.jobs, [ev.job.id]: ev.job } }
-          if (ev.type === "metric") return { ...l, metrics: { ...l.metrics, [ev.job]: [...(l.metrics[ev.job] ?? []), ev.data] } }
-          if (ev.type === "measure") return { ...l, measured: l.measured + 1 }
-          return {
-            ...l,
-            lines: { ...l.lines, [ev.job]: [...(l.lines[ev.job] ?? []), ev.line].slice(-KEPT_LINES) },
-            received: { ...l.received, [ev.job]: count },
-          }
-        })
+        const ev: LiveEvent = JSON.parse(m.data)
+        if (ev.type === "job" && UNFINISHED.has(ev.job.status) && !seeded.has(ev.job.id)) seed(ev.job.id)
+        if (ev.type === "log") received[ev.job] = (received[ev.job] ?? 0) + 1
+        pending.push(ev)
+        flush ??= setTimeout(apply, FLUSH_MS)
       }
     }
     open()
     return () => {
       stop = true
+      if (flush) clearTimeout(flush)
       sock?.close()
     }
   }, [])
@@ -77,6 +95,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
 }
 
 export const useLive = () => useContext(LiveContext)
+
+export const useFinished = () => useLive().finished
 
 export function useJob(id: string): { lines: string[]; metrics: Metric[] } {
   const live = useLive()
@@ -108,8 +128,6 @@ function unique(metrics: Metric[]): Metric[] {
     return true
   })
 }
-
-const ENDED = new Set(["done", "failed", "cancelled", "interrupted"])
 
 export function useJobToasts() {
   const { jobs } = useLive()
