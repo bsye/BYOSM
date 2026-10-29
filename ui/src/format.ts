@@ -12,6 +12,9 @@ export const ms = (x: number | null | undefined) => (x == null ? "-" : `${x.toFi
 
 export const when = (t: number | null | undefined) => (t == null ? "-" : new Date(t * 1000).toLocaleTimeString())
 
+export const stamp = (t: number | null | undefined) =>
+  t == null ? "-" : new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+
 const MINUTE = 60
 
 export function seconds(s: number): string {

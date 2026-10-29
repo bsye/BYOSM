@@ -45,6 +45,17 @@ class Experiment(Base):
     created: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class Promotion(Base):
+    __tablename__ = "promotions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    specialist_id: Mapped[int] = _owned()
+    before: Mapped[str | None] = mapped_column(String(200))
+    after: Mapped[str] = mapped_column(String(200))
+    why: Mapped[str] = mapped_column(Text)
+    by: Mapped[str] = mapped_column(String(40))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class Result(Base):
     __tablename__ = "results"
     __table_args__ = (UniqueConstraint("specialist_id", "predictor", "suite"),)

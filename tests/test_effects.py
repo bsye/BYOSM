@@ -110,7 +110,7 @@ def test_a_promotion_vote_measures_the_experiment_against_its_parent(ws):
     p = _specialist("a")
     p.save_spec(p.spec().model_copy(update={"finalist_seeds": 1}))
     _built(p, "v1", None, 30, ops=())
-    p.promote("v1")
+    p.promote("v1", "test")
     _built(p, "v2", "v1", 36)
     maybe_promote(p, "v2", lambda _: None)
     assert p.report(EFFECT + "v2")["delta"] == 0.15

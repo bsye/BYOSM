@@ -14,7 +14,7 @@ def _promoted(ws):
     p.save_experiment("v1", meta={})
     old = {"id": "more-data", "why": "a", "ops": [{"path": "data.per_label", "value": 800}]}
     p.save_experiment("v2", meta={}, proposal={"parent": "v1", "applied": [old]})
-    p.promote("v2")
+    p.promote("v2", "test")
     save_board(p, {"v2": {"builtin": {"kind": "experiment", "objective": 0.9, "n_test": 500, "n_calib": 200}}})
     return p, old
 

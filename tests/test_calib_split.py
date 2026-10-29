@@ -45,7 +45,7 @@ def test_a_model_trained_before_calib_was_held_out_cannot_win_promotion_on_the_b
     p.save_experiment("v1", meta={"calib_held": True})
     p.save_experiment("v2", meta={})
     p.save_experiment("v3", meta={"calib_held": True})
-    p.promote("v1")
+    p.promote("v1", "test")
     result = {"kind": "experiment", "n_test": 500, "n_calib": 200}
     save_board(
         p,

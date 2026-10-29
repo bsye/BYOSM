@@ -56,7 +56,7 @@ def toy(tmp_path, monkeypatch):
         "rival": {"bench": _result("baseline", 0.5, 0.5, BASE_UNITS, 9_000_000)},
     }
     save_board(p, board)
-    p.promote("v2")
+    p.promote("v2", "test")
     return tmp_path
 
 

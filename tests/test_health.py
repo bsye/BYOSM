@@ -17,7 +17,7 @@ def _specialist(ws, rows):
     )
     p.save_spec(spec)
     p.save_experiment("v1", meta={})
-    p.promote("v1")
+    p.promote("v1", "test")
     save_board(p, rows)
     return p, spec
 

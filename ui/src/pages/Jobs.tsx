@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLive } from "@/events"
-import { took } from "@/format"
+import { stamp, took } from "@/format"
 import { describe, llmUsed, stepNow } from "@/jobs"
 import { openJob } from "@/job-sheet"
 import { go, href } from "@/route"
@@ -173,7 +173,7 @@ function JobList({ rows, titles }: { rows: ReturnType<typeof useRows>; titles: R
                   <div className="truncate">{now ?? "-"}</div>
                   {llm && <div className="text-muted-foreground/70 truncate">{llm}</div>}
                 </TableCell>
-                <TableCell className="text-foreground/70 text-xs tabular-nums">{started(job.started)}</TableCell>
+                <TableCell className="text-foreground/70 text-xs tabular-nums">{stamp(job.started)}</TableCell>
                 <TableCell className="text-foreground/70 text-right tabular-nums">{took(job.started, job.ended)}</TableCell>
               </TableRow>
             )
@@ -184,9 +184,6 @@ function JobList({ rows, titles }: { rows: ReturnType<typeof useRows>; titles: R
     </>
   )
 }
-
-const started = (t: number | null) =>
-  t == null ? "-" : new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
 
 export function Jobs({ id }: { id?: string }) {
   return id ? <JobDetail id={id} /> : <Overview />

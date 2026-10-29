@@ -9,6 +9,7 @@ import { params, score, seconds } from "@/format"
 import { Ablations } from "./Ablations"
 import { Lineage } from "./Lineage"
 import { Progress } from "./Progress"
+import { Promotions } from "./Promotions"
 import { Search } from "./Search"
 
 const COLORS = 5
@@ -41,6 +42,7 @@ export function Runs({ d }: { d: Detail }) {
     <div className="space-y-4">
       <Lineage d={d} />
       <Progress d={d} />
+      <Promotions items={d.promotions} />
       <Card>
         <CardHeader>
           <CardTitle>Dev {d.metric} per epoch</CardTitle>

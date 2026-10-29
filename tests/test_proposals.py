@@ -10,7 +10,7 @@ from byosm.spec import Label, TaskSpec
 LOST = {"won": False, "exp": "v1", "ours": 0.5, "suite": "builtin", "best_baseline": ("hf:x", 0.9)}
 
 
-def make_project(ws):
+def make_project(ws, promoted="v1"):
     p = Project("t").ensure()
     spec = TaskSpec(
         name="t",
@@ -22,7 +22,8 @@ def make_project(ws):
     p.exp_dir("v1").mkdir()
     p.save_experiment("v1", spec=spec)
     p.save_experiment("v1", meta={"params": 50e6})
-    p.promote("v1")
+    if promoted:
+        p.promote(promoted, "test")
     return p, spec
 
 
@@ -106,7 +107,7 @@ def test_a_student_is_kept_when_it_scores_within_the_tolerance_of_its_teacher(ws
         return "v2"
 
     monkeypatch.setattr(distill, "create", create)
-    monkeypatch.setattr(pipeline, "build", lambda name, exp, echo, **_k: p.promote(exp))
+    monkeypatch.setattr(pipeline, "build", lambda name, exp, echo, **_k: p.promote(exp, "test"))
     monkeypatch.setattr(autopilot, "standing", lambda name, margin: {**LOST, "ours": student})
     s = session(p, spec)
     autopilot._distill_student(s, {**LOST, "ours": 0.905}, {"params": 50e6})
@@ -114,9 +115,8 @@ def test_a_student_is_kept_when_it_scores_within_the_tolerance_of_its_teacher(ws
 
 
 def test_an_experiment_that_never_finished_is_built_before_improving(ws, monkeypatch):
-    p, spec = make_project(ws)
+    p, spec = make_project(ws, promoted=None)
     p.save_experiment("v2", spec=spec)
-    p.promote(None)
     calls = []
     monkeypatch.setattr(autopilot, "missing_labels", lambda spec: False)
     monkeypatch.setattr(autopilot, "_build_v1", lambda s: calls.append("build"))

@@ -175,7 +175,7 @@ def promoted_specialist(
     p.save_spec(spec)
     p.exp_dir("v1").mkdir(parents=True)
     p.save_experiment("v1", meta={})
-    p.promote("v1")
+    p.promote("v1", "test")
     save_board(p, {"v1": {"builtin": {"kind": "experiment", "objective": 0.9, "n_test": n_test, "n_calib": n_calib}}})
     return p
 

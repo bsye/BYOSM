@@ -12,7 +12,7 @@ def test_the_promoted_model_labels_only_the_pool_rows_it_is_sure_of(ws, monkeypa
     p = Project("tc").ensure()
     p.save_spec(spec)
     p.save_experiment("v1", meta={"params": 1})
-    p.promote("v1")
+    p.promote("v1", "test")
     dd = p.data_dir_for(spec)
     train = [record("already in train", "statement", "t")]
     pool = [record(t, None, "hf:pool") for t in ("is it on?", "it is on.", "maybe on")]

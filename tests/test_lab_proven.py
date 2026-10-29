@@ -53,7 +53,7 @@ def test_a_promotion_won_with_a_lab_method_records_the_win(ws):
     d = save_draft(p, "Reverse curriculum", "harder rows last", CODE, "test", None)
     decide(p, d["id"], APPROVED)
     p.save_experiment("v1", meta={"calib_held": True})
-    p.promote("v1")
+    p.promote("v1", "test")
     spec = p.spec().model_copy(deep=True)
     spec.train.lab_method = d["id"]
     op = {"op": "set", "path": "train.lab_method", "value": d["id"]}

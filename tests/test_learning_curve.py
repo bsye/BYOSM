@@ -44,7 +44,7 @@ def test_more_data_is_proposed_only_while_the_curve_still_climbs(ws, monkeypatch
 
     p = _project()
     p.save_experiment("v1", meta={"n_train": 400, "calib_held": True})
-    p.promote("v1")
+    p.promote("v1", "test")
     save_board(p, {"v1": {"builtin": {"kind": "experiment", "objective": 0.8, "calib_objective": 0.8}}})
     fake = dict(zip(("v1-n25", "v1-n50"), zip((100, 200), scores, strict=True), strict=True))
 

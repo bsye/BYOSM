@@ -143,6 +143,7 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
         "data_suggestions": saved_suggestions(p),
         "ablations": ablation_summaries(p),
         "seeds": seed_spread(p),
+        "promotions": p.promotions(),
         "lab": spec.modality in SPECIALIST_MODALITIES,
     }
 

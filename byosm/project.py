@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import UTC
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -7,7 +8,8 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import delete, select
 
 from .config import find_workspace
-from .db import Experiment, Report, Result, Specialist, get_or_add, session
+from .db import Experiment, Promotion, Report, Result, Specialist, get_or_add, session
+from .events import JOB_ENV
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -15,6 +17,7 @@ if TYPE_CHECKING:
     from .spec import TaskSpec
 
 WEIGHTS = "model.pt"
+FROM_TERMINAL = "terminal"
 EXPERIMENT_FIELDS = ("spec", "meta", "proposal", "errors", "created")
 
 
@@ -74,9 +77,26 @@ class Project:
         with session(self.ws) as s:
             return s.scalar(select(Specialist.promoted).where(Specialist.id == self._need(s)))
 
-    def promote(self, exp: str) -> None:
+    def promote(self, exp: str, why: str) -> None:
         with session(self.ws) as s:
-            s.scalar(select(Specialist).where(Specialist.name == self.name)).promoted = exp
+            row = s.scalar(select(Specialist).where(Specialist.name == self.name))
+            by = os.environ.get(JOB_ENV) or FROM_TERMINAL
+            s.add(Promotion(specialist_id=row.id, before=row.promoted, after=exp, why=why, by=by))
+            row.promoted = exp
+
+    def promotions(self) -> list[dict[str, Any]]:
+        with session(self.ws) as s:
+            rows = s.scalars(select(Promotion).where(Promotion.specialist_id == self._need(s)).order_by(Promotion.id))
+            return [
+                {
+                    "before": r.before,
+                    "after": r.after,
+                    "why": r.why,
+                    "by": r.by,
+                    "at": r.at.replace(tzinfo=UTC).timestamp(),
+                }
+                for r in rows
+            ]
 
     def data_dir_for(self, spec: TaskSpec) -> Path:
         return self.root / "data" / spec.data_key()

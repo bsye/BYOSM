@@ -9,7 +9,7 @@ def test_models_resolve_to_a_page_and_what_they_are(ws):
     p = Project("qa", ws)
     p.save_spec(TaskSpec(name="qa", description="q", modality="text", labels=[Label(name="a", definition="a")]))
     p.save_experiment("v1", meta={})
-    p.promote("v1")
+    p.promote("v1", "test")
     llm = {
         "identity": json.dumps({"provider": "openai", "model": "qwen3.8:27b", "base_url": "http://localhost:11434/v1"})
     }

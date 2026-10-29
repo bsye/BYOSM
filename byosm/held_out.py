@@ -48,6 +48,7 @@ def adopt_data(name: str, exp: str, log: Callable[[str], None] = print) -> str |
     if not scored:
         return None
     best = max(scored, key=lambda e: scored[e])
-    p.promote(best)
-    log(f"promoted {best}: calib {scored[best]:.4f} on {prim}, the best of {len(scored)} experiments")
+    why = f"calib {scored[best]:.4f} on {prim}, the best of {len(scored)} experiments on {exp}'s held-out data"
+    p.promote(best, why)
+    log(f"promoted {best}: {why}")
     return best

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { rivalName, score } from "@/format"
+import { rivalName, score, stamp } from "@/format"
 import type { ForecasterView, Version } from "./forecaster-api"
 
 const DEFAULT_PRETRAINING = "v1"
@@ -95,9 +95,7 @@ export function Versions({ f }: { f: ForecasterView }) {
                 <TableCell className="text-muted-foreground text-right tabular-nums">{calibChange(f.versions ?? [], (f.versions ?? []).indexOf(v))}</TableCell>
                 <TableCell className="text-right tabular-nums">{score(v.test)}</TableCell>
                 <TableCell className="text-right tabular-nums">{v.ci ? `${score(v.ci[0])} to ${score(v.ci[1])}` : "-"}</TableCell>
-                <TableCell className="text-right text-xs tabular-nums">
-                  {new Date(v.at * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                </TableCell>
+                <TableCell className="text-right text-xs tabular-nums">{stamp(v.at)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

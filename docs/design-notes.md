@@ -2719,3 +2719,15 @@ the vote, dropped a recipe with one replica (tool-choice near-miss had no row), 
 `recipe_of` maps a soup to its recipe. `seed_recipe` (`byosm/report/seeds.py`) now names the recipe of a seed run and
 leaves soups out, and a recipe that has seed runs joins its own group. The main table still lists the recipe's own run
 and the soup and hides only the `-s<k>` replicas off the promoted lineage, so no run disappears from the page.
+
+## Every promotion is logged
+
+The shipped model was one column, `specialists.promoted`, overwritten in place, so nothing said when a specialist's
+model changed, from what, why, or which job did it. `Project.promote(exp, why)` is the one place a promotion happens,
+and it now adds a `promotions` row (before, after, why, by, at) in the same transaction. `by` is the job id from
+`BYOSM_JOB_ID` (moved to `byosm/events.py` next to the other job variable, so the core does not import the GPU
+module) or `terminal` for a command typed by hand. The reason is required: the vote passes the same sentence it logs
+(calib, seeds, P(better), seed sd, test), and adopting a held-out set, a speed promotion, a distilled student and
+`byosm promote` each say what they did. The Runs tab lists them newest first, with the job's name linked. There is no
+backfill: the old promotions left no record, and `specialists.updated` also changes when the spec is saved, so a date
+taken from it would be a guess. The log starts with this change.

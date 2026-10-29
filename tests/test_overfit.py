@@ -67,7 +67,7 @@ def toy(ws, monkeypatch):
         "v2": {"bench": _result([False] * 10, [False] * 4, {"lo": 0.0, "hi": 0.0})},
     }
     save_board(p, board)
-    p.promote("v1")
+    p.promote("v1", "test")
     scorer = Scorer()
     monkeypatch.setattr(overfit, "score", scorer)
     monkeypatch.setattr(overfit, "experiment_predictor", lambda p, base, exp: exp)

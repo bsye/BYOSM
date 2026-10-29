@@ -161,7 +161,7 @@ def _promoted_export(ws, promoted) -> None:
     p = Project("x", ws)
     p.save_spec(TaskSpec(name="x", description="x", modality="text", labels=[Label(name="a", definition="")]))
     p.save_experiment(promoted, meta={})
-    p.promote(promoted)
+    p.promote(promoted, "test")
     out = ws / "specialists" / "x" / "export"
     out.mkdir(parents=True)
     (out / "manifest.json").write_text('{"experiment": "v1"}')

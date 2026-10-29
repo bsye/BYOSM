@@ -90,17 +90,17 @@ def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:
     won = (mine > cur and sure) or bool(a and b and fixes_speed(base, a, b, mine, cur))
     _record(p, exp, won, cmp, (mine_runs, cur_runs))
     if mine > cur and sure:
-        p.promote(shipped(p, exp, mine_runs, log))
-        log(
-            f"  promoted {p.promoted}: {prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{seeds}{sig}){test}"
-        )
+        why = f"{prim} calib {base.objective.metric} {mine:.4f} (was {cur:.4f}{seeds}{sig}){test}"
+        p.promote(shipped(p, exp, mine_runs, log), why)
+        log(f"  promoted {p.promoted}: {why}")
     elif a and b and fixes_speed(base, a, b, mine, cur):
         was = p.promoted
-        p.promote(exp)
-        log(
-            f"  promoted {exp}: within {base.speed_tolerance} of {was} on {prim} calib ({mine:.4f} vs {cur:.4f}{seeds}) "
+        why = (
+            f"within {base.speed_tolerance} of {was} on {prim} calib ({mine:.4f} vs {cur:.4f}{seeds}) "
             f"and inside the {base.latency_budget_ms:g} ms budget that {was} misses{test}"
         )
+        p.promote(exp, why)
+        log(f"  promoted {exp}: {why}")
     elif mine > cur:
         log(f"  kept {p.promoted}: {exp}'s calib lead {mine:.4f} over {cur:.4f}{seeds} is not sure{sig}{test}")
     else:

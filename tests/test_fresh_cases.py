@@ -24,7 +24,7 @@ def _project(spec):
     p = Project("tc").ensure()
     p.save_spec(spec)
     p.save_experiment("v1", meta={})
-    p.promote("v1")
+    p.promote("v1", "test")
     return p
 
 

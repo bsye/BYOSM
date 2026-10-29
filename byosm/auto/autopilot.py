@@ -79,15 +79,17 @@ def _distill_student(s: Session, st: dict, meta: dict) -> None:
     try:
         build(s.name, exp, s.echo, promote=False)
     except Exception as ex:
-        s.p.promote(teacher)
+        s.p.promote(teacher, f"the distilled student failed to build ({type(ex).__name__}), so the teacher stays")
         s.log("distill", exp, f"student build failed ({type(ex).__name__}: {ex}) -> keep the teacher {teacher}")
         return
     smeta = s.p.meta(exp)
-    s.p.promote(exp)
+    s.p.promote(exp, f"distilled from {teacher}, promoted to compare it with its teacher")
     stu = standing(s.name, s.margin)
     close = stu["ours"] is not None and stu["ours"] >= st["ours"] - s.base.speed_tolerance
     if not close:
-        s.p.promote(teacher)
+        s.p.promote(
+            teacher, f"the distilled student {exp} is more than {s.base.speed_tolerance} behind its teacher on calib"
+        )
     outcome = "student within tolerance -> promoted" if close else "student too far behind -> keep the teacher"
     ours = stu["ours"] if stu["ours"] is not None else float("nan")
     s.log(

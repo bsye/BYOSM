@@ -7,8 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..events import EVENTS_ENV, TARGET
-from ..train.gpu import JOB_ENV
+from ..events import EVENTS_ENV, JOB_ENV, TARGET
 from .store import JOB_FIELDS
 
 PYTHONPATH = "PYTHONPATH"

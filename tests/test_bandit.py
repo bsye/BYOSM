@@ -67,7 +67,7 @@ def test_every_promotion_vote_leaves_a_verdict_for_the_bandit(ws):
     p = _specialist("a")
     p.save_spec(p.spec().model_copy(update={"finalist_seeds": 1}))
     p.save_experiment("v1", meta={"calib_held": True})
-    p.promote("v1")
+    p.promote("v1", "test")
     p.save_experiment(
         "v2", meta={"calib_held": True, "gpu_hours": 0.25}, proposal={"applied": [{"id": "x", "ops": [EPOCHS]}]}
     )

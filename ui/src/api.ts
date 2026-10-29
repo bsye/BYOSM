@@ -145,8 +145,11 @@ export type SeedRecipe = { recipe: string; promoted: boolean; mean: number; runs
 
 export type Seeds = { suite: string; sd: number | null; recipes: SeedRecipe[] }
 
+export type Promotion = { before: string | null; after: string; why: string; by: string; at: number }
+
 export type Detail = Summary & {
   lab: boolean
+  promotions: Promotion[]
   ablations: Ablation[]
   seeds: Seeds
   data_check: unknown

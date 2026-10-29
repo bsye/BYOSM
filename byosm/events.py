@@ -11,6 +11,7 @@ from typing import Any
 
 TARGET = "target"
 EVENTS_ENV = "BYOSM_EVENTS"
+JOB_ENV = "BYOSM_JOB_ID"
 EVENT_PREFIX = "@event "
 
 

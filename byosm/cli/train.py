@@ -190,5 +190,5 @@ def promote(name: str, exp: str) -> None:
     p, _ = _spec(name)
     if exp not in p.experiments():
         raise typer.BadParameter(f"unknown experiment; have {p.experiments()}")
-    p.promote(exp)
+    p.promote(exp, "chosen by hand")
     log(f"promoted {name}/{exp}")

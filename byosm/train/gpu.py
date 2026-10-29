@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from ..config import STATE_DIR
+from ..events import JOB_ENV
 from .gpu_memory import GB_PER_TRAINING, free_gb, need_gb, needed_gb, remember, total_gb
 from .gpu_queue import first, join
 
@@ -21,7 +22,6 @@ MIN_SHARE = 0.25
 HOLDER = ".holder"
 SHARE_ENV = "BYOSM_GPU_SHARE"
 ADMISSION_LOCK = "admission.lock"
-JOB_ENV = "BYOSM_JOB_ID"
 LOCK_DIR = STATE_DIR / "gpu"
 WAIT_S = 5
 HEARTBEAT_S = 300

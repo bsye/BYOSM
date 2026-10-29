@@ -65,7 +65,7 @@ def test_a_single_lucky_seed_is_replicated_and_loses_on_the_seed_average(ws, mon
     p.save_spec(_spec())
     for e in ("v1", "v1-s1", "v1-s2", "v2"):
         p.save_experiment(e, meta=HELD)
-    p.promote("v1")
+    p.promote("v1", "test")
     save_board(p, {"v1": {"builtin": _result(0.90)}, "v1-s1": {"builtin": _result(0.91)}})
     save_board(p, {"v1-s2": {"builtin": _result(0.89)}, "v2": {"builtin": _result(0.93)}})
     built = []
@@ -98,7 +98,7 @@ def test_the_seed_spread_groups_clean_runs_of_a_recipe_and_always_shows_the_prom
     for e in ("v1", "v2", "v2-s1", "v2-soup", "v3", "v4", "v4-s1"):
         p.save_experiment(e, meta=HELD)
     p.save_experiment("v4-s2", meta={})
-    p.promote("v1")
+    p.promote("v1", "test")
     stale = {**_result(0.99), "fingerprint": "old"}
     save_board(
         p, {"v1": {"builtin": _result(0.90)}, "v2": {"builtin": _result(0.93)}, "v2-s1": {"builtin": _result(0.91)}}

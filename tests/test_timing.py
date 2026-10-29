@@ -51,7 +51,7 @@ def test_a_specialist_with_a_busy_timing_lists_time_it_again_among_its_next_step
 
     from byosm.next_steps import suggestions
 
-    timed.promote("slow")
+    timed.promote("slow", "test")
     save_board(timed, {"slow": {"builtin": {**timed.result("slow", "builtin"), "calib_objective": 0.9}}})
     step = next(s for s in suggestions("t") if s["id"] == "speed")
     assert step["title"] == "Time it again" and step["args"] == ["time", "t"]
