@@ -1,18 +1,16 @@
 import { Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useLive } from "@/events"
+import { UNFINISHED, useLive } from "@/events"
 import { took } from "@/format"
 import { openJob } from "@/job-sheet"
 import { describe, stepNow } from "@/jobs"
 import { useNow } from "@/now"
 import { StatusIcon } from "./Jobs"
 
-const ACTIVE = new Set(["running", "queued"])
-
 export function RunningHere({ name }: { name: string }) {
   const live = useLive()
-  const jobs = Object.values(live.jobs).filter((j) => ACTIVE.has(j.status) && describe(j).target === name)
+  const jobs = Object.values(live.jobs).filter((j) => UNFINISHED.has(j.status) && describe(j).target === name)
   const now = useNow(jobs.length > 0)
   if (!jobs.length) return null
   return (

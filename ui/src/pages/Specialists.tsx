@@ -6,8 +6,8 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useActivity, type Activity } from "@/activity"
 import { useLive } from "@/events"
-import { describe } from "@/jobs"
 import type { NextStep } from "./NextSteps"
 import { NewSpecialist } from "./NewSpecialist"
 import { SpecialistCard } from "./SpecialistCard"
@@ -51,7 +51,7 @@ function Section({
   healths,
 }: {
   group: Group
-  busy: Map<string, string>
+  busy: Map<string, Activity>
   showKind: boolean
   steps: Record<string, NextStep[]>
   healths: Healths
@@ -85,7 +85,7 @@ export function Specialists() {
   const healths = useHealths(items)
   const jobs = Object.values(useLive().jobs)
   const finished = jobs.filter((j) => j.status === "done").length
-  const busy = new Map(jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => [describe(j).target ?? "", describe(j).title] as const))
+  const busy = useActivity()
   const [steps, setSteps] = useState<Record<string, NextStep[]>>({})
   useEffect(() => {
     api<Record<string, NextStep[]>>("/next-steps")

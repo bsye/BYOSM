@@ -16,7 +16,7 @@ type Live = {
 
 const RECONNECT_MS = 2000
 const SEED_LINES = 50
-const UNFINISHED = new Set(["running", "queued"])
+export const UNFINISHED = new Set(["running", "queued"])
 const UNAUTHORIZED = 4401
 const KEPT_LINES = 5000
 const EMPTY: Live = { jobs: {}, lines: {}, metrics: {}, received: {}, measured: 0, connected: false, unauthorized: false }

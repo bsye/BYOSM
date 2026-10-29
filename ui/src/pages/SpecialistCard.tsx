@@ -1,4 +1,5 @@
 import { Loader2, Minus, Play, TrendingDown, TrendingUp } from "lucide-react"
+import type { Activity } from "@/activity"
 import { runJob, type Summary } from "@/api"
 import type { Health } from "./HealthList"
 import { Button } from "@/components/ui/button"
@@ -29,12 +30,13 @@ function Lead({ s }: { s: Summary }) {
   )
 }
 
-function Status({ s, running, health }: { s: Summary; running?: string; health?: Health | null }) {
+function Status({ s, running, health }: { s: Summary; running?: Activity; health?: Health | null }) {
   if (running)
     return (
-      <span className="flex items-center gap-1.5">
-        <Loader2 className="size-3.5 animate-spin" />
-        {running}
+      <span className="flex min-w-0 items-center gap-1.5" title={running.step}>
+        <Loader2 className="size-3.5 shrink-0 animate-spin" />
+        <span className="shrink-0">{running.title}</span>
+        <span className="truncate">{running.step}</span>
       </span>
     )
   if (s.score == null) return <span>Not built yet</span>
@@ -71,7 +73,7 @@ export function SpecialistCard({
   health,
 }: {
   s: Summary
-  running?: string
+  running?: Activity
   showKind: boolean
   steps?: NextStep[]
   health?: Health | null
@@ -107,9 +109,9 @@ export function SpecialistCard({
           <div className="text-xs">{s.score != null && <Lead s={s} />}</div>
         </CardContent>
         <CardFooter className="text-muted-foreground/80 justify-between gap-3 text-xs">
-          <span className="flex shrink-0 items-center gap-1.5">
+          <span className={`flex items-center gap-1.5 ${running ? "min-w-0" : "shrink-0"}`}>
             <Status s={s} running={running} health={health} />
-            {s.created && (
+            {s.created && !running && (
               <>
                 <span>·</span>
                 <span className="tabular-nums">{createdLabel(s)}</span>
