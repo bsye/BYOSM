@@ -8,6 +8,11 @@ export type Effect = Summary & { left_out: number; kinds: (Summary & { modality:
 type Family = { title: string; calib_effect: Effect }
 type Row = ForestRow & { effect: Effect }
 
+const rowOf = (f: Family): Row | null => {
+  const { mean, lo, hi } = f.calib_effect
+  return mean == null || lo == null || hi == null ? null : { title: f.title, mean, lo, hi, effect: f.calib_effect }
+}
+
 function ReadoutRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex w-full justify-between gap-4">
