@@ -43,4 +43,6 @@ def test_masking_hides_every_tool_name_but_keeps_the_description_and_parameters(
     option, offered = masked(WEATHER, [STOCK, WEATHER])
     text = render("marked", REQUEST, option, offered)
     assert "get_weather" not in text and "get_stock" not in text
-    assert text.endswith("Option: tool_1: Current weather for a city. (city, units)\nOther options: tool_2")
+    assert text.endswith(
+        "Option: tool_1: Current weather for a city. (requires city; also takes units)\nOther options: tool_2"
+    )

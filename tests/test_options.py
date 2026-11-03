@@ -17,7 +17,7 @@ def test_a_request_becomes_one_pair_per_offered_tool_labelled_by_whether_it_was_
     s = xlam(ROW)
     out = list(table_rows([s], PairPlan()))
     assert [r["label"] for r in out] == [FITS, NO_FIT] and len({r["split"] for r in out}) == 1
-    assert "Option: get_weather: current weather (city)\nOther options: get_stock" in out[0]["text"]
+    assert "Option: get_weather: current weather (requires city)\nOther options: get_stock" in out[0]["text"]
 
 
 def test_some_requests_get_unrelated_tools_so_choosing_none_is_learned():
@@ -34,7 +34,7 @@ def test_the_decision_is_right_only_when_exactly_the_called_tools_are_chosen(tmp
     )
     greedy = score(table, lambda texts: [0.9] * len(texts))
     assert perfect["tool_needed"]["accuracy"] == 1.0 and greedy["tool_needed"]["accuracy"] == 0.0
-    assert marked("q", {"name": "x"}, []) == "q\n\nOption: x:  ()\nOther options: none"
+    assert marked("q", {"name": "x"}, []) == "q\n\nOption: x:  (takes no parameters)\nOther options: none"
 
 
 def test_a_rival_is_scored_on_the_same_requests_as_the_model(tmp_path, monkeypatch):

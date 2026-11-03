@@ -2889,6 +2889,21 @@ info" at 0.30 on When2Call), and LLM-written fixes drifted before. A hard-case r
   While dev has fewer than 20 errors and a pool fits, "Holds on new inputs" names the round as its next step, so the
   ready loop runs it.
 
+## An option shows which arguments it requires
+
+"Ask for info" means a required argument is missing, but the `marked` layout rendered an option as `name:
+description (a, b, c)` and `prose` as "It takes a, b, c", so the input never said which arguments were required. Every
+tool choice held recipe sat at 0.26 to 0.41 on When2Call's "ask for info" (near-miss, the corrected labels, a
+hard-case round with 3,000 When2Call rows); the When2Call paper's models saw the whole schema. Both layouts now say
+"requires a, b; also takes c" (`arguments`); `json` and `openai` already carried the schema's `required` list. The
+near-miss miner measures tool similarity on its own text (`tool_words`: name, description, parameter names), so a
+change of layout does not change which neighbours it mines.
+
+The rendered text is stored in the training table and in every frozen suite, so the change needs new data; rather
+than rewrite tool choice held's tables and suites under results scored on the old text, `tool-choice-args` is created
+the same way (`options new --held-out --situations 6000`, the same requests and splits) in the new format, and tool
+choice held stays as the record of the old one.
+
 ## An LLM rival's cached score depends on its prompt
 
 A rival's cached score is reused while the suite's rows, the label names, the decision rule and the rival's identity

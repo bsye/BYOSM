@@ -50,7 +50,9 @@ def train_cases() -> Iterator[Case]:
             question = next(m["content"] for m in r["messages"] if m["role"] == "user")
             chosen = called(reply)
             if offered:
-                yield Case(f"{file}:{i}", CALL if chosen else NO_CALL, Situation(str(question).strip(), offered, chosen))
+                yield Case(
+                    f"{file}:{i}", CALL if chosen else NO_CALL, Situation(str(question).strip(), offered, chosen)
+                )
 
 
 def rows(spec: TaskSpec, log: Callable[[str], None]) -> list[dict]:

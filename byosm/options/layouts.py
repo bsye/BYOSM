@@ -9,7 +9,8 @@ PARAM_CHARS = 80
 OPTION_MARK = "\n\nOption: "
 OTHERS_MARK = "\nOther options: "
 NO_OTHERS = "none"
-NO_PARAMS = "no parameters"
+NO_PARAMS = "takes no parameters"
+REQUIRES, ALSO = "requires", "also takes"
 OPTIONAL = "optional"
 MASKED_NAME = "tool_{}"
 
@@ -32,8 +33,19 @@ def description(option: Option) -> str:
     return str(option.get("description") or "")[:DESCRIPTION_CHARS]
 
 
+def arguments(option: Option) -> str:
+    needed = required(option)
+    rest = [k for k in params(option) if k not in needed]
+    parts = [f"{REQUIRES} {', '.join(needed)}"] * bool(needed) + [f"{ALSO} {', '.join(rest)}"] * bool(rest)
+    return "; ".join(parts) or NO_PARAMS
+
+
+def tool_words(option: Option) -> str:
+    return " ".join([option["name"], description(option), *params(option)])
+
+
 def option_text(option: Option) -> str:
-    return f"{option['name']}: {description(option)} ({', '.join(params(option))})"
+    return f"{option['name']}: {description(option)} ({arguments(option)})"
 
 
 def other_names(option: Option, offered: list[Option]) -> list[str]:
@@ -67,9 +79,8 @@ def openai(request: str, option: Option, offered: list[Option]) -> str:
 
 
 def prose(request: str, option: Option, offered: list[Option]) -> str:
-    takes = ", ".join(params(option)) or NO_PARAMS
     others = ", ".join(other_names(option, offered)) or NO_OTHERS
-    return f"Offered tool: {option['name']}. {description(option)} It takes {takes}. Also offered: {others}.\nRequest: {request}"
+    return f"Offered tool: {option['name']}. {description(option)} It {arguments(option)}. Also offered: {others}.\nRequest: {request}"
 
 
 RENDERERS: dict[str, Callable[[str, Option, list[Option]], str]] = {

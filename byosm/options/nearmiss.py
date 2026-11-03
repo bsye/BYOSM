@@ -6,7 +6,7 @@ from functools import cached_property
 import numpy as np
 
 from ..spec import TaskSpec
-from .layouts import option_text, params, required
+from .layouts import params, required, tool_words
 from .pairs import Pair
 from .relabel import relabel
 from .rewrite import left_out
@@ -24,7 +24,7 @@ def names(s: Situation) -> set[str]:
 
 
 def query(s: Situation) -> str:
-    return " ".join([s.text, *(option_text(o) for o in s.options if o["name"] in s.chosen)])
+    return " ".join([s.text, *(tool_words(o) for o in s.options if o["name"] in s.chosen)])
 
 
 class ToolIndex:
@@ -39,8 +39,8 @@ class ToolIndex:
                 tools.setdefault(o["name"], o)
                 self.neighbours.setdefault(o["name"], set()).update(names(s) - {o["name"]})
         self.tools, self.index = list(tools.values()), {n: i for i, n in enumerate(tools)}
-        self.vectorizer = TfidfVectorizer(stop_words=STOP_WORDS).fit([option_text(t) for t in self.tools])
-        self.matrix = self.vectorizer.transform([option_text(t) for t in self.tools])
+        self.vectorizer = TfidfVectorizer(stop_words=STOP_WORDS).fit([tool_words(t) for t in self.tools])
+        self.matrix = self.vectorizer.transform([tool_words(t) for t in self.tools])
 
     @cached_property
     def rows(self) -> list[np.ndarray]:
