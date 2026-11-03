@@ -58,6 +58,17 @@ def test_mining_keeps_the_rows_the_model_gets_most_wrong(ws, monkeypatch):
     assert kept == [sample[1], sample[2]]
 
 
+def test_mining_keeps_an_equal_share_of_each_kind_of_request_and_label(ws, monkeypatch):
+    p = _specialist(ws, monkeypatch)
+    rows = hard.pool_rows(p, p.spec(), "fake", lambda _: None)
+    monkeypatch.setattr(hard, "HARD_ROWS", 3)
+    monkeypatch.setattr(hard, "_losses", lambda p, base, parent, sample, log: np.array([0.1, 2.0, 0.9]))
+    kept = hard.mine(p, p.spec(), "v1", rows, lambda _: None)
+    assert sorted((r["meta"]["category"], r["label"]) for r in kept) == sorted(
+        (r["meta"]["category"], r["label"]) for r in hard._sample(rows)
+    )
+
+
 def test_a_round_trains_warm_on_the_earlier_rows_plus_the_new_ones(ws, monkeypatch):
     from byosm import pipeline
 

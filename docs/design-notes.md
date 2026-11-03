@@ -2877,7 +2877,9 @@ info" at 0.30 on When2Call), and LLM-written fixes drifted before. A hard-case r
   row) are left out: 939 of 20,916 When2Call training requests were, since the set is built from the same sources as
   BFCL-live.
 - **Mining keeps the highest loss.** The promoted model scores 4,000 sampled requests (`POOL_REQUESTS`, about 10,000
-  pairs) and the 3,000 pairs it gets most wrong (`HARD_ROWS`) are kept, logged per kind of request and label.
+  pairs) and the 3,000 pairs it gets most wrong (`HARD_ROWS`) are kept, in equal shares per kind of request and label (`_balanced`), so one
+  kind cannot fill the round: v13's unbalanced round kept 2,914 "no call, no fit" pairs of 3,000 and lost on the
+  selection mean (0.720 against v1's 0.715 to 0.744).
 - **Rows carry forward with their experiment.** The round writes the parent's added rows plus the new ones to its own
   `refine-<exp>` split, which `fit` trains on next to `train`, and warm-starts from the parent (`continued`). Seed
   replicas now copy their recipe's added rows: before, a replica of a Keep training experiment trained without the

@@ -72,10 +72,21 @@ def _losses(p: Project, base: TaskSpec, parent: str, rows: list[dict], log: Log)
     return -np.log(np.clip(found, 1e-9, 1.0))
 
 
+def _balanced(sample: list[dict], loss: np.ndarray) -> list[dict]:
+    kinds: dict[tuple, list[int]] = {}
+    for i in np.argsort(-loss):
+        kinds.setdefault((sample[i]["meta"]["category"], sample[i]["label"]), []).append(int(i))
+    share = HARD_ROWS // max(1, len(kinds))
+    kept = [i for found in kinds.values() for i in found[:share]]
+    chosen = set(kept)
+    rest = [int(i) for i in np.argsort(-loss) if int(i) not in chosen]
+    return [sample[i] for i in kept + rest[: HARD_ROWS - len(kept)]]
+
+
 def mine(p: Project, base: TaskSpec, parent: str, rows: list[dict], log: Log) -> list[dict]:
     sample = _sample(rows)
     loss = _losses(p, base, parent, sample, log)
-    hard = [sample[i] for i in np.argsort(-loss)[:HARD_ROWS]]
+    hard = _balanced(sample, loss)
     kinds = Counter((r["meta"]["category"], r["label"]) for r in hard)
     log(f"[hard] kept the {len(hard)} pairs {parent} gets most wrong: {dict(kinds)}")
     return hard
