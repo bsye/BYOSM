@@ -2861,7 +2861,8 @@ the per-suite deltas (`compare_suites`, `bootstrap_suites`), and one suite is th
 replicas are built and counted on every selection suite, seed noise is the spread of the mean, and the reason names
 each suite's delta. Test stays report-only. Tool choice held selects on builtin, BFCL, BFCL-live and When2Call; the
 LLM-written suite has 8 calib items. `byosm vote NAME EXP` reruns the decision for a trained experiment, which jobs
-started on older code need. The plan and the second half (hard-case rounds) are in `docs/HARD_CASES.md`.
+started on older code need. A candidate not yet scored on every selection suite is refused with the command that scores it: a vote
+that ran while v13's When2Call scoring was still going had counted it as a loss at -1 over 0 seeds. The plan and the second half (hard-case rounds) are in `docs/HARD_CASES.md`.
 
 ## Hard-case rounds add the rows the model gets wrong
 

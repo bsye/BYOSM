@@ -70,3 +70,17 @@ def test_a_selection_suite_with_too_few_calib_items_is_left_out(ws):
 def test_a_selection_suite_must_be_one_of_the_specs_suites():
     with pytest.raises(ValueError, match="not among the spec's evals"):
         _spec(["builtin", "missing"])
+
+
+def test_a_candidate_not_scored_on_every_selection_suite_is_refused_not_counted_as_a_loss(ws):
+    from byosm.improve.bandit import VERDICT
+
+    p = Project("tc").ensure()
+    p.save_spec(_spec(BOTH))
+    for e in ("v1", "v2"):
+        p.save_experiment(e, meta={"calib_held": True})
+    p.promote("v1", "test")
+    save_board(p, {"v1": {"builtin": _scored(0.8), "hard": _scored(0.8)}, "v2": {"builtin": _scored(0.9)}})
+    with pytest.raises(RuntimeError, match="not scored on hard yet"):
+        maybe_promote(p, "v2", lambda _: None)
+    assert p.report(VERDICT + "v2") is None

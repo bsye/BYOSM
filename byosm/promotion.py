@@ -120,6 +120,8 @@ def maybe_promote(p: Project, exp: str, log: Log = print) -> dict[str, Any]:
         )
         return p.board().get(exp, {})
     suites = selected(base, p.board().get(p.promoted or exp, {}))
+    if missing := [s for s in suites if s not in p.board().get(exp, {})]:
+        raise RuntimeError(f"{exp} is not scored on {', '.join(missing)} yet: byosm eval {p.name} --exp {exp}")
     made = _settle(p, exp, suites, log) if _leads(p, exp, suites) else []
     v = _vote(p, base, exp, suites)
     a, b, mine, cur, seeds, sig, test = v["a"], v["b"], v["mine"], v["cur"], v["seeds"], v["sig"], v["test"]
