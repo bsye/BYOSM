@@ -24,6 +24,7 @@ export function SuitesChart({ d }: { d: Detail }) {
   const step = 1 - low > WIDE_SPAN ? WIDE_STEP : FLOOR_STEP
   const ticks = Array.from({ length: Math.floor((1 - low) / step + EPSILON) + 1 }, (_, i) => Math.round((1 - i * step) * TICK_DIGITS) / TICK_DIGITS)
   const left = Object.keys(d.board).length - models.length
+  const deciding = Array.isArray(d.spec.selection_suites) ? (d.spec.selection_suites as string[]) : []
   return (
     <Card>
       <CardHeader>
@@ -32,6 +33,7 @@ export function SuitesChart({ d }: { d: Detail }) {
           <InfoTip>
             Test {d.metric} with its 95% interval on every test suite, for the promoted model, its rivals and the best other models scored on at least two
             suites. A missing bar is a suite that model was not scored on.
+            {deciding.length > 1 && ` Promotion decides on the calib mean of ${deciding.join(", ")}.`}
           </InfoTip>
         </CardTitle>
       </CardHeader>
