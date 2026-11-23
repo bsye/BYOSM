@@ -3076,6 +3076,18 @@ blueprints are not published, so we train one here, and its native code never ru
   against the teacher's probabilities; 2% of them are held out for KL and top-move agreement. It then writes its
   probabilities for every infoset, visited or not, and the engine turns that table into a strategy file. The
   measure is the table: `byosm poker teacher-versus NAME-student NAME`.
+- **Sizing, measured** (25M iterations each, six seats, Pluribus menu):
+
+  | Card buckets | Infosets | Peak memory | Note |
+  |---|---|---|---|
+  | 12 | 60,285,494 | 19.3 GiB | resumed at the end: load plus building the strategy file |
+  | 24 | 70,812,198 | 23.2 GiB | upstream's cloning checkpoints |
+  | 50 | 82,090,381 | 22.3 GiB | streamed checkpoints, second half of the run |
+
+  Four times the buckets cost 36% more infosets at this length. The 200M run with 12 buckets held 119,860,592.
+  Alone on the machine with streamed checkpoints the trainer ran 89,560 iterations a second; three runs side by side
+  with cloning checkpoints ran 18,000 to 21,000 each. The peak is at the end, when the strategy file's table is built
+  beside the regret table: about 270 to 320 bytes an infoset.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.
