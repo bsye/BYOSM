@@ -270,3 +270,31 @@ What this changes for us, in order of expected gain:
 4. **Every teacher is judged at the table** against the previous one (`crossplay`, six seats, CI), never by
    agreement alone.
 
+## How strong the rebuild is, by its own measurements
+
+From the rebuild's [README](https://github.com/conorarmstrong/pluribus/blob/757f7692738069522195d2b486eec60a8b010c0c/README.md)
+and [BASELINES](https://github.com/conorarmstrong/pluribus/blob/757f7692738069522195d2b486eec60a8b010c0c/BASELINES.md)
+at the commit we build, read on 2026-11-23. These are the author's numbers, not ours.
+
+| Measure | Result |
+|---|---|
+| Heads-up against [Slumbot](https://www.slumbot.com/), blueprint only, 10,000 hands | -714.5 ±331.5 mbb/hand |
+| The same with search (800 ms) | -1,771.0 ±471.8 mbb/hand: search made it worse |
+| What search adds at six seats in self-play | +30.1 ±128.8 without its value net (40,000 deals); +174 ±100 with it |
+| Distilling search back into the blueprint | -38.5 ±62.0 against its parent over 1M hands: no gain |
+| 36 card buckets against 12, heads-up | did not beat 12 |
+| Against humans or Pluribus itself | never measured; no claim of Pluribus strength |
+
+The author's reading of the Slumbot loss: the search tracks ranges as if the opponent played our blueprint, so
+against a foreign opponent it best-responds to a range that is not there. Pluribus tracked exact reach
+probabilities and beat professionals by 48 mbb/game.
+
+What follows for us:
+
+- This code is the Pluribus method at a small scale, not Pluribus strength. Our +12,243 with search against callers
+  is real but says nothing about strong opponents.
+- "More buckets" and "turn search on" are hypotheses to test at the table, not known gains.
+- We have no way to measure "as strong as Pluribus": it cannot be played against. The honest yardsticks are our own
+  previous teachers, simple bots, Pluribus's logged decisions, and Slumbot heads-up (needs network access, which the
+  sealed container does not have: an owner decision).
+
