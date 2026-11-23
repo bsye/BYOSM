@@ -30,3 +30,26 @@ def test_llm_rival_answers_land_on_their_own_rows_even_out_of_order_or_missing(m
     probs = ZeroShotLLM(spec).probs_rows(rows, None)
     got = [spec.label_names[int(np.argmax(p))] for p in probs]
     assert got == [r["input"] for r in rows] and fake.calls == [6, 1]
+
+
+class Slow(Scrambled):
+    def json(self, system, prompt, schema, **kw):
+        import subprocess
+
+        answer = super().json(system, prompt, schema, **kw)
+        if self.calls[-1] > 2:
+            raise subprocess.TimeoutExpired("llm", 600)
+        return answer
+
+
+def test_llm_rival_splits_a_batch_that_times_out_instead_of_failing_the_suite(monkeypatch):
+    import byosm.llm
+
+    fake = Slow()
+    monkeypatch.setattr(byosm.llm, "get_llm", lambda role, cfg=None: fake)
+    labels = [Label(name="fits", definition=""), Label(name="no_fit", definition="")]
+    spec = TaskSpec(name="t", description="", modality="text", labels=labels)
+    rows = [{"id": str(i), "input": "fits" if i % 2 else "no_fit"} for i in range(4)]
+    probs = ZeroShotLLM(spec).probs_rows(rows, None)
+    got = [spec.label_names[int(np.argmax(p))] for p in probs]
+    assert got == [r["input"] for r in rows] and fake.calls[:3] == [4, 2, 1]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -99,7 +100,13 @@ class ZeroShotLLM(Predictor):
     def _labels(self, chunk: list[dict], mod: Any, schema: dict) -> list[str]:
         prompt, images = self._prompt(chunk, mod)
         kw = {"images": images} if images else {}
-        answers = self.llm.json(SYSTEM, prompt, schema, **kw).get("labels", [])
+        try:
+            answers = self.llm.json(SYSTEM, prompt, schema, **kw).get("labels", [])
+        except subprocess.TimeoutExpired:
+            if len(chunk) == 1:
+                raise
+            half = len(chunk) // 2
+            return self._labels(chunk[:half], mod, schema) + self._labels(chunk[half:], mod, schema)
         by_item = {a.get("n"): a.get("label") for a in answers if isinstance(a, dict)}
         labels = [by_item.get(j + 1) for j in range(len(chunk))]
         if len(chunk) > 1:

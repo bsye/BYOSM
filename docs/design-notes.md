@@ -1099,6 +1099,9 @@ The waiting call re-reads the mode every minute, so switching to local or pressi
 waiting. A failed job also offers Retry and Retry with local LLM. A job's chosen LLM now replaces every role, not only
 the default one, so "run this with X" means every part of the job uses X.
 
+A batch of rows that times out is split in half and asked again, down to one row; only a single row that still times
+out fails the suite. One slow batch of 40 poker spots once left the LLM rival with no PokerBench score at all.
+
 ## What a specialist cost, and when it pays off
 
 The Costs page prices what BYOSM measured, not estimates. Each LLM call event carries its job and token counts; a job
