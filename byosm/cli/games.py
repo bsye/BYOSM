@@ -47,3 +47,22 @@ def teacher_benchmark(
     from ..games.poker.teacher import benchmark
 
     benchmark(find_workspace(), root(), iters, log)
+
+
+@poker_app.command("teacher-play")
+def teacher_play(
+    field: str = typer.Option("caller", help="who fills the other five seats: caller or random"),
+    hands: int = typer.Option(200_000, help="hands to play"),
+    search: bool = typer.Option(False, help="the teacher searches during each hand, like Pluribus"),
+    iters: int = typer.Option(200_000_000, help="which blueprint, by its training traversals"),
+) -> None:
+    """Seat the teacher at a 6-player table and measure what it wins, in mbb/hand with a 95% CI."""
+    from ..benchmarks.pluribus import root
+    from ..config import find_workspace
+    from ..games.poker.table import play
+
+    try:
+        won = play(find_workspace(), root(), iters, field, hands, search, log)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    log(f"{won['mbb_per_hand']:+.1f} mbb/hand (95% CI ±{won['ci95']:.1f}) over {won['hands']} hands against {field}")

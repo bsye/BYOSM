@@ -270,3 +270,20 @@ def test_teacher_training_resumes_from_its_checkpoint(ws, monkeypatch):
     (teacher.work_dir(ws) / f"{teacher.blueprint(1000)}{teacher.CHECKPOINT}").write_text("")
     teacher.train(ws, ws, 1000, print)
     assert "--resume" not in calls[0] and calls[1][-2:] == ["--resume", "blueprint-1000.bin.ckpt"]
+
+
+def test_the_teacher_plays_a_six_player_table_and_its_winrate_is_stored(ws, monkeypatch):
+    from byosm.db.workspace import workspace_report
+    from byosm.games.poker import table
+
+    asked = []
+    line = "winrate: +3390.1 mbb/hand (95% CI ±595.7) over 20000 hands in 5.0s"
+    monkeypatch.setattr(table, "run", lambda ws, hands, args, log: asked.append(args) or ["loaded", line])
+    won = table.play(ws, ws, 7, "caller", 20000, False, lambda _: None)
+    assert won["mbb_per_hand"] == 3390.1 and won["ci95"] == 595.7 and won["hands"] == 20000 and won["seats"] == 6
+    assert asked[0][asked[0].index("--players") + 1] == "6" and "--aivat" in asked[0] and "--search" not in asked[0]
+    assert workspace_report(ws, table.key(7, "caller", False)) == won
+    table.play(ws, ws, 7, "random", 10, True, lambda _: None)
+    assert "--search" in asked[1]
+    with pytest.raises(ValueError, match="unknown field"):
+        table.play(ws, ws, 7, "sharks", 10, False, lambda _: None)
