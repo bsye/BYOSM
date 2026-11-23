@@ -261,29 +261,55 @@ def test_the_teacher_runs_sealed_with_only_its_folder_and_the_hands_mounted(ws):
     assert found[-2:] == [teacher.IMAGE, "benchmark"]
 
 
-def test_teacher_training_resumes_from_its_checkpoint(ws, monkeypatch):
+def test_teacher_training_resumes_from_its_checkpoint_and_names_the_strategy_by_its_recipe(ws, monkeypatch):
     from byosm.games.poker import teacher
 
     calls = []
     monkeypatch.setattr(teacher, "run", lambda ws, hands, args, log: calls.append(args))
-    teacher.train(ws, ws, 1000, print)
-    (teacher.work_dir(ws) / f"{teacher.blueprint(1000)}{teacher.CHECKPOINT}").write_text("")
-    teacher.train(ws, ws, 1000, print)
+    plain = teacher.Recipe(iters=1000)
+    assert teacher.train(ws, ws, plain, print) == "blueprint-1000" == plain.name()
+    (teacher.work_dir(ws) / "blueprint-1000.bin.ckpt").write_text("")
+    teacher.train(ws, ws, plain, print)
     assert "--resume" not in calls[0] and calls[1][-2:] == ["--resume", "blueprint-1000.bin.ckpt"]
+    finer = teacher.Recipe(iters=1000, buckets=50, snapshot_avg=True, linear_cap=400)
+    assert teacher.train(ws, ws, finer, print) == "blueprint-1000-b50-snap-cap400"
+    assert calls[2][:8] == ["train", "--iters", "1000", "--buckets", "50", "--snapshot-avg", "--linear-cap", "400"]
+    assert teacher.DEFAULT == "blueprint-200000000"
 
 
-def test_the_teacher_plays_a_six_player_table_and_its_winrate_is_stored(ws, monkeypatch):
+def test_a_strategy_plays_a_six_player_table_and_its_winrate_is_stored(ws, monkeypatch):
     from byosm.db.workspace import workspace_report
-    from byosm.games.poker import table
+    from byosm.games.poker import table, teacher
 
     asked = []
     line = "winrate: +3390.1 mbb/hand (95% CI ±595.7) over 20000 hands in 5.0s"
     monkeypatch.setattr(table, "run", lambda ws, hands, args, log: asked.append(args) or ["loaded", line])
-    won = table.play(ws, ws, 7, "caller", 20000, False, lambda _: None)
+    with pytest.raises(ValueError, match="no trained strategy named 'old'"):
+        table.play(ws, ws, "old", "caller", 10, False, lambda _: None)
+    for name in ("old", "new"):
+        (teacher.work_dir(ws) / f"{name}.bin").write_text("")
+    won = table.play(ws, ws, "old", "caller", 20000, False, lambda _: None)
     assert won["mbb_per_hand"] == 3390.1 and won["ci95"] == 595.7 and won["hands"] == 20000 and won["seats"] == 6
     assert asked[0][asked[0].index("--players") + 1] == "6" and "--aivat" in asked[0] and "--search" not in asked[0]
-    assert workspace_report(ws, table.key(7, "caller", False)) == won
-    table.play(ws, ws, 7, "random", 10, True, lambda _: None)
+    assert workspace_report(ws, table.key("old", "caller", False)) == won
+    table.play(ws, ws, "old", "random", 10, True, lambda _: None)
     assert "--search" in asked[1]
     with pytest.raises(ValueError, match="unknown field"):
-        table.play(ws, ws, 7, "sharks", 10, False, lambda _: None)
+        table.play(ws, ws, "old", "sharks", 10, False, lambda _: None)
+
+
+def test_one_strategy_is_seated_against_five_copies_of_another(ws, monkeypatch):
+    from byosm.db.workspace import workspace_report
+    from byosm.games.poker import table, teacher
+
+    asked = []
+    line = "focal winrate: -41.5 mbb/hand (95% CI ±12.0) over 200000 hands"
+    monkeypatch.setattr(table, "run", lambda ws, hands, args, log: asked.append(args) or [line])
+    for name in ("old", "new"):
+        (teacher.work_dir(ws) / f"{name}.bin").write_text("")
+    won = table.versus(ws, ws, "new", "old", 200000, lambda _: None)
+    assert asked[0] == ["crossplay", "--focal", "new.bin", "--field", "old.bin", "--hands", "200000"]
+    assert won["mbb_per_hand"] == -41.5 and won["ci95"] == 12.0 and won["field"] == "old"
+    assert workspace_report(ws, "poker-table:new:vs:old") == won
+    result = CliRunner().invoke(app, ["poker", "teacher-versus", "new", "missing"])
+    assert result.exit_code != 0 and "no trained strategy named" in result.output

@@ -3043,11 +3043,21 @@ blueprints are not published, so we train one here, and its native code never ru
   28 GB cap): it agrees with Pluribus's exact action on 69.8% of the 15,107 decisions it covers (69.5% of all 15,169;
   per covered decision: preflop 73.4%, flop 63.5%, turn 61.4%, river 59.9%), above the rebuild's published 66.8%. The replay matched the finishing stacks of
   all 9,992 complete hands. This is the bar the distilled student is measured against; it never saw Pluribus's hands.
-- **The label patch** (`docker/poker-teacher-label.patch`, applied at the pinned commit before `cargo test` and
+- **The teacher patch** (`docker/poker-teacher.patch`, applied at the pinned commit before `cargo test` and
   `cargo build`): `benchmark --out FILE` reuses the benchmark's own replay and writes one JSON line per Pluribus
   decision with the hand, its order in the hand, the abstract actions offered, the blueprint's probabilities and the
   action taken. Recomputing agreement from the file gives 10,547 of 15,107 covered, the benchmark's 69.8% exactly.
   The image tag carries a hash of the Dockerfile and the patch, so a changed patch builds a new image.
+- **`--iters` is a run's total.** Upstream trains `--iters` more on every `--resume`, so a restarted job would have
+  overtrained and a finished one trained again under the same name. The patch trains only what is left: a tiny run
+  resumed after finishing reports 0 iterations. It also prints the process's peak memory (the kernel's high-water
+  mark), the number that sizes the next teacher.
+- **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
+  `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
+  that name, and an unknown name lists the ones trained here.
+- **`byosm poker teacher-versus NEW OLD`** seats one strategy against five copies of another with the rebuild's
+  `crossplay` and stores mbb/hand with its CI. A new teacher is kept only if it wins there. Both must share a bet
+  menu: the rebuild measured about -1,000 mbb/hand in both directions across menus, from off-tree fallbacks.
 - **The table is the measure** (`games/poker/table.py`, `byosm poker teacher-play`): the teacher takes one seat of
   six and the rebuild's own `eval --aivat` reports mbb/hand with a 95% CI, stored as a workspace report per field.
   First blueprint over 200,000 hands: +3,410 ±190 against five callers, +4,603 ±205 against five random players.

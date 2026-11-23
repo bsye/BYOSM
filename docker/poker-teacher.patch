@@ -77,10 +77,10 @@ index 2ed6303..992ac03 100644
      dir: &std::path::Path,
      out: &mut Vec<std::path::PathBuf>,
 diff --git a/src/main.rs b/src/main.rs
-index 3c163ca..6f167e7 100644
+index 3c163ca..4f2ca71 100644
 --- a/src/main.rs
 +++ b/src/main.rs
-@@ -498,6 +498,9 @@ enum Cmd {
+@@ -498,9 +498,20 @@ enum Cmd {
          /// Directory of .phh files (searched recursively).
          #[arg(long, default_value = "data/pluribus")]
          dir: String,
@@ -90,7 +90,41 @@ index 3c163ca..6f167e7 100644
      },
  }
  
-@@ -1301,8 +1304,15 @@ fn main() {
++/// Peak resident memory of this process, from the kernel's high-water mark.
++fn peak_memory_gib() -> Option<f64> {
++    let status = std::fs::read_to_string("/proc/self/status").ok()?;
++    let line = status.lines().find(|l| l.starts_with("VmHWM:"))?;
++    let kb: f64 = line.split_whitespace().nth(1)?.parse().ok()?;
++    Some(kb / 1024.0 / 1024.0)
++}
++
+ fn main() {
+     match Cli::parse().cmd {
+         Cmd::Train {
+@@ -659,6 +670,12 @@ fn main() {
+             }
+             .with_vr(vr_baseline);
+ 
++            // --iters is the run's total: a resumed run trains only what is left.
++            let iters = if resume.is_some() {
++                iters.saturating_sub(trainer.iterations())
++            } else {
++                iters
++            };
+             println!(
+                 "training {players}-max, {iters} iterations, menu {menu:?}, pruning {}, \
+                  vr baselines {}, snapshot avg {}, multiway focus {multiway_focus}",
+@@ -718,6 +735,9 @@ fn main() {
+                 "blueprint saved to {out} ({} strategies)",
+                 bp.strategies.len()
+             );
++            if let Some(gib) = peak_memory_gib() {
++                println!("peak memory: {gib:.1} GiB");
++            }
+         }
+ 
+         Cmd::BucketTable {
+@@ -1301,8 +1321,15 @@ fn main() {
              }
          }
  

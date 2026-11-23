@@ -28,41 +28,74 @@ def poker_new(
 
 
 @poker_app.command("teacher-train")
-def teacher_train(iters: int = typer.Option(200_000_000, help="MCCFR traversals")) -> None:
-    """Train the open-source Pluribus rebuild's blueprint in a sealed container; it resumes from its checkpoint."""
+def teacher_train(
+    iters: int = typer.Option(200_000_000, help="MCCFR traversals in total; a resumed run trains only what is left"),
+    buckets: int = typer.Option(12, help="card groups per betting round after the flop (Pluribus used 200)"),
+    snapshot_avg: bool = typer.Option(
+        False, help="store later rounds as the mean of strategy snapshots, as Pluribus did"
+    ),
+    linear_cap: int = typer.Option(None, help="stop growing the weight of later traversals after this many"),
+) -> None:
+    """Train the open-source Pluribus rebuild's strategy in a sealed container; it resumes from its checkpoint."""
     from ..benchmarks.pluribus import root
     from ..config import find_workspace
-    from ..games.poker.teacher import train
+    from ..games.poker.teacher import Recipe, train
 
-    log(f"saved {train(find_workspace(), root(), iters, log)}")
+    recipe = Recipe(iters, buckets, snapshot_avg, linear_cap)
+    log(f"saved {train(find_workspace(), root(), recipe, log)}")
+
+
+def _strategy_option() -> str:
+    from ..games.poker.teacher import DEFAULT
+
+    return typer.Option(DEFAULT, "--strategy", help="which trained strategy, by the name teacher-train saved")
 
 
 @poker_app.command("teacher-benchmark")
-def teacher_benchmark(
-    iters: int = typer.Option(200_000_000, help="which blueprint, by its training traversals"),
-) -> None:
-    """Score that blueprint on how often it agrees with Pluribus's 15,169 decisions."""
+def teacher_benchmark(name: str = _strategy_option()) -> None:
+    """Score a trained strategy on how often it agrees with Pluribus's 15,169 decisions, and write its labels."""
     from ..benchmarks.pluribus import root
     from ..config import find_workspace
     from ..games.poker.teacher import benchmark
 
-    benchmark(find_workspace(), root(), iters, log)
+    try:
+        benchmark(find_workspace(), root(), name, log)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+
+
+def _won(won: dict, against: str) -> str:
+    return (
+        f"{won['mbb_per_hand']:+.1f} mbb/hand (95% CI ±{won['ci95']:.1f}) over {won['hands']} hands against {against}"
+    )
 
 
 @poker_app.command("teacher-play")
 def teacher_play(
+    name: str = _strategy_option(),
     field: str = typer.Option("caller", help="who fills the other five seats: caller or random"),
     hands: int = typer.Option(200_000, help="hands to play"),
     search: bool = typer.Option(False, help="the teacher searches during each hand, like Pluribus"),
-    iters: int = typer.Option(200_000_000, help="which blueprint, by its training traversals"),
 ) -> None:
-    """Seat the teacher at a 6-player table and measure what it wins, in mbb/hand with a 95% CI."""
+    """Seat a trained strategy at a 6-player table of simple bots and measure what it wins, with a 95% CI."""
     from ..benchmarks.pluribus import root
     from ..config import find_workspace
     from ..games.poker.table import play
 
     try:
-        won = play(find_workspace(), root(), iters, field, hands, search, log)
+        log(_won(play(find_workspace(), root(), name, field, hands, search, log), field))
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
-    log(f"{won['mbb_per_hand']:+.1f} mbb/hand (95% CI ±{won['ci95']:.1f}) over {won['hands']} hands against {field}")
+
+
+@poker_app.command("teacher-versus")
+def teacher_versus(focal: str, field: str, hands: int = typer.Option(200_000, help="hands to play")) -> None:
+    """Seat one trained strategy against five copies of another and measure what it wins, with a 95% CI."""
+    from ..benchmarks.pluribus import root
+    from ..config import find_workspace
+    from ..games.poker.table import versus
+
+    try:
+        log(_won(versus(find_workspace(), root(), focal, field, hands, log), f"five copies of {field}"))
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
