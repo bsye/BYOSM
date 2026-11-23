@@ -64,7 +64,9 @@ def ensure_image(log: Log) -> None:
         build_image(DOCKERFILE, DOCKER_DIR, IMAGE, log, {"REPO": REPO, "COMMIT": COMMIT})
 
 
-def command(ws: Path, hands: Path, args: list[str]) -> list[str]:
+def command(
+    ws: Path, hands: Path, args: list[str], cpus: str = CPUS, memory: str = MEMORY, flags: tuple[str, ...] = ()
+) -> list[str]:
     sealed = [
         "--network",
         "none",
@@ -75,9 +77,9 @@ def command(ws: Path, hands: Path, args: list[str]) -> list[str]:
         "ALL",
         "--security-opt=no-new-privileges",
     ]
-    limits = ["--cpus", CPUS, "--memory", MEMORY]
+    limits = ["--cpus", cpus, "--memory", memory]
     mounts = ["-v", f"{work_dir(ws)}:{WORK}", "-v", f"{hands}:{HANDS}:ro"]
-    return [docker_cli(), "run", "--rm", *sealed, *limits, *mounts, IMAGE, *args]
+    return [docker_cli(), "run", "--rm", *flags, *sealed, *limits, *mounts, IMAGE, *args]
 
 
 def run(ws: Path, hands: Path, args: list[str], log: Log) -> list[str]:

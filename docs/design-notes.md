@@ -3100,6 +3100,15 @@ blueprints are not published, so we train one here, and its native code never ru
   infosets (1.3%), 15.6M visits in all: 83% of them preflop, 69% inside the 10,000 most visited infosets. The student
   trains on those 1.3M; a first fit (8 epochs, 158 s on the GPU) reaches a held-out KL of 0.082 and the teacher's top
   move 86.6% of the time, weighted by visits. Whether that is enough is decided at the table.
+- **Paste a hand, get the move probabilities** (`games/poker/advisor.py`, `byosm poker advise HAND.phh`). The hand
+  is a [PHH](https://phh.readthedocs.io/) history that stops at a decision. The engine's `spots` verb (in the patch)
+  stays up on stdin, replays the history and answers with the seat to act, its card bucket, the history tokens and
+  the moves on offer with their chip amounts; it needs only the 1 kB card abstraction saved by `abstraction`, not the
+  4 GB strategy, so it starts at once. The student (1.5 MB) turns that into probabilities on the CPU. Over 300 real
+  spots cut from Pluribus's hands the answer takes a median 0.6 ms preflop and 0.9 ms after the flop (p95 under 2 ms,
+  56 ms for the first call). The history must have equal starting stacks and show the cards of the player to act;
+  anything else is refused with the reason. On aces first to act the teacher calls 49.8% and the first student
+  39.3%: the student is not yet a faithful copy even where self-play visits most.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.

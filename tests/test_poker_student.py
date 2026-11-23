@@ -1,4 +1,7 @@
+import json
+
 import numpy as np
+import pytest
 
 from byosm.games.poker import student
 from byosm.games.poker.infosets import PAD, layout
@@ -45,7 +48,6 @@ def test_the_same_seed_trains_the_same_student():
 
 def test_building_a_student_trains_it_writes_its_table_and_asks_the_engine_for_a_strategy_file(ws, monkeypatch):
     import contextlib
-    import json
 
     from byosm.db.workspace import workspace_report
     from byosm.games.poker import distill, teacher
@@ -64,3 +66,44 @@ def test_building_a_student_trains_it_writes_its_table_and_asks_the_engine_for_a
     assert asked[0][:7] == ["student", "--like", "old.bin", "--records", "old.infosets", "--probs", "old.student.probs"]
     assert asked[0][7:] == ["--width", "3", "--hist", "4", "--out", "old-student.bin"]
     assert workspace_report(ws, "poker-student:old-student") == made
+
+
+class Engine:
+    def __init__(self, answers):
+        self.answers, self.asked = list(answers), []
+        self.stdin = self.stdout = self
+
+    def write(self, line):
+        self.asked.append(json.loads(line))
+
+    def flush(self):
+        pass
+
+    def readline(self):
+        return json.dumps(self.answers.pop(0))
+
+
+def test_advice_is_the_students_probabilities_over_the_moves_the_engine_offers():
+    import torch
+
+    from byosm.games.poker.advisor import Advisor
+
+    torch.manual_seed(0)
+    spot = {"seat": 2, "street": "Flop", "bucket": 7, "hist": [0, 5, 15, 1, 5], "offered": [0, 1, 7, 2]}
+    moves = ["fold", "call 300", "raise to 1450", "all in for 9750"]
+    engine = Engine([{**spot, "moves": moves}, {"error": "the hand is already over"}])
+    advisor = Advisor(student.Net(12).eval(), engine)
+    found = advisor.advise("a hand")
+    assert engine.asked == ["a hand"] and found["seat"] == 2 and found["street"] == "flop"
+    assert [m["move"] for m in found["moves"]] == moves
+    assert sum(m["probability"] for m in found["moves"]) == pytest.approx(1, abs=1e-5)
+    with pytest.raises(ValueError, match="already over"):
+        advisor.advise("another")
+
+
+def test_a_first_decision_with_no_history_is_advised_too():
+    from byosm.games.poker.advisor import Advisor
+
+    spot = {"seat": 3, "street": "Preflop", "bucket": 6, "hist": [], "offered": [0, 1, 4], "moves": ["a", "b", "c"]}
+    found = Advisor(student.Net(169).eval(), Engine([spot])).advise("first in")
+    assert sum(m["probability"] for m in found["moves"]) == pytest.approx(1, abs=1e-5)

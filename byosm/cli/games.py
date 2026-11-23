@@ -136,3 +136,31 @@ def poker_student(name: str = _strategy_option()) -> None:
         f"model {made['model_mb']} MB"
     )
     log(f"next: byosm poker teacher-versus {made['student']} {name} --hands 1000000")
+
+
+@poker_app.command("advise")
+def poker_advise(hand: str, name: str = _strategy_option()) -> None:
+    """Read a hand history (a .phh file) that stops at a decision and print how often to play each legal move."""
+    import time
+    from pathlib import Path
+
+    from ..benchmarks.pluribus import root
+    from ..config import find_workspace
+    from ..games.poker.advisor import Advisor
+
+    try:
+        advisor = Advisor.start(find_workspace(), root(), name, log)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    try:
+        started = time.perf_counter()
+        found = advisor.advise(Path(hand).read_text())
+        took = (time.perf_counter() - started) * 1000
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    finally:
+        advisor.close()
+    log(f"seat {found['seat']} to act on the {found['street']}:")
+    for move in sorted(found["moves"], key=lambda m: -m["probability"]):
+        log(f"  {move['probability']:6.1%}  {move['move']}")
+    log(f"answered in {took:.0f} ms")

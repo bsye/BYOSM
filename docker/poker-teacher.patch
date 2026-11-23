@@ -1,5 +1,5 @@
 diff --git a/src/benchmark.rs b/src/benchmark.rs
-index 2ed6303..992ac03 100644
+index 2ed6303..14ba5f1 100644
 --- a/src/benchmark.rs
 +++ b/src/benchmark.rs
 @@ -75,9 +75,12 @@ pub fn parse_phh(text: &str) -> Option<PhhHand> {
@@ -16,7 +16,104 @@ index 2ed6303..992ac03 100644
      /// Probability our blueprint puts on Pluribus's (mapped) action, if the
      /// infoset was trained.
      pub prob: Option<f64>,
-@@ -265,6 +268,11 @@ pub fn replay_hand(
+@@ -122,22 +125,13 @@ pub enum ReplayError {
+     Desync,
+ }
+ 
+-/// Replay one hand; returns the recorded Pluribus decisions and whether the
+-/// finishing-stack check passed (`None` when the file has no stacks to check).
+-pub fn replay_hand(
+-    phh: &PhhHand,
+-    policy: &Policy,
+-    seed: u64,
+-) -> Result<(Vec<Decision>, Option<bool>), ReplayError> {
++/// The table a logged hand starts from: the cards the log shows, unused
++/// cards wherever it hides them.
++pub fn seat_table(phh: &PhhHand) -> Result<Table, ReplayError> {
+     let n = phh.players.len();
+     if !(2..=6).contains(&n) || phh.stacks.len() != n {
+         return Err(ReplayError::Unsupported);
+     }
+-    let hero = phh
+-        .players
+-        .iter()
+-        .position(|p| p == "Pluribus")
+-        .ok_or(ReplayError::Unsupported)?;
+     // blinds_or_straddles[0] is the small blind, so the button is the last
+     // seat (heads-up: the button posts the SB and is seat 0).
+     let button = if n == 2 { 0 } else { n - 1 };
+@@ -216,29 +210,52 @@ pub fn replay_hand(
+         return Err(ReplayError::Unsupported); // engine table starts symmetric
+     }
+ 
+-    let mut table = Table::new(&cfg, button, deck);
++    Ok(Table::new(&cfg, button, deck))
++}
++
++/// A logged betting action as (seat, action); None for deals and showdowns.
++pub fn logged_action(line: &str) -> Result<Option<(usize, PlayerAction)>, ReplayError> {
++    let mut w = line.split_whitespace();
++    let actor = w.next().ok_or(ReplayError::Unsupported)?;
++    if actor == "d" {
++        return Ok(None);
++    }
++    let seat = seat_of(actor)?;
++    let action = match w.next().ok_or(ReplayError::Unsupported)? {
++        "f" => PlayerAction::Fold,
++        "cc" => PlayerAction::CheckCall,
++        "cbr" => {
++            let amt: u32 = w
++                .next()
++                .and_then(|s| s.parse().ok())
++                .ok_or(ReplayError::Unsupported)?;
++            PlayerAction::RaiseTo(amt)
++        }
++        _ => return Ok(None), // sm (showdown) etc.
++    };
++    Ok(Some((seat, action)))
++}
++
++/// Replay one hand; returns the recorded Pluribus decisions and whether the
++/// finishing-stack check passed (`None` when the file has no stacks to check).
++pub fn replay_hand(
++    phh: &PhhHand,
++    policy: &Policy,
++    seed: u64,
++) -> Result<(Vec<Decision>, Option<bool>), ReplayError> {
++    let n = phh.players.len();
++    let hero = phh
++        .players
++        .iter()
++        .position(|p| p == "Pluribus")
++        .ok_or(ReplayError::Unsupported)?;
++    let mut table = seat_table(phh)?;
+     let mut rng = SmallRng::seed_from_u64(seed);
+     let mut decisions = Vec::new();
+ 
+     for a in &phh.actions {
+-        let mut w = a.split_whitespace();
+-        let actor = w.next().ok_or(ReplayError::Unsupported)?;
+-        if actor == "d" {
++        let Some((seat, action)) = logged_action(a)? else {
+             continue;
+-        }
+-        let seat = seat_of(actor)?;
+-        let verb = w.next().ok_or(ReplayError::Unsupported)?;
+-        let action = match verb {
+-            "f" => PlayerAction::Fold,
+-            "cc" => PlayerAction::CheckCall,
+-            "cbr" => {
+-                let amt: u32 = w
+-                    .next()
+-                    .and_then(|s| s.parse().ok())
+-                    .ok_or(ReplayError::Unsupported)?;
+-                PlayerAction::RaiseTo(amt)
+-            }
+-            _ => continue, // sm (showdown) etc.
+         };
+         if table.real.is_terminal() || table.real.to_act() != seat {
+             return Err(ReplayError::Desync);
+@@ -265,6 +282,11 @@ pub fn replay_hand(
              };
              decisions.push(Decision {
                  street: table.real.street(),
@@ -28,7 +125,7 @@ index 2ed6303..992ac03 100644
                  prob,
                  top1,
              });
-@@ -344,6 +352,47 @@ pub fn run(dir: &str, policy: &Policy) -> std::io::Result<BenchReport> {
+@@ -344,6 +366,47 @@ pub fn run(dir: &str, policy: &Policy) -> std::io::Result<BenchReport> {
      Ok(total)
  }
  
@@ -156,18 +253,19 @@ index 7c04677..345118c 100644
      let mut k = Vec::with_capacity(3 + hist.len());
      k.push(bucket as u8);
 diff --git a/src/main.rs b/src/main.rs
-index 3c163ca..08036c1 100644
+index 3c163ca..0238f22 100644
 --- a/src/main.rs
 +++ b/src/main.rs
-@@ -18,6 +18,7 @@ mod portfolio;
+@@ -18,6 +18,8 @@ mod portfolio;
  mod river;
  mod search;
  mod slumbot;
++mod spot;
 +mod student;
  mod table;
  mod turn;
  mod valuenet;
-@@ -498,9 +499,50 @@ enum Cmd {
+@@ -498,9 +500,68 @@ enum Cmd {
          /// Directory of .phh files (searched recursively).
          #[arg(long, default_value = "data/pluribus")]
          dir: String,
@@ -188,6 +286,24 @@ index 3c163ca..08036c1 100644
 +        seed: u64,
 +        #[arg(long)]
 +        out: String,
++    },
++    /// Save the part of a blueprint that maps cards to buckets, so `spots`
++    /// can start without loading the whole strategy.
++    Abstraction {
++        #[arg(long, default_value = "blueprint.bin")]
++        blueprint: String,
++        #[arg(long)]
++        out: String,
++    },
++    /// Read hand histories from stdin, one JSON string per line, and print
++    /// for each the decision it stops at: seat, card bucket, history tokens
++    /// and the moves on offer. Stays up until stdin closes.
++    Spots {
++        /// File written by `abstraction`.
++        #[arg(long)]
++        abs: String,
++        #[arg(long, default_value_t = 1)]
++        seed: u64,
 +    },
 +    /// Build a strategy file from `infosets` records and a student's table
 +    /// of probabilities; the abstraction is taken from --like.
@@ -218,7 +334,7 @@ index 3c163ca..08036c1 100644
  fn main() {
      match Cli::parse().cmd {
          Cmd::Train {
-@@ -659,6 +701,12 @@ fn main() {
+@@ -659,6 +720,12 @@ fn main() {
              }
              .with_vr(vr_baseline);
  
@@ -231,7 +347,7 @@ index 3c163ca..08036c1 100644
              println!(
                  "training {players}-max, {iters} iterations, menu {menu:?}, pruning {}, \
                   vr baselines {}, snapshot avg {}, multiway focus {multiway_focus}",
-@@ -693,7 +741,10 @@ fn main() {
+@@ -693,7 +760,10 @@ fn main() {
                      trainer.snapshot_strategy();
                      snapshots += 1;
                  }
@@ -243,7 +359,7 @@ index 3c163ca..08036c1 100644
                      trainer
                          .save_checkpoint(path)
                          .unwrap_or_else(|e| die(&format!("checkpoint save failed: {e}")));
-@@ -718,6 +769,9 @@ fn main() {
+@@ -718,6 +788,9 @@ fn main() {
                  "blueprint saved to {out} ({} strategies)",
                  bp.strategies.len()
              );
@@ -253,13 +369,13 @@ index 3c163ca..08036c1 100644
          }
  
          Cmd::BucketTable {
-@@ -1301,8 +1355,38 @@ fn main() {
+@@ -1301,8 +1374,64 @@ fn main() {
              }
          }
  
 -        Cmd::Benchmark { blueprint, dir } => {
 +        Cmd::Infosets { blueprint, hands, seed, out } => {
-             let policy = load_policy(&blueprint);
++            let policy = load_policy(&blueprint);
 +            let r = student::export(&policy, hands, seed, &out)
 +                .unwrap_or_else(|e| die(&format!("cannot write {out}: {e}")));
 +            println!(
@@ -268,6 +384,32 @@ index 3c163ca..08036c1 100644
 +            );
 +            if let Some(gib) = peak_memory_gib() {
 +                println!("peak memory: {gib:.1} GiB");
++            }
++        }
++
++        Cmd::Abstraction { blueprint, out } => {
++            let bp = Blueprint::load(&blueprint)
++                .unwrap_or_else(|e| die(&format!("cannot load {blueprint}: {e}")));
++            spot::save_abstraction(&bp, &out)
++                .unwrap_or_else(|e| die(&format!("cannot write {out}: {e}")));
++            println!("abstraction saved to {out}");
++        }
++
++        Cmd::Spots { abs, seed } => {
++            use std::io::{BufRead, Write};
++            let abs = spot::load_abstraction(&abs)
++                .unwrap_or_else(|e| die(&format!("cannot load the abstraction: {e}")));
++            let mut out = std::io::stdout().lock();
++            for line in std::io::stdin().lock().lines() {
++                let Ok(line) = line else { break };
++                let answer = serde_json::from_str::<String>(&line)
++                    .map_err(|e| format!("each line must be one JSON string: {e}"))
++                    .and_then(|hand| spot::describe(&hand, &abs, seed));
++                let said = match answer {
++                    Ok(found) => found,
++                    Err(why) => serde_json::json!({ "error": why }),
++                };
++                writeln!(out, "{said}").and_then(|_| out.flush()).ok();
 +            }
 +        }
 +
@@ -282,7 +424,7 @@ index 3c163ca..08036c1 100644
 +        }
 +
 +        Cmd::Benchmark { blueprint, dir, out } => {
-+            let policy = load_policy(&blueprint);
+             let policy = load_policy(&blueprint);
 +            if let Some(path) = out {
 +                let lines = benchmark::labels(&dir, &policy)
 +                    .unwrap_or_else(|e| die(&format!("labelling failed: {e}")));
@@ -293,6 +435,105 @@ index 3c163ca..08036c1 100644
              println!("replaying Pluribus hands from {dir}...");
              let started = std::time::Instant::now();
              let r = benchmark::run(&dir, &policy)
+diff --git a/src/spot.rs b/src/spot.rs
+new file mode 100644
+index 0000000..fdd42bb
+--- /dev/null
++++ b/src/spot.rs
+@@ -0,0 +1,93 @@
++//! Describe the decision a logged hand stops at, for an external student:
++//! who is to act, their card bucket, the history tokens, and the moves on
++//! offer with their chip amounts. Needs only the card abstraction, not a
++//! blueprint, so it starts in milliseconds.
++
++use crate::abstraction::{AbsAction, AbsConfig, Abstraction, Centroids};
++use crate::benchmark::{logged_action, parse_phh, seat_table};
++use crate::cards::parse_card;
++use crate::cfr::Blueprint;
++use crate::engine::{Hand, PlayerAction};
++use rand::rngs::SmallRng;
++use rand::SeedableRng;
++
++/// Save the part of a blueprint that maps cards to buckets.
++pub fn save_abstraction(bp: &Blueprint, out: &str) -> std::io::Result<()> {
++    let f = std::io::BufWriter::new(std::fs::File::create(out)?);
++    bincode::serialize_into(f, &(&bp.abs_cfg, &bp.centroids)).map_err(std::io::Error::other)
++}
++
++pub fn load_abstraction(path: &str) -> std::io::Result<Abstraction> {
++    let f = std::io::BufReader::new(std::fs::File::open(path)?);
++    let (cfg, centroids): (AbsConfig, Option<Centroids>) =
++        bincode::deserialize_from(f).map_err(std::io::Error::other)?;
++    Ok(Abstraction::with_centroids(cfg, centroids))
++}
++
++fn shown(actions: &[String], seat: usize) -> bool {
++    let dealt = format!("p{}", seat + 1);
++    actions.iter().any(|a| {
++        let w: Vec<&str> = a.split_whitespace().collect();
++        w.len() == 4
++            && w[0] == "d"
++            && w[1] == "dh"
++            && w[2] == dealt
++            && w[3].len() == 4
++            && parse_card(&w[3][0..2]).is_some()
++            && parse_card(&w[3][2..4]).is_some()
++    })
++}
++
++fn named(real: &Hand, abs: &Abstraction, a: AbsAction) -> String {
++    let passive = || {
++        if real.can_check() {
++            "check".to_string()
++        } else {
++            format!("call {}", real.to_call())
++        }
++    };
++    match a {
++        AbsAction::Fold => "fold".to_string(),
++        AbsAction::CheckCall => passive(),
++        _ if real.raise_bounds().is_none() => passive(),
++        _ => match abs.concrete(real, a) {
++            PlayerAction::RaiseTo(x) if a == AbsAction::AllIn => format!("all in for {x}"),
++            PlayerAction::RaiseTo(x) => format!("raise to {x}"),
++            _ => passive(),
++        },
++    }
++}
++
++pub fn describe(text: &str, abs: &Abstraction, seed: u64) -> Result<serde_json::Value, String> {
++    let phh = parse_phh(text).ok_or("this is not a no-limit hold'em hand history the engine reads")?;
++    let mut table = seat_table(&phh)
++        .map_err(|_| "the engine needs 2 to 6 players with equal starting stacks and no card dealt twice")?;
++    for line in &phh.actions {
++        let Some((seat, action)) = logged_action(line).map_err(|_| format!("cannot read the action '{line}'"))?
++        else {
++            continue;
++        };
++        if table.real.is_terminal() || table.real.to_act() != seat {
++            return Err(format!("the actions do not replay: '{line}' is out of turn"));
++        }
++        table.apply_concrete(action, abs);
++    }
++    if table.real.is_terminal() {
++        return Err("the hand is already over: stop the history at the decision".to_string());
++    }
++    let seat = table.real.to_act();
++    if !shown(&phh.actions, seat) {
++        return Err(format!("the history does not show the cards of p{}, the player to act", seat + 1));
++    }
++    let mut rng = SmallRng::seed_from_u64(seed);
++    let bucket = abs.bucket(table.shadow.hole(seat), table.shadow.board(), &mut rng);
++    let acts = abs.abstract_actions(&table.shadow);
++    Ok(serde_json::json!({
++        "seat": seat + 1,
++        "street": format!("{:?}", table.real.street()),
++        "bucket": bucket,
++        "hist": table.hist,
++        "offered": acts.iter().map(|a| a.token()).collect::<Vec<u8>>(),
++        "moves": acts.iter().map(|&a| named(&table.real, abs, a)).collect::<Vec<String>>(),
++    }))
++}
 diff --git a/src/student.rs b/src/student.rs
 new file mode 100644
 index 0000000..f2e3697
