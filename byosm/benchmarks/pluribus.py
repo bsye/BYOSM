@@ -30,9 +30,12 @@ PUBLISHED = {
 }
 
 
+def root() -> Path:
+    return sparse_clone(URL, COMMIT, FOLDER, find_workspace() / STATE_DIR / "datasets" / "phh-dataset")
+
+
 def hands() -> list[Path]:
-    root = sparse_clone(URL, COMMIT, FOLDER, find_workspace() / STATE_DIR / "datasets" / "phh-dataset")
-    return sorted(root.rglob("*.phh"))
+    return sorted(root().rglob("*.phh"))
 
 
 def trains_on(hand: str) -> bool:

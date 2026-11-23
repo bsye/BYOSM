@@ -3024,3 +3024,18 @@ alone. Rules compute them instead, and the spot carries one more sentence before
 - **Facts are a new specialist, not a switch.** `poker-move` was built from the plain text and stays the baseline;
   `poker-facts` is the same recipe with facts, scored on the same 11k PokerBench spots and 15,169 Pluribus decisions,
   so the two boards compare directly.
+
+## The poker teacher runs sealed
+
+The [open-source Pluribus rebuild](https://github.com/conorarmstrong/pluribus) (MIT, Rust) is the poker teacher. Its
+blueprints are not published, so we train one here, and its native code never runs on the host.
+
+- **One image, pinned:** `docker/poker-teacher.Dockerfile` compiles the rebuild at one commit on the local
+  `rust:1.99-trixie` image and copies only the binary into `debian:stable-slim`, run as uid 10001.
+- **Sealed at run time** (`games/poker/teacher.py`): no network, read-only root, a 1 GB `/tmp`, every capability
+  dropped, no privilege gain, 16 CPUs and 28 GB. It sees only `.byosm/poker-teacher/` (read-write) and Pluribus's hands
+  (read-only); a probe confirmed writes to the hands and to `/etc` fail.
+- **Training resumes:** `byosm poker teacher-train` writes a checkpoint next to the blueprint and passes `--resume` when
+  one exists. Defaults are the rebuild's: 6 players, 100bb, the Pluribus setup.
+- **`byosm poker teacher-benchmark`** runs the rebuild's own replay of Pluribus's hands, to reproduce its 66.8% before
+  its labels are trusted.

@@ -243,3 +243,23 @@ def test_templated_inputs_drop_only_exact_copies_from_held_out_splits():
     assert dedupe([near], against=train, near=near_limit(s)) == []
     s.data.drop_near_copies = False
     assert dedupe([near, train[0]], against=train, near=near_limit(s)) == [near]
+
+
+def test_the_teacher_runs_sealed_with_only_its_folder_and_the_hands_mounted(ws):
+    from byosm.games.poker import teacher
+
+    found = teacher.command(ws, ws / "hands", ["benchmark"])
+    assert found[found.index("--network") : found.index("--network") + 2] == ["--network", "none"]
+    assert "--read-only" in found and "--cap-drop" in found and f"{ws / 'hands'}:{teacher.HANDS}:ro" in found
+    assert found[-2:] == [teacher.IMAGE, "benchmark"]
+
+
+def test_teacher_training_resumes_from_its_checkpoint(ws, monkeypatch):
+    from byosm.games.poker import teacher
+
+    calls = []
+    monkeypatch.setattr(teacher, "run", lambda ws, hands, args, log: calls.append(args))
+    teacher.train(ws, ws, 1000, print)
+    (teacher.work_dir(ws) / f"{teacher.blueprint(1000)}{teacher.CHECKPOINT}").write_text("")
+    teacher.train(ws, ws, 1000, print)
+    assert "--resume" not in calls[0] and calls[1][-2:] == ["--resume", "blueprint-1000.bin.ckpt"]
