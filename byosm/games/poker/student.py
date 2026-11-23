@@ -82,10 +82,21 @@ def scored(net: Net, rows: np.ndarray, device: str) -> dict[str, float]:
         return {"kl": float((gap.sum(-1) * weight).sum() / total), "top_move": float((same * weight).sum() / total)}
 
 
-def fit(records: np.ndarray, span: int, log: Log, device: str = "cpu", epochs: int = EPOCHS, seed: int = 0) -> tuple:
+def fit(
+    records: np.ndarray,
+    span: int,
+    log: Log,
+    device: str = "cpu",
+    epochs: int = EPOCHS,
+    seed: int = 0,
+    visits: np.ndarray | None = None,
+) -> tuple:
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
-    seen = np.array(records[np.flatnonzero(records["visits"] > 0)])
+    counted = records["visits"] if visits is None else visits
+    reached = np.flatnonzero(counted > 0)
+    seen = np.array(records[reached])
+    seen["visits"] = counted[reached]
     rng.shuffle(seen)
     held = max(1, int(len(seen) * HELD_SHARE))
     test, train = seen[:held], seen[held:]

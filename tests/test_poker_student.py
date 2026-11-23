@@ -60,12 +60,49 @@ def test_building_a_student_trains_it_writes_its_table_and_asks_the_engine_for_a
     asked = []
     monkeypatch.setattr(distill, "run", lambda ws, hands, args, log: asked.append(args))
     monkeypatch.setattr("byosm.train.gpu.gpu_slot", lambda device, log: contextlib.nullcontext("cpu"))
+    monkeypatch.setattr(student, "EPOCHS", 2)
     made = distill.build(ws, ws, "old", lambda _: None)
     assert made["student"] == "old-student" and made["teacher"] == "old" and made["model_mb"] > 0
-    assert (folder / "old.student.probs").stat().st_size == len(rows) * WIDTH * 4
-    assert asked[0][:7] == ["student", "--like", "old.bin", "--records", "old.infosets", "--probs", "old.student.probs"]
+    assert (folder / "old-student.probs").stat().st_size == len(rows) * WIDTH * 4
+    assert asked[0][:7] == ["student", "--like", "old.bin", "--records", "old.infosets", "--probs", "old-student.probs"]
     assert asked[0][7:] == ["--width", "3", "--hist", "4", "--out", "old-student.bin"]
     assert workspace_report(ws, "poker-student:old-student") == made
+
+
+def test_extra_rounds_add_what_the_seated_student_reaches_and_refuse_an_unordered_export(ws, monkeypatch):
+    import contextlib
+
+    from byosm.games.poker import distill, infosets, teacher
+
+    rows = situations(300)
+    rows["visits"][:150] = 0
+    folder = teacher.work_dir(ws)
+    rows.tofile(folder / "old.infosets")
+    meta = {"records": len(rows), "width": WIDTH, "hist": HIST}
+    (folder / "old.infosets.json").write_text(json.dumps(meta))
+    for name in ("old", "old-student-r1"):
+        (folder / f"{name}.bin").write_text("")
+    asked, trained_on = [], []
+
+    def engine(ws, hands, args, log):
+        asked.append(args[0])
+        if args[0] == "reach":
+            np.full(len(rows), 3, "<u4").tofile(folder / args[args.index("--out") + 1])
+
+    fit = student.fit
+    monkeypatch.setattr(distill, "run", engine)
+    monkeypatch.setattr(infosets, "run", engine)
+    monkeypatch.setattr("byosm.train.gpu.gpu_slot", lambda device, log: contextlib.nullcontext("cpu"))
+    monkeypatch.setattr(student, "EPOCHS", 1)
+    monkeypatch.setattr(student, "fit", lambda *a, **k: trained_on.append(int((k["visits"] > 0).sum())) or fit(*a, **k))
+    with pytest.raises(ValueError, match="predates ordered exports"):
+        distill.build(ws, ws, "old", lambda _: None, rounds=1)
+    (folder / "old.infosets.json").write_text(json.dumps({**meta, "ordered": True}))
+    asked.clear()
+    trained_on.clear()
+    made = distill.build(ws, ws, "old", lambda _: None, rounds=1)
+    assert made["student"] == "old-student-r1" and made["rounds"] == 1
+    assert asked == ["student", "reach", "student"] and trained_on[1] == len(rows) > trained_on[0]
 
 
 class Engine:

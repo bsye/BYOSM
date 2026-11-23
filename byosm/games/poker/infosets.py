@@ -11,6 +11,8 @@ from .teacher import run, strategy, work_dir
 RECORDS = ".infosets"
 META = ".infosets.json"
 SUMMARY = "infosets:"
+REACH = ".reach"
+ORDERED = "ordered"
 PAD = 255
 BEFORE = ("records", "visited", "hands", "skipped")
 AFTER = ("width", "hist")
@@ -43,7 +45,7 @@ def layout(width: int, hist: int) -> np.dtype:
 def export(ws: Path, hands_dir: Path, name: str, hands: int, log: Log) -> dict[str, int]:
     out = f"{name}{RECORDS}"
     said = run(ws, hands_dir, ["infosets", "--blueprint", strategy(ws, name), "--hands", str(hands), "--out", out], log)
-    meta = parsed(said)
+    meta = {**parsed(said), ORDERED: True}
     (work_dir(ws) / f"{name}{META}").write_text(json.dumps(meta))
     return meta
 
@@ -60,4 +62,19 @@ def records(ws: Path, name: str) -> np.memmap:
     found = np.memmap(work_dir(ws) / f"{name}{RECORDS}", dtype=layout(meta["width"], meta["hist"]), mode="r")
     if len(found) != meta["records"]:
         raise ValueError(f"{name}{RECORDS} holds {len(found)} records, not the {meta['records']} it was exported with")
+    return found
+
+
+def reach(ws: Path, hands_dir: Path, name: str, actor: str, round_: int, hands: int, log: Log) -> np.ndarray:
+    meta = described(ws, name)
+    if not meta.get(ORDERED):
+        raise ValueError(
+            f"{name}{RECORDS} predates ordered exports: run byosm poker teacher-infosets --strategy {name}"
+        )
+    out = f"{name}{REACH}{round_}"
+    files = ["--blueprint", strategy(ws, name), "--actor", strategy(ws, actor)]
+    run(ws, hands_dir, ["reach", *files, "--hands", str(hands), "--out", out], log)
+    found = np.fromfile(work_dir(ws) / out, "<u4")
+    if len(found) != meta["records"]:
+        raise ValueError(f"{out} holds {len(found)} counts, not one for each of the {meta['records']} records")
     return found

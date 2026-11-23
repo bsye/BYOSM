@@ -3124,6 +3124,13 @@ blueprints are not published, so we train one here, and its native code never ru
   against five copies of its teacher over 1,000,000 hands: -79.3 ±69.8 mbb/hand. The point estimate is inside the v1
   target of 100; the interval is not yet (it reaches -149), so the next student trains on the longer schedule and is
   seated for more hands.
+- **Rounds on the student's own reach** (`byosm poker student --rounds N`). A student that drifts from its teacher
+  meets infosets teacher self-play rarely visits. Each extra round seats the current student with five teacher
+  copies (the engine's `reach` verb, 2M hands), counts the infosets it decides at, adds those counts to the training
+  weights and retrains; the labels are always the teacher's. Exports list a blueprint's infosets in key order, so a
+  count file lines up with the records row for row; an export from before that ordering is refused. Bucketing is
+  Monte Carlo and cached across threads, so two exports agree on order and probabilities but differ by a few visits.
+  A student and its files are named after the rounds: `NAME-student`, `NAME-student-r2`.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.

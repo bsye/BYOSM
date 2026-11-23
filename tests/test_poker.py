@@ -339,7 +339,7 @@ def test_a_strategys_situations_are_exported_and_read_back_record_by_record(ws, 
         infosets.records(ws, "old")
     (teacher.work_dir(ws) / "old.bin").write_text("")
     meta = infosets.export(ws, ws, "old", 20000, lambda _: None)
-    assert meta == {"records": 2, "visited": 1, "hands": 20000, "skipped": 0, "width": 3, "hist": 4}
+    assert meta == {"records": 2, "visited": 1, "hands": 20000, "skipped": 0, "width": 3, "hist": 4, "ordered": True}
     assert asked[0] == ["infosets", "--blueprint", "old.bin", "--hands", "20000", "--out", "old.infosets"]
     found = infosets.records(ws, "old")
     assert list(found["bucket"]) == [7, 168] and int(found["visits"][1]) == 9

@@ -253,7 +253,7 @@ index 7c04677..345118c 100644
      let mut k = Vec::with_capacity(3 + hist.len());
      k.push(bucket as u8);
 diff --git a/src/main.rs b/src/main.rs
-index 3c163ca..0238f22 100644
+index 3c163ca..adbc7c4 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -18,6 +18,8 @@ mod portfolio;
@@ -265,7 +265,7 @@ index 3c163ca..0238f22 100644
  mod table;
  mod turn;
  mod valuenet;
-@@ -498,9 +500,68 @@ enum Cmd {
+@@ -498,9 +500,82 @@ enum Cmd {
          /// Directory of .phh files (searched recursively).
          #[arg(long, default_value = "data/pluribus")]
          dir: String,
@@ -280,6 +280,20 @@ index 3c163ca..0238f22 100644
 +        #[arg(long, default_value = "blueprint.bin")]
 +        blueprint: String,
 +        /// Hands of blueprint self-play that count the visits.
++        #[arg(long, default_value_t = 1_000_000)]
++        hands: u64,
++        #[arg(long, default_value_t = 1)]
++        seed: u64,
++        #[arg(long)]
++        out: String,
++    },
++    /// Count the infosets --actor reaches when it takes one seat among
++    /// copies of --blueprint, as one u32 per `infosets` record of --blueprint.
++    Reach {
++        #[arg(long)]
++        blueprint: String,
++        #[arg(long)]
++        actor: String,
 +        #[arg(long, default_value_t = 1_000_000)]
 +        hands: u64,
 +        #[arg(long, default_value_t = 1)]
@@ -334,7 +348,7 @@ index 3c163ca..0238f22 100644
  fn main() {
      match Cli::parse().cmd {
          Cmd::Train {
-@@ -659,6 +720,12 @@ fn main() {
+@@ -659,6 +734,12 @@ fn main() {
              }
              .with_vr(vr_baseline);
  
@@ -347,7 +361,7 @@ index 3c163ca..0238f22 100644
              println!(
                  "training {players}-max, {iters} iterations, menu {menu:?}, pruning {}, \
                   vr baselines {}, snapshot avg {}, multiway focus {multiway_focus}",
-@@ -693,7 +760,10 @@ fn main() {
+@@ -693,7 +774,10 @@ fn main() {
                      trainer.snapshot_strategy();
                      snapshots += 1;
                  }
@@ -359,7 +373,7 @@ index 3c163ca..0238f22 100644
                      trainer
                          .save_checkpoint(path)
                          .unwrap_or_else(|e| die(&format!("checkpoint save failed: {e}")));
-@@ -718,6 +788,9 @@ fn main() {
+@@ -718,6 +802,9 @@ fn main() {
                  "blueprint saved to {out} ({} strategies)",
                  bp.strategies.len()
              );
@@ -369,7 +383,7 @@ index 3c163ca..0238f22 100644
          }
  
          Cmd::BucketTable {
-@@ -1301,8 +1374,64 @@ fn main() {
+@@ -1301,8 +1388,72 @@ fn main() {
              }
          }
  
@@ -385,6 +399,14 @@ index 3c163ca..0238f22 100644
 +            if let Some(gib) = peak_memory_gib() {
 +                println!("peak memory: {gib:.1} GiB");
 +            }
++        }
++
++        Cmd::Reach { blueprint, actor, hands, seed, out } => {
+             let policy = load_policy(&blueprint);
++            let seated = load_policy(&actor);
++            let (records, reached) = student::reach(&policy, &seated, hands, seed, &out)
++                .unwrap_or_else(|e| die(&format!("cannot write {out}: {e}")));
++            println!("reach: {records} records, {reached} reached in {hands} hands");
 +        }
 +
 +        Cmd::Abstraction { blueprint, out } => {
@@ -424,7 +446,7 @@ index 3c163ca..0238f22 100644
 +        }
 +
 +        Cmd::Benchmark { blueprint, dir, out } => {
-             let policy = load_policy(&blueprint);
++            let policy = load_policy(&blueprint);
 +            if let Some(path) = out {
 +                let lines = benchmark::labels(&dir, &policy)
 +                    .unwrap_or_else(|e| die(&format!("labelling failed: {e}")));
@@ -536,10 +558,10 @@ index 0000000..fdd42bb
 +}
 diff --git a/src/student.rs b/src/student.rs
 new file mode 100644
-index 0000000..f2e3697
+index 0000000..efb588f
 --- /dev/null
 +++ b/src/student.rs
-@@ -0,0 +1,191 @@
+@@ -0,0 +1,245 @@
 +//! Bridge between a blueprint and an external student model.
 +//!
 +//! `export` writes every infoset of a blueprint as one fixed-width record:
@@ -598,13 +620,23 @@ index 0000000..f2e3697
 +    Some(abs.abstract_actions(&table.shadow).iter().map(|a| a.token()).collect())
 +}
 +
-+/// Visits per infoset key over `hands` hands of blueprint self-play.
-+fn visits(policy: &Policy, cfg: &HandConfig, hands: u64, seed: u64) -> HashMap<Vec<u8>, u32> {
++/// Visits per infoset key over `hands` hands. Without an actor every seat
++/// plays `policy` and every decision counts. With one, the actor takes a
++/// rotating seat among copies of `policy` and only its decisions count: the
++/// infosets a student reaches when it is seated with its teacher.
++fn visits(
++    policy: &Policy,
++    actor: Option<&Policy>,
++    cfg: &HandConfig,
++    hands: u64,
++    seed: u64,
++) -> HashMap<Vec<u8>, u32> {
 +    let n = cfg.num_players;
 +    (0..hands)
 +        .into_par_iter()
 +        .fold(HashMap::new, |mut seen: HashMap<Vec<u8>, u32>, i| {
 +            let mut rng = SmallRng::seed_from_u64(seed ^ i.wrapping_mul(0x2545_F491_4F6C_DD1D));
++            let hero = (i % n as u64) as usize;
 +            let button = rng.random_range(0..n);
 +            let mut deck = fresh_deck();
 +            deck.shuffle(&mut rng);
@@ -616,15 +648,22 @@ index 0000000..f2e3697
 +                // One bucket draw decides both the visit and the move, exactly as
 +                // `blueprint_dist` plays: an unseen or mismatched infoset checks or calls.
 +                let p = table.shadow.to_act();
++                let seated = match actor {
++                    Some(a) if p == hero => a,
++                    _ => policy,
++                };
++                let counted = actor.is_none() || p == hero;
 +                let bucket = policy.abs.bucket(table.shadow.hole(p), table.shadow.board(), &mut rng);
 +                let acts = policy.abs.abstract_actions(&table.shadow);
-+                let known = policy
++                let known = seated
 +                    .blueprint
 +                    .get(bucket, &table.hist)
 +                    .filter(|s| s.len() == acts.len() && s.iter().sum::<f32>() > 0.0);
 +                let a = match known {
 +                    Some(s) => {
-+                        *seen.entry(make_key(bucket, &table.hist).into_vec()).or_insert(0) += 1;
++                        if counted {
++                            *seen.entry(make_key(bucket, &table.hist).into_vec()).or_insert(0) += 1;
++                        }
 +                        let mut left = rng.random::<f32>() * s.iter().sum::<f32>();
 +                        let mut pick = acts.len() - 1;
 +                        for (i, &pr) in s.iter().enumerate() {
@@ -650,6 +689,14 @@ index 0000000..f2e3697
 +        })
 +}
 +
++/// A blueprint's infosets in key order, so every export of one blueprint
++/// lists them identically and tables computed from one line up with another.
++fn ordered(strategies: &StrategyMap) -> Vec<(&Vec<u8>, &Vec<f32>)> {
++    let mut entries: Vec<(&Vec<u8>, &Vec<f32>)> = strategies.iter().collect();
++    entries.par_sort_unstable_by(|a, b| a.0.cmp(b.0));
++    entries
++}
++
 +pub struct Exported {
 +    pub records: u64,
 +    pub skipped: u64,
@@ -663,8 +710,8 @@ index 0000000..f2e3697
 +        num_players: policy.blueprint.num_players,
 +        ..HandConfig::default()
 +    };
-+    let seen = visits(policy, &cfg, hands, seed);
-+    let entries: Vec<(&Vec<u8>, &Vec<f32>)> = policy.blueprint.strategies.iter().collect();
++    let seen = visits(policy, None, &cfg, hands, seed);
++    let entries = ordered(&policy.blueprint.strategies);
 +    let width = entries.iter().map(|(_, s)| s.len()).max().unwrap_or(0);
 +    let hist = entries.iter().map(|(k, _)| k.len() - 2).max().unwrap_or(0);
 +    let mut f = std::io::BufWriter::new(std::fs::File::create(out)?);
@@ -705,6 +752,35 @@ index 0000000..f2e3697
 +    }
 +    f.flush()?;
 +    Ok(done)
++}
++
++/// Visits of `actor` seated with five copies of `policy`, one u32 per
++/// exported record of `policy`, in the records' order. Returns the records
++/// written and how many of them the actor reached.
++pub fn reach(policy: &Policy, actor: &Policy, hands: u64, seed: u64, out: &str) -> std::io::Result<(u64, u64)> {
++    let cfg = HandConfig {
++        num_players: policy.blueprint.num_players,
++        ..HandConfig::default()
++    };
++    let seen = visits(policy, Some(actor), &cfg, hands, seed);
++    let mut f = std::io::BufWriter::new(std::fs::File::create(out)?);
++    let (mut records, mut reached) = (0u64, 0u64);
++    for chunk in ordered(&policy.blueprint.strategies).chunks(CHUNK) {
++        let counts: Vec<Option<u32>> = chunk
++            .par_iter()
++            .map(|(key, probs)| {
++                offered(&key[2..], &cfg, &policy.abs).filter(|a| a.len() == probs.len())?;
++                Some(seen.get(*key).copied().unwrap_or(0))
++            })
++            .collect();
++        for count in counts.into_iter().flatten() {
++            f.write_all(&count.to_le_bytes())?;
++            records += 1;
++            reached += u64::from(count > 0);
++        }
++    }
++    f.flush()?;
++    Ok((records, reached))
 +}
 +
 +/// Build a strategy file from exported records and a student's table of

@@ -34,7 +34,7 @@ def student(ws: Path, name: str) -> Any:
 
     path = work_dir(ws) / f"{name}{MODEL}"
     if not path.exists():
-        raise ValueError(f"no student trained for {name!r}: run byosm poker student --strategy {name}")
+        raise ValueError(f"no student model named {name!r}: byosm poker student trains one and prints its name")
     state = torch.load(path, map_location="cpu")
     net = Net(state["cards.weight"].shape[0] // STREETS)
     net.load_state_dict(state)
