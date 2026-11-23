@@ -26,14 +26,19 @@ def situations(n=600, seed=0):
     return rows
 
 
-def test_a_student_learns_a_strategy_from_its_card_bucket_and_never_plays_a_move_not_on_offer(tmp_path):
+def test_a_student_learns_a_strategy_from_its_card_bucket_and_never_plays_a_move_not_on_offer(tmp_path, monkeypatch):
     rows = situations()
     said = []
     net, score = student.fit(rows, 12, said.append, epochs=120)
+    whole = student.scored(net, rows[rows["visits"] > 0], "cpu")["kl"]
     assert score["top_move"] > 0.95 and score["kl"] < 0.05 and score["trained_on"] + score["held_out"] < len(rows)
     assert said and "held-out KL" in said[-1]
     student.table(net, rows, tmp_path / "probs", "cpu")
     got = np.fromfile(tmp_path / "probs", "<f4").reshape(len(rows), WIDTH)
+    monkeypatch.setattr(student, "CHUNK", 64)
+    student.table(net, rows, tmp_path / "in-pieces", "cpu")
+    assert np.allclose(got, np.fromfile(tmp_path / "in-pieces", "<f4").reshape(len(rows), WIDTH), atol=1e-6)
+    assert student.scored(net, rows[rows["visits"] > 0], "cpu")["kl"] == pytest.approx(whole, rel=1e-4)
     assert np.allclose(got.sum(1), 1, atol=1e-5) and (got[rows["offered"] == PAD] == 0).all()
     unseen = rows["visits"] == 0
     assert unseen.any() and (got[unseen].argmax(1) == rows["probs"][unseen].argmax(1)).mean() > 0.95

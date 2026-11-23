@@ -21,7 +21,7 @@ BATCH = 8192
 EPOCHS = 30
 LEARNING_RATE = 2e-3
 HELD_SHARE = 0.02
-CHUNK = 1 << 18
+CHUNK = 1 << 14
 Log = Callable[[str], None]
 
 
@@ -73,13 +73,17 @@ def targets(rows: np.ndarray, device: str) -> tuple[torch.Tensor, torch.Tensor]:
 
 
 def scored(net: Net, rows: np.ndarray, device: str) -> dict[str, float]:
+    gap = same = total = 0.0
     with torch.no_grad():
-        logp = torch.log_softmax(net(**inputs(rows, net.span, device)), dim=-1)
-        target, weight = targets(rows, device)
-        gap = torch.where(target > 0, target * (torch.log(target.clamp_min(1e-9)) - logp), torch.zeros_like(target))
-        same = (logp.argmax(-1) == target.argmax(-1)).float()
-        total = weight.sum()
-        return {"kl": float((gap.sum(-1) * weight).sum() / total), "top_move": float((same * weight).sum() / total)}
+        for i in range(0, len(rows), CHUNK):
+            part = rows[i : i + CHUNK]
+            logp = torch.log_softmax(net(**inputs(part, net.span, device)), dim=-1)
+            target, weight = targets(part, device)
+            apart = torch.where(target > 0, target * (torch.log(target.clamp_min(1e-9)) - logp), 0.0).sum(-1)
+            gap += float((apart * weight).sum())
+            same += float(((logp.argmax(-1) == target.argmax(-1)).float() * weight).sum())
+            total += float(weight.sum())
+    return {"kl": gap / total, "top_move": same / total}
 
 
 def fit(
