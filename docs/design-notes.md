@@ -3088,6 +3088,16 @@ blueprints are not published, so we train one here, and its native code never ru
   Alone on the machine with streamed checkpoints the trainer ran 89,560 iterations a second; three runs side by side
   with cloning checkpoints ran 18,000 to 21,000 each. The peak is at the end, when the strategy file's table is built
   beside the regret table: about 270 to 320 bytes an infoset.
+- **Finer card buckets do not win at equal length.** At 25M iterations, seated against five copies of the
+  12-bucket strategy over 1,000,000 hands: 50 buckets -96.9 ±124.3 mbb/hand, 24 buckets -66.2 ±124.0. A finer
+  abstraction spreads the same visits over more infosets; it would need a longer run to pay, and a longer run needs
+  more memory than Docker has today.
+- **Search adds nothing measurable yet.** With five copies of itself, the first blueprint searching at 100 ms a
+  decision gains +13.0 ±123.5 mbb/hand over 20,000 paired deals.
+- **What self-play reaches.** 2,000,000 hands of the first blueprint's self-play visit 1,310,631 of its 98,342,057
+  infosets (1.3%), 15.6M visits in all: 83% of them preflop, 69% inside the 10,000 most visited infosets. The student
+  trains on those 1.3M; a first fit (8 epochs, 158 s on the GPU) reaches a held-out KL of 0.082 and the teacher's top
+  move 86.6% of the time, weighted by visits. Whether that is enough is decided at the table.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.
