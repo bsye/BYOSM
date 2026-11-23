@@ -3052,6 +3052,12 @@ blueprints are not published, so we train one here, and its native code never ru
   overtrained and a finished one trained again under the same name. The patch trains only what is left: a tiny run
   resumed after finishing reports 0 iterations. It also prints the process's peak memory (the kernel's high-water
   mark), the number that sizes the next teacher.
+- **Checkpoints stream to disk.** Upstream cloned the whole regret table into a list before writing it, doubling
+  peak memory twenty times a run; three sizing runs side by side lost the 50-bucket one to the out-of-memory killer
+  that way (exit 137). The patch writes node by node in the same byte layout (upstream's round-trip test passes),
+  beside the target and then renamed, so a run killed mid-write keeps its last good checkpoint. It also saves on
+  every fourth chunk and at the end instead of every chunk. The same 300,000-iteration run peaks at 1.5 GiB instead
+  of 2.1.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.

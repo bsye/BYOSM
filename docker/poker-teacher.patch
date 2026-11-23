@@ -76,8 +76,87 @@ index 2ed6303..992ac03 100644
  fn collect_phh_files(
      dir: &std::path::Path,
      out: &mut Vec<std::path::PathBuf>,
+diff --git a/src/cfr.rs b/src/cfr.rs
+index 7c04677..345118c 100644
+--- a/src/cfr.rs
++++ b/src/cfr.rs
+@@ -828,32 +828,41 @@ impl Trainer {
+ 
+     /// Full checkpoint (regrets + strategy sums) for resuming training.
+     pub fn save_checkpoint(&self, path: &str) -> std::io::Result<()> {
+-        let snapshot: Vec<(Vec<u8>, Node)> = self
+-            .nodes
+-            .iter()
+-            .map(|e| (e.key().to_vec(), e.value().clone()))
+-            .collect();
+-        let ckpt = Checkpoint {
+-            iterations: self.iterations(),
+-            abs_cfg: self.abs.cfg.clone(),
+-            centroids: self.abs.centroids.clone(),
+-            nodes: snapshot,
+-        };
+-        let f = std::io::BufWriter::new(std::fs::File::create(path)?);
+-        bincode::serialize_into(f, &ckpt).map_err(std::io::Error::other)
++        // Streamed node by node in the layout of `(iterations, abs_cfg, centroids, Vec<(key, node)>)`:
++        // cloning the whole map first doubled peak memory. Written beside the target and renamed,
++        // so a run killed mid-write keeps its previous checkpoint.
++        use std::io::Write;
++        let other = std::io::Error::other;
++        let partial = format!("{path}.partial");
++        let mut f = std::io::BufWriter::new(std::fs::File::create(&partial)?);
++        bincode::serialize_into(&mut f, &self.iterations()).map_err(other)?;
++        bincode::serialize_into(&mut f, &self.abs.cfg).map_err(other)?;
++        bincode::serialize_into(&mut f, &self.abs.centroids).map_err(other)?;
++        bincode::serialize_into(&mut f, &(self.nodes.len() as u64)).map_err(other)?;
++        for e in self.nodes.iter() {
++            bincode::serialize_into(&mut f, &(e.key().as_ref(), e.value())).map_err(other)?;
++        }
++        f.flush()?;
++        drop(f);
++        std::fs::rename(&partial, path)
+     }
+ 
+     /// Resume from a checkpoint. The card abstraction (config + k-means
+     /// centroids) is restored from the file so bucketing matches exactly.
+     pub fn load_checkpoint(path: &str, cfg: TrainConfig) -> std::io::Result<Trainer> {
+-        let f = std::io::BufReader::new(std::fs::File::open(path)?);
+-        let ckpt: Checkpoint = bincode::deserialize_from(f).map_err(std::io::Error::other)?;
+-        let abs = Abstraction::with_centroids(ckpt.abs_cfg, ckpt.centroids);
++        let other = std::io::Error::other;
++        let mut f = std::io::BufReader::new(std::fs::File::open(path)?);
++        let iterations: u64 = bincode::deserialize_from(&mut f).map_err(other)?;
++        let abs_cfg: AbsConfig = bincode::deserialize_from(&mut f).map_err(other)?;
++        let centroids: Option<Centroids> = bincode::deserialize_from(&mut f).map_err(other)?;
++        let count: u64 = bincode::deserialize_from(&mut f).map_err(other)?;
++        let abs = Abstraction::with_centroids(abs_cfg, centroids);
+         let t = Trainer::new(Arc::new(abs), cfg);
+-        for (k, n) in ckpt.nodes {
++        for _ in 0..count {
++            let (k, n): (Vec<u8>, Node) = bincode::deserialize_from(&mut f).map_err(other)?;
+             t.nodes.insert(k.into_boxed_slice(), n);
+         }
+-        t.iters_done.store(ckpt.iterations, Ordering::Relaxed);
++        t.iters_done.store(iterations, Ordering::Relaxed);
+         Ok(t)
+     }
+ }
+@@ -877,14 +886,6 @@ struct LegacyBlueprint {
+     centroids: Option<Centroids>,
+ }
+ 
+-#[derive(Serialize, Deserialize)]
+-struct Checkpoint {
+-    iterations: u64,
+-    abs_cfg: AbsConfig,
+-    centroids: Option<Centroids>,
+-    nodes: Vec<(Vec<u8>, Node)>,
+-}
+-
+ fn leaf_key(bucket: u16, hist: &[u8]) -> InfoKey {
+     let mut k = Vec::with_capacity(3 + hist.len());
+     k.push(bucket as u8);
 diff --git a/src/main.rs b/src/main.rs
-index 3c163ca..4f2ca71 100644
+index 3c163ca..0ae5996 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -498,9 +498,20 @@ enum Cmd {
@@ -114,7 +193,19 @@ index 3c163ca..4f2ca71 100644
              println!(
                  "training {players}-max, {iters} iterations, menu {menu:?}, pruning {}, \
                   vr baselines {}, snapshot avg {}, multiway focus {multiway_focus}",
-@@ -718,6 +735,9 @@ fn main() {
+@@ -693,7 +710,10 @@ fn main() {
+                     trainer.snapshot_strategy();
+                     snapshots += 1;
+                 }
+-                if let Some(path) = &checkpoint {
++                // Every fourth chunk and at the end: a checkpoint is a single-threaded
++                // write of the whole table, minutes each on a long run.
++                let due = done_before == iters || (done_before / chunk) % 4 == 0;
++                if let (Some(path), true) = (&checkpoint, due) {
+                     trainer
+                         .save_checkpoint(path)
+                         .unwrap_or_else(|e| die(&format!("checkpoint save failed: {e}")));
+@@ -718,6 +738,9 @@ fn main() {
                  "blueprint saved to {out} ({} strategies)",
                  bp.strategies.len()
              );
@@ -124,7 +215,7 @@ index 3c163ca..4f2ca71 100644
          }
  
          Cmd::BucketTable {
-@@ -1301,8 +1321,15 @@ fn main() {
+@@ -1301,8 +1324,15 @@ fn main() {
              }
          }
  

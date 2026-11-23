@@ -4,7 +4,7 @@ ARG COMMIT
 WORKDIR /src
 RUN git clone ${REPO} . && git checkout ${COMMIT}
 COPY poker-teacher.patch /tmp/teacher.patch
-RUN git apply /tmp/teacher.patch && cargo test --release benchmark && cargo build --release
+RUN git apply /tmp/teacher.patch && cargo test --release benchmark && cargo test --release checkpoint && cargo build --release
 
 FROM debian:stable-slim
 RUN useradd --create-home --uid 10001 teacher
