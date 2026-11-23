@@ -18,7 +18,7 @@ STREETS = 4
 EMBED = 64
 HIDDEN = 256
 BATCH = 8192
-EPOCHS = 8
+EPOCHS = 30
 LEARNING_RATE = 2e-3
 HELD_SHARE = 0.02
 CHUNK = 1 << 18
@@ -91,6 +91,7 @@ def fit(records: np.ndarray, span: int, log: Log, device: str = "cpu", epochs: i
     test, train = seen[:held], seen[held:]
     net = Net(span).to(device)
     opt = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE)
+    decay = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs * (len(train) // BATCH + 1))
     for epoch in range(epochs):
         net.train()
         rng.shuffle(train)
@@ -102,6 +103,7 @@ def fit(records: np.ndarray, span: int, log: Log, device: str = "cpu", epochs: i
             opt.zero_grad()
             loss.backward()
             opt.step()
+            decay.step()
         net.eval()
         if epoch == epochs - 1 or (epoch + 1) % max(1, epochs // 4) == 0:
             at = scored(net, test, device)
