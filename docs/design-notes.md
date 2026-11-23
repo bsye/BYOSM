@@ -3109,6 +3109,14 @@ blueprints are not published, so we train one here, and its native code never ru
   56 ms for the first call). The history must have equal starting stacks and show the cards of the player to act;
   anything else is refused with the reason. On aces first to act the teacher calls 49.8% and the first student
   39.3%: the student is not yet a faithful copy even where self-play visits most.
+- **Storing or weighting the strategy Pluribus's way does not win here.** Two more 200M-iteration, 12-bucket
+  teachers, each seated against five copies of the first over 2,000,000 hands: snapshot averaging -17.8 ±48.8
+  mbb/hand (25 minutes to train, peak 28.0 GiB, the container's limit); linear weighting capped at 7M iterations
+  -6.5 ±49.4 (34 minutes, 25.9 GiB). Neither CI is above zero, so the first blueprint stays the v1 teacher. What is
+  left untried is length, and a longer run does not fit in 28 GB.
+- **The student needs a longer, decaying schedule.** Same data and model, held-out KL and KL on the 10,000 most
+  visited infosets (69% of all visits): 8 epochs at a constant rate 0.080 and 0.027; 30 epochs with cosine decay
+  0.076 and 0.011, top move on those 10,000 up from 92.0% to 96.3%. `fit` now does the second.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.
