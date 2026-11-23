@@ -3048,6 +3048,15 @@ blueprints are not published, so we train one here, and its native code never ru
   decision with the hand, its order in the hand, the abstract actions offered, the blueprint's probabilities and the
   action taken. Recomputing agreement from the file gives 10,547 of 15,107 covered, the benchmark's 69.8% exactly.
   The image tag carries a hash of the Dockerfile and the patch, so a changed patch builds a new image.
+- **The table is the measure** (`games/poker/table.py`, `byosm poker teacher-play`): the teacher takes one seat of
+  six and the rebuild's own `eval --aivat` reports mbb/hand with a 95% CI, stored as a workspace report per field.
+  First blueprint over 200,000 hands: +3,410 ±190 against five callers, +4,603 ±205 against five random players.
+  These are sanity floors, not strength: a student has to be seated against five teacher copies to mean anything.
+- **A student the engine can seat is a strategy over the teacher's own infosets.** The blueprint is a map from
+  (card bucket, betting history tokens) to move probabilities, 98,342,057 entries in 4 GB. A student that reads the
+  same bucket and tokens and is written back as a strategy file can play `crossplay --focal student --field teacher`
+  at six seats with no new engine code. That is the next patch: sample decisions by blueprint self-play, and build a
+  strategy file from a student's table.
 
 ## Games share one contract
 
