@@ -224,3 +224,15 @@ The owner answered the open questions on 2026-11-23.
 | 7 | Poker promotes on calib play against the blueprint field | Yes |
 | 8 | Publish the distilled student | No: it stays private, never published |
 | 9 | The text specialists | Removed when not good: `poker-move` and `poker-facts` are archived (hidden, recoverable), since `poker-mix` beats or ties both on every suite |
+
+## Order of work (agreed 2026-11-23)
+
+Winning at a six-player table is what made Pluribus special, so the table comes first and agreement second.
+
+| Step | Builds | State |
+|---|---|---|
+| 1 | The teacher's winrate at a 6-player table, mbb/hand with a 95% CI, against callers, random players and with search on (`byosm poker teacher-play`) | built, first runs in progress |
+| 2 | Three-player Kuhn poker in the generic layer | done |
+| 3 | A numeric student trained on the teacher's move probabilities, seated at the same table against five teacher copies | next: needs the student's strategy readable by the engine |
+| 4 | Search during the hand, kept only on a measured gain at the table | after 3 |
+
