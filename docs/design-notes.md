@@ -3069,6 +3069,13 @@ blueprints are not published, so we train one here, and its native code never ru
   saves a strategy file the engine seats like any other. Checked on a 300,000-iteration strategy: all 5,045,707
   infosets replay (none skipped); a table of the teacher's own probabilities ties the teacher at six seats
   (-368 ±484 mbb/hand over 200,000 hands) and a uniform table loses (-2,503 ±525).
+- **The poker student** (`games/poker/student.py`, `distill.py`, `byosm poker student`): a small sequence model.
+  The betting history's tokens go through an embedding and a GRU, the card bucket through an embedding indexed by
+  street, and a two-layer head scores 11 move slots (fold, check or call, all-in, eight bet sizes), with every slot
+  not on offer masked to minus infinity. It trains on the infosets self-play reached, weighted by their visits,
+  against the teacher's probabilities; 2% of them are held out for KL and top-move agreement. It then writes its
+  probabilities for every infoset, visited or not, and the engine turns that table into a strategy file. The
+  measure is the table: `byosm poker teacher-versus NAME-student NAME`.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.

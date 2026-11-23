@@ -118,3 +118,21 @@ def teacher_infosets(
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
     log(f"{found['records']} situations, {found['visited']} of them reached in {found['hands']} hands of self-play")
+
+
+@poker_app.command("student")
+def poker_student(name: str = _strategy_option()) -> None:
+    """Train a small student on a strategy's exported situations and save it as a strategy the engine can seat."""
+    from ..benchmarks.pluribus import root
+    from ..config import find_workspace
+    from ..games.poker.distill import build
+
+    try:
+        made = build(find_workspace(), root(), name, log)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    log(
+        f"saved {made['student']}: held-out KL {made['kl']:.4f}, same top move {made['top_move']:.1%}, "
+        f"model {made['model_mb']} MB"
+    )
+    log(f"next: byosm poker teacher-versus {made['student']} {name} --hands 1000000")
