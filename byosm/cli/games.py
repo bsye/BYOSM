@@ -11,13 +11,17 @@ POKER_TASK = "Given a 6-max no-limit hold'em spot, pick the optimal move among t
 
 
 @poker_app.command("new")
-def poker_new(name: str, description: str = typer.Argument(POKER_TASK)) -> None:
+def poker_new(
+    name: str,
+    description: str = typer.Argument(POKER_TASK),
+    spots: int = typer.Option(None, help="PokerBench training spots, drawn at random (default 60,000)"),
+) -> None:
     """Create a poker specialist trained on PokerBench's solver spots and scored on its 11k test spots."""
     from ..config import find_workspace
-    from ..games.poker.create import create
+    from ..games.poker.create import TRAIN_SPOTS, create
 
     try:
-        create(find_workspace(), name, description, log)
+        create(find_workspace(), name, description, log, spots or TRAIN_SPOTS)
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
     log(f"next: byosm build {name}")

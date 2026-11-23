@@ -158,6 +158,13 @@ def test_poker_new_builds_the_specialist_with_pokerbench_deciding_promotion(ws, 
     assert "protocol check, accuracy" in result.output
     again = CliRunner().invoke(app, ["poker", "new", "holdem"])
     assert again.exit_code != 0 and "already exists" in again.output
+    asked = []
+    table = creating.build_table
+    monkeypatch.setattr(
+        creating, "build_table", lambda ws, name, size, log: asked.append(size) or table(ws, name, size, log)
+    )
+    fewer = CliRunner().invoke(app, ["poker", "new", "small", "--spots", "1"])
+    assert fewer.exit_code == 0 and asked == [1]
 
 
 def test_a_poker_request_in_home_creates_the_poker_specialist_and_others_go_on_as_before(ws, monkeypatch):

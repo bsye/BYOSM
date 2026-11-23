@@ -78,7 +78,7 @@ def spec_for(name: str, description: str, table: Path) -> TaskSpec:
     )
 
 
-def create(ws: Path, name: str, description: str, log: Log) -> TaskSpec:
+def create(ws: Path, name: str, description: str, log: Log, spots: int = TRAIN_SPOTS) -> TaskSpec:
     from ...benchmarks.add import add
     from ...benchmarks.catalog import BENCHMARKS
     from ...project import Project
@@ -87,7 +87,7 @@ def create(ws: Path, name: str, description: str, log: Log) -> TaskSpec:
     if p.exists():
         raise ValueError(f"{name} already exists")
     p.ensure()
-    p.save_spec(spec_for(name, description, build_table(ws, name, TRAIN_SPOTS, log)))
+    p.save_spec(spec_for(name, description, build_table(ws, name, spots, log)))
     for suite in SUITES:
         add(p, BENCHMARKS[suite], log)
     spec = p.spec()
