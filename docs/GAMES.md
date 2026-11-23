@@ -307,7 +307,7 @@ machine has 18 cores and 64 GB; Docker is limited to 32 GiB today and can be rai
 |---|---|---|
 | 1 | The best teacher that fits here (card buckets, length, snapshot averaging chosen by play) | GIVEN a new recipe WHEN seated against five copies of the previous teacher over 200,000 hands THEN it is kept only if its CI is above zero. **Measured: 24 and 50 buckets, snapshot averaging and a linear cap all fail to beat the first blueprint, which stays; a longer run needs more Docker memory** |
 | 2 | What search adds at a table of teacher copies | GIVEN 20,000 paired deals THEN the gain and its CI are stored; search is part of v1 only if the CI is above zero. **Measured: -25.7 ±27.5 mbb/hand over 400,000 deals, so v1 plays without search** |
-| 3 | A small numeric student of that teacher, written back as a strategy file | GIVEN the student seated against five teacher copies THEN its loss is under 100 mbb/hand with the CI stated, in a file under 50 MB |
+| 3 | A small numeric student of that teacher, written back as a strategy file | GIVEN the student seated against five teacher copies THEN its loss is under 100 mbb/hand with the CI stated, in a file under 50 MB. **First student (1.44 MB): -79.3 ±69.8 mbb/hand over 1,000,000 hands** |
 | 4 | Paste a hand, get the move probabilities | GIVEN a hand history up to a decision WHEN asked THEN the legal moves and their probabilities come back in under 100 ms on CPU. **Built: `byosm poker advise`, median under 1 ms over 300 real spots after start-up** |
 | 5 | Outside yardsticks next to every result | Callers and random players (done), Pluribus's 15,169 decisions, and Slumbot heads-up once the owner allows that one command network access |
 
