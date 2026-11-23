@@ -296,6 +296,11 @@ def test_a_strategy_plays_a_six_player_table_and_its_winrate_is_stored(ws, monke
     assert "--search" in asked[1]
     with pytest.raises(ValueError, match="unknown field"):
         table.play(ws, ws, "old", "sharks", 10, False, lambda _: None)
+    with pytest.raises(ValueError, match="wins nothing"):
+        table.play(ws, ws, "old", "itself", 10, False, lambda _: None)
+    table.play(ws, ws, "old", "itself", 10, True, lambda _: None)
+    assert "--search-gain" in asked[2] and "--baseline" not in asked[2]
+    assert workspace_report(ws, table.key("old", "itself", True))["field"] == "itself"
 
 
 def test_one_strategy_is_seated_against_five_copies_of_another(ws, monkeypatch):

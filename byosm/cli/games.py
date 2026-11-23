@@ -73,7 +73,9 @@ def _won(won: dict, against: str) -> str:
 @poker_app.command("teacher-play")
 def teacher_play(
     name: str = _strategy_option(),
-    field: str = typer.Option("caller", help="who fills the other five seats: caller or random"),
+    field: str = typer.Option(
+        "caller", help="who fills the other five seats: caller, random, or itself (with --search: what search adds)"
+    ),
     hands: int = typer.Option(200_000, help="hands to play"),
     search: bool = typer.Option(False, help="the teacher searches during each hand, like Pluribus"),
 ) -> None:

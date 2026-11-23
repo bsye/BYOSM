@@ -6,7 +6,8 @@ from pathlib import Path
 from .teacher import run, strategy
 
 SEATS = 6
-FIELDS = ("caller", "random")
+ITSELF = "itself"
+FIELDS = ("caller", "random", ITSELF)
 REPORT = "poker-table:"
 VERSUS = ":vs:"
 WINRATE = "winrate:"
@@ -35,9 +36,15 @@ def play(ws: Path, hands_dir: Path, name: str, field: str, hands: int, search: b
 
     if field not in FIELDS:
         raise ValueError(f"unknown field {field!r}; the table can be filled with: {', '.join(FIELDS)}")
-    searching = ["--search", "--search-ms", str(SEARCH_MS)] if search else []
-    args = ["eval", "--blueprint", strategy(ws, name), "--hands", str(hands), "--baseline", field]
-    said = run(ws, hands_dir, [*args, "--players", str(SEATS), "--aivat", *searching], log)
+    if field == ITSELF and not search:
+        raise ValueError(
+            "against five copies of itself a strategy wins nothing; add --search to measure what search adds"
+        )
+    mode = "--search-gain" if field == ITSELF else "--search"
+    searching = [mode, "--search-ms", str(SEARCH_MS)] if search else []
+    others = [] if field == ITSELF else ["--baseline", field, "--aivat"]
+    args = ["eval", "--blueprint", strategy(ws, name), "--hands", str(hands), "--players", str(SEATS)]
+    said = run(ws, hands_dir, [*args, *others, *searching], log)
     result = {**parsed(said), "seats": SEATS, "strategy": name, "field": field, "search": search}
     save_workspace_report(ws, key(name, field, search), result)
     return result
