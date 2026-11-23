@@ -3116,7 +3116,9 @@ blueprints are not published, so we train one here, and its native code never ru
   left untried is length, and a longer run does not fit in 28 GB.
 - **The student needs a longer, decaying schedule.** Same data and model, held-out KL and KL on the 10,000 most
   visited infosets (69% of all visits): 8 epochs at a constant rate 0.080 and 0.027; 30 epochs with cosine decay
-  0.076 and 0.011, top move on those 10,000 up from 92.0% to 96.3%. `fit` now does the second.
+  0.076 and 0.011, top move on those 10,000 up from 92.0% to 96.3%. Doubling the widths (GRU 512, embeddings 128,
+  5.6 MB, 25 minutes on the GPU) gives 0.071 and 0.0067, top move 98.2%. `fit` now trains the wide model on the long
+  schedule.
 - **The first student at the table.** Trained for 8 epochs, 1.44 MB against the teacher's 4 GB table, one seat
   against five copies of its teacher over 1,000,000 hands: -79.3 ±69.8 mbb/hand. The point estimate is inside the v1
   target of 100; the interval is not yet (it reaches -149), so the next student trains on the longer schedule and is
