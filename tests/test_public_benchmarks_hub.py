@@ -5,7 +5,7 @@ import pytest
 
 from byosm.benchmarks import bfcl, eot, when2call
 from byosm.benchmarks.catalog import BENCHMARKS
-from byosm.data.hf_source.cards import UNKNOWN_LICENCE, licence
+from byosm.data.hf_source.cards import UNKNOWN_LICENCE
 
 HUB = ("huggingface.co", 443)
 TIMEOUT_S = 3
@@ -47,5 +47,5 @@ def test_eot_bench_has_a_validation_file_for_every_language_it_publishes():
     assert all(eot.FILE.format(language=language) in found for language in eot.LANGUAGES)
 
 
-def test_every_public_benchmark_states_its_licence_on_its_card():
-    assert all(licence(b.dataset) != UNKNOWN_LICENCE for b in BENCHMARKS.values())
+def test_every_public_benchmark_states_its_licence():
+    assert all(b.licence() != UNKNOWN_LICENCE for b in BENCHMARKS.values())

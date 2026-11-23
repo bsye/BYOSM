@@ -5,7 +5,6 @@ import pytest
 from typer.testing import CliRunner
 
 from byosm import metrics, routing
-from byosm.benchmarks import add as adding
 from byosm.benchmarks import pluribus, pokerbench
 from byosm.benchmarks.catalog import fitting
 from byosm.cli import app
@@ -118,7 +117,7 @@ def hub(tmp_path, monkeypatch):
         "postflop": write(tmp_path / "post.csv", [POSTFLOP, other] * 20),
     }
     monkeypatch.setattr(pokerbench, "download", lambda repo, file: files[file.partition("_")[0]])
-    monkeypatch.setattr(adding, "licence", lambda dataset: "apache-2.0")
+    monkeypatch.setattr("byosm.data.hf_source.cards.licence", lambda dataset: "apache-2.0")
     hands = []
     for i in range(10):
         hands.append(tmp_path / f"{i}.phh")

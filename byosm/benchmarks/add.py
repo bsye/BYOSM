@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 from ..config import STATE_DIR
-from ..data.hf_source.cards import licence
 from ..data.store import write_file
 from ..format import fmt
 from ..project import Project
@@ -53,7 +52,7 @@ def add(p: Project, b: Benchmark, log: Log) -> dict[str, Any]:
     path = table_path(p.ws, p.name, b.name)
     write_file(path, rows)
     log(f"  {b.name}: {len(rows)} rows from {b.dataset} ({_counts(rows)}) in {path}")
-    suite = EvalSuite(name=b.name, kind=LOCAL, path=str(path), dataset=b.dataset, licence=licence(b.dataset))
+    suite = EvalSuite(name=b.name, kind=LOCAL, path=str(path), dataset=b.dataset, licence=b.licence())
     check = protocol.run(p, spec, suite, b.kind, rows, log)
     for c in check["checks"]:
         verdict = "ok" if c["ok"] else "MISMATCH"

@@ -16,6 +16,7 @@ from .source import sparse_clone, split_of
 
 REPO = "uoftcprg/phh-dataset"
 URL = f"https://github.com/{REPO}.git"
+LICENCE = "mit"
 COMMIT = "e47fbd5816372360bade4de5d712346fe1bb70f6"
 FOLDER = "data/pluribus"
 DECISIONS = 15169

@@ -38,7 +38,7 @@ def turn_completion(ws, monkeypatch, at_300=None):
     published = eot_summary("en", at_300 or timeout_cutoff(0.3), timeout_cutoff(0.6))
     monkeypatch.setattr(eot, "turns", lambda language: EOT_TURNS)
     monkeypatch.setattr(eot, "summary", lambda: published)
-    monkeypatch.setattr(adding, "licence", lambda dataset: "cc-by-4.0")
+    monkeypatch.setattr("byosm.data.hf_source.cards.licence", lambda dataset: "cc-by-4.0")
     p = Project("turn-completion").ensure()
     p.save_spec(binary("turn-completion", "unfinished", "finished", "recall_at_precision"))
     return p

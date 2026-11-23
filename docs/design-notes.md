@@ -2994,6 +2994,10 @@ holds 1.9 GB.
   menu 66.8% of the time (75.6% preflop). Ours ignores size, so it is the easier score of the two, and the row says so.
 - **A hand stays in one split** (calib or test by a hash of the hand), and promotion decides on the mean of the
   PokerBench and Pluribus calib scores.
+- **The board breaks the score down by street:** any suite whose rows carry a `category` gets its accuracy per
+  category (`evals/grouped.py`), so the gap to the rebuild's 75.6% preflop shows apart from the postflop gap.
+- **The suite states its licence itself** (`Benchmark.stated_licence`): a GitHub dataset has no Hugging Face card to
+  read it from.
 
 ## A spot states its card facts
 

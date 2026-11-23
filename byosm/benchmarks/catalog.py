@@ -19,6 +19,12 @@ class Benchmark:
     kind: Kind
     rows: Callable[[TaskSpec, Log], list[dict]]
     about: str
+    stated_licence: str | None = None
+
+    def licence(self) -> str:
+        from ..data.hf_source.cards import licence
+
+        return self.stated_licence or licence(self.dataset)
 
 
 BENCHMARKS = {
@@ -65,6 +71,7 @@ BENCHMARKS = {
             pluribus.DECISIONS_KIND,
             pluribus.rows,
             "Pluribus's 15,169 decisions in its 10,000 hands against professionals (Science 2019): the kind of move it made",
+            pluribus.LICENCE,
         ),
     )
 }

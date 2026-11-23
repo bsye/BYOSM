@@ -74,7 +74,7 @@ def test_only_benchmarks_that_fit_the_labels_are_offered():
 
 def tool_choice(ws, monkeypatch):
     monkeypatch.setattr(bfcl, "fetch", written(ws / "hub", BFCL))
-    monkeypatch.setattr(adding, "licence", lambda dataset: "apache-2.0")
+    monkeypatch.setattr("byosm.data.hf_source.cards.licence", lambda dataset: "apache-2.0")
     p = Project("tool-choice").ensure()
     spec = spec_for("tool-choice", ws / "t.csv", "lockon/xlam-function-calling-60k", PairPlan())
     p.save_spec(spec.model_copy(update={"baselines": ["llm"]}))
