@@ -318,3 +318,32 @@ def test_one_strategy_is_seated_against_five_copies_of_another(ws, monkeypatch):
     assert workspace_report(ws, "poker-table:new:vs:old") == won
     result = CliRunner().invoke(app, ["poker", "teacher-versus", "new", "missing"])
     assert result.exit_code != 0 and "no trained strategy named" in result.output
+
+
+def test_a_strategys_situations_are_exported_and_read_back_record_by_record(ws, monkeypatch):
+    from byosm.games.poker import infosets, teacher
+
+    line = "infosets: 2 records, 1 visited in 20000 hands, 0 skipped, width 3, hist 4"
+    asked = []
+
+    def exported(ws, hands, args, log):
+        asked.append(args)
+        rows = np.zeros(2, infosets.layout(3, 4))
+        rows["bucket"], rows["actions"], rows["visits"] = [7, 168], [2, 3], [0, 9]
+        rows["probs"][1] = [0.2, 0.3, 0.5]
+        rows.tofile(teacher.work_dir(ws) / "old.infosets")
+        return ["loaded", line]
+
+    monkeypatch.setattr(infosets, "run", exported)
+    with pytest.raises(ValueError, match="no infosets exported"):
+        infosets.records(ws, "old")
+    (teacher.work_dir(ws) / "old.bin").write_text("")
+    meta = infosets.export(ws, ws, "old", 20000, lambda _: None)
+    assert meta == {"records": 2, "visited": 1, "hands": 20000, "skipped": 0, "width": 3, "hist": 4}
+    assert asked[0] == ["infosets", "--blueprint", "old.bin", "--hands", "20000", "--out", "old.infosets"]
+    found = infosets.records(ws, "old")
+    assert list(found["bucket"]) == [7, 168] and int(found["visits"][1]) == 9
+    assert found["probs"][1].tolist() == pytest.approx([0.2, 0.3, 0.5])
+    np.zeros(1, infosets.layout(3, 4)).tofile(teacher.work_dir(ws) / "old.infosets")
+    with pytest.raises(ValueError, match="holds 1 records"):
+        infosets.records(ws, "old")

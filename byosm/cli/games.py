@@ -101,3 +101,20 @@ def teacher_versus(focal: str, field: str, hands: int = typer.Option(200_000, he
         log(_won(versus(find_workspace(), root(), focal, field, hands, log), f"five copies of {field}"))
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
+
+
+@poker_app.command("teacher-infosets")
+def teacher_infosets(
+    name: str = _strategy_option(),
+    hands: int = typer.Option(2_000_000, help="hands of self-play that count how often each situation comes up"),
+) -> None:
+    """Write every situation a trained strategy knows, with its legal moves, its probabilities and its visits."""
+    from ..benchmarks.pluribus import root
+    from ..config import find_workspace
+    from ..games.poker.infosets import export
+
+    try:
+        found = export(find_workspace(), root(), name, hands, log)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    log(f"{found['records']} situations, {found['visited']} of them reached in {found['hands']} hands of self-play")

@@ -156,16 +156,54 @@ index 7c04677..345118c 100644
      let mut k = Vec::with_capacity(3 + hist.len());
      k.push(bucket as u8);
 diff --git a/src/main.rs b/src/main.rs
-index 3c163ca..0ae5996 100644
+index 3c163ca..08036c1 100644
 --- a/src/main.rs
 +++ b/src/main.rs
-@@ -498,9 +498,20 @@ enum Cmd {
+@@ -18,6 +18,7 @@ mod portfolio;
+ mod river;
+ mod search;
+ mod slumbot;
++mod student;
+ mod table;
+ mod turn;
+ mod valuenet;
+@@ -498,9 +499,50 @@ enum Cmd {
          /// Directory of .phh files (searched recursively).
          #[arg(long, default_value = "data/pluribus")]
          dir: String,
 +        /// Also write every decision's abstract actions and blueprint probabilities here, as JSON lines.
 +        #[arg(long)]
 +        out: Option<String>,
++    },
++    /// Write every infoset of a blueprint as a fixed-width record for an
++    /// external student: bucket, offered actions, history, self-play visits
++    /// and the blueprint's probabilities.
++    Infosets {
++        #[arg(long, default_value = "blueprint.bin")]
++        blueprint: String,
++        /// Hands of blueprint self-play that count the visits.
++        #[arg(long, default_value_t = 1_000_000)]
++        hands: u64,
++        #[arg(long, default_value_t = 1)]
++        seed: u64,
++        #[arg(long)]
++        out: String,
++    },
++    /// Build a strategy file from `infosets` records and a student's table
++    /// of probabilities; the abstraction is taken from --like.
++    Student {
++        #[arg(long)]
++        like: String,
++        #[arg(long)]
++        records: String,
++        #[arg(long)]
++        probs: String,
++        #[arg(long)]
++        width: usize,
++        #[arg(long)]
++        hist: usize,
++        #[arg(long)]
++        out: String,
      },
  }
  
@@ -180,7 +218,7 @@ index 3c163ca..0ae5996 100644
  fn main() {
      match Cli::parse().cmd {
          Cmd::Train {
-@@ -659,6 +670,12 @@ fn main() {
+@@ -659,6 +701,12 @@ fn main() {
              }
              .with_vr(vr_baseline);
  
@@ -193,7 +231,7 @@ index 3c163ca..0ae5996 100644
              println!(
                  "training {players}-max, {iters} iterations, menu {menu:?}, pruning {}, \
                   vr baselines {}, snapshot avg {}, multiway focus {multiway_focus}",
-@@ -693,7 +710,10 @@ fn main() {
+@@ -693,7 +741,10 @@ fn main() {
                      trainer.snapshot_strategy();
                      snapshots += 1;
                  }
@@ -205,7 +243,7 @@ index 3c163ca..0ae5996 100644
                      trainer
                          .save_checkpoint(path)
                          .unwrap_or_else(|e| die(&format!("checkpoint save failed: {e}")));
-@@ -718,6 +738,9 @@ fn main() {
+@@ -718,6 +769,9 @@ fn main() {
                  "blueprint saved to {out} ({} strategies)",
                  bp.strategies.len()
              );
@@ -215,13 +253,36 @@ index 3c163ca..0ae5996 100644
          }
  
          Cmd::BucketTable {
-@@ -1301,8 +1324,15 @@ fn main() {
+@@ -1301,8 +1355,38 @@ fn main() {
              }
          }
  
 -        Cmd::Benchmark { blueprint, dir } => {
-+        Cmd::Benchmark { blueprint, dir, out } => {
++        Cmd::Infosets { blueprint, hands, seed, out } => {
              let policy = load_policy(&blueprint);
++            let r = student::export(&policy, hands, seed, &out)
++                .unwrap_or_else(|e| die(&format!("cannot write {out}: {e}")));
++            println!(
++                "infosets: {} records, {} visited in {hands} hands, {} skipped, width {}, hist {}",
++                r.records, r.visited, r.skipped, r.width, r.hist
++            );
++            if let Some(gib) = peak_memory_gib() {
++                println!("peak memory: {gib:.1} GiB");
++            }
++        }
++
++        Cmd::Student { like, records, probs, width, hist, out } => {
++            let teacher = Blueprint::load(&like)
++                .unwrap_or_else(|e| die(&format!("cannot load {like}: {e}")));
++            let bp = student::import(teacher, &records, &probs, width, hist)
++                .unwrap_or_else(|e| die(&format!("cannot read the student's table: {e}")));
++            bp.save(&out)
++                .unwrap_or_else(|e| die(&format!("strategy save failed: {e}")));
++            println!("student saved to {out} ({} strategies)", bp.strategies.len());
++        }
++
++        Cmd::Benchmark { blueprint, dir, out } => {
++            let policy = load_policy(&blueprint);
 +            if let Some(path) = out {
 +                let lines = benchmark::labels(&dir, &policy)
 +                    .unwrap_or_else(|e| die(&format!("labelling failed: {e}")));
@@ -232,3 +293,200 @@ index 3c163ca..0ae5996 100644
              println!("replaying Pluribus hands from {dir}...");
              let started = std::time::Instant::now();
              let r = benchmark::run(&dir, &policy)
+diff --git a/src/student.rs b/src/student.rs
+new file mode 100644
+index 0000000..f2e3697
+--- /dev/null
++++ b/src/student.rs
+@@ -0,0 +1,191 @@
++//! Bridge between a blueprint and an external student model.
++//!
++//! `export` writes every infoset of a blueprint as one fixed-width record:
++//! its card bucket, the action tokens on offer (found by replaying the
++//! infoset's history), the history tokens, how often blueprint self-play
++//! visited it, and the blueprint's probabilities. `import` reads those
++//! records back with a table of probabilities from a student and saves a
++//! strategy file the engine can seat like any blueprint.
++//!
++//! Record layout, little-endian, `width` actions and `hist` tokens wide:
++//! bucket u16, actions u8, tokens u8, action tokens [u8; width] (255 pad),
++//! history [u8; hist] (255 pad), visits u32, probabilities [f32; width].
++
++use crate::abstraction::{AbsAction, Abstraction, TOKEN_STREET_SEP};
++use crate::bot::Policy;
++use crate::cards::fresh_deck;
++use crate::cfr::{make_key, Blueprint, StrategyMap};
++use crate::engine::HandConfig;
++use crate::table::Table;
++use rand::rngs::SmallRng;
++use rand::seq::SliceRandom;
++use rand::{Rng, SeedableRng};
++use rayon::prelude::*;
++use std::collections::HashMap;
++use std::io::{Read, Write};
++
++const PAD: u8 = 255;
++const CHUNK: usize = 1 << 20;
++
++fn action_of(token: u8) -> AbsAction {
++    match token {
++        0 => AbsAction::Fold,
++        1 => AbsAction::CheckCall,
++        2 => AbsAction::AllIn,
++        t => AbsAction::Bet(t - 3),
++    }
++}
++
++/// The action tokens on offer after `hist`, or None when the history is not
++/// a line of play the abstraction can replay (leaf keys, menu drift).
++fn offered(hist: &[u8], cfg: &HandConfig, abs: &Abstraction) -> Option<Vec<u8>> {
++    let mut table = Table::new(cfg, 0, fresh_deck());
++    for &token in hist {
++        if token == TOKEN_STREET_SEP {
++            continue;
++        }
++        let action = action_of(token);
++        if table.real.is_terminal() || !abs.abstract_actions(&table.shadow).contains(&action) {
++            return None;
++        }
++        table.apply_abs(action, abs);
++    }
++    if table.real.is_terminal() || table.hist != hist {
++        return None;
++    }
++    Some(abs.abstract_actions(&table.shadow).iter().map(|a| a.token()).collect())
++}
++
++/// Visits per infoset key over `hands` hands of blueprint self-play.
++fn visits(policy: &Policy, cfg: &HandConfig, hands: u64, seed: u64) -> HashMap<Vec<u8>, u32> {
++    let n = cfg.num_players;
++    (0..hands)
++        .into_par_iter()
++        .fold(HashMap::new, |mut seen: HashMap<Vec<u8>, u32>, i| {
++            let mut rng = SmallRng::seed_from_u64(seed ^ i.wrapping_mul(0x2545_F491_4F6C_DD1D));
++            let button = rng.random_range(0..n);
++            let mut deck = fresh_deck();
++            deck.shuffle(&mut rng);
++            let mut table = Table::new(cfg, button, deck);
++            let mut guard = 0;
++            while !table.real.is_terminal() {
++                guard += 1;
++                assert!(guard < 500, "self-play hand did not terminate");
++                // One bucket draw decides both the visit and the move, exactly as
++                // `blueprint_dist` plays: an unseen or mismatched infoset checks or calls.
++                let p = table.shadow.to_act();
++                let bucket = policy.abs.bucket(table.shadow.hole(p), table.shadow.board(), &mut rng);
++                let acts = policy.abs.abstract_actions(&table.shadow);
++                let known = policy
++                    .blueprint
++                    .get(bucket, &table.hist)
++                    .filter(|s| s.len() == acts.len() && s.iter().sum::<f32>() > 0.0);
++                let a = match known {
++                    Some(s) => {
++                        *seen.entry(make_key(bucket, &table.hist).into_vec()).or_insert(0) += 1;
++                        let mut left = rng.random::<f32>() * s.iter().sum::<f32>();
++                        let mut pick = acts.len() - 1;
++                        for (i, &pr) in s.iter().enumerate() {
++                            left -= pr;
++                            if left <= 0.0 {
++                                pick = i;
++                                break;
++                            }
++                        }
++                        acts[pick]
++                    }
++                    None => AbsAction::CheckCall,
++                };
++                table.apply_abs(a, &policy.abs);
++            }
++            seen
++        })
++        .reduce(HashMap::new, |mut a, b| {
++            for (k, v) in b {
++                *a.entry(k).or_insert(0) += v;
++            }
++            a
++        })
++}
++
++pub struct Exported {
++    pub records: u64,
++    pub skipped: u64,
++    pub visited: u64,
++    pub width: usize,
++    pub hist: usize,
++}
++
++pub fn export(policy: &Policy, hands: u64, seed: u64, out: &str) -> std::io::Result<Exported> {
++    let cfg = HandConfig {
++        num_players: policy.blueprint.num_players,
++        ..HandConfig::default()
++    };
++    let seen = visits(policy, &cfg, hands, seed);
++    let entries: Vec<(&Vec<u8>, &Vec<f32>)> = policy.blueprint.strategies.iter().collect();
++    let width = entries.iter().map(|(_, s)| s.len()).max().unwrap_or(0);
++    let hist = entries.iter().map(|(k, _)| k.len() - 2).max().unwrap_or(0);
++    let mut f = std::io::BufWriter::new(std::fs::File::create(out)?);
++    let mut done = Exported { records: 0, skipped: 0, visited: 0, width, hist };
++    for chunk in entries.chunks(CHUNK) {
++        let rows: Vec<Option<Vec<u8>>> = chunk
++            .par_iter()
++            .map(|(key, probs)| {
++                let acts = offered(&key[2..], &cfg, &policy.abs).filter(|a| a.len() == probs.len())?;
++                let mut row = Vec::with_capacity(8 + 5 * width + hist);
++                row.extend_from_slice(&key[..2]);
++                row.push(acts.len() as u8);
++                row.push((key.len() - 2) as u8);
++                row.extend_from_slice(&acts);
++                row.resize(4 + width, PAD);
++                row.extend_from_slice(&key[2..]);
++                row.resize(4 + width + hist, PAD);
++                let count = seen.get(*key).copied().unwrap_or(0);
++                row.extend_from_slice(&count.to_le_bytes());
++                for i in 0..width {
++                    row.extend_from_slice(&probs.get(i).copied().unwrap_or(0.0).to_le_bytes());
++                }
++                Some(row)
++            })
++            .collect();
++        for row in rows {
++            match row {
++                Some(row) => {
++                    if row[4 + width + hist..8 + width + hist] != [0u8; 4] {
++                        done.visited += 1;
++                    }
++                    f.write_all(&row)?;
++                    done.records += 1;
++                }
++                None => done.skipped += 1,
++            }
++        }
++    }
++    f.flush()?;
++    Ok(done)
++}
++
++/// Build a strategy file from exported records and a student's table of
++/// probabilities (f32, `width` per record, in the records' order). The card
++/// abstraction and table size are the teacher's.
++pub fn import(like: Blueprint, records: &str, probs: &str, width: usize, hist: usize) -> std::io::Result<Blueprint> {
++    let Blueprint { iterations, num_players, abs_cfg, centroids, strategies: teacher } = like;
++    drop(teacher);
++    let mut keys = std::io::BufReader::new(std::fs::File::open(records)?);
++    let mut table = std::io::BufReader::new(std::fs::File::open(probs)?);
++    let mut record = vec![0u8; 8 + 5 * width + hist];
++    let mut given = vec![0u8; 4 * width];
++    let mut strategies = StrategyMap::default();
++    while keys.read_exact(&mut record).is_ok() {
++        table.read_exact(&mut given)?;
++        let actions = record[2] as usize;
++        let tokens = record[3] as usize;
++        let mut key = record[..2].to_vec();
++        key.extend_from_slice(&record[4 + width..4 + width + tokens]);
++        let strat: Vec<f32> = (0..actions)
++            .map(|i| f32::from_le_bytes([given[4 * i], given[4 * i + 1], given[4 * i + 2], given[4 * i + 3]]))
++            .collect();
++        strategies.insert(key, strat);
++    }
++    Ok(Blueprint { strategies, iterations, num_players, abs_cfg, centroids })
++}

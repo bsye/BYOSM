@@ -3062,6 +3062,13 @@ blueprints are not published, so we train one here, and its native code never ru
   count, not by memory: two sizing runs side by side were killed (exit 137) inside Docker's 31 GiB. `teacher.run`
   takes an exclusive file lock on the teacher's folder (`byosm/locks.exclusive`, the same helper the GPU admission
   uses), so a second job says it is waiting and starts when the first ends. Nothing is rejected or cancelled.
+- **The student bridge** (`src/student.rs` in the patch, `games/poker/infosets.py`): `infosets` plays blueprint
+  self-play to count how often each infoset is visited, then writes every infoset as one fixed-width record: card
+  bucket, the action tokens on offer (found by replaying the infoset's history tokens on a table), the history,
+  the visits and the blueprint's probabilities. `student` reads those records with a table of probabilities and
+  saves a strategy file the engine seats like any other. Checked on a 300,000-iteration strategy: all 5,045,707
+  infosets replay (none skipped); a table of the teacher's own probabilities ties the teacher at six seats
+  (-368 ±484 mbb/hand over 200,000 hands) and a uniform table loses (-2,503 ±525).
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.
