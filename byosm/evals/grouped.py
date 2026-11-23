@@ -11,7 +11,7 @@ from ..spec import TaskSpec
 from . import cutoffs
 
 GROUP, CATEGORY = "group", "category"
-REQUESTS, CUTOFFS = "requests", "cutoffs"
+REQUESTS, CUTOFFS, CATEGORIES = "requests", "cutoffs", "categories"
 PAIR_LABELS = {FITS, NO_FIT}
 SUMMARY_DIGITS = 3
 
@@ -47,6 +47,15 @@ def cases(m: dict[str, Any]) -> dict[str, Any] | None:
     return {c: v["exact"] for c, v in by.items()} if by else None
 
 
+def per_category(test: list[dict], dec: np.ndarray, truth: np.ndarray) -> dict[str, dict[str, float]]:
+    found = np.array([str((r.get("meta") or {}).get(CATEGORY)) for r in test])
+    out = {}
+    for c in sorted(set(found)):
+        mask = found == c
+        out[c] = {"accuracy": float((dec[mask] == truth[mask]).mean()), "n": int(mask.sum())}
+    return out
+
+
 def grouped_metrics(
     spec: TaskSpec, calib: list[dict], test: list[dict], pc: Any, pt: np.ndarray, dec: np.ndarray
 ) -> dict[str, Any]:
@@ -55,6 +64,9 @@ def grouped_metrics(
         return {REQUESTS: per_request(spec, test, dec)}
     if cutoffs.SPAN in meta:
         return {CUTOFFS: cutoffs.scores(spec, calib, test, pc, pt)}
+    if CATEGORY in meta:
+        truth = np.array([spec.label_names.index(r["label"]) for r in test])
+        return {CATEGORIES: per_category(test, dec, truth)}
     return {}
 
 
@@ -67,6 +79,8 @@ def summary(m: dict[str, Any]) -> str | None:
         s = m[REQUESTS]["all"]
         none, needed = (fmt(s[k]["accuracy"], SUMMARY_DIGITS) for k in ("no_tool", "tool_needed"))
         return f"no tool {none}, tool needed {needed}"
+    if CATEGORIES in m:
+        return ", ".join(f"{c} {fmt(v['accuracy'], SUMMARY_DIGITS)}" for c, v in m[CATEGORIES].items())
     held = (m.get(CUTOFFS) or {}).get("held_out")
     if held:
         return "cutoffs " + ", ".join(f"{_cutoff(held[str(b)])} at {b} ms" for b in cutoffs.LATENCY_BUDGETS_MS)
