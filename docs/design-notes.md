@@ -3120,6 +3120,9 @@ blueprints are not published, so we train one here, and its native code never ru
   0.076 and 0.011, top move on those 10,000 up from 92.0% to 96.3%. Doubling the widths (GRU 512, embeddings 128,
   5.6 MB, 25 minutes on the GPU) gives 0.071 and 0.0067, top move 98.2%. `fit` now trains the wide model on the long
   schedule.
+- **The student's table is written 16,384 infosets at a time.** The first wide build pushed 262,144 through the
+  GRU at once: 34 tokens by 512 units by that many rows is an 18 GB tensor, and the GPU ran out of memory. In small
+  batches the full 98.3M-row table takes 20 minutes at 82,000 rows a second and 3.3 GB of GPU memory.
 - **The first student at the table.** Trained for 8 epochs, 1.44 MB against the teacher's 4 GB table, one seat
   against five copies of its teacher over 1,000,000 hands: -79.3 ±69.8 mbb/hand. The point estimate is inside the v1
   target of 100; the interval is not yet (it reaches -149), so the next student trains on the longer schedule and is
