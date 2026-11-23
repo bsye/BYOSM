@@ -3058,6 +3058,10 @@ blueprints are not published, so we train one here, and its native code never ru
   beside the target and then renamed, so a run killed mid-write keeps its last good checkpoint. It also saves on
   every fourth chunk and at the end instead of every chunk. The same 300,000-iteration run peaks at 1.5 GiB instead
   of 2.1.
+- **One teacher container at a time.** Each one loads a table of several GB, and the job runner admits jobs by
+  count, not by memory: two sizing runs side by side were killed (exit 137) inside Docker's 31 GiB. `teacher.run`
+  takes an exclusive file lock on the teacher's folder (`byosm/locks.exclusive`, the same helper the GPU admission
+  uses), so a second job says it is waiting and starts when the first ends. Nothing is rejected or cancelled.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.

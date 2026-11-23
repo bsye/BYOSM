@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ...config import STATE_DIR
 from ...deploy import DOCKER_DIR, build_image, docker, docker_cli
+from ...locks import exclusive
 
 REPO = "https://github.com/conorarmstrong/pluribus.git"
 COMMIT = "757f7692738069522195d2b486eec60a8b010c0c"
@@ -24,6 +25,7 @@ WORK = "/work"
 STRATEGY = ".bin"
 CHECKPOINT = ".bin.ckpt"
 LABELS = ".labels.jsonl"
+TURN = ".turn"
 ITERS = 200_000_000
 BUCKETS = 12
 Log = Callable[[str], None]
@@ -81,7 +83,11 @@ def command(ws: Path, hands: Path, args: list[str]) -> list[str]:
 def run(ws: Path, hands: Path, args: list[str], log: Log) -> list[str]:
     ensure_image(log)
     said: list[str] = []
-    with subprocess.Popen(command(ws, hands, args), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as p:
+    piped = {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT, "text": True}
+    with (
+        exclusive(work_dir(ws) / TURN, lambda: log("  waiting for the running teacher container to finish")),
+        subprocess.Popen(command(ws, hands, args), **piped) as p,
+    ):
         for line in p.stdout or []:
             said.append(line.rstrip())
             log(f"  {said[-1]}")

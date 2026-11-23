@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ..config import STATE_DIR
 from ..events import JOB_ENV
+from ..locks import exclusive
 from .gpu_memory import GB_PER_TRAINING, free_gb, need_gb, needed_gb, remember, total_gb
 from .gpu_queue import first, join
 
@@ -112,15 +113,8 @@ def _cap_memory(device: str, log: Callable[[str], None], share: float | None = N
     log(f"  this training may use {share:.0%} of the GPU's {torch.mps.recommended_max_memory() / 1024**3:.0f} GB")
 
 
-@contextlib.contextmanager
-def _admission(base: Path) -> Iterator[None]:
-    base.mkdir(parents=True, exist_ok=True)
-    with (base / ADMISSION_LOCK).open("w") as handle:
-        fcntl.flock(handle, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(handle, fcntl.LOCK_UN)
+def _admission(base: Path) -> contextlib.AbstractContextManager[None]:
+    return exclusive(base / ADMISSION_LOCK)
 
 
 @contextlib.contextmanager
