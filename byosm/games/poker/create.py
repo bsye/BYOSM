@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 from collections.abc import Callable
 from pathlib import Path
 
+from ...benchmarks import pluribus
 from ...benchmarks.pokerbench import REPO, test_raws, train_raws
 from ...config import STATE_DIR
 from ...data.table import LABEL_COL, SPLIT_COL, write_csv
@@ -50,7 +51,8 @@ def split_at(i: int, held: int) -> str:
 
 
 def build_table(ws: Path, name: str, size: int, log: Log) -> Path:
-    picked = [render(r) for r in balanced(train_raws(), test_raws(), size)]
+    picked = [render(r) for r in balanced(train_raws(), test_raws(), size)] + pluribus.train_spots()
+    random.Random(FOLDER).shuffle(picked)
     held = int(len(picked) * HELD_SHARE)
     path = table_path(ws, name)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -80,7 +82,9 @@ def spec_for(name: str, description: str, table: Path) -> TaskSpec:
         backbone=backbone,
         latency_budget_ms=LATENCY_MS,
         baselines=["llm"],
-        data=DataPlan(synthetic=False, local_dir=str(table), local_source=f"{HUB_SOURCE}{REPO}"),
+        data=DataPlan(
+            synthetic=False, local_dir=str(table), local_source=f"{HUB_SOURCE}{REPO}", drop_near_copies=False
+        ),
         train=train_cfg("text", backbone).model_copy(update={"epochs": EPOCHS}),
     )
 

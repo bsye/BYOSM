@@ -3005,6 +3005,14 @@ alone. Rules compute them instead, and the spot carries one more sentence before
 - **Players still in and the amount to call** are replayed from the action line. PokerBench leaves out players who
   folded before the hero acted, so a seat not named counts as folded once the hero has acted or when it sits before
   the hero, and as still to act when it sits after.
+- **Templated inputs drop only exact copies.** The first `poker-move` build kept 510 of 2,427 dev spots and 984 of
+  2,427 test spots: spots that differ only in cards and amounts share most of their 5-word shingles, so the
+  near-copy rule took them for copies of training spots. `data.drop_near_copies: false` keeps the exact-copy rule
+  and skips the near one; the poker specialist sets it.
+- **Half of Pluribus's hands train the model.** A hand goes whole to training or to the suite (by a hash of the hand,
+  independent of the calib split), so the suite scores about 7,600 decisions from hands the model never saw. The
+  replay must still find all 15,169 decisions or it stops. PokerBench's calib and test split by row number now,
+  since the text changes with the renderer.
 - **Facts are a new specialist, not a switch.** `poker-move` was built from the plain text and stays the baseline;
   `poker-facts` is the same recipe with facts, scored on the same 11k PokerBench spots and 15,169 Pluribus decisions,
   so the two boards compare directly.

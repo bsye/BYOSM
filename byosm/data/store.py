@@ -32,6 +32,7 @@ def rounds_split(exp: str) -> str:
 
 
 NEAR_DUPLICATE = 0.7
+EXACT_ONLY = 1.0
 NEAR_CANDIDATES = 3
 
 

@@ -220,3 +220,27 @@ def test_facts_name_the_hand_its_draws_its_equity_and_the_price_to_call():
     assert said == facts.sentence(["Kd", "Kc"], [], 1, 87.0, 117.0)
     assert said.startswith("Facts: pocket KK; 8") and said.endswith("87 to call, pot odds 43%.")
     assert "to call" not in facts.sentence(["Kd", "Kc"], ["2c", "7d", "9h"], 2, 0.0, 10.0)
+
+
+def test_pluribus_hands_go_whole_to_training_or_to_the_suite_and_a_wrong_count_stops_the_replay(tmp_path, monkeypatch):
+    hub(tmp_path, monkeypatch)
+    monkeypatch.setattr(pluribus, "trains_on", lambda hand: hand.endswith(("/0", "/1", "/2")))
+    held = pluribus.rows(spec(), print)
+    assert len(pluribus.train_spots()) == 9 and len(held) == 21
+    assert all(not r["meta"]["hand"].endswith(("/0", "/1", "/2")) for r in held)
+    monkeypatch.setattr(pluribus, "DECISIONS", 31)
+    with pytest.raises(ValueError, match="found 30 Pluribus decisions"):
+        pluribus.rows(spec(), print)
+
+
+def test_templated_inputs_drop_only_exact_copies_from_held_out_splits():
+    from byosm.data import near_limit
+    from byosm.data.store import dedupe, record
+
+    s = spec()
+    words = " ".join(f"w{i}" for i in range(40))
+    train = [record(f"{words} Ks", "check", "t")]
+    near = record(f"{words} Kd", "check", "t")
+    assert dedupe([near], against=train, near=near_limit(s)) == []
+    s.data.drop_near_copies = False
+    assert dedupe([near, train[0]], against=train, near=near_limit(s)) == [near]

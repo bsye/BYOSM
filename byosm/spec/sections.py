@@ -116,6 +116,7 @@ class DataPlan(BaseModel):
     teacher_rows: int = 2000
     audio: AudioCfg = Field(default_factory=AudioCfg)
     pairs: PairPlan | None = None
+    drop_near_copies: bool = True
 
     @property
     def labelled_by_llm(self) -> bool:

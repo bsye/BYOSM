@@ -9,7 +9,7 @@ from ..spec import HFSource, TaskSpec
 from . import audio_mix, budget, hf_source, noise, panel, segments
 from .local import add_local, add_pairs
 from .splits import _group_split3, _hold_out, _split3, carve_calib
-from .store import CALIB, TRAIN_INPUTS, Dataset, dedupe, record, write
+from .store import CALIB, EXACT_ONLY, NEAR_DUPLICATE, TRAIN_INPUTS, Dataset, dedupe, record, write
 
 MEDIA_EXT = {"audio": ".wav", "image": ".png", "document": ".png"}
 UNLABELED_PER_SOURCE = 2000
@@ -111,6 +111,10 @@ def _add_hf(
     return pools
 
 
+def near_limit(spec: TaskSpec) -> float:
+    return NEAR_DUPLICATE if spec.data.drop_near_copies else EXACT_ONLY
+
+
 def _collect(
     spec: TaskSpec, data_dir: Path, cfg: dict | None, seconds: float, log: Log
 ) -> tuple[dict[str, list[dict]], list[dict], dict | None]:
@@ -135,9 +139,10 @@ def _collect(
         fit = budget.add_synthetic(spec, splits, cfg, seconds, log, data_dir)
     _hold_out(splits, rng, log)
     if spec.modality == "text":
-        splits["test"] = dedupe(splits["test"], against=splits["train"] + splits["dev"])
-        splits["dev"] = dedupe(splits["dev"], against=splits["train"])
-        splits[CALIB] = dedupe(splits[CALIB], against=splits["train"])
+        near = near_limit(spec)
+        splits["test"] = dedupe(splits["test"], against=splits["train"] + splits["dev"], near=near)
+        splits["dev"] = dedupe(splits["dev"], against=splits["train"], near=near)
+        splits[CALIB] = dedupe(splits[CALIB], against=splits["train"], near=near)
     carve_calib(splits)
     return splits, unlabeled, fit
 
@@ -161,7 +166,9 @@ def build(
     if spec.data.teachers:
         labelled = panel.label_pool(spec, splits, unlabeled, data_dir, log, reviewed)
         held = splits["dev"] + splits[CALIB] + splits["test"]
-        splits["train"] += dedupe(labelled, against=held) if spec.modality == "text" else labelled
+        splits["train"] += (
+            dedupe(labelled, against=held, near=near_limit(spec)) if spec.modality == "text" else labelled
+        )
     splits["train"] = noise.cleaned(spec, splits["train"], cfg, log)
     for s, rows in splits.items():
         ds.save(s, rows)

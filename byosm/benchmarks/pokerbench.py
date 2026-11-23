@@ -52,7 +52,7 @@ def rows(spec: TaskSpec, log: Callable[[str], None]) -> list[dict]:
             {
                 **record(s.text, s.label, source, **{CATEGORY: s.street}),
                 "id": f"pokerbench:{i}",
-                "split": split_of(s.text),
+                "split": split_of(f"{REPO}:{i}"),
             }
         )
     return out
