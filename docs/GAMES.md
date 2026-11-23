@@ -256,8 +256,8 @@ From [the Science paper](https://par.nsf.gov/servlets/purl/10119653) (Brown and 
 | Hardware at the table | 28 cores, under 128 GB, about 20 s a hand | 100 ms a decision in our first run |
 | Proof | 48 mbb/game (SE 25) over 10,000 hands against five professionals; 32 mbb/game (SE 15) as five copies against one professional, with AIVAT | +3,410 ±190 against callers, +4,603 ±205 against random, +12,243 ±2,077 against callers with search (20,000 hands) |
 
-The paper is plain that the blueprint alone is weak: "the blueprint strategy is necessarily coarse-grained", and
-search is what made it superhuman. Its average strategy has no guarantee at six seats either; it was judged by play.
+The paper is plain that the blueprint alone is weak: "The blueprint strategy for the entire game is necessarily
+coarse-grained", and search is what made it superhuman. Its average strategy has no guarantee at six seats either; it was judged by play.
 
 What this changes for us, in order of expected gain:
 
