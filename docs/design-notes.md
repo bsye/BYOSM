@@ -3084,7 +3084,7 @@ The plan is [docs/GAMES.md](GAMES.md). Every game implements one small contract 
   equilibrium no longer guarantees you cannot lose, and "exploitability" stops being a promise. `kuhn-3` (four cards,
   three seats, one implementation with two-player Kuhn) keeps the generic layer honest about that: CFR+ still drives
   NashConv to 0.00004 there and the middle seat's value lands on the published -1/48
-  ([Szafron et al. 2013](https://webdocs.cs.ualberta.ca/~games/poker/publications/AAMAS13-3pkuhn.pdf)), but strength
+  ([Szafron et al. 2013](https://www.cs.ualberta.ca/~games/poker/publications/AAMAS13-3pkuhn.pdf)), but strength
   at a table is measured by play, not by that number. A game folder may export several `Game` values.
 - **A student learns a strategy, not a move.** Every game has an `encoder` (what one player sees, as numbers);
   `decision.label` turns a teacher into one `Decision` per information set (features, legal slots, the teacher's
