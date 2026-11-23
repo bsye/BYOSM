@@ -306,7 +306,7 @@ machine has 18 cores and 64 GB; Docker is limited to 32 GiB today and can be rai
 | # | v1 delivers | Done when |
 |---|---|---|
 | 1 | The best teacher that fits here (card buckets, length, snapshot averaging chosen by play) | GIVEN a new recipe WHEN seated against five copies of the previous teacher over 200,000 hands THEN it is kept only if its CI is above zero |
-| 2 | What search adds at a table of teacher copies | GIVEN 20,000 paired deals THEN the gain and its CI are stored; search is part of v1 only if the CI is above zero |
+| 2 | What search adds at a table of teacher copies | GIVEN 20,000 paired deals THEN the gain and its CI are stored; search is part of v1 only if the CI is above zero. **Measured: -25.7 ±27.5 mbb/hand over 400,000 deals, so v1 plays without search** |
 | 3 | A small numeric student of that teacher, written back as a strategy file | GIVEN the student seated against five teacher copies THEN its loss is under 100 mbb/hand with the CI stated, in a file under 50 MB |
 | 4 | Paste a hand, get the move probabilities | GIVEN a hand history up to a decision WHEN asked THEN the legal moves and their probabilities come back in under 100 ms on CPU |
 | 5 | Outside yardsticks next to every result | Callers and random players (done), Pluribus's 15,169 decisions, and Slumbot heads-up once the owner allows that one command network access |
