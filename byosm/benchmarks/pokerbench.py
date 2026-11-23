@@ -6,7 +6,7 @@ from typing import Any
 from ..data.store import record
 from ..evals.grouped import CATEGORY
 from ..games.poker.moves import LABELS, family
-from ..games.poker.spots import Spot, read_spots
+from ..games.poker.spots import Raw, Spot, read_raw, render
 from ..hub.facts import HUB_SOURCE
 from ..spec import TaskSpec
 from .protocol import Kind, Published, Values
@@ -25,20 +25,23 @@ PUBLISHED = {
 ACCURACY, FAMILY_ACCURACY = "accuracy", "family_accuracy"
 
 
-def spots(files: dict[str, str], split: str) -> list[Spot]:
-    out: list[Spot] = []
+def raws(files: dict[str, str], split: str) -> list[Raw]:
+    out: list[Raw] = []
     for street, size in files.items():
-        path = download(REPO, FILE.format(street=street, size=size, split=split))
-        out += read_spots(path, street == "preflop")
+        out += read_raw(download(REPO, FILE.format(street=street, size=size, split=split)), street == "preflop")
     return out
 
 
+def test_raws() -> list[Raw]:
+    return raws(TEST_FILES, "test")
+
+
+def train_raws() -> list[Raw]:
+    return raws(TRAIN_FILES, "train")
+
+
 def test_spots() -> list[Spot]:
-    return spots(TEST_FILES, "test")
-
-
-def train_spots() -> list[Spot]:
-    return spots(TRAIN_FILES, "train")
+    return [render(r) for r in test_raws()]
 
 
 def rows(spec: TaskSpec, log: Callable[[str], None]) -> list[dict]:

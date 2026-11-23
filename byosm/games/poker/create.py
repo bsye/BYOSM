@@ -5,14 +5,13 @@ from collections import Counter, defaultdict
 from collections.abc import Callable
 from pathlib import Path
 
-from ...benchmarks.pokerbench import REPO, test_spots, train_spots
+from ...benchmarks.pokerbench import REPO, test_raws, train_raws
 from ...config import STATE_DIR
 from ...data.table import LABEL_COL, SPLIT_COL, write_csv
 from ...spec import Label, TaskSpec
 from ...spec.sections import DataPlan, Objective
-from ...text import normalize
 from .moves import DEFINITIONS, LABELS, family
-from .spots import Spot
+from .spots import Raw, render
 
 FOLDER = "poker"
 TRAIN_SPOTS = 60000
@@ -29,14 +28,14 @@ def table_path(ws: Path, name: str) -> Path:
     return ws / STATE_DIR / FOLDER / f"{name}.csv"
 
 
-def balanced(spots: list[Spot], held: list[Spot], size: int) -> list[Spot]:
-    seen = {normalize(s.text) for s in held}
-    by_label: dict[str, list[Spot]] = defaultdict(list)
-    for s in spots:
-        if normalize(s.text) not in seen:
-            by_label[s.label].append(s)
+def balanced(raws: list[Raw], held: list[Raw], size: int) -> list[Raw]:
+    seen = {r.state for r in held}
+    by_label: dict[str, list[Raw]] = defaultdict(list)
+    for r in raws:
+        if r.state not in seen:
+            by_label[r.label].append(r)
     rng = random.Random(FOLDER)
-    picked: list[Spot] = []
+    picked: list[Raw] = []
     share = size // len(LABELS)
     for label in LABELS:
         found = by_label[label]
@@ -51,7 +50,7 @@ def split_at(i: int, held: int) -> str:
 
 
 def build_table(ws: Path, name: str, size: int, log: Log) -> Path:
-    picked = balanced(train_spots(), test_spots(), size)
+    picked = [render(r) for r in balanced(train_raws(), test_raws(), size)]
     held = int(len(picked) * HELD_SHARE)
     path = table_path(ws, name)
     path.parent.mkdir(parents=True, exist_ok=True)

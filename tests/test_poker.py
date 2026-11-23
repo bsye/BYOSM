@@ -13,7 +13,7 @@ from byosm.games.poker import create as creating
 from byosm.games.poker import facts, lines
 from byosm.games.poker.moves import LABELS, label_of, labelled
 from byosm.games.poker.pluribus import decisions
-from byosm.games.poker.spots import postflop_spot, preflop_spot
+from byosm.games.poker.spots import Raw, postflop_spot, preflop_spot
 from byosm.project import Project
 from byosm.spec import Label, TaskSpec
 
@@ -141,9 +141,10 @@ def test_pokerbench_fits_only_the_move_labels_and_its_floor_scores_the_label_sha
 
 
 def test_training_spots_are_balanced_by_label_and_never_copy_a_test_spot():
-    pre, post = preflop_spot(PREFLOP), postflop_spot(POSTFLOP)
-    other = postflop_spot({**POSTFLOP, "holding": "AhAd", "correct_decision": "Check"})
-    picked = creating.balanced([pre, post, other, other], [pre], len(LABELS))
+    other = {**POSTFLOP, "holding": "AhAd", "correct_decision": "Check"}
+    pre, post, again = Raw(PREFLOP, True, "call"), Raw(POSTFLOP, False, "bet big"), Raw(other, False, "check")
+    copy = Raw({**PREFLOP, "correct_decision": "fold"}, True, "fold")
+    picked = creating.balanced([pre, post, again, again], [copy], len(LABELS))
     assert pre not in picked and sorted(s.label for s in picked) == ["bet big", "check"]
 
 

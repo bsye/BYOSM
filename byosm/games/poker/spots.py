@@ -10,6 +10,7 @@ from .lines import postflop_state, preflop_moves, preflop_state, street_moves
 from .moves import BIG_BLIND, label_of
 
 PREFLOP, FLOP, TURN, RIVER = "preflop", "flop", "turn", "river"
+IGNORED = ("", "correct_decision")
 ACTION_WORDS = {"allin": "all in", "bet": "bet", "raise": "raise", "call": "call", "check": "check", "fold": "fold"}
 
 
@@ -18,6 +19,17 @@ class Spot:
     text: str
     label: str
     street: str
+
+
+@dataclass(frozen=True)
+class Raw:
+    row: dict[str, str]
+    preflop: bool
+    label: str
+
+    @property
+    def state(self) -> tuple:
+        return tuple(sorted((k, v) for k, v in self.row.items() if k not in IGNORED))
 
 
 def cards(run: str) -> str:
@@ -72,7 +84,10 @@ def postflop_spot(r: dict[str, str]) -> Spot:
     return Spot(text, label_of(r["correct_decision"], offered), street)
 
 
-def read_spots(path: Path, preflop: bool) -> list[Spot]:
-    make = preflop_spot if preflop else postflop_spot
+def read_raw(path: Path, preflop: bool) -> list[Raw]:
     with path.open(newline="", encoding="utf-8") as f:
-        return [make(r) for r in csv.DictReader(f)]
+        return [Raw(r, preflop, label_of(r["correct_decision"], _offer(r))) for r in csv.DictReader(f)]
+
+
+def render(raw: Raw) -> Spot:
+    return preflop_spot(raw.row) if raw.preflop else postflop_spot(raw.row)
