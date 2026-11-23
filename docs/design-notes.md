@@ -2970,3 +2970,23 @@ from spot to spot (`Bet 24`, `5.0bb`). Plan in [POKER.md](POKER.md).
   all in but never answers it. Dev and builtin test take 5% each; PokerBench decides promotion.
 - **Home routes poker requests** through the same router that finds forecasts (`byosm/routing.py`), which creates
   the specialist and hands it to the autopilot.
+
+## Agreement with Pluribus is a suite
+
+Pluribus is the rival the poker specialist is measured against. Its 10,000 hands against professionals come from
+[uoftcprg/phh-dataset](https://github.com/uoftcprg/phh-dataset) (MIT), pinned to one commit and fetched as a sparse
+clone of `data/pluribus` (39 MB). Hugging Face's copy rate-limits 10,000 single-file downloads, and the Zenodo archive
+holds 1.9 GB.
+
+- **Each Pluribus decision is replayed into the PokerBench form:** the replay builds the same CSV fields PokerBench
+  has (`prev_line`, `postflop_action`, boards, pot in big blinds) and the same renderer writes the text, so a model
+  reads both suites alike. Heads-up postflop seats are IP and OOP as in PokerBench, and multiway pots use seat names.
+- **The offer lists only legal kinds of move** (`fold, call, raise, allin`), never Pluribus's size, which would give
+  the answer away. With one size per kind, exact accuracy equals action accuracy on this suite.
+- **The protocol check counts decisions.** The replay finds 15,169 Pluribus decisions, the number the
+  [open-source reimplementation](https://github.com/conorarmstrong/pluribus) reports, and the always-fold floor must
+  score its fold share (0.523: folding agrees with Pluribus on more than half its decisions).
+- **The published reference is not the same measure:** that blueprint picks Pluribus's exact action in its own bet
+  menu 66.8% of the time (75.6% preflop). Ours ignores size, so it is the easier score of the two, and the row says so.
+- **A hand stays in one split** (calib or test by a hash of the hand), and promotion decides on the mean of the
+  PokerBench and Pluribus calib scores.

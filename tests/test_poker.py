@@ -6,11 +6,12 @@ from typer.testing import CliRunner
 
 from byosm import metrics, routing
 from byosm.benchmarks import add as adding
-from byosm.benchmarks import pokerbench
+from byosm.benchmarks import pluribus, pokerbench
 from byosm.benchmarks.catalog import fitting
 from byosm.cli import app
 from byosm.games.poker import create as creating
 from byosm.games.poker.moves import LABELS, label_of, labelled
+from byosm.games.poker.pluribus import decisions
 from byosm.games.poker.spots import postflop_spot, preflop_spot
 from byosm.project import Project
 from byosm.spec import Label, TaskSpec
@@ -117,11 +118,17 @@ def hub(tmp_path, monkeypatch):
     }
     monkeypatch.setattr(pokerbench, "download", lambda repo, file: files[file.partition("_")[0]])
     monkeypatch.setattr(adding, "licence", lambda dataset: "apache-2.0")
+    hands = []
+    for i in range(10):
+        hands.append(tmp_path / f"{i}.phh")
+        hands[-1].write_text(HAND)
+    monkeypatch.setattr(pluribus, "hands", lambda: hands)
+    monkeypatch.setattr(pluribus, "DECISIONS", 30)
 
 
 def test_pokerbench_fits_only_the_move_labels_and_its_floor_scores_the_label_share(tmp_path, monkeypatch):
     hub(tmp_path, monkeypatch)
-    assert [b.name for b in fitting(spec())] == ["pokerbench"] and fitting(spec(families=False)) == []
+    assert [b.name for b in fitting(spec())] == ["pokerbench", "pluribus"] and fitting(spec(families=False)) == []
     rows = pokerbench.rows(spec(), print)
     test = [r for r in rows if r["split"] == "test"]
     found = pokerbench.expected(spec(), rows)
@@ -145,6 +152,7 @@ def test_poker_new_builds_the_specialist_with_pokerbench_deciding_promotion(ws, 
     assert result.exit_code == 0, result.output
     s = Project("holdem").spec()
     assert s.primary_suite() == "pokerbench" and s.objective.metric == "accuracy"
+    assert s.selecting() == ["pokerbench", "pluribus"]
     assert s.label_families == [n.split()[0] for n in LABELS]
     assert "protocol check, accuracy" in result.output
     again = CliRunner().invoke(app, ["poker", "new", "holdem"])
@@ -158,3 +166,29 @@ def test_a_poker_request_in_home_creates_the_poker_specialist_and_others_go_on_a
     assert Project("poker-move").spec().description == "what should I do with KK facing a shove"
     monkeypatch.setattr(routing, "route", lambda prompt, cfg: {"kind": routing.SPECIALIST})
     assert routing.routed("is this email spam", print) == (routing.SPECIALIST, None)
+
+
+HAND = """variant = 'NT'
+ante_trimming_status = true
+antes = [0, 0, 0, 0, 0, 0]
+blinds_or_straddles = [50, 100, 0, 0, 0, 0]
+min_bet = 100
+starting_stacks = [10000, 10000, 10000, 10000, 10000, 10000]
+actions = ['d dh p1 TcQc', 'd dh p2 KsQh', 'd dh p3 9c3d', 'd dh p4 Ah4h', 'd dh p5 Th5s', 'd dh p6 6c7s', \
+'p3 f', 'p4 f', 'p5 cbr 250', 'p6 f', 'p1 f', 'p2 cc', 'd db 4d6sTh', 'p2 cc', 'p5 cbr 300', 'p2 cbr 9750', 'p5 f']
+hand = 3
+players = ['MrBlue', 'Pluribus', 'MrWhite', 'MrPink', 'MrBrown', 'MrOrange']
+finishing_stacks = [9950, 10550, 10000, 10000, 9500, 10000]
+"""
+
+
+def test_each_pluribus_decision_becomes_a_spot_rendered_like_pokerbench():
+    found = list(decisions(HAND))
+    assert [s.label for s in found] == ["call", "check", "allin"]
+    assert found[0].text == (
+        "Preflop, 6-max, 100 big blinds deep. You are BB holding Ks Qh. "
+        "Action: UTG fold, HJ fold, CO raise 2.5bb, BTN fold, SB fold. Pot 4. Moves: fold, call, raise, allin."
+    )
+    assert "You are OOP holding Ks Qh, IP was the last aggressor." in found[1].text
+    assert found[1].text.endswith("Flop 4d 6s Th: no action yet. Pot 5.5. Moves: check, bet, allin.")
+    assert "Flop 4d 6s Th: OOP check, IP bet 3. Pot 8.5. Moves: fold, call, raise, allin." in found[2].text

@@ -20,7 +20,7 @@ HELD_SHARE = 0.05
 TARGET = 0.8
 LATENCY_MS = 100.0
 EPOCHS = 3
-SUITE = "pokerbench"
+SUITES = ("pokerbench", "pluribus")
 POSITIVE = "fold"
 Log = Callable[[str], None]
 
@@ -96,10 +96,12 @@ def create(ws: Path, name: str, description: str, log: Log) -> TaskSpec:
         raise ValueError(f"{name} already exists")
     p.ensure()
     p.save_spec(spec_for(name, description, build_table(ws, name, TRAIN_SPOTS, log)))
-    add(p, BENCHMARKS[SUITE], log)
+    for suite in SUITES:
+        add(p, BENCHMARKS[suite], log)
     spec = p.spec()
     for e in spec.evals:
-        e.primary = e.name == SUITE
+        e.primary = e.name == SUITES[0]
+    spec.selection_suites = list(SUITES)
     p.save_spec(spec)
-    log(f"saved {name}: PokerBench decides promotion")
+    log(f"saved {name}: PokerBench and agreement with Pluribus decide promotion")
     return spec

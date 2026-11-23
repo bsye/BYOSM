@@ -48,7 +48,7 @@ def labelled(offered: list[str]) -> dict[str, str]:
     for k, moves in sized.items():
         if len(moves) > 2:
             raise ValueError(f"{len(moves)} {k} sizes offered in {offered}; the labels hold two")
-        ranked = sorted(moves, key=amount)
+        ranked = sorted(moves, key=amount) if len(moves) > 1 else moves
         out |= {m: f"{k} {SMALL if i == 0 else BIG}" for i, m in enumerate(ranked)}
     return out
 

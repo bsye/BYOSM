@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from functools import partial
 
 from ..spec import TaskSpec
-from . import bfcl, eot, pokerbench, when2call
+from . import bfcl, eot, pluribus, pokerbench, when2call
 from .pairs import PAIRS
 from .protocol import Kind
 
@@ -58,6 +58,13 @@ BENCHMARKS = {
             pokerbench.SPOTS,
             pokerbench.rows,
             "PokerBench 6-max no-limit hold'em: 11k solver-labelled spots, the right move among the ones offered",
+        ),
+        Benchmark(
+            "pluribus",
+            pluribus.REPO,
+            pluribus.DECISIONS_KIND,
+            pluribus.rows,
+            "Pluribus's 15,169 decisions in its 10,000 hands against professionals (Science 2019): the kind of move it made",
         ),
     )
 }
