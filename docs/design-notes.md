@@ -3030,8 +3030,9 @@ alone. Rules compute them instead, and the spot carries one more sentence before
 The [open-source Pluribus rebuild](https://github.com/conorarmstrong/pluribus) (MIT, Rust) is the poker teacher. Its
 blueprints are not published, so we train one here, and its native code never runs on the host.
 
-- **One image, pinned:** `docker/poker-teacher.Dockerfile` compiles the rebuild at one commit on the local
-  `rust:1.99-trixie` image and copies only the binary into `debian:stable-slim`, run as uid 10001.
+- **One image, pinned:** `docker/poker-teacher.Dockerfile` compiles the rebuild at one commit on `rust:1.99-trixie`
+  and copies only the binary into `debian:stable-slim`, run as uid 10001. Both base images are pinned by digest, so a
+  rebuild months from now starts from the same bytes.
 - **Sealed at run time** (`games/poker/teacher.py`): no network, read-only root, a 1 GB `/tmp`, every capability
   dropped, no privilege gain, 16 CPUs and 28 GB. It sees only `.byosm/poker-teacher/` (read-write) and Pluribus's hands
   (read-only); a probe confirmed writes to the hands and to `/etc` fail.
