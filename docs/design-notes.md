@@ -3040,9 +3040,14 @@ blueprints are not published, so we train one here, and its native code never ru
 - **`byosm poker teacher-benchmark`** runs the rebuild's own replay of Pluribus's hands, to reproduce its 66.8% before
   its labels are trusted.
 - **First blueprint, measured** (200M iterations, 12 card buckets, Pluribus menu, 98,342,057 infosets, inside the
-  28 GB cap): it agrees with Pluribus's exact action on 69.8% of the 15,169 decisions (99.6% covered; preflop 73.4%,
-  flop 63.5%, turn 61.4%, river 59.9%), above the rebuild's published 66.8%. The replay matched the finishing stacks of
+  28 GB cap): it agrees with Pluribus's exact action on 69.8% of the 15,107 decisions it covers (69.5% of all 15,169;
+  per covered decision: preflop 73.4%, flop 63.5%, turn 61.4%, river 59.9%), above the rebuild's published 66.8%. The replay matched the finishing stacks of
   all 9,992 complete hands. This is the bar the distilled student is measured against; it never saw Pluribus's hands.
+- **The label patch** (`docker/poker-teacher-label.patch`, applied at the pinned commit before `cargo test` and
+  `cargo build`): `benchmark --out FILE` reuses the benchmark's own replay and writes one JSON line per Pluribus
+  decision with the hand, its order in the hand, the abstract actions offered, the blueprint's probabilities and the
+  action taken. Recomputing agreement from the file gives 10,547 of 15,107 covered, the benchmark's 69.8% exactly.
+  The image tag carries a hash of the Dockerfile and the patch, so a changed patch builds a new image.
 
 ## Games share one contract
 

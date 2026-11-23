@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -9,8 +10,10 @@ from ...deploy import DOCKER_DIR, build_image, docker, docker_cli
 
 REPO = "https://github.com/conorarmstrong/pluribus.git"
 COMMIT = "757f7692738069522195d2b486eec60a8b010c0c"
-IMAGE = f"byosm-poker-teacher:{COMMIT[:8]}"
 DOCKERFILE = DOCKER_DIR / "poker-teacher.Dockerfile"
+PATCH = DOCKER_DIR / "poker-teacher-label.patch"
+RECIPE = hashlib.sha256(DOCKERFILE.read_bytes() + PATCH.read_bytes()).hexdigest()[:8]
+IMAGE = f"byosm-poker-teacher:{COMMIT[:8]}-{RECIPE}"
 FOLDER = "poker-teacher"
 CPUS = "16"
 MEMORY = "28g"
@@ -72,5 +75,10 @@ def train(ws: Path, hands: Path, iters: int, log: Log) -> Path:
     return work_dir(ws) / out
 
 
+def labels_file(iters: int) -> str:
+    return f"labels-{iters}.jsonl"
+
+
 def benchmark(ws: Path, hands: Path, iters: int, log: Log) -> list[str]:
-    return run(ws, hands, ["benchmark", "--blueprint", blueprint(iters), "--dir", HANDS], log)
+    out = ["--out", labels_file(iters)]
+    return run(ws, hands, ["benchmark", "--blueprint", blueprint(iters), "--dir", HANDS, *out], log)

@@ -1,0 +1,109 @@
+diff --git a/src/benchmark.rs b/src/benchmark.rs
+index 2ed6303..992ac03 100644
+--- a/src/benchmark.rs
++++ b/src/benchmark.rs
+@@ -75,9 +75,12 @@ pub fn parse_phh(text: &str) -> Option<PhhHand> {
+ }
+ 
+ /// One recorded Pluribus decision.
+-#[derive(Debug, Clone, Copy)]
++#[derive(Debug, Clone)]
+ pub struct Decision {
+     pub street: Street,
++    pub actions: Vec<String>,
++    pub probs: Option<Vec<f32>>,
++    pub taken: Option<usize>,
+     /// Probability our blueprint puts on Pluribus's (mapped) action, if the
+     /// infoset was trained.
+     pub prob: Option<f64>,
+@@ -265,6 +268,11 @@ pub fn replay_hand(
+             };
+             decisions.push(Decision {
+                 street: table.real.street(),
++                actions: acts.iter().map(|a| format!("{a:?}")).collect(),
++                probs: strat
++                    .filter(|s| s.len() == acts.len())
++                    .map(|s| s.iter().map(|&x| x as f32).collect()),
++                taken: idx,
+                 prob,
+                 top1,
+             });
+@@ -344,6 +352,47 @@ pub fn run(dir: &str, policy: &Policy) -> std::io::Result<BenchReport> {
+     Ok(total)
+ }
+ 
++/// One JSON line per recorded decision: the hand, the decision's order in it,
++/// the abstract actions offered, the blueprint's probabilities and the action taken.
++pub fn labels(dir: &str, policy: &Policy) -> std::io::Result<Vec<String>> {
++    let mut files = Vec::new();
++    collect_phh_files(std::path::Path::new(dir), &mut files)?;
++    files.sort();
++    let lines: Vec<Vec<String>> = files
++        .par_iter()
++        .enumerate()
++        .map(|(i, path)| {
++            let hand = format!(
++                "{}/{}",
++                path.parent().and_then(|p| p.file_name()).and_then(|n| n.to_str()).unwrap_or(""),
++                path.file_stem().and_then(|n| n.to_str()).unwrap_or("")
++            );
++            let Some(phh) = std::fs::read_to_string(path).ok().and_then(|t| parse_phh(&t)) else {
++                return Vec::new();
++            };
++            let Ok((decisions, _)) = replay_hand(&phh, policy, 0xBEEF ^ i as u64) else {
++                return Vec::new();
++            };
++            decisions
++                .iter()
++                .enumerate()
++                .map(|(k, d)| {
++                    serde_json::json!({
++                        "hand": hand,
++                        "index": k,
++                        "street": format!("{:?}", d.street),
++                        "actions": d.actions,
++                        "probs": d.probs,
++                        "taken": d.taken,
++                    })
++                    .to_string()
++                })
++                .collect()
++        })
++        .collect();
++    Ok(lines.into_iter().flatten().collect())
++}
++
+ fn collect_phh_files(
+     dir: &std::path::Path,
+     out: &mut Vec<std::path::PathBuf>,
+diff --git a/src/main.rs b/src/main.rs
+index 3c163ca..6f167e7 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -498,6 +498,9 @@ enum Cmd {
+         /// Directory of .phh files (searched recursively).
+         #[arg(long, default_value = "data/pluribus")]
+         dir: String,
++        /// Also write every decision's abstract actions and blueprint probabilities here, as JSON lines.
++        #[arg(long)]
++        out: Option<String>,
+     },
+ }
+ 
+@@ -1301,8 +1304,15 @@ fn main() {
+             }
+         }
+ 
+-        Cmd::Benchmark { blueprint, dir } => {
++        Cmd::Benchmark { blueprint, dir, out } => {
+             let policy = load_policy(&blueprint);
++            if let Some(path) = out {
++                let lines = benchmark::labels(&dir, &policy)
++                    .unwrap_or_else(|e| die(&format!("labelling failed: {e}")));
++                std::fs::write(&path, lines.join("\n") + "\n")
++                    .unwrap_or_else(|e| die(&format!("cannot write {path}: {e}")));
++                println!("wrote {} labelled decisions to {path}", lines.len());
++            }
+             println!("replaying Pluribus hands from {dir}...");
+             let started = std::time::Instant::now();
+             let r = benchmark::run(&dir, &policy)
