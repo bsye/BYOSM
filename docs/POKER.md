@@ -59,6 +59,15 @@ qwen3.8 locally) is scored by our code on the same 11k spots; the published rows
 | 2 | Card-maths features in the rendered spot | the feature run beats the plain run on calib in the four-seed vote |
 | 3 | Pluribus agreement suite from the PHH files | GIVEN the 10k hands WHEN scored THEN the board shows AA agreement per street with a CI |
 | 4 | Human hands as unlabeled pretraining | a LeJEPA run on them beats no pretraining on calib, or is dropped |
+| 5 | Half of Pluribus's hands in training, exact-copy dedupe only | done: the suite scores only hands the model never saw |
+| 6 | A solver teacher: train the [open-source Pluribus rebuild](https://github.com/conorarmstrong/pluribus) (MIT, Rust) blueprint here, label millions of 6-max spots with its move probabilities, distill them | GIVEN its blueprint WHEN it labels spots THEN its own Pluribus agreement reproduces near 66.8%, and the distilled student beats the PokerBench-only student on the Pluribus suite |
+| 7 | Soft labels: train on a move distribution, not one move | a student trained on teacher probabilities beats one trained on the teacher's top move, on calib |
+| 8 | A structured model: cards, seats and amounts as numbers instead of text | it beats the text model on the Pluribus suite, or is dropped |
+| 9 | Strength by play: mbb/hand against the rebuild's blueprint and simple bots, with AIVAT-style variance reduction | GIVEN 10k paired hands WHEN played THEN the board shows mbb/hand with a 95% CI |
+
+The rebuild's trained blueprints are never published (commercial licence), so phase 6 trains one here: 200M
+iterations take about an hour on 16 cores and the 400M one needed 16 GB. Agreement with Pluribus is a proxy; phase 9
+is the measure of strength.
 
 ## Edge cases
 
