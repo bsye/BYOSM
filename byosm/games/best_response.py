@@ -17,37 +17,48 @@ def moves(policy: Policy, state: State) -> list[tuple[int, float]]:
 
 
 def value(state: State, policy: Policy) -> list[float]:
-    if state.current_player() == TERMINAL:
-        return state.returns()
-    total: list[float] = []
-    for action, pr in moves(policy, state):
-        if pr:
-            got = value(state.apply_action(action), policy)
-            total = [t + pr * g for t, g in zip(total, got, strict=True)] if total else [pr * g for g in got]
-    return total
+    memo: dict[State, list[float]] = {}
+
+    def worth(at: State) -> list[float]:
+        if at not in memo:
+            if at.current_player() == TERMINAL:
+                memo[at] = at.returns()
+            else:
+                parts = [[pr * g for g in worth(at.apply_action(a))] for a, pr in moves(policy, at) if pr]
+                memo[at] = [sum(column) for column in zip(*parts, strict=True)]
+        return memo[at]
+
+    return worth(state)
 
 
-def _collect(state: State, player: int, policy: Policy, reach: float, depth: int, out: dict, deep: dict) -> None:
-    p = state.current_player()
-    if p == TERMINAL:
-        return
-    if p == player:
-        key = state.information_state_key(player)
-        out[key].append((state, reach))
-        deep[key] = max(deep.get(key, 0), depth)
-        for action in state.legal_actions():
-            _collect(state.apply_action(action), player, policy, reach, depth + 1, out, deep)
-        return
-    for action, pr in moves(policy, state):
-        if pr:
-            _collect(state.apply_action(action), player, policy, reach * pr, depth + 1, out, deep)
+def _collect(root: State, player: int, policy: Policy) -> tuple[dict, dict]:
+    found: dict[str, list[tuple[State, float]]] = defaultdict(list)
+    deep: dict[str, int] = {}
+    frontier: dict[State, float] = {root: 1.0}
+    depth = 0
+    while frontier:
+        following: dict[State, float] = defaultdict(float)
+        for state, reach in frontier.items():
+            p = state.current_player()
+            if p == TERMINAL:
+                continue
+            if p == player:
+                key = state.information_state_key(player)
+                found[key].append((state, reach))
+                deep[key] = depth
+                for action in state.legal_actions():
+                    following[state.apply_action(action)] += reach
+            else:
+                for action, pr in moves(policy, state):
+                    if pr:
+                        following[state.apply_action(action)] += reach * pr
+        frontier, depth = following, depth + 1
+    return found, deep
 
 
 def best_response(game: Game, policy: Policy, player: int) -> tuple[float, dict[str, int]]:
     root = game.new_initial_state()
-    found: dict[str, list[tuple[State, float]]] = defaultdict(list)
-    deep: dict[str, int] = {}
-    _collect(root, player, policy, 1.0, 0, found, deep)
+    found, deep = _collect(root, player, policy)
     chosen: dict[str, int] = {}
     memo: dict[State, float] = {}
 

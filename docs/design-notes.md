@@ -3066,3 +3066,8 @@ The plan is [docs/GAMES.md](GAMES.md). Every game implements one small contract 
 - **CFR+ buffers its regret updates for a whole pass.** An infoset is reached from many states in one traversal (a
   different opponent card each time); writing the floored regret at every visit lost all but the last visit's update,
   and Leduc stalled at 0.092 after 200 iterations instead of 0.0083.
+- **Tic-tac-toe proves the contract holds for perfect information:** its information key is the whole board, and
+  `minimax.solve` (memoised on immutable states, ties split evenly) is the exact teacher: value 0, exploitability 0,
+  against 0.96 for random play.
+- **Best response walks the tree one level at a time,** merging states reached by different move orders, so
+  tic-tac-toe's 550k-node tree collapses to its 5,478 positions: uniform exploitability takes 0.14 s instead of 3 s.

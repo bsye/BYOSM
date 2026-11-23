@@ -57,6 +57,29 @@ def test_leduc_raises_twice_per_round_at_most_and_folds_only_facing_a_raise():
     assert called.current_player() == -1 and len(called.apply_action(4).rounds) == 2
 
 
+def test_minimax_draws_tic_tac_toe_and_its_policy_cannot_be_exploited_while_random_play_can():
+    from byosm.games.minimax import solve
+
+    game = registry.get("tic-tac-toe")
+    worth, policy = solve(game)
+    assert worth == 0 and value(game.new_initial_state(), policy) == [0, 0]
+    assert exploitability(game, policy) == 0
+    assert exploitability(game, {}) > 0.9
+
+
+def test_tic_tac_toe_ends_on_a_line_or_a_full_board():
+    from byosm.games.tic_tac_toe import TicTacToeState
+
+    state = TicTacToeState()
+    for cell in (0, 3, 1, 4, 2):
+        state = state.apply_action(cell)
+    assert state.current_player() == TERMINAL and state.returns() == [1.0, -1.0]
+    draw = TicTacToeState()
+    for cell in (4, 0, 8, 2, 1, 7, 6, 3, 5):
+        draw = draw.apply_action(cell)
+    assert draw.current_player() == TERMINAL and draw.returns() == [0.0, 0.0]
+
+
 @dataclass(frozen=True)
 class Throws:
     picks: tuple[int, ...] = ()
