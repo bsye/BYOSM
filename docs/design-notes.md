@@ -2990,3 +2990,21 @@ holds 1.9 GB.
   menu 66.8% of the time (75.6% preflop). Ours ignores size, so it is the easier score of the two, and the row says so.
 - **A hand stays in one split** (calib or test by a hash of the hand), and promotion decides on the mean of the
   PokerBench and Pluribus calib scores.
+
+## A spot states its card facts
+
+A 100M-parameter encoder reading `Ks Qh` and `4d 6s Th` has to learn hand ranking, draws and pot odds from labels
+alone. Rules compute them instead, and the spot carries one more sentence before the moves:
+`Facts: high card; 45% equity against 1 random hand; 3 to call, pot odds 26%.`
+
+- **Made hand and draws** come from [eval7](https://pypi.org/project/eval7/) (MIT, C hand evaluator, the `poker`
+  extra). On the river a hand that only plays the board says so. Draws are a flush draw (four of a suit using a hole
+  card) and an open-ended straight draw or gutshot (how many missing ranks complete a straight).
+- **Equity is against as many random hands as players are still in,** 600 simulated runouts seeded by the cards, so
+  a spot always reads the same. It takes about 4 ms a spot.
+- **Players still in and the amount to call** are replayed from the action line. PokerBench leaves out players who
+  folded before the hero acted, so a seat not named counts as folded once the hero has acted or when it sits before
+  the hero, and as still to act when it sits after.
+- **Facts are a new specialist, not a switch.** `poker-move` was built from the plain text and stays the baseline;
+  `poker-facts` is the same recipe with facts, scored on the same 11k PokerBench spots and 15,169 Pluribus decisions,
+  so the two boards compare directly.

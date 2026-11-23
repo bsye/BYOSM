@@ -39,6 +39,7 @@ app = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart"]
 dev = ["pytest", "ruff", "httpx", "fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart"]
 postgres = ["psycopg[binary]>=3.2"]
 silero = ["livekit-plugins-silero"]
+poker = ["eval7>=0.1.11"]
 live = ["livekit>=1.1", "livekit-api>=1.2", "livekit-plugins-silero", "livekit-plugins-turn-detector"]
 
 [project.scripts]

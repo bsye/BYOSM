@@ -10,6 +10,7 @@ from byosm.benchmarks import pluribus, pokerbench
 from byosm.benchmarks.catalog import fitting
 from byosm.cli import app
 from byosm.games.poker import create as creating
+from byosm.games.poker import facts, lines
 from byosm.games.poker.moves import LABELS, label_of, labelled
 from byosm.games.poker.pluribus import decisions
 from byosm.games.poker.spots import postflop_spot, preflop_spot
@@ -187,8 +188,34 @@ def test_each_pluribus_decision_becomes_a_spot_rendered_like_pokerbench():
     assert [s.label for s in found] == ["call", "check", "allin"]
     assert found[0].text == (
         "Preflop, 6-max, 100 big blinds deep. You are BB holding Ks Qh. "
-        "Action: UTG fold, HJ fold, CO raise 2.5bb, BTN fold, SB fold. Pot 4. Moves: fold, call, raise, allin."
+        "Action: UTG fold, HJ fold, CO raise 2.5bb, BTN fold, SB fold. Pot 4. Facts: KQ offsuit; 60% equity against 1 "
+        "random hand; 1.5 to call, pot odds 27%. Moves: fold, call, raise, allin."
     )
     assert "You are OOP holding Ks Qh, IP was the last aggressor." in found[1].text
-    assert found[1].text.endswith("Flop 4d 6s Th: no action yet. Pot 5.5. Moves: check, bet, allin.")
-    assert "Flop 4d 6s Th: OOP check, IP bet 3. Pot 8.5. Moves: fold, call, raise, allin." in found[2].text
+    assert found[1].text.endswith(
+        "Flop 4d 6s Th: no action yet. Pot 5.5. Facts: high card; 45% equity against 1 random hand. Moves: check, bet, allin."
+    )
+    assert (
+        "Flop 4d 6s Th: OOP check, IP bet 3. Pot 8.5." in found[2].text and "3 to call, pot odds 26%" in found[2].text
+    )
+
+
+def test_the_amount_to_call_and_the_players_still_in_follow_the_action():
+    assert lines.preflop_state("", "UTG") == (1.0, 5)
+    assert lines.preflop_state("UTG/fold/HJ/2.5bb", "BTN") == (2.5, 3)
+    assert lines.preflop_state("HJ/2.0bb/CO/6.5bb/SB/allin", "HJ") == (98.0, 2)
+    assert lines.postflop_state("HJ/2.0bb/BB/call", "OOP_CHECK/IP_BET_5/OOP_RAISE_14", "IP") == (9.0, 1)
+    multiway = lines.postflop_state("UTG/2.0bb/HJ/call/CO/call/BTN/fold/SB/fold/BB/fold", "UTG_BET_3/HJ_FOLD", "CO")
+    assert multiway == (3.0, 1)
+
+
+def test_facts_name_the_hand_its_draws_its_equity_and_the_price_to_call():
+    assert facts.preflop_class(["7s", "As"]) == "A7 suited" and facts.preflop_class(["Kd", "Kc"]) == "pocket KK"
+    assert facts.draws(["Ah", "Kh"], ["Qh", "7h", "2c"]) == ["flush draw"]
+    assert facts.draws(["9c", "8d"], ["7h", "6s", "2c"]) == ["open-ended straight draw"]
+    assert facts.draws(["9c", "8d"], ["Jh", "7s", "2c"]) == ["gutshot"]
+    assert facts.made(["2d", "3c"], ["Ah", "Ad", "Ks", "Kc", "Qh"]) == "only the board's two pair"
+    said = facts.sentence(["Kd", "Kc"], [], 1, 87.0, 117.0)
+    assert said == facts.sentence(["Kd", "Kc"], [], 1, 87.0, 117.0)
+    assert said.startswith("Facts: pocket KK; 8") and said.endswith("87 to call, pot odds 43%.")
+    assert "to call" not in facts.sentence(["Kd", "Kc"], ["2c", "7d", "9h"], 2, 0.0, 10.0)
