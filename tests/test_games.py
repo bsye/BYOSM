@@ -103,6 +103,19 @@ def test_a_student_distilled_on_soft_moves_stays_near_its_teacher_and_one_on_top
     assert exploitability(leduc, student) < min(0.1, exploitability(leduc, copied) / 10)
 
 
+def test_dagger_rounds_add_the_states_the_student_reaches_and_repeat_with_their_seed():
+    from byosm.games.dagger import run
+
+    kuhn = registry.get("kuhn")
+    teacher = CFRPlus(kuhn).run(200)
+    rounds = run(kuhn, teacher, 3, 20, 5, lambda _: None)
+    assert [r.number for r in rounds] == [0, 1, 2]
+    assert (
+        all(a.decisions <= b.decisions for a, b in zip(rounds, rounds[1:], strict=False)) and rounds[-1].decisions <= 12
+    )
+    assert rounds == run(kuhn, teacher, 3, 20, 5, lambda _: None)
+
+
 @dataclass(frozen=True)
 class Throws:
     picks: tuple[int, ...] = ()

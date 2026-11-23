@@ -37,15 +37,17 @@ def reached(game: Game, policy: Policy) -> dict[str, tuple[State, int, float]]:
     return found
 
 
+def row(game: Game, teacher: Policy, state: State, player: int, weight: float, hard: bool = False) -> Decision:
+    legal = state.legal_actions()
+    given = probs(teacher, state, player)
+    best = max(range(len(legal)), key=lambda i: given[i])
+    chosen = [float(i == best) for i in range(len(legal))] if hard else given
+    soft = [0.0] * len(game.actions)
+    for a, pr in zip(legal, chosen, strict=True):
+        soft[a] = pr
+    key = state.information_state_key(player)
+    return Decision(key, game.encoder(state, player), legal, soft, max(weight, FLOOR_WEIGHT))
+
+
 def label(game: Game, teacher: Policy, hard: bool = False) -> list[Decision]:
-    out = []
-    for key, (state, p, reach) in reached(game, teacher).items():
-        legal = state.legal_actions()
-        given = probs(teacher, state, p)
-        best = max(range(len(legal)), key=lambda i: given[i])
-        chosen = [float(i == best) for i in range(len(legal))] if hard else given
-        soft = [0.0] * len(game.actions)
-        for a, pr in zip(legal, chosen, strict=True):
-            soft[a] = pr
-        out.append(Decision(key, game.encoder(state, p), legal, soft, max(reach, FLOOR_WEIGHT)))
-    return out
+    return [row(game, teacher, state, p, reach, hard) for state, p, reach in reached(game, teacher).values()]

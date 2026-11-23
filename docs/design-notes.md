@@ -3081,3 +3081,9 @@ The plan is [docs/GAMES.md](GAMES.md). Every game implements one small contract 
   MLP with a cross-entropy on those probabilities, illegal slots masked to minus infinity. Measured on Leduc against
   a CFR+ teacher at 0.0083: the soft student reaches 0.038, the student trained on the teacher's top move 1.645,
   random play 2.374. Copying the single best move throws away the mixing that makes poker hard to exploit.
+- **DAgger rounds** (`dagger.run`): round 0 labels the states teacher self-play reaches; each later round lets the
+  student act with probability 1 - 0.5^k, labels every state reached with the teacher's probabilities, adds them to
+  the pool (visit counts add up) and retrains. Measured on Leduc with sampled hands only, against the same budget of
+  teacher-only hands (600): DAgger 1.036, 1.166, 2.172 against 1.592, 1.532, 1.481 over seeds 0 to 2. No consistent
+  gain at this budget: the student is exploited mostly where nothing was labelled, so coverage matters more than who
+  chose the moves. It stays as the mechanism for poker, where the label verb makes every state labelable.
