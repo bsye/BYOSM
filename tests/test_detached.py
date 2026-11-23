@@ -37,6 +37,7 @@ def test_a_job_runs_from_a_frozen_copy_of_the_code_so_later_edits_cannot_reach_i
 
     code = frozen()
     assert frozen() == code and (code / "byosm" / "__init__.py").exists()
+    assert (code / "docker" / "poker-teacher.Dockerfile").exists()
     found = subprocess.run(
         [sys.executable, "-P", "-c", "import byosm; print(byosm.__file__)"],
         env={"PYTHONPATH": str(code)},
