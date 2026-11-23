@@ -3059,4 +3059,10 @@ The plan is [docs/GAMES.md](GAMES.md). Every game implements one small contract 
   refuses a game that is not enumerable and zero-sum.
 - **Checks we can derive ourselves, no external constants:** Kuhn's closed-form equilibria (alpha 0, 0.2, 1/3) have
   exploitability 0 and value -1/18; uniform play is exploitable by 0.458333, the figure OpenSpiel reports for Kuhn;
-  CFR+ on Kuhn reaches under 0.005 in 2,000 iterations.
+  CFR+ on Kuhn reaches under 0.001 in 2,000 iterations.
+- **Leduc poker** (`games/leduc`: six cards, rounds of 2 and 4 chips, two raises a round, one board card): uniform play
+  is exploitable by 2.3736, the figure [BluffJAX](https://arxiv.org/abs/2610.07686) reports as matching OpenSpiel and
+  Kawamura et al. 2017. CFR+ reaches 0.0083 in 200 iterations (3.5 s) and a first-player value of -0.0854.
+- **CFR+ buffers its regret updates for a whole pass.** An infoset is reached from many states in one traversal (a
+  different opponent card each time); writing the floored regret at every visit lost all but the last visit's update,
+  and Leduc stalled at 0.092 after 200 iterations instead of 0.0083.

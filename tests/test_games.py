@@ -34,8 +34,27 @@ def test_cfr_plus_converges_on_kuhn_and_uniform_play_is_exploitable_by_its_publi
     solver = CFRPlus(kuhn)
     early = exploitability(kuhn, solver.run(50))
     policy = solver.run(1950)
-    assert exploitability(kuhn, policy) < min(early, 0.005)
+    assert exploitability(kuhn, policy) < min(early, 0.001)
     assert value(kuhn.new_initial_state(), policy)[0] == pytest.approx(KUHN_VALUE, abs=1e-3)
+
+
+def test_leduc_uniform_play_matches_its_published_exploitability_and_cfr_plus_closes_it():
+    leduc = registry.get("leduc")
+    assert exploitability(leduc, {}) == pytest.approx(2.373611, abs=1e-6)
+    solver = CFRPlus(leduc)
+    early = exploitability(leduc, solver.run(10))
+    assert exploitability(leduc, solver.run(90)) < min(early / 10, 0.03)
+
+
+def test_leduc_raises_twice_per_round_at_most_and_folds_only_facing_a_raise():
+    from byosm.games.leduc import CALL, FOLD, RAISE, LeducState
+
+    state = LeducState(cards=(0, 2))
+    assert state.legal_actions() == [CALL, RAISE]
+    twice = state.apply_action(RAISE).apply_action(RAISE)
+    assert twice.legal_actions() == [FOLD, CALL]
+    called = twice.apply_action(CALL)
+    assert called.current_player() == -1 and len(called.apply_action(4).rounds) == 2
 
 
 @dataclass(frozen=True)
