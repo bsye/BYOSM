@@ -3071,3 +3071,7 @@ The plan is [docs/GAMES.md](GAMES.md). Every game implements one small contract 
   against 0.96 for random play.
 - **Best response walks the tree one level at a time,** merging states reached by different move orders, so
   tic-tac-toe's 550k-node tree collapses to its 5,478 positions: uniform exploitability takes 0.14 s instead of 3 s.
+- **Sampled CFR for games too big to enumerate:** `mccfr.ExternalSampling` samples chance and the opponent and
+  explores every action of the traverser, seeded so a run repeats exactly. The average strategy is a plain sum at the
+  opponent's nodes: weighting by iteration, right for exact CFR+, left Leduc at 0.222 after 30k iterations, against
+  0.092 unweighted.

@@ -80,6 +80,15 @@ def test_tic_tac_toe_ends_on_a_line_or_a_full_board():
     assert draw.current_player() == TERMINAL and draw.returns() == [0.0, 0.0]
 
 
+def test_sampled_cfr_closes_most_of_leduc_and_repeats_exactly_with_its_seed():
+    from byosm.games.mccfr import ExternalSampling
+
+    leduc = registry.get("leduc")
+    policy = ExternalSampling(leduc, seed=3).run(5000)
+    assert policy == ExternalSampling(leduc, seed=3).run(5000)
+    assert exploitability(leduc, policy) < exploitability(leduc, {}) / 5
+
+
 @dataclass(frozen=True)
 class Throws:
     picks: tuple[int, ...] = ()
