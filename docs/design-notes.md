@@ -3043,3 +3043,20 @@ blueprints are not published, so we train one here, and its native code never ru
   28 GB cap): it agrees with Pluribus's exact action on 69.8% of the 15,169 decisions (99.6% covered; preflop 73.4%,
   flop 63.5%, turn 61.4%, river 59.9%), above the rebuild's published 66.8%. The replay matched the finishing stacks of
   all 9,992 complete hands. This is the bar the distilled student is measured against; it never saw Pluribus's hands.
+
+## Games share one contract
+
+The plan is [docs/GAMES.md](GAMES.md). Every game implements one small contract (`byosm/games/game.py`), named after
+[OpenSpiel](https://github.com/google-deepmind/open_spiel)'s State API so an adapter can come later: `current_player`
+(with `CHANCE` and `TERMINAL`), `legal_actions`, `chance_outcomes`, `apply_action`, `information_state_key`,
+`returns`. States are immutable, so solvers memoise on them.
+
+- **Games register themselves:** each folder under `byosm/games/` that exports `GAME` is found by
+  `registry.names()`; a game defined anywhere else calls `registry.register`. An unknown name fails loudly.
+- **Generic modules never import a game folder**, pinned by a test that parses their imports.
+- **Exact solvers for small games:** `cfr_exact.CFRPlus` (alternating CFR+, linear averaging) and
+  `best_response` (exact best response per infoset, deepest first, then NashConv and exploitability). Exploitability
+  refuses a game that is not enumerable and zero-sum.
+- **Checks we can derive ourselves, no external constants:** Kuhn's closed-form equilibria (alpha 0, 0.2, 1/3) have
+  exploitability 0 and value -1/18; uniform play is exploitable by 0.458333, the figure OpenSpiel reports for Kuhn;
+  CFR+ on Kuhn reaches under 0.005 in 2,000 iterations.
