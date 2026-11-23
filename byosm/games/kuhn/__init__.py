@@ -47,10 +47,20 @@ class KuhnState:
         return [stake, -stake] if winner == 0 else [-stake, stake]
 
 
+LONGEST = 3
+
+
+def encode(state: KuhnState, player: int) -> list[float]:
+    card = [float(state.cards[player] == c) for c in range(len(CARDS))]
+    moves = [float(i < len(state.history) and state.history[i] == m) for i in range(LONGEST) for m in MOVES]
+    return card + moves
+
+
 GAME = Game(
     name="kuhn",
     players=2,
     actions=["pass", "bet"],
     start=KuhnState,
+    encoder=encode,
     about="Kuhn poker: three cards, one ante, one bet; its equilibrium value is -1/18 for the first player",
 )

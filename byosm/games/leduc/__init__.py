@@ -83,10 +83,22 @@ class LeducState:
         return [won, -won] if folder == 1 else [-won, won]
 
 
+LONGEST = 4
+
+
+def encode(state: LeducState, player: int) -> list[float]:
+    mine = [float(rank(state.cards[player]) == r) for r in range(len(RANKS))]
+    board = [float(len(state.cards) > 2 and rank(state.cards[2]) == r) for r in range(len(RANKS))]
+    rounds = (*state.rounds, "")[: len(RAISE_SIZES)]
+    moves = [float(i < len(m) and m[i] == s) for m in rounds for i in range(LONGEST) for s in SYMBOLS]
+    return mine + board + moves
+
+
 GAME = Game(
     name="leduc",
     players=2,
     actions=["fold", "call", "raise"],
     start=LeducState,
+    encoder=encode,
     about="Leduc poker: six cards, two betting rounds of 2 and 4 chips, one shared card; the classic small poker benchmark",
 )

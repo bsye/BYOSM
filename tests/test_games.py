@@ -89,6 +89,20 @@ def test_sampled_cfr_closes_most_of_leduc_and_repeats_exactly_with_its_seed():
     assert exploitability(leduc, policy) < exploitability(leduc, {}) / 5
 
 
+def test_a_student_distilled_on_soft_moves_stays_near_its_teacher_and_one_on_top_moves_does_not():
+    from byosm.games.decision import label
+    from byosm.games.student import train
+
+    leduc = registry.get("leduc")
+    teacher = CFRPlus(leduc).run(200)
+    soft = label(leduc, teacher)
+    student = train(soft, len(leduc.actions)).policy(soft)
+    assert all(len(student[d.key]) == len(d.legal) and abs(sum(student[d.key]) - 1) < 1e-5 for d in soft)
+    hard = label(leduc, teacher, hard=True)
+    copied = train(hard, len(leduc.actions)).policy(hard)
+    assert exploitability(leduc, student) < min(0.1, exploitability(leduc, copied) / 10)
+
+
 @dataclass(frozen=True)
 class Throws:
     picks: tuple[int, ...] = ()
@@ -115,7 +129,15 @@ class Throws:
 
 
 def test_a_game_registered_from_outside_the_package_is_solved_with_no_other_edit():
-    game = registry.register(Game(name="throws", players=2, actions=["rock", "paper", "scissors"], start=Throws))
+    game = registry.register(
+        Game(
+            name="throws",
+            players=2,
+            actions=["rock", "paper", "scissors"],
+            start=Throws,
+            encoder=lambda s, p: [float(p)],
+        )
+    )
     assert "throws" in registry.names() and registry.get("throws") is game
     assert exploitability(game, CFRPlus(game).run(200)) < 0.05
     assert exploitability(game, {"0": [1, 0, 0], "1": [1, 0, 0]}) == pytest.approx(1.0)

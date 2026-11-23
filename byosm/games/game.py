@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -28,6 +29,7 @@ class Game:
     players: int
     actions: list[str]
     start: type
+    encoder: Callable[[State, int], list[float]]
     zero_sum: bool = True
     enumerable: bool = True
     payoff_unit: str = "chips"

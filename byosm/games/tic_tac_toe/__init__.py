@@ -50,10 +50,15 @@ class TicTacToeState:
         return [1.0, -1.0] if won == 0 else [-1.0, 1.0]
 
 
+def encode(state: TicTacToeState, player: int) -> list[float]:
+    return [float(cell == mark) for cell in state.board for mark in (EMPTY, player, 1 - player)]
+
+
 GAME = Game(
     name="tic-tac-toe",
     players=2,
     actions=[f"cell {i + 1}" for i in range(CELLS)],
     start=TicTacToeState,
+    encoder=encode,
     about="Tic-tac-toe: perfect information, solved exactly by minimax; perfect play draws",
 )

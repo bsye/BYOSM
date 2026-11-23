@@ -3075,3 +3075,9 @@ The plan is [docs/GAMES.md](GAMES.md). Every game implements one small contract 
   explores every action of the traverser, seeded so a run repeats exactly. The average strategy is a plain sum at the
   opponent's nodes: weighting by iteration, right for exact CFR+, left Leduc at 0.222 after 30k iterations, against
   0.092 unweighted.
+- **A student learns a strategy, not a move.** Every game has an `encoder` (what one player sees, as numbers);
+  `decision.label` turns a teacher into one `Decision` per information set (features, legal slots, the teacher's
+  move probabilities, reach weight floored at 0.001 so unreached sets still count), and `student.train` fits a small
+  MLP with a cross-entropy on those probabilities, illegal slots masked to minus infinity. Measured on Leduc against
+  a CFR+ teacher at 0.0083: the soft student reaches 0.038, the student trained on the teacher's top move 1.645,
+  random play 2.374. Copying the single best move throws away the mixing that makes poker hard to exploit.
