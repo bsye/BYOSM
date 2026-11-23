@@ -3039,3 +3039,7 @@ blueprints are not published, so we train one here, and its native code never ru
   one exists. Defaults are the rebuild's: 6 players, 100bb, the Pluribus setup.
 - **`byosm poker teacher-benchmark`** runs the rebuild's own replay of Pluribus's hands, to reproduce its 66.8% before
   its labels are trusted.
+- **First blueprint, measured** (200M iterations, 12 card buckets, Pluribus menu, 98,342,057 infosets, inside the
+  28 GB cap): it agrees with Pluribus's exact action on 69.8% of the 15,169 decisions (99.6% covered; preflop 73.4%,
+  flop 63.5%, turn 61.4%, river 59.9%), above the rebuild's published 66.8%. The replay matched the finishing stacks of
+  all 9,992 complete hands. This is the bar the distilled student is measured against; it never saw Pluribus's hands.
