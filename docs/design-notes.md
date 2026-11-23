@@ -2968,9 +2968,10 @@ from spot to spot (`Bet 24`, `5.0bb`). Plan in [POKER.md](POKER.md).
 - **The protocol check is the always-fold floor:** it must score the fold share of the test split for both accuracy
   and family accuracy. The published GPT-4 and Llama rows were scored on all 11k spots, ours on the 80% test part, and
   the suite says so in each row's name.
-- **Training is balanced by label:** up to 7.5k spots per label, with any spot whose text copies a test spot left out.
-  That gives 48,554 spots: bet big has only 4,374 and raise big 6,680, and allin has none, because PokerBench offers
-  all in but never answers it. Dev and builtin test take 5% each; PokerBench decides promotion.
+- **Training keeps PokerBench's own move mix:** a seeded random 60k of the train spots, with any spot whose game
+  state is a test spot left out. Balancing by label was tried first and taught the model big sizes 10 times more often
+  than the solver plays them (bet big is 0.7% of the test answers and was 8% of training); the train and test mixes
+  already match postflop (25% each fold, call, check). Dev and builtin test take 5% each; PokerBench decides promotion.
 - **Home routes poker requests** through the same router that finds forecasts (`byosm/routing.py`), which creates
   the specialist and hands it to the autopilot.
 

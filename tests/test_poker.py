@@ -140,12 +140,12 @@ def test_pokerbench_fits_only_the_move_labels_and_its_floor_scores_the_label_sha
     }
 
 
-def test_training_spots_are_balanced_by_label_and_never_copy_a_test_spot():
+def test_training_spots_keep_the_natural_move_mix_and_never_copy_a_test_spot():
     other = {**POSTFLOP, "holding": "AhAd", "correct_decision": "Check"}
     pre, post, again = Raw(PREFLOP, True, "call"), Raw(POSTFLOP, False, "bet big"), Raw(other, False, "check")
     copy = Raw({**PREFLOP, "correct_decision": "fold"}, True, "fold")
-    picked = creating.balanced([pre, post, again, again], [copy], len(LABELS))
-    assert pre not in picked and sorted(s.label for s in picked) == ["bet big", "check"]
+    picked = creating.sampled([pre, post, again, again], [copy], len(LABELS))
+    assert pre not in picked and sorted(s.label for s in picked) == ["bet big", "check", "check"]
 
 
 def test_poker_new_builds_the_specialist_with_pokerbench_deciding_promotion(ws, monkeypatch):

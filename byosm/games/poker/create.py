@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from collections import Counter, defaultdict
+from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 
@@ -29,21 +29,10 @@ def table_path(ws: Path, name: str) -> Path:
     return ws / STATE_DIR / FOLDER / f"{name}.csv"
 
 
-def balanced(raws: list[Raw], held: list[Raw], size: int) -> list[Raw]:
+def sampled(raws: list[Raw], held: list[Raw], size: int) -> list[Raw]:
     seen = {r.state for r in held}
-    by_label: dict[str, list[Raw]] = defaultdict(list)
-    for r in raws:
-        if r.state not in seen:
-            by_label[r.label].append(r)
-    rng = random.Random(FOLDER)
-    picked: list[Raw] = []
-    share = size // len(LABELS)
-    for label in LABELS:
-        found = by_label[label]
-        rng.shuffle(found)
-        picked += found[:share]
-    rng.shuffle(picked)
-    return picked
+    eligible = [r for r in raws if r.state not in seen]
+    return random.Random(FOLDER).sample(eligible, min(size, len(eligible)))
 
 
 def split_at(i: int, held: int) -> str:
@@ -51,7 +40,7 @@ def split_at(i: int, held: int) -> str:
 
 
 def build_table(ws: Path, name: str, size: int, log: Log) -> Path:
-    picked = [render(r) for r in balanced(train_raws(), test_raws(), size)] + pluribus.train_spots()
+    picked = [render(r) for r in sampled(train_raws(), test_raws(), size)] + pluribus.train_spots()
     random.Random(FOLDER).shuffle(picked)
     held = int(len(picked) * HELD_SHARE)
     path = table_path(ws, name)
