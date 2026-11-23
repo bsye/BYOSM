@@ -209,24 +209,18 @@ What this plan can honestly claim: one `byosm game <name>` pipeline reaches meas
 - Connect Four and other larger perfect-information games, until tic-tac-toe passes.
 - Single-player sequential tasks.
 
-## Open questions for the owner
+## Decisions
 
-1. **Rust `label` verb (second language).** It is a patch applied in `docker/poker-teacher.Dockerfile` at the pinned commit. Its size is unmeasured; my guess is a few hundred lines. It reuses `Policy::blueprint_dist` / `search_dist` and the `benchmark.rs` replay, and relaxes the hero name and the symmetric-stack rule. Upstream accepts no PRs, so we maintain it. *Recommendation: approve. Without it there are no soft labels on the student's states, so no DAgger for poker.*
-2. **pokerkit as a dependency** (MIT, pure Python, not installed). It becomes the one poker rules engine. *Recommendation: approve, and measure its throughput in phase 5 before the play suites rely on it.*
-3. **OpenSpiel.** The options:
-   - (a) None at all; protocol checks derived by hand.
-   - (b) A one-off sealed oracle image for Leduc constants.
-   - (c) Later, an adapter for any pyspiel game.
+The owner answered the open questions on 2026-11-23.
 
-   *Recommendation: (a) now, (c) after phase 4, once the rule for in-process wheels versus sealed containers is settled.*
-4. **Teacher memory.** Docker has 18 CPUs and 31.35 GiB. The rebuild logged 36-45 GB RSS at 150-210M infosets, and its 200M-iteration run held about 128M infosets. *Recommendation: run the 25M/50M sizing first. If the fitted curve misses 200M iterations, raise the Docker VM memory (host size not verified) rather than settle for a much weaker teacher.*
-5. **Where the poker encoder runs.** rt.py cannot import eval7 or pokerkit. The options:
-   - (a) The bundle takes a precomputed feature vector, and the encoder ships as a separate per-game package.
-   - (b) A pure-numpy encoder inside rt.py, which puts card logic in a generic file.
-   - (c) Features limited to what numpy can compute cheaply, with equity from a lookup table shipped as a bundle file.
-
-   *Recommendation: (c) if its accuracy cost on calib is small, otherwise (a).*
-6. **Server-side search mode.** It needs the engine at play time, unlike every other specialist. *Recommendation: allow it as a separate, clearly labelled row, kept only with a measured paired gain.*
-7. **Promotion metric.** Switch poker's primary from PokerBench exact move to calib play against the blueprint field. *Recommendation: yes.*
-8. **Licence of the distilled student.** It is trained from our own blueprint, built from MIT code. *Recommendation: publish under CC BY-NC 4.0 after a written check in docs/POKER.md. Never use bought blueprints.*
-9. **The existing text specialists (poker-move, poker-facts).** *Recommendation: freeze them as board rows, with data keys pinned by a test.*
+| # | Question | Decision |
+|---|---|---|
+| 1 | Rust `label` verb, patched into the teacher image | Yes |
+| 2 | pokerkit as the one poker rules engine | Yes |
+| 3 | OpenSpiel | No dependency now; an adapter later |
+| 4 | Raise Docker memory if the teacher needs it | Yes |
+| 5 | Encoder in the bundle: numpy features plus an equity lookup table | Yes |
+| 6 | Server-side search mode, its own row, kept only with a measured gain | Yes |
+| 7 | Poker promotes on calib play against the blueprint field | Yes |
+| 8 | Publish the distilled student | No: it stays private, never published |
+| 9 | The text specialists | Removed when not good: `poker-move` and `poker-facts` are archived (hidden, recoverable), since `poker-mix` beats or ties both on every suite |
