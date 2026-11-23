@@ -6,7 +6,6 @@ import pkgutil
 from .game import Game
 
 PACKAGE = "byosm.games"
-ATTRIBUTE = "GAME"
 _GAMES: dict[str, Game] = {}
 
 
@@ -20,9 +19,9 @@ def _discover() -> None:
     for found in pkgutil.iter_modules(package.__path__):
         if found.ispkg:
             module = importlib.import_module(f"{PACKAGE}.{found.name}")
-            game = getattr(module, ATTRIBUTE, None)
-            if isinstance(game, Game):
-                register(game)
+            for value in vars(module).values():
+                if isinstance(value, Game):
+                    register(value)
 
 
 def names() -> list[str]:

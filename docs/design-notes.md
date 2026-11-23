@@ -3080,6 +3080,12 @@ The plan is [docs/GAMES.md](GAMES.md). Every game implements one small contract 
   explores every action of the traverser, seeded so a run repeats exactly. The average strategy is a plain sum at the
   opponent's nodes: weighting by iteration, right for exact CFR+, left Leduc at 0.222 after 30k iterations, against
   0.092 unweighted.
+- **More than two players from the start.** Six players is what made Pluribus hard: with more than two, an
+  equilibrium no longer guarantees you cannot lose, and "exploitability" stops being a promise. `kuhn-3` (four cards,
+  three seats, one implementation with two-player Kuhn) keeps the generic layer honest about that: CFR+ still drives
+  NashConv to 0.00004 there and the middle seat's value lands on the published -1/48
+  ([Szafron et al. 2013](https://webdocs.cs.ualberta.ca/~games/poker/publications/AAMAS13-3pkuhn.pdf)), but strength
+  at a table is measured by play, not by that number. A game folder may export several `Game` values.
 - **A student learns a strategy, not a move.** Every game has an `encoder` (what one player sees, as numbers);
   `decision.label` turns a teacher into one `Decision` per information set (features, legal slots, the teacher's
   move probabilities, reach weight floored at 0.001 so unreached sets still count), and `student.train` fits a small

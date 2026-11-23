@@ -116,6 +116,27 @@ def test_dagger_rounds_add_the_states_the_student_reaches_and_repeat_with_their_
     assert rounds == run(kuhn, teacher, 3, 20, 5, lambda _: None)
 
 
+def test_three_player_kuhn_reaches_an_equilibrium_where_the_middle_seat_loses_one_forty_eighth():
+    from byosm.games.best_response import nash_conv
+
+    table = registry.get("kuhn-3")
+    assert table.players == 3 and nash_conv(table, {}) == pytest.approx(2.0625)
+    policy = CFRPlus(table).run(300)
+    worth = value(table.new_initial_state(), policy)
+    assert nash_conv(table, policy) < 0.001 and sum(worth) == pytest.approx(0, abs=1e-9)
+    assert worth[1] == pytest.approx(-1 / 48, abs=1e-3)
+
+
+def test_three_player_kuhn_pays_the_best_card_among_those_who_put_the_bet_in():
+    from byosm.games.kuhn import KuhnState
+
+    folded = KuhnState(3, (3, 0, 1), "pbpp")
+    assert folded.current_player() == TERMINAL and folded.returns() == [-1.0, 2.0, -1.0]
+    called = KuhnState(3, (3, 0, 1), "pbpb")
+    assert called.returns() == [3.0, -2.0, -1.0]
+    assert KuhnState(3, (0, 2, 1), "ppp").returns() == [-1.0, 2.0, -1.0]
+
+
 @dataclass(frozen=True)
 class Throws:
     picks: tuple[int, ...] = ()
