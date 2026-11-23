@@ -78,7 +78,8 @@ is the measure of strength.
 
 ## Not in scope
 
-MCCFR blueprints, real-time search, playing on real-money sites (their terms ban bots), opponent modelling.
+Playing on real-money sites (their terms ban bots), opponent modelling. The MCCFR teacher and search are now in
+scope: see [GAMES.md](GAMES.md).
 
 ## Open questions
 

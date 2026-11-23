@@ -3051,6 +3051,7 @@ blueprints are not published, so we train one here, and its native code never ru
 - **The table is the measure** (`games/poker/table.py`, `byosm poker teacher-play`): the teacher takes one seat of
   six and the rebuild's own `eval --aivat` reports mbb/hand with a 95% CI, stored as a workspace report per field.
   First blueprint over 200,000 hands: +3,410 ±190 against five callers, +4,603 ±205 against five random players.
+  With search on (100 ms a decision) it wins +12,243 ±2,077 against callers over 20,000 hands, 3.6 times more.
   These are sanity floors, not strength: a student has to be seated against five teacher copies to mean anything.
 - **A student the engine can seat is a strategy over the teacher's own infosets.** The blueprint is a map from
   (card bucket, betting history tokens) to move probabilities, 98,342,057 entries in 4 GB. A student that reads the

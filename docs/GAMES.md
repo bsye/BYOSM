@@ -236,3 +236,37 @@ Winning at a six-player table is what made Pluribus special, so the table comes 
 | 3 | A numeric student trained on the teacher's move probabilities, seated at the same table against five teacher copies | next: needs the student's strategy readable by the engine |
 | 4 | Search during the hand, kept only on a measured gain at the table | after 3 |
 
+## How Pluribus was trained, and what ours lacks
+
+From [the Science paper](https://par.nsf.gov/servlets/purl/10119653) (Brown and Sandholm 2019) and
+[its supplement](https://noambrown.github.io/papers/19-Science-Superhuman_Supp.pdf), read in full on 2026-11-23.
+
+| | Pluribus | Our teacher (first blueprint) |
+|---|---|---|
+| Algorithm | Linear Monte Carlo CFR in self-play at six seats | The same family (the rebuild's MCCFR) |
+| Compute | 8 days on 64 cores: 12,400 core hours (about $144 of cloud time) | 91 minutes on 16 cores: about 24 core hours, 500 times less |
+| Memory | Under 512 GB | Capped at 28 GB |
+| Card abstraction after the flop | 200 buckets a round (preflop lossless, 169 classes) | 12 buckets a round |
+| Bet sizes | 1 to 14 raise sizes by situation, 664,845,654 action sequences | The rebuild's coarse "Pluribus" menu |
+| Linear weighting | Discount every 10 minutes, stopped after 400 minutes | Never stopped (`--linear-cap` unset) |
+| Pruning | After 200 minutes, 95% of iterations skip actions with regret under -300,000,000 (floor -310,000,000) | The same threshold |
+| Stored strategy | Preflop: the average strategy. Later rounds: the mean of snapshots taken every 200 minutes after minute 800 | The average strategy everywhere (`--snapshot-avg` off) |
+| At the table | The blueprint only in the first betting round; real-time search everywhere else | The blueprint everywhere; search is an option |
+| Search | Depth-limited: at a leaf each player picks one of 4 continuations (blueprint, or biased to fold, call or raise); lossless cards on the current round, 500 buckets later; a strategy for every hand it could hold | The rebuild has it (`eval --search`); not yet part of what we train or seat |
+| Hardware at the table | 28 cores, under 128 GB, about 20 s a hand | 100 ms a decision in our first run |
+| Proof | 48 mbb/game (SE 25) over 10,000 hands against five professionals; 32 mbb/game (SE 15) as five copies against one professional, with AIVAT | +3,410 ±190 against callers, +4,603 ±205 against random, +12,243 ±2,077 against callers with search (20,000 hands) |
+
+The paper is plain that the blueprint alone is weak: "the blueprint strategy is necessarily coarse-grained", and
+search is what made it superhuman. Its average strategy has no guarantee at six seats either; it was judged by play.
+
+What this changes for us, in order of expected gain:
+
+1. **Search is the main ingredient, not an extra.** A student copied from the blueprint can at best equal a coarse
+   blueprint. The teacher worth copying is the blueprint with search on.
+2. **A finer teacher.** 12 card buckets against 200 is the largest gap in the blueprint itself; memory decides how
+   far we can go, so sizing runs come first.
+3. **Train longer and store it the way Pluribus did:** resume from the checkpoint, stop linear weighting, average
+   snapshots after the flop.
+4. **Every teacher is judged at the table** against the previous one (`crossplay`, six seats, CI), never by
+   agreement alone.
+
