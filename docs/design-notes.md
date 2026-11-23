@@ -2948,3 +2948,25 @@ index (topic's summary went from about 0.5 s to 0.011 s, health plus next steps 
 - **Sizes alone are counted, not labelled.** The Datasets page and the training log show only how many rows each
   split has, so they call `Dataset.sizes`, one count per split on the lookup index, instead of tallying every label
   (the Datasets list went from 0.21 s to 0.09 s with the same output).
+
+## A poker move is labelled by its rank among the offered moves
+
+[PokerBench](https://huggingface.co/datasets/RZ412/PokerBench) offers 2 to 4 moves per spot, with sizes that differ
+from spot to spot (`Bet 24`, `5.0bb`). Plan in [POKER.md](POKER.md).
+
+- **Eight labels, one per move the offer can hold:** fold, check, call, allin, and a small and a big size for bet and
+  for raise. Across all 574k PokerBench spots no kind ever offers more than two sizes, so the mapping from label to
+  offered move is one to one and label accuracy is PokerBench's exact match. A third size fails the import loudly.
+- **A label can name a family,** and `family_accuracy` counts a move of the right kind at the wrong size as right:
+  PokerBench's action accuracy. Every label names one or none does. Labels are hashed without empty fields, so the
+  new field leaves every existing data key unchanged (checked on all specialists before and after).
+- **The spot is rendered from the structured CSV,** not the JSON prompt: one sentence per street with spaced cards
+  (`Ks 7h 2d`), 43 to 57 words, against about 150 in the prompt.
+- **The protocol check is the always-fold floor:** it must score the fold share of the test split for both accuracy
+  and family accuracy. The published GPT-4 and Llama rows were scored on all 11k spots, ours on the 80% test part, and
+  the suite says so in each row's name.
+- **Training is balanced by label:** up to 7.5k spots per label, with any spot whose text copies a test spot left out.
+  That gives 48,554 spots: bet big has only 4,374 and raise big 6,680, and allin has none, because PokerBench offers
+  all in but never answers it. Dev and builtin test take 5% each; PokerBench decides promotion.
+- **Home routes poker requests** through the same router that finds forecasts (`byosm/routing.py`), which creates
+  the specialist and hands it to the autopilot.

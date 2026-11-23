@@ -76,6 +76,15 @@ class TaskSpec(BaseModel):
         return [label.name for label in self.labels]
 
     @property
+    def label_families(self) -> list[str] | None:
+        found = [label.family for label in self.labels]
+        if not any(found):
+            return None
+        if None in found:
+            raise ValueError(f"{self.name}: either every label names a family or none does")
+        return [str(f) for f in found]
+
+    @property
     def label_index(self) -> dict[str, int]:
         return {name: i for i, name in enumerate(self.label_names)}
 
@@ -83,6 +92,9 @@ class TaskSpec(BaseModel):
     def pos_index(self) -> int:
         names = self.label_names
         return names.index(self.positive_label) if self.positive_label in names else len(self.labels) - 1
+
+    def labels_dump(self) -> list[dict]:
+        return [label.model_dump(mode="json", exclude_none=True) for label in self.labels]
 
     def data_key(self) -> str:
         dump = self.model_dump(mode="json")
@@ -95,14 +107,14 @@ class TaskSpec(BaseModel):
             "desc": "",
         }
         if self.data.labelled_by_llm:
-            blob["l"] = dump["labels"]
+            blob["l"] = self.labels_dump()
         if self.data.synthetic:
             blob |= {"desc": self.description, **{k: dump[k] for k in SYNTH_FIELDS}}
         return hashlib.sha1(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:10]
 
     def synth_key(self) -> str:
         dump = self.model_dump(mode="json")
-        blob = {"m": self.modality, "t": self.task_type, "l": dump["labels"], "desc": self.description}
+        blob = {"m": self.modality, "t": self.task_type, "l": self.labels_dump(), "desc": self.description}
         return hashlib.sha1(json.dumps(blob | {k: dump[k] for k in SYNTH_FIELDS}, sort_keys=True).encode()).hexdigest()[
             :10
         ]

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from functools import partial
 
 from ..spec import TaskSpec
-from . import bfcl, eot, when2call
+from . import bfcl, eot, pokerbench, when2call
 from .pairs import PAIRS
 from .protocol import Kind
 
@@ -51,6 +51,13 @@ BENCHMARKS = {
             eot.TURNS,
             eot.rows,
             "LiveKit eot-bench in the spec's language: the words heard at each moment of each pause, turn over or not",
+        ),
+        Benchmark(
+            "pokerbench",
+            pokerbench.REPO,
+            pokerbench.SPOTS,
+            pokerbench.rows,
+            "PokerBench 6-max no-limit hold'em: 11k solver-labelled spots, the right move among the ones offered",
         ),
     )
 }

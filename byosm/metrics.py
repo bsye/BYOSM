@@ -95,6 +95,8 @@ def compute(
         "confusion": confusion_matrix(y, pred, labels=labels).tolist(),
         "threshold": threshold,
     }
+    if families := spec.label_families:
+        out["family_accuracy"] = float(np.mean([families[a] == families[b] for a, b in zip(y, pred, strict=True)]))
     pos = _binary(spec)
     if pos is not None:
         yb = y == pos

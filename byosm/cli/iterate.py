@@ -32,11 +32,14 @@ def auto(
 ) -> None:
     """One command: prompt -> spec -> benchmark + baselines -> experiments until it wins (or the budget ends) -> distill -> export."""
     from ..auto import run
-    from ..tabular.compose import forecast_if_asked
+    from ..routing import FORECAST, routed
 
     name, prompt = (task, prompt) if prompt or Project(task).exists() else (None, task)
-    if name is None and forecast_if_asked(prompt, log):
-        return
+    if name is None:
+        kind, made = routed(prompt, log)
+        if kind == FORECAST:
+            return
+        name, prompt = (made, None) if made else (None, prompt)
     final = run(
         name,
         prompt,

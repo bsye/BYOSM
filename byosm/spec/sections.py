@@ -19,6 +19,7 @@ HUB_PREFIX = "hf:"
 class Label(BaseModel):
     name: str
     definition: str
+    family: str | None = None
 
 
 class Axis(BaseModel):

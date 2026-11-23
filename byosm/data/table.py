@@ -43,7 +43,7 @@ def read_table(path: Path) -> list[dict[str, str]]:
     return [{h: str(v or "").strip() for h, v in zip(head, r, strict=False) if h} for r in rows if any(r)]
 
 
-def _write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
+def write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
     with path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(header)
@@ -82,7 +82,7 @@ def _write_xlsx(path: Path, header: list[str], rows: list[list[Any]], guide: lis
 def write_template(out: Path, header: list[str], rows: list[list[Any]], guide: list[list[Any]]) -> list[Path]:
     out.mkdir(parents=True, exist_ok=True)
     csv_path, xlsx_path = (out / f"{TEMPLATE_STEM}{s}" for s in TABLE_SUFFIXES)
-    _write_csv(csv_path, header, rows)
+    write_csv(csv_path, header, rows)
     _write_xlsx(xlsx_path, header, rows, guide)
     return [csv_path, xlsx_path]
 

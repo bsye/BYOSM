@@ -45,6 +45,7 @@ ALLOWED_COMMANDS = (
     "ideas",
     "opendata",
     "options",
+    "poker",
     "series",
     "forecast",
     "inputs",
