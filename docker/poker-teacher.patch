@@ -459,10 +459,10 @@ index 3c163ca..adbc7c4 100644
              let r = benchmark::run(&dir, &policy)
 diff --git a/src/spot.rs b/src/spot.rs
 new file mode 100644
-index 0000000..fdd42bb
+index 0000000..c84007c
 --- /dev/null
 +++ b/src/spot.rs
-@@ -0,0 +1,93 @@
+@@ -0,0 +1,97 @@
 +//! Describe the decision a logged hand stops at, for an external student:
 +//! who is to act, their card bucket, the history tokens, and the moves on
 +//! offer with their chip amounts. Needs only the card abstraction, not a
@@ -542,13 +542,17 @@ index 0000000..fdd42bb
 +    }
 +    let seat = table.real.to_act();
 +    if !shown(&phh.actions, seat) {
-+        return Err(format!("the history does not show the cards of p{}, the player to act", seat + 1));
++        return Err(format!(
++            "it is {}'s turn to act, and the history does not show their cards",
++            phh.players[seat]
++        ));
 +    }
 +    let mut rng = SmallRng::seed_from_u64(seed);
 +    let bucket = abs.bucket(table.shadow.hole(seat), table.shadow.board(), &mut rng);
 +    let acts = abs.abstract_actions(&table.shadow);
 +    Ok(serde_json::json!({
 +        "seat": seat + 1,
++        "player": phh.players[seat],
 +        "street": format!("{:?}", table.real.street()),
 +        "bucket": bucket,
 +        "hist": table.hist,

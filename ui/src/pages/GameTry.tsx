@@ -6,25 +6,22 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { percent, type Advice } from "./game-api"
+import { EMPTY, EXAMPLE, history, ready, type Draft } from "./hand-builder"
+import { HandBuilder } from "./HandBuilder"
 
-const EXAMPLE = `variant = 'NT'
-antes = [0, 0, 0, 0, 0, 0]
-blinds_or_straddles = [50, 100, 0, 0, 0, 0]
-min_bet = 100
-starting_stacks = [10000, 10000, 10000, 10000, 10000, 10000]
-actions = ['d dh p1 4sAd', 'd dh p2 KsQh', 'd dh p3 8h2c', 'd dh p4 6c4h', 'd dh p5 JcQd', 'd dh p6 Kc9s', 'p3 f', 'p4 f', 'p5 cbr 250', 'p6 f', 'p1 f', 'p2 cc', 'd db 4d6sTh', 'p2 cc', 'p5 cbr 300']
-players = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']
-`
-const FORMAT = "A PHH hand history that stops at the decision: six players, equal stacks, and the cards of the player to act."
+const BUILD = "build"
+const PASTE = "paste"
+const FORMAT = "Six players, 100 big blinds each, blinds 50 and 100. Amounts are chips; a raise is the total put in on that street."
 
 function Moves({ advice }: { advice: Advice }) {
   const moves = [...advice.moves].sort((a, b) => b.probability - a.probability)
   return (
     <div className="grid gap-2">
       <p className="text-muted-foreground text-sm">
-        Seat {advice.seat} to act on the {advice.street} · <span className="tabular-nums">{advice.ms.toFixed(0)} ms</span>
+        {advice.player} to act on the {advice.street} · <span className="tabular-nums">{advice.ms.toFixed(0)} ms</span>
       </p>
       <Table>
         <TableHeader>
@@ -52,19 +49,26 @@ function Moves({ advice }: { advice: Advice }) {
 }
 
 export function GameTry({ name }: { name: string }) {
-  const [hand, setHand] = useState("")
+  const [mode, setMode] = useState(BUILD)
+  const [draft, setDraft] = useState<Draft>(EMPTY)
+  const [pasted, setPasted] = useState("")
   const [advice, setAdvice] = useState<Advice | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const building = mode === BUILD
   const ask = () => {
     setBusy(true)
     setError("")
-    post<Advice>(`/games/${encodeURIComponent(name)}/advise`, { hand })
+    post<Advice>(`/games/${encodeURIComponent(name)}/advise`, { hand: building ? history(draft) : pasted })
       .then(setAdvice, (e) => {
         setAdvice(null)
         setError(e instanceof Error ? e.message : String(e))
       })
       .finally(() => setBusy(false))
+  }
+  const example = () => {
+    setDraft(EXAMPLE)
+    setPasted(history(EXAMPLE))
   }
   return (
     <Card>
@@ -78,23 +82,31 @@ export function GameTry({ name }: { name: string }) {
             <TooltipContent>{FORMAT}</TooltipContent>
           </Tooltip>
         </CardTitle>
-        <CardAction>
-          <Button size="sm" variant="outline" onClick={() => setHand(EXAMPLE)}>
+        <CardAction className="flex gap-2">
+          <ToggleGroup type="single" size="sm" variant="outline" value={mode} onValueChange={(v) => v && setMode(v)}>
+            <ToggleGroupItem value={BUILD}>Build</ToggleGroupItem>
+            <ToggleGroupItem value={PASTE}>Paste</ToggleGroupItem>
+          </ToggleGroup>
+          <Button size="sm" variant="outline" onClick={example}>
             <FileText />
             Example
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <Textarea
-          value={hand}
-          onChange={(e) => setHand(e.target.value)}
-          placeholder="Paste a hand history"
-          className="max-h-64 min-h-40 font-mono text-xs"
-          spellCheck={false}
-        />
+        {building ? (
+          <HandBuilder draft={draft} onChange={setDraft} />
+        ) : (
+          <Textarea
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+            placeholder="Paste a PHH hand history that stops at the decision"
+            className="max-h-64 min-h-40 font-mono text-xs"
+            spellCheck={false}
+          />
+        )}
         <div className="flex justify-end">
-          <Button size="sm" disabled={!hand.trim() || busy} onClick={ask}>
+          <Button size="sm" disabled={busy || (building ? !ready(draft) : !pasted.trim())} onClick={ask}>
             {busy ? <Loader2 className="animate-spin" /> : <Search />}
             Advise
           </Button>

@@ -79,7 +79,7 @@ class Advisor:
             {"move": m, "probability": float(probs[slot])}
             for m, slot in zip(found["moves"], found["offered"], strict=True)
         ]
-        return {"seat": found["seat"], "street": found["street"].lower(), "moves": moves}
+        return {"seat": found["seat"], "player": found["player"], "street": found["street"].lower(), "moves": moves}
 
     def close(self) -> None:
         self.engine.stdin.close()

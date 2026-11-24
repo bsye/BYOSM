@@ -3161,6 +3161,12 @@ blueprints are not published, so we train one here, and its native code never ru
   with its chip amount and how often to play it. The server keeps one sealed engine container per bot and starts it
   on the first question; the first answer took 287 ms and the next 7. The page says Student and Teacher, never the
   strategy file names. Checked in the browser in light and dark and at phone width.
+- **A hand can be built, not only pasted.** Try it opens on a form (`ui/src/pages/HandBuilder.tsx`, logic in
+  `hand-builder.ts`): your seat by position name, your cards, the board, and each action in order with the next seat
+  to act prefilled. The form writes the same hand-history text the paste box takes, so there is one path to the
+  engine. Amounts are chips at blinds 50 and 100, the unit the answer uses. The engine names players as the history
+  does: a hand that stops at someone else's turn answers "it is BB's turn to act, and the history does not show
+  their cards", and the advice says who is to act.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.

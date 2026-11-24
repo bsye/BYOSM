@@ -131,12 +131,12 @@ def test_advice_is_the_students_probabilities_over_the_moves_the_engine_offers()
     from byosm.games.poker.advisor import Advisor
 
     torch.manual_seed(0)
-    spot = {"seat": 2, "street": "Flop", "bucket": 7, "hist": [0, 5, 15, 1, 5], "offered": [0, 1, 7, 2]}
+    spot = {"seat": 2, "player": "BB", "street": "Flop", "bucket": 7, "hist": [0, 5, 15, 1, 5], "offered": [0, 1, 7, 2]}
     moves = ["fold", "call 300", "raise to 1450", "all in for 9750"]
     engine = Engine([{**spot, "moves": moves}, {"error": "the hand is already over"}])
     advisor = Advisor(student.Net(12).eval(), engine)
     found = advisor.advise("a hand")
-    assert engine.asked == ["a hand"] and found["seat"] == 2 and found["street"] == "flop"
+    assert engine.asked == ["a hand"] and found["seat"] == 2 and found["player"] == "BB" and found["street"] == "flop"
     assert [m["move"] for m in found["moves"]] == moves
     assert sum(m["probability"] for m in found["moves"]) == pytest.approx(1, abs=1e-5)
     with pytest.raises(ValueError, match="already over"):
@@ -146,6 +146,7 @@ def test_advice_is_the_students_probabilities_over_the_moves_the_engine_offers()
 def test_a_first_decision_with_no_history_is_advised_too():
     from byosm.games.poker.advisor import Advisor
 
-    spot = {"seat": 3, "street": "Preflop", "bucket": 6, "hist": [], "offered": [0, 1, 4], "moves": ["a", "b", "c"]}
+    first = {"seat": 3, "player": "UTG", "street": "Preflop", "bucket": 6, "hist": []}
+    spot = {**first, "offered": [0, 1, 4], "moves": ["a", "b", "c"]}
     found = Advisor(student.Net(169).eval(), Engine([spot])).advise("first in")
     assert sum(m["probability"] for m in found["moves"]) == pytest.approx(1, abs=1e-5)
