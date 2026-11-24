@@ -343,4 +343,6 @@ Decisions for the owner:
 2. Allow the `slumbot` command network access for step B? It talks only to Slumbot's public API. *Recommendation: yes.*
 3. A budget ceiling for step C, to be spent only if step A shows a gain. *Recommendation: $300 first (a 50-bucket
    run of about three days), then decide on the 200-bucket run.*
+   *Owner, 2026-11-24: $300, after a baseline at a real table. That baseline found an open 200-bucket blueprint
+   trained to the Pluribus paper's budget, which may replace step C: see [the arena plan](ARENA.md).*
 
