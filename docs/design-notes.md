@@ -3070,6 +3070,10 @@ blueprints are not published, so we train one here, and its native code never ru
   saves a strategy file the engine seats like any other. Checked on a 300,000-iteration strategy: all 5,045,707
   infosets replay (none skipped); a table of the teacher's own probabilities ties the teacher at six seats
   (-368 ±484 mbb/hand over 200,000 hands) and a uniform table loses (-2,503 ±525).
+- **One loss for every game student.** The toy-game student and the poker student train on the same objective, a
+  cross-entropy to the teacher's move probabilities weighted by reach, with moves not on offer masked out. It lives
+  once, in `games/student.soft_loss`; the two students differ only in what they read (a feature vector, or a card
+  bucket and a betting history).
 - **The poker student** (`games/poker/student.py`, `distill.py`, `byosm poker student`): a small sequence model.
   The betting history's tokens go through an embedding and a GRU, the card bucket through an embedding indexed by
   street, and a two-layer head scores 11 move slots (fold, check or call, all-in, eight bet sizes), with every slot

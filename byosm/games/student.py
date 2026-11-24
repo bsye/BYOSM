@@ -35,6 +35,11 @@ def masked(logits: torch.Tensor, decisions: list[Decision], slots: int) -> torch
     return logits.masked_fill(~legal, float("-inf"))
 
 
+def soft_loss(logits: torch.Tensor, target: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
+    logp = torch.log_softmax(logits, dim=-1).masked_fill(target == 0, 0.0)
+    return -((target * logp).sum(-1) * weight).sum() / weight.sum()
+
+
 def train(decisions: list[Decision], slots: int, seed: int = 0) -> Student:
     torch.manual_seed(seed)
     x = features(decisions)
@@ -45,8 +50,7 @@ def train(decisions: list[Decision], slots: int, seed: int = 0) -> Student:
     )
     opt = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE)
     for _ in range(EPOCHS):
-        logp = torch.log_softmax(masked(net(x), decisions, slots), dim=-1)
-        loss = -(torch.nan_to_num(logp * target, nan=0.0).sum(-1) * weight).sum() / weight.sum()
+        loss = soft_loss(masked(net(x), decisions, slots), target, weight)
         opt.zero_grad()
         loss.backward()
         opt.step()

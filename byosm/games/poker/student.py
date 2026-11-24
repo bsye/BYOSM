@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from torch import nn
 
+from ..student import soft_loss
 from .infosets import PAD, SLOTS
 
 SEPARATOR = 15
@@ -111,9 +112,7 @@ def fit(
         rng.shuffle(train)
         for i in range(0, len(train), BATCH):
             rows = train[i : i + BATCH]
-            logp = torch.log_softmax(net(**inputs(rows, span, device)), dim=-1)
-            target, weight = targets(rows, device)
-            loss = -((target * logp.masked_fill(target == 0, 0.0)).sum(-1) * weight).sum() / weight.sum()
+            loss = soft_loss(net(**inputs(rows, span, device)), *targets(rows, device))
             opt.zero_grad()
             loss.backward()
             opt.step()
