@@ -32,6 +32,15 @@ def limits() -> tuple[str, str]:
     return str(max(1, int(cpus) - SPARE_CPUS)), f"{int(memory) // GIB - RESERVE_GIB}g"
 
 
+def mounted(mounts: dict[Path, str], writable: tuple[str, ...] = ()) -> list[str]:
+    flags: list[str] = []
+    for source, target in mounts.items():
+        if not source.suffix:
+            source.mkdir(parents=True, exist_ok=True)
+        flags += ["-v", f"{source}:{target}{'' if target in writable else ':ro'}"]
+    return flags
+
+
 def streamed(command: list[str], turn: Path, who: str, args: list[str], log: Log) -> list[str]:
     said: list[str] = []
     piped = {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT, "text": True}

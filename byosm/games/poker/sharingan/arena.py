@@ -9,7 +9,7 @@ from ....deploy import DOCKER_DIR, build_image, docker, docker_cli
 from .. import seat, teacher
 from ..distill import ABSTRACTION
 from ..portable import exported
-from ..sealed import SEALED, Log, limits, streamed
+from ..sealed import SEALED, Log, limits, mounted, streamed
 from ..table import REPORT, VERSUS
 from . import BLUEPRINTS, DATA, WEIGHTS, work_dir
 from . import engine as rival
@@ -66,20 +66,19 @@ def entrant(ws: Path, name: str) -> tuple[str, list[str]]:
     return seated(ws, name), []
 
 
-def command(ws: Path, args: list[str]) -> list[str]:
+def sealed_run(mounts: dict[Path, str], args: list[str], writable: tuple[str, ...] = ()) -> list[str]:
     cpus, memory = limits()
-    mounted = {
-        work_dir(ws) / WEIGHTS: rival.MOUNTED_WEIGHTS,
-        work_dir(ws) / DATA: rival.MOUNTED_DATA,
-        teacher.work_dir(ws): STUDENTS,
-        Path(seat.__file__): SEAT,
-    }
-    mounts = []
-    for source, target in mounted.items():
-        if not source.suffix:
-            source.mkdir(parents=True, exist_ok=True)
-        mounts += ["-v", f"{source}:{target}:ro"]
-    return [docker_cli(), "run", "--rm", *SEALED, "--cpus", cpus, "--memory", memory, *mounts, image(), *args]
+    held = ["--cpus", cpus, "--memory", memory, *mounted(mounts, writable)]
+    return [docker_cli(), "run", "--rm", *SEALED, *held, image(), *args]
+
+
+def blueprint_mounts(ws: Path) -> dict[Path, str]:
+    return {work_dir(ws) / WEIGHTS: rival.MOUNTED_WEIGHTS, work_dir(ws) / DATA: rival.MOUNTED_DATA}
+
+
+def command(ws: Path, args: list[str]) -> list[str]:
+    mounts = {**blueprint_mounts(ws), teacher.work_dir(ws): STUDENTS, Path(seat.__file__): SEAT}
+    return sealed_run(mounts, args)
 
 
 def estimate(words: list[str], label: str) -> dict[str, float] | None:

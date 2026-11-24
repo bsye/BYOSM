@@ -12,6 +12,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd --create-home --uid 10001 player
 COPY --from=teacher /usr/local/bin/pluribus /usr/local/bin/poker-engine
-COPY --from=rival /usr/local/bin/bench /usr/local/bin/bench
+COPY --from=rival /usr/local/bin/bench /usr/local/bin/sharingan-serve /usr/local/bin/
 USER player
 WORKDIR /work

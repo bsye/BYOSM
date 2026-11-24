@@ -58,3 +58,25 @@ def arena_versus(hero: str, field: str, deals: int = _deals_option()) -> None:
         f"{hero} against five {field}: {made['mbb_per_hand']:+.1f} ±{made['ci95']:.1f} mbb/hand "
         f"over {made['hands']:,} hands ({made['fallbacks']} of {made['requests']} decisions fell back)"
     )
+
+
+@poker_app.command("blueprint-decisions")
+def blueprint_decisions(
+    name: str = _blueprint_argument(),
+    hands: int = typer.Option(None, help="how many of Pluribus's 10,000 hands to replay (default all)"),
+) -> None:
+    """Compare a published blueprint's move with the logged move at every decision of Pluribus's hands."""
+    from ..config import find_workspace
+    from ..games.poker.sharingan.compare import ALL, against_pluribus, compared, pluribus_hands
+
+    try:
+        made = compared(find_workspace(), name, "pluribus", pluribus_hands(hands), against_pluribus, log)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    for label, found in sorted(made["groups"].items()):
+        if found["decisions"]:
+            log(
+                f"{label}: {found['decisions']:,} decisions, same kind of move {found['same_kind']:.1%}, "
+                f"probability on the logged move {found['mean_weight']:.3f}, fell back {found['fell_back']:.1%}"
+            )
+    log(f"{ALL}: {made['errors'] or 'no'} refused decisions, {made['skipped'] or 'no'} skipped hands")
