@@ -75,13 +75,15 @@ def _told(made: dict) -> None:
 def blueprint_decisions(
     name: str = _blueprint_argument(),
     hands: int = typer.Option(None, help="how many of Pluribus's 10,000 hands to replay (default all)"),
+    showdown: bool = typer.Option(False, help="only the moves of players who reached a showdown, as real logs show"),
 ) -> None:
     """Compare a published blueprint's move with the logged move at every decision of Pluribus's hands."""
     from ..config import find_workspace
-    from ..games.poker.sharingan.compare import against_pluribus, compared, pluribus_hands
+    from ..games.poker.sharingan.compare import against_pluribus, compared, everyone, pluribus_hands, shown_down
 
+    source, kept = ("pluribus-showdown", shown_down) if showdown else ("pluribus", everyone)
     try:
-        _told(compared(find_workspace(), name, "pluribus", pluribus_hands(hands), against_pluribus, log))
+        _told(compared(find_workspace(), name, source, pluribus_hands(hands), against_pluribus, log, kept))
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
 

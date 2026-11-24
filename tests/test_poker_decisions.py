@@ -33,6 +33,9 @@ def test_a_logged_hand_becomes_one_request_per_decision_whose_cards_are_known():
         ("MrBlue", "river", "raise"),
         ("MrPink", "river", "fold"),
     ]
+    assert not any(a.showdown for a in found)
+    seen = decisions.asked("h", parse(HAND.replace("'p4 f', 'p5 sm KsKd'", "'p4 cc'")))
+    assert {a.player for a in seen if a.showdown} == {"MrBlue", "MrPink"}
     first, shown, river = found[0].request, found[2].request, found[-2].request
     assert first["hero_seat"] == 2 and first["hole_cards"] == ["9c", "3d"] and first["history"] == []
     assert first["button_seat"] == 5 and first["players"][0] == {"seat": 0, "stack_start": 10000}

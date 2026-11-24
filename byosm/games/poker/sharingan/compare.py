@@ -55,6 +55,10 @@ def everyone(_: Asked) -> bool:
     return True
 
 
+def shown_down(logged: Asked) -> bool:
+    return logged.showdown
+
+
 def collected(hands: Hands, kept: Kept) -> tuple[list[Asked], dict[str, int], Counter]:
     found, counts, skipped = [], Counter(), Counter()
     for hand_id, hand in hands:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from ..phh import BET_RAISE, CHECK_CALL, DEAL_BOARD, DEAL_HOLE, FOLD, Table, seat_of, steps
@@ -26,6 +26,7 @@ class Asked:
     kind: str
     street: str
     request: dict[str, Any]
+    showdown: bool = False
 
 
 def kind_of(move: str) -> str:
@@ -106,7 +107,8 @@ def asked(hand_id: str, hand: dict[str, Any]) -> list[Asked]:
             found.append(Asked(request["hand_id"], hand["players"][seat], kind_of(entry["type"]), street, request))
         history.append(entry)
         table.act(seat, move, to)
-    return found
+    stayed = set(range(len(chips))) - table.folded
+    return [replace(a, showdown=len(stayed) > 1 and a.request["hero_seat"] in stayed) for a in found]
 
 
 def judged(logged: Asked, response: dict[str, Any]) -> dict[str, Any]:
