@@ -3141,6 +3141,12 @@ blueprints are not published, so we train one here, and its native code never ru
   It agrees with Pluribus more often than its teacher on every street, the way a smooth model averages out a noisy
   table. Against callers it wins about 500 less: callers drag the hand into lines teacher self-play rarely visits,
   where the student has had nothing to learn from. That is what the rounds on its own reach are for.
+- **Two rounds on its own reach change nothing we can measure.** The student seated itself for 2,000,000 hands a
+  round and reached 384,494 and then 383,748 infosets at its own decisions, which were added to its training weights.
+  Against five teacher copies over 2,000,000 hands it scores -20.0 ±49.2 mbb/hand (the plain student +5.2 ±49.3);
+  against five callers +3,012 ±187 (plain +2,908 ±182, teacher +3,410 ±190); Pluribus's move 71.6%, the same. All
+  inside the noise, so v1 keeps the plain student, which is simpler and three times quicker to build. The gap against
+  callers is not about the student's own reach at a table of teachers: callers take hands where neither goes.
 - **Rounds on the student's own reach** (`byosm poker student --rounds N`). A student that drifts from its teacher
   meets infosets teacher self-play rarely visits. Each extra round seats the current student with five teacher
   copies (the engine's `reach` verb, 2M hands), counts the infosets it decides at, adds those counts to the training

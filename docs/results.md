@@ -509,6 +509,8 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 |---|---|---|---|
 | blueprint-200000000-cap7000000 | copies of blueprint-200000000 | -6.5 [-55.9, +42.9] | 2,000,000 |
 | blueprint-200000000-snap | copies of blueprint-200000000 | -17.8 [-66.6, +31.0] | 2,000,000 |
+| blueprint-200000000-student-r2 | always-call bots | +3012.4 [+2825.5, +3199.3] | 200,000 |
+| blueprint-200000000-student-r2 | copies of blueprint-200000000 | -20.0 [-69.2, +29.2] | 2,000,000 |
 | blueprint-200000000-student | always-call bots | +2907.7 [+2725.5, +3089.9] | 200,000 |
 | blueprint-200000000-student | copies of blueprint-200000000 | +5.2 [-44.1, +54.5] | 2,000,000 |
 | blueprint-200000000 | always-call bots | +3410.2 [+3220.5, +3599.9] | 200,000 |
@@ -522,10 +524,12 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 |---|---|---|---|---|---|---|---|
 | blueprint-200000000 | 69.8% | 73.4% | 63.5% | 61.4% | 59.9% | 0.633 | 99.6% |
 | blueprint-200000000-student | 71.6% | 74.5% | 66.3% | 64.8% | 63.7% | 0.635 | 99.6% |
+| blueprint-200000000-student-r2 | 71.6% | 74.3% | 66.6% | 65.5% | 63.8% | 0.635 | 99.6% |
 
 | student | teacher | model | held-out KL to the teacher | same top move | rounds on its own reach |
 |---|---|---|---|---|---|
 | blueprint-200000000-student | blueprint-200000000 | 5.38 MB | 0.0727 | 89.0% | 0 |
+| blueprint-200000000-student-r2 | blueprint-200000000 | 5.38 MB | 0.0928 | 82.5% | 2 |
 
 Six seats, 100 big blinds, mbb/hand = thousandths of a big blind a hand. Against copies of a strategy the result is the plain mean; against callers and random players the engine's AIVAT estimate. The Pluribus rows count its exact move in the strategy's bet menu, over the logged decisions the strategy has an answer for (covered).
 <!-- /report:poker -->
