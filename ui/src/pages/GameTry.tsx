@@ -15,10 +15,12 @@ import { HandBuilder } from "./HandBuilder"
 const BUILD = "build"
 const PASTE = "paste"
 const STUDENT = "student"
-const FORMAT = "Six players, 100 big blinds each, blinds 50 and 100. Amounts are chips; a raise is the total put in on that street."
+const SHOWN_FROM = 0.001
+const FORMAT =
+  "Amounts are chips; a raise is the total put in on that street. The student needs six players with equal stacks; SHARINGAN-2 takes three to six. Moves played less than 0.1% of the time are left out."
 
 function Moves({ advice }: { advice: Advice }) {
-  const moves = [...advice.moves].sort((a, b) => b.probability - a.probability)
+  const moves = advice.moves.filter((m) => m.probability >= SHOWN_FROM).sort((a, b) => b.probability - a.probability)
   return (
     <div className="grid gap-2">
       <p className="text-muted-foreground text-sm">

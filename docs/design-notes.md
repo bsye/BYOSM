@@ -3257,6 +3257,20 @@ blueprints are not published, so we train one here, and its native code never ru
   professionals' 75.9% (SHARINGAN-2: 88.2% and 85.2%); over showdown-only decisions 64.8% and 63.0% (78.9% and
   76.4%), and before the flop there 40.9% (80.1%). It is not asked the real online hands: our engine needs equal
   starting stacks.
+- **A hand typed or photographed is answered by SHARINGAN-2.** The bot page's hand form can ask SHARINGAN-2 instead
+  of our student (`POST /api/blueprints/NAME/advise`): one sealed container stays open and relays each hand to the
+  blueprint's inference server inside it; the first answer took 1.5 seconds and the next 3 milliseconds. The form
+  now carries the blinds, each seat's stack and three to six players, and the answer comes back in the hand's own
+  chips. "From a screenshot" (or pasting a picture) sends the image to the local vision model only
+  (`byosm/games/poker/screenshot.py`, Qwen 3.8 through Ollama, 30 to 43 seconds a picture): it reports your two
+  cards, the board, the seats clockwise with stacks, the dealer button and the words beside each seat, and code
+  checks every card, that no card repeats, and that there is one "you" and one dealer button before the form is
+  filled; seats are turned so the one after the dealer comes first. A picture does not show the betting of earlier
+  streets, so the person confirms the actions. It is meant for study and for single-player games against computer
+  players; it reads a file the person gives it and never watches a screen. On the one picture tried (a five-player
+  free game with $1,000 stacks) every field was read correctly, and SHARINGAN-2 answered for the big blind after
+  four calls: raise to 22 44.3%, to 17 22.4%, to 7 22.4%, check 11.0%. Those stacks are about 500 big blinds; the
+  blueprint was trained at 100 and caps what it commits at 150.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's

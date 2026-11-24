@@ -13,25 +13,26 @@ from . import asker as asker_script
 from . import engine as rival
 from .arena import blueprint_mounts, ensure_image, sealed_run
 from .compare import ASKER
-from .decisions import RAISES, kind_of, pending, refused, shown_seats
+from .decisions import CHIPS_PER_BIG_BLIND, RAISES, kind_of, pending, refused, shown_seats
 
 STAY_OPEN = ("-i",)
 NOT_YOUR_TURN = "not_hero_turn"
 HAND = "hand"
 
 
-def named(move: dict[str, Any], legal: dict[str, Any]) -> str:
+def named(move: dict[str, Any], legal: dict[str, Any], unit: float) -> str:
     if kind_of(move["type"]) != RAISES:
         added = (legal.get("call") or {}).get("added")
-        return f"call {added}" if move["type"] == "call" and added else move["type"]
+        return f"call {added * unit:g}" if move["type"] == "call" and added else move["type"]
     most = (legal.get("raise") or {}).get("max_to")
-    return f"all in for {move['to']}" if move.get("to") == most else f"raise to {move['to']}"
+    amount = f"{move['to'] * unit:g}"
+    return f"all in for {amount}" if move.get("to") == most else f"raise to {amount}"
 
 
-def moves(response: dict[str, Any]) -> list[dict[str, Any]]:
+def moves(response: dict[str, Any], unit: float) -> list[dict[str, Any]]:
     weights: dict[str, float] = {}
     for move in response["probs"]:
-        name = named(move, response.get("legal", {}))
+        name = named(move, response.get("legal", {}), unit)
         weights[name] = weights.get(name, 0.0) + move["p"]
     return [{"move": name, "probability": weight} for name, weight in weights.items()]
 
@@ -76,7 +77,9 @@ class BlueprintAdvisor:
         if not found["ok"]:
             raise ValueError(found["error"].get("message") or found["error"]["code"])
         answer = found["response"]
-        return {"seat": seat + 1, "player": hand["players"][seat], "street": answer["street"], "moves": moves(answer)}
+        unit = hand["blinds_or_straddles"][1] / CHIPS_PER_BIG_BLIND
+        found = {"seat": seat + 1, "player": hand["players"][seat], "street": answer["street"]}
+        return {**found, "moves": moves(answer, unit)}
 
     def close(self) -> None:
         self.engine.stdin.close()

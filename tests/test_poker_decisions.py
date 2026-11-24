@@ -250,6 +250,9 @@ def test_one_hand_is_answered_by_the_blueprint_for_the_player_to_act(ws, monkeyp
         "raise to 700": 0.2,
         "all in for 10000": 0.1,
     }
+    small = SPOT.replace("[50, 100, 0, 0, 0, 0]", "[1, 2, 0, 0, 0, 0]").replace("10000", "200").replace("210", "4.2")
+    small = small.replace("min_bet = 100", "min_bet = 2")
+    assert [m["move"] for m in advisor.advise(small)["moves"]] == ["fold", "call 4.2", "raise to 14", "all in for 200"]
     with pytest.raises(ValueError, match="antes"):
         advisor.advise(SPOT.replace("antes = [0, 0, 0, 0, 0, 0]", "antes = [5, 5, 5, 5, 5, 5]"))
     with pytest.raises(ValueError, match="nobody's cards"):
