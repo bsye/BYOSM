@@ -3223,7 +3223,8 @@ blueprints are not published, so we train one here, and its native code never ru
   +125.4 ±35.1, +339.9 ±56.0, +1,024.3 ±86.3, +982.3 ±104.7, +9,039.7 ±290.1 and +3,878.3 ±190.6 (tight,
   tight-aggressive, loose-aggressive, maniac, calling station, random): four reproduce its model card, the maniac is
   lower than published (+1,622 ±99) and the calling station higher (+2,572 ±118), on a commit four days newer than
-  the card. It plays from its 169.9 GB memory-mapped file at about 1,000 hands a second here. Decision that follows:
+  the card. Read from its 169.9 GB memory-mapped file, beside a training run, its 720,000 hands against the simple
+  bots took 160 seconds and its 120,000 hands with our seat 137 and 216 seconds. Decision that follows:
   stop training our own teacher; distil the student from SHARINGAN-2.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
