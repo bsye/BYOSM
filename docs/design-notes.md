@@ -3127,6 +3127,20 @@ blueprints are not published, so we train one here, and its native code never ru
   against five copies of its teacher over 1,000,000 hands: -79.3 ±69.8 mbb/hand. The point estimate is inside the v1
   target of 100; the interval is not yet (it reaches -149), so the next student trains on the longer schedule and is
   seated for more hands.
+- **The wide student ties its teacher.** 5.38 MB (GRU 512, 30 epochs with cosine decay, held-out KL 0.0727), one
+  seat against five copies of its 4 GB teacher over 2,000,000 hands: +5.2 ±49.3 mbb/hand. The worst end of the
+  interval is a loss of 44, inside the v1 target of 100. Its outside yardsticks:
+
+  | Measure | Student | Teacher |
+  |---|---|---|
+  | Pluribus's exact action, covered decisions | 71.6% | 69.8% |
+  | preflop / flop / turn / river | 74.5 / 66.3 / 64.8 / 63.7% | 73.4 / 63.5 / 61.4 / 59.9% |
+  | Mean probability on Pluribus's action | 0.635 | 0.633 |
+  | Against five callers, 200,000 hands | +2,907.7 ±182.2 mbb/hand | +3,410.2 ±189.7 |
+
+  It agrees with Pluribus more often than its teacher on every street, the way a smooth model averages out a noisy
+  table. Against callers it wins about 500 less: callers drag the hand into lines teacher self-play rarely visits,
+  where the student has had nothing to learn from. That is what the rounds on its own reach are for.
 - **Rounds on the student's own reach** (`byosm poker student --rounds N`). A student that drifts from its teacher
   meets infosets teacher self-play rarely visits. Each extra round seats the current student with five teacher
   copies (the engine's `reach` verb, 2M hands), counts the infosets it decides at, adds those counts to the training
