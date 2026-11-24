@@ -60,7 +60,8 @@ read 200 buckets or the cards themselves.
 | Our student at its table | Built: `seat.py` answers the bench tool's requests with the student as a 5.64 MB ONNX graph; 3,618 decisions in a 1,800-hand trial, none failed |
 | `byosm poker arena-gauntlet NAME` | Run for our student and for SHARINGAN-2 (tables below) |
 | `byosm poker arena-versus HERO FIELD` | Run both ways between our student and SHARINGAN-2 (table below) |
-| Hosted table | Not started |
+| The table (separate project, `poker-table`) | Built and running on this Mac as a Docker stack: six-bot tables with simulation and replay, live tables where a person takes a seat, results with intervals, the reveal; SHARINGAN's table server sealed on an internal network. 2,000 hands through the stack took 4.5 s. Not yet: our student's live seat, a tunnel or the AWS deploy, phone width |
+| Training | Stopped by the owner on 2026-11-24: SHARINGAN-2 is the teacher to use |
 
 ## Result: SHARINGAN-2 is far stronger than our v1 (2026-11-24)
 
@@ -109,10 +110,13 @@ flowchart LR
   server --> blueprint[(SHARINGAN-2, 170 GB, local only)]
 ```
 
+The owner chose AWS for the deploy (2026-11-24), so the stack is plain Docker Compose with no Cloudflare parts; a
+machine with a 200 GB disk can hold SHARINGAN-2 itself.
+
 | Step | Where | What |
 |---|---|---|
 | 1 | This Mac | The table server sealed on an internal Docker network, reachable only from this machine; SHARINGAN-2, its simple bots and our student seated; the page to simulate hands, to play a seat, to see every seat's result and to reveal who was who |
-| 2 | Cloudflare | The same page and API as a Worker with a Durable Object per session and the table server in a Cloudflare Container. SHARINGAN-2 cannot go there (a container has at most 20 GB of disk), so the hosted seats are the simple bots, our student, and later a student of SHARINGAN-2 |
+| 2 | A tunnel, then AWS | The same Docker stack reached by other people: first through a tunnel to this Mac, then on an AWS machine with the blueprint on a 200 GB volume |
 
 The table is its own project beside this one (TypeScript, the platform's language on Workers). BYOSM keeps the
 measuring commands and exports the student's seat.
