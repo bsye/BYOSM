@@ -68,7 +68,7 @@ def summaries(ws: Path) -> list[dict[str, Any]]:
 
 def seated(key: str, r: dict, roles: dict[str, str]) -> dict[str, Any]:
     others = f"copies of the {roles[r['field']].lower()}" if VERSUS in key and r["field"] in roles else against(key, r)
-    return {**r, "who": roles[r["strategy"]], "against": others}
+    return {**r, "who": roles.get(r["strategy"], r["strategy"]), "against": others}
 
 
 def detail(ws: Path, name: str) -> dict[str, Any] | None:
@@ -77,7 +77,8 @@ def detail(ws: Path, name: str) -> dict[str, Any] | None:
     if not student:
         return None
     roles = {name: STUDENT, student["teacher"]: TEACHER}
-    played = [seated(k, r, roles) for k, r in sorted(tables.items()) if r["strategy"] in roles]
+    here = {k: r for k, r in tables.items() if r["strategy"] in roles or r["field"] == name}
+    played = [seated(k, r, roles) for k, r in sorted(here.items())]
     found = ((role, agreements.get(f"{AGREEMENT}{n}")) for n, role in roles.items())
     agreed = [{**a, "who": role} for role, a in found if a]
     return {"name": name, "title": TITLE, "student": student, "played": played, "agreement": agreed}

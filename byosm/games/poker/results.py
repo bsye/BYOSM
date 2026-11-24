@@ -3,12 +3,25 @@ from __future__ import annotations
 from pathlib import Path
 
 from .distill import REPORT as STUDENTS
+from .sharingan.arena import HOUSE
+from .sharingan.gauntlet import checks
 from .table import AGREEMENT, ITSELF, REPORT, STREETS, TOTAL, VERSUS
 
 BLOCK = "poker"
 FIELDS = {"caller": "always-call bots", "random": "random players"}
+ARENA = dict(
+    zip(
+        HOUSE,
+        ("tight", "tight-aggressive", "loose-aggressive", "maniac", "calling-station", "random"),
+        strict=True,
+    )
+)
+ARENA_FIELD = "the arena's {} bots"
 MISSING = "-"
 TABLE_HEAD = "| strategy | the other five seats | mbb/hand [95% CI] | hands |\n|---|---|---|---|"
+CHECK_HEAD = (
+    "| published blueprint | the other five seats | mbb/hand here | published | reproduced |\n|---|---|---|---|---|"
+)
 AGREEMENT_HEAD = (
     "| strategy | Pluribus's move, all streets | preflop | flop | turn | river | mean probability on it | covered |\n"
     "|---|---|---|---|---|---|---|---|"
@@ -19,12 +32,16 @@ STUDENT_HEAD = (
 )
 FOOT = (
     "Six seats, 100 big blinds, mbb/hand = thousandths of a big blind a hand. Against copies of a strategy the result "
-    "is the plain mean; against callers and random players the engine's AIVAT estimate. The Pluribus rows count its "
+    "is the plain mean; against callers and random players the engine's AIVAT estimate. Rows against the arena's bots "
+    "or a published blueprint are played in SHARINGAN's bench tool with duplicate deals, each deal from every seat, "
+    "and show its AIVAT estimate. The Pluribus rows count its "
     "exact move in the strategy's bet menu, over the logged decisions the strategy has an answer for (covered)."
 )
 
 
 def against(key: str, r: dict) -> str:
+    if VERSUS in key and r["field"] in ARENA:
+        return ARENA_FIELD.format(ARENA[r["field"]])
     if VERSUS in key:
         return f"copies of {r['field']}"
     if r["field"] == ITSELF:
@@ -54,11 +71,22 @@ def taught(r: dict) -> str:
     )
 
 
+def checked(tables: dict[str, dict]) -> list[str]:
+    heroes = sorted({r["strategy"] for r in tables.values()})
+    return [
+        f"| {hero} | {ARENA_FIELD.format(ARENA[field])} | {c['ours']['mbb_per_hand']:+.1f} ±{c['ours']['ci95']:.1f} | "
+        f"{c['published'][0]:+.0f} ±{c['published'][1]:.0f} | {'yes' if c['reproduced'] else 'no'} |"
+        for hero in heroes
+        for field, c in checks(tables, hero).items()
+    ]
+
+
 def block(ws: Path) -> str | None:
     from ...db.workspace import workspace_reports
 
     tables = [
         [TABLE_HEAD, *(played(k, r) for k, r in sorted(workspace_reports(ws, REPORT).items()))],
+        [CHECK_HEAD, *checked(workspace_reports(ws, REPORT))],
         [AGREEMENT_HEAD, *(agreeing(r) for _, r in sorted(workspace_reports(ws, AGREEMENT).items()))],
         [STUDENT_HEAD, *(taught(r) for _, r in sorted(workspace_reports(ws, STUDENTS).items()))],
     ]

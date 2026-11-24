@@ -131,18 +131,33 @@ def test_a_table_where_our_seat_often_failed_to_answer_is_not_scored(ws, table, 
         arena.played(ws, "my-student", "station", 500, lambda _: None)
 
 
-def test_the_gauntlet_says_which_published_scores_it_reproduced(ws, monkeypatch):
-    from byosm.db.workspace import workspace_reports
+def test_the_gauntlet_seats_each_simple_bot_and_says_which_published_scores_it_reproduced(ws, monkeypatch):
+    from byosm.db.workspace import save_workspace_report, workspace_reports
+    from byosm.games.poker import results
     from byosm.games.poker.sharingan import gauntlet
 
     scores = {"random": 3950.0, "nit": 420.0}
-    monkeypatch.setattr(
-        gauntlet, "played", lambda ws, hero, field, deals, log: {"mbb_per_hand": scores.get(field, 0.0), "ci95": 30.0}
-    )
+
+    def versus(ws, hero, field, deals, log):
+        made = {
+            "mbb_per_hand": scores.get(field, 0.0),
+            "ci95": 30.0,
+            "hands": deals * 6,
+            "strategy": hero,
+            "field": field,
+        }
+        save_workspace_report(ws, f"poker-table:{hero}:vs:{field}", made)
+        return made
+
+    monkeypatch.setattr(gauntlet, "versus", versus)
     said = []
-    made = gauntlet.gauntlet(ws, "sharingan-2", 100, said.append)
-    assert list(made["fields"]) == list(gauntlet.HOUSE) and made["hands"] == 600
-    assert made["checks"]["random"]["reproduced"] and not made["checks"]["nit"]["reproduced"]
+    assert list(gauntlet.gauntlet(ws, "sharingan-2", 100, said.append)) == list(gauntlet.HOUSE)
+    found = gauntlet.checks(workspace_reports(ws, "poker-table:"), "sharingan-2")
+    assert found["random"]["reproduced"] and not found["nit"]["reproduced"]
     assert any("five nit" in line and "NOT reproduced" in line for line in said)
-    assert workspace_reports(ws, "poker-gauntlet:")["poker-gauntlet:sharingan-2"]["deals"] == 100
-    assert gauntlet.gauntlet(ws, "my-student", 100, said.append)["checks"] == {}
+    gauntlet.gauntlet(ws, "my-student", 100, said.append)
+    assert gauntlet.checks(workspace_reports(ws, "poker-table:"), "my-student") == {}
+    shown = results.block(ws)
+    assert "| my-student | the arena's tight-aggressive bots | +0.0 [-30.0, +30.0] | 600 |" in shown
+    assert "| sharingan-2 | the arena's random bots | +3950.0 ±30.0 | +4004 ±197 | yes |" in shown
+    assert "| sharingan-2 | the arena's tight bots | +420.0 ±30.0 | +125 ±35 | no |" in shown
