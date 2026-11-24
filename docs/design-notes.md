@@ -3171,6 +3171,11 @@ blueprints are not published, so we train one here, and its native code never ru
   engine. Amounts are chips at blinds 50 and 100, the unit the answer uses. The engine names players as the history
   does: a hand that stops at someone else's turn answers "it is BB's turn to act, and the history does not show
   their cards", and the advice says who is to act.
+- **The strategy file streams to disk too.** At the end of training upstream built the whole strategy map beside the
+  regret table before saving it, the run's memory peak. The patch counts the strategies, then writes them one by one
+  in the same byte layout; the upstream loader reads the file back (5,049,327 strategies on a 300,000-iteration run,
+  matching its per-street counts). The same run now peaks at 1.1 GiB, down from 2.1 before the checkpoint and
+  strategy fixes.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's

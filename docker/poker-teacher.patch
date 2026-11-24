@@ -174,11 +174,37 @@ index 2ed6303..14ba5f1 100644
      dir: &std::path::Path,
      out: &mut Vec<std::path::PathBuf>,
 diff --git a/src/cfr.rs b/src/cfr.rs
-index 7c04677..345118c 100644
+index 7c04677..af4d9d6 100644
 --- a/src/cfr.rs
 +++ b/src/cfr.rs
-@@ -828,32 +828,41 @@ impl Trainer {
+@@ -826,34 +826,67 @@ impl Trainer {
+         }
+     }
  
++    /// Write the blueprint straight from the regret table, in `Blueprint`'s
++    /// byte layout, without building its strategy map first: at the end of
++    /// a long run that second table was the memory peak. Returns the number
++    /// of strategies written.
++    pub fn save_blueprint(&self, path: &str) -> std::io::Result<u64> {
++        use std::io::Write;
++        let other = std::io::Error::other;
++        let kept = |node: &Node| normalize(&node.strat).map(|s| s.iter().map(|&x| x as f32).collect::<Vec<f32>>());
++        let count = self.nodes.iter().filter(|e| kept(e.value()).is_some()).count() as u64;
++        let mut f = std::io::BufWriter::new(std::fs::File::create(path)?);
++        bincode::serialize_into(&mut f, &count).map_err(other)?;
++        for e in self.nodes.iter() {
++            if let Some(probs) = kept(e.value()) {
++                bincode::serialize_into(&mut f, &(e.key().as_ref(), &probs)).map_err(other)?;
++            }
++        }
++        bincode::serialize_into(&mut f, &self.iterations()).map_err(other)?;
++        bincode::serialize_into(&mut f, &self.cfg.hand.num_players).map_err(other)?;
++        bincode::serialize_into(&mut f, &self.abs.cfg).map_err(other)?;
++        bincode::serialize_into(&mut f, &self.abs.centroids).map_err(other)?;
++        f.flush()?;
++        Ok(count)
++    }
++
      /// Full checkpoint (regrets + strategy sums) for resuming training.
      pub fn save_checkpoint(&self, path: &str) -> std::io::Result<()> {
 -        let snapshot: Vec<(Vec<u8>, Node)> = self
@@ -237,7 +263,7 @@ index 7c04677..345118c 100644
          Ok(t)
      }
  }
-@@ -877,14 +886,6 @@ struct LegacyBlueprint {
+@@ -877,14 +910,6 @@ struct LegacyBlueprint {
      centroids: Option<Centroids>,
  }
  
@@ -253,7 +279,7 @@ index 7c04677..345118c 100644
      let mut k = Vec::with_capacity(3 + hist.len());
      k.push(bucket as u8);
 diff --git a/src/main.rs b/src/main.rs
-index 3c163ca..adbc7c4 100644
+index 3c163ca..31c5405 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -18,6 +18,8 @@ mod portfolio;
@@ -373,17 +399,27 @@ index 3c163ca..adbc7c4 100644
                      trainer
                          .save_checkpoint(path)
                          .unwrap_or_else(|e| die(&format!("checkpoint save failed: {e}")));
-@@ -718,6 +802,9 @@ fn main() {
-                 "blueprint saved to {out} ({} strategies)",
-                 bp.strategies.len()
+@@ -711,13 +795,13 @@ fn main() {
+                 iters as f64 / secs,
+                 trainer.node_count()
              );
+-            let bp = trainer.to_blueprint();
+-            bp.save(&out)
++            let saved = trainer
++                .save_blueprint(&out)
+                 .unwrap_or_else(|e| die(&format!("blueprint save failed: {e}")));
+-            println!(
+-                "blueprint saved to {out} ({} strategies)",
+-                bp.strategies.len()
+-            );
++            println!("blueprint saved to {out} ({saved} strategies)");
 +            if let Some(gib) = peak_memory_gib() {
 +                println!("peak memory: {gib:.1} GiB");
 +            }
          }
  
          Cmd::BucketTable {
-@@ -1301,8 +1388,72 @@ fn main() {
+@@ -1301,8 +1385,72 @@ fn main() {
              }
          }
  
