@@ -543,6 +543,16 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 | sharingan-2 | the arena's calling-station bots | +9039.7 ±290.1 | +2572 ±118 | no |
 | sharingan-2 | the arena's random bots | +3878.3 ±190.6 | +4004 ±197 | yes |
 
+| blueprint | logged hands | whose moves | decisions | same kind of move | weight on the logged kind | fell back |
+|---|---|---|---|---|---|---|
+| sharingan-2 | pluribus, 10,000 | Pluribus | 15,169 | 88.2% | 0.872 | 0.0% |
+| sharingan-2 | pluribus, 10,000 | all | 91,356 | 85.7% | 0.847 | 0.0% |
+| sharingan-2 | pluribus, 10,000 | professionals | 76,187 | 85.2% | 0.842 | 0.0% |
+| sharingan-2 | pluribus, 10,000 | street:flop | 14,077 | 75.3% | 0.737 | 0.0% |
+| sharingan-2 | pluribus, 10,000 | street:preflop | 61,700 | 91.0% | 0.903 | 0.0% |
+| sharingan-2 | pluribus, 10,000 | street:river | 6,385 | 75.8% | 0.733 | 0.0% |
+| sharingan-2 | pluribus, 10,000 | street:turn | 9,194 | 73.0% | 0.719 | 0.0% |
+
 | strategy | Pluribus's move, all streets | preflop | flop | turn | river | mean probability on it | covered |
 |---|---|---|---|---|---|---|---|
 | blueprint-200000000 | 69.8% | 73.4% | 63.5% | 61.4% | 59.9% | 0.633 | 99.6% |
@@ -554,7 +564,7 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 | blueprint-200000000-student | blueprint-200000000 | 5.38 MB | 0.0727 | 89.0% | 0 |
 | blueprint-200000000-student-r2 | blueprint-200000000 | 5.38 MB | 0.0928 | 82.5% | 2 |
 
-Six seats, 100 big blinds, mbb/hand = thousandths of a big blind a hand. Against copies of a strategy the result is the plain mean; against callers and random players the engine's AIVAT estimate. Rows against the arena's bots or a published blueprint are played in SHARINGAN's bench tool with duplicate deals, each deal from every seat, and show its AIVAT estimate. The Pluribus rows count its exact move in the strategy's bet menu, over the logged decisions the strategy has an answer for (covered).
+Six seats, 100 big blinds, mbb/hand = thousandths of a big blind a hand. Against copies of a strategy the result is the plain mean; against callers and random players the engine's AIVAT estimate. Rows against the arena's bots or a published blueprint are played in SHARINGAN's bench tool with duplicate deals, each deal from every seat, and show its AIVAT estimate. The decision table asks a blueprint for its move at every logged decision whose cards are known and counts how often its most likely kind of move (fold, check, call, bet or raise) is the one made, and the probability it gave that kind. The Pluribus rows count its exact move in the strategy's bet menu, over the logged decisions the strategy has an answer for (covered).
 <!-- /report:poker -->
 
 - A strategy is kept only when it beats five copies of the one before it with its whole interval above zero; none of

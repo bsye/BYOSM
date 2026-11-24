@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .distill import REPORT as STUDENTS
 from .sharingan.arena import HOUSE
+from .sharingan.compare import REPORT as DECISIONS
 from .sharingan.gauntlet import checks
 from .table import AGREEMENT, ITSELF, REPORT, STREETS, TOTAL, VERSUS
 
@@ -22,6 +23,10 @@ TABLE_HEAD = "| strategy | the other five seats | mbb/hand [95% CI] | hands |\n|
 CHECK_HEAD = (
     "| published blueprint | the other five seats | mbb/hand here | published | reproduced |\n|---|---|---|---|---|"
 )
+DECISION_HEAD = (
+    "| blueprint | logged hands | whose moves | decisions | same kind of move | weight on the logged kind | "
+    "fell back |\n|---|---|---|---|---|---|---|"
+)
 AGREEMENT_HEAD = (
     "| strategy | Pluribus's move, all streets | preflop | flop | turn | river | mean probability on it | covered |\n"
     "|---|---|---|---|---|---|---|---|"
@@ -34,7 +39,9 @@ FOOT = (
     "Six seats, 100 big blinds, mbb/hand = thousandths of a big blind a hand. Against copies of a strategy the result "
     "is the plain mean; against callers and random players the engine's AIVAT estimate. Rows against the arena's bots "
     "or a published blueprint are played in SHARINGAN's bench tool with duplicate deals, each deal from every seat, "
-    "and show its AIVAT estimate. The Pluribus rows count its "
+    "and show its AIVAT estimate. The decision table asks a blueprint for its move at every logged decision whose "
+    "cards are known and counts how often its most likely kind of move (fold, check, call, bet or raise) is the one "
+    "made, and the probability it gave that kind. The Pluribus rows count its "
     "exact move in the strategy's bet menu, over the logged decisions the strategy has an answer for (covered)."
 )
 
@@ -81,12 +88,23 @@ def checked(tables: dict[str, dict]) -> list[str]:
     ]
 
 
+def decided(reports: dict[str, dict]) -> list[str]:
+    return [
+        f"| {r['blueprint']} | {r['source']}, {r['hands']:,} | {label} | {g['decisions']:,} | {g['same_kind']:.1%} | "
+        f"{g['mean_weight']:.3f} | {g['fell_back']:.1%} |"
+        for _, r in sorted(reports.items())
+        for label, g in sorted(r["groups"].items())
+        if g["decisions"]
+    ]
+
+
 def block(ws: Path) -> str | None:
     from ...db.workspace import workspace_reports
 
     tables = [
         [TABLE_HEAD, *(played(k, r) for k, r in sorted(workspace_reports(ws, REPORT).items()))],
         [CHECK_HEAD, *checked(workspace_reports(ws, REPORT))],
+        [DECISION_HEAD, *decided(workspace_reports(ws, DECISIONS))],
         [AGREEMENT_HEAD, *(agreeing(r) for _, r in sorted(workspace_reports(ws, AGREEMENT).items()))],
         [STUDENT_HEAD, *(taught(r) for _, r in sorted(workspace_reports(ws, STUDENTS).items()))],
     ]

@@ -3226,6 +3226,15 @@ blueprints are not published, so we train one here, and its native code never ru
   the card. Read from its 169.9 GB memory-mapped file, beside a training run, its 720,000 hands against the simple
   bots took 160 seconds and its 120,000 hands with our seat 137 and 216 seconds. Decision that follows:
   stop training our own teacher; distil the student from SHARINGAN-2.
+- **A blueprint is compared with real hands decision by decision.** A recorded hand cannot be replayed with other
+  moves: after the first different move nobody knows what the others would have done. So `byosm poker
+  blueprint-decisions` replays each logged hand, and at every decision whose cards are known asks SHARINGAN's own
+  inference server (no search, most likely move, started inside the sealed container with no network at all) what
+  it would do. It counts the kind of move (fold, check, call, bet or raise), not the size, so blueprints with
+  different bet menus are comparable. On Pluribus's 10,000 hands SHARINGAN-2 answered all 91,356 decisions
+  (15,169 of them Pluribus's own, the published count), none by a fallback: the same kind of move as Pluribus
+  88.2% of the time and as the five professionals 85.2%; 91.0% before the flop, 75.3% on the flop, 73.0% on the
+  turn, 75.8% on the river. Agreement is not strength: it says how alike two players choose, not who wins.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's
