@@ -279,7 +279,7 @@ index 7c04677..af4d9d6 100644
      let mut k = Vec::with_capacity(3 + hist.len());
      k.push(bucket as u8);
 diff --git a/src/main.rs b/src/main.rs
-index 3c163ca..31c5405 100644
+index 3c163ca..815deca 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -18,6 +18,8 @@ mod portfolio;
@@ -291,7 +291,7 @@ index 3c163ca..31c5405 100644
  mod table;
  mod turn;
  mod valuenet;
-@@ -498,9 +500,82 @@ enum Cmd {
+@@ -498,7 +500,80 @@ enum Cmd {
          /// Directory of .phh files (searched recursively).
          #[arg(long, default_value = "data/pluribus")]
          dir: String,
@@ -344,7 +344,7 @@ index 3c163ca..31c5405 100644
 +        abs: String,
 +        #[arg(long, default_value_t = 1)]
 +        seed: u64,
-+    },
+     },
 +    /// Build a strategy file from `infosets` records and a student's table
 +    /// of probabilities; the abstraction is taken from --like.
 +    Student {
@@ -360,20 +360,18 @@ index 3c163ca..31c5405 100644
 +        hist: usize,
 +        #[arg(long)]
 +        out: String,
-     },
- }
- 
++    },
++}
++
 +/// Peak resident memory of this process, from the kernel's high-water mark.
 +fn peak_memory_gib() -> Option<f64> {
 +    let status = std::fs::read_to_string("/proc/self/status").ok()?;
 +    let line = status.lines().find(|l| l.starts_with("VmHWM:"))?;
 +    let kb: f64 = line.split_whitespace().nth(1)?.parse().ok()?;
 +    Some(kb / 1024.0 / 1024.0)
-+}
-+
+ }
+ 
  fn main() {
-     match Cli::parse().cmd {
-         Cmd::Train {
 @@ -659,6 +734,12 @@ fn main() {
              }
              .with_vr(vr_baseline);
@@ -387,7 +385,18 @@ index 3c163ca..31c5405 100644
              println!(
                  "training {players}-max, {iters} iterations, menu {menu:?}, pruning {}, \
                   vr baselines {}, snapshot avg {}, multiway focus {multiway_focus}",
-@@ -693,7 +774,10 @@ fn main() {
+@@ -689,11 +770,21 @@ fn main() {
+                 let base = done_before;
+                 trainer.run(this, &|done| pb.set_position(base + done));
+                 done_before += this;
++                // The progress bar is hidden without a terminal: say where the run is,
++                // so whoever watches the log can tell a long run from a stuck one.
++                println!(
++                    "progress: {done_before} of {iters} iterations, {} infosets, {:.0} iters/s",
++                    trainer.node_count(),
++                    done_before as f64 / started.elapsed().as_secs_f64()
++                );
+                 if snapshot_avg && done_before * 10 > iters {
                      trainer.snapshot_strategy();
                      snapshots += 1;
                  }
@@ -399,7 +408,7 @@ index 3c163ca..31c5405 100644
                      trainer
                          .save_checkpoint(path)
                          .unwrap_or_else(|e| die(&format!("checkpoint save failed: {e}")));
-@@ -711,13 +795,13 @@ fn main() {
+@@ -711,13 +802,13 @@ fn main() {
                  iters as f64 / secs,
                  trainer.node_count()
              );
@@ -419,13 +428,13 @@ index 3c163ca..31c5405 100644
          }
  
          Cmd::BucketTable {
-@@ -1301,8 +1385,72 @@ fn main() {
+@@ -1301,8 +1392,72 @@ fn main() {
              }
          }
  
 -        Cmd::Benchmark { blueprint, dir } => {
 +        Cmd::Infosets { blueprint, hands, seed, out } => {
-+            let policy = load_policy(&blueprint);
+             let policy = load_policy(&blueprint);
 +            let r = student::export(&policy, hands, seed, &out)
 +                .unwrap_or_else(|e| die(&format!("cannot write {out}: {e}")));
 +            println!(
@@ -438,7 +447,7 @@ index 3c163ca..31c5405 100644
 +        }
 +
 +        Cmd::Reach { blueprint, actor, hands, seed, out } => {
-             let policy = load_policy(&blueprint);
++            let policy = load_policy(&blueprint);
 +            let seated = load_policy(&actor);
 +            let (records, reached) = student::reach(&policy, &seated, hands, seed, &out)
 +                .unwrap_or_else(|e| die(&format!("cannot write {out}: {e}")));

@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .infosets import RECORDS, described, reach, records
-from .teacher import STRATEGY, run, strategy, work_dir
+from .teacher import STRATEGY, room, run, strategy, work_dir
 
 STUDENT = "-student"
 ROUND = "-r"
@@ -26,6 +26,7 @@ def build(ws: Path, hands_dir: Path, name: str, log: Log, rounds: int = 0) -> di
     from ...train.gpu import gpu_slot
     from .student import fit, table
 
+    room(ws)
     meta, found = described(ws, name), records(ws, name)
     span = int(found["bucket"].max()) + 1
     folder, student = work_dir(ws), f"{name}{STUDENT}{f'{ROUND}{rounds}' if rounds else ''}"
@@ -42,6 +43,7 @@ def build(ws: Path, hands_dir: Path, name: str, log: Log, rounds: int = 0) -> di
             table(net, found, folder / f"{student}{TABLE}", dev)
         torch.save(net.state_dict(), folder / f"{student}{MODEL}")
         run(ws, hands_dir, ["student", *files, *shape, "--out", f"{student}{STRATEGY}"], log)
+    (folder / f"{student}{TABLE}").unlink()
     run(ws, hands_dir, ["abstraction", "--blueprint", f"{student}{STRATEGY}", "--out", f"{student}{ABSTRACTION}"], log)
     size = (folder / f"{student}{MODEL}").stat().st_size / MB
     result = {**score, "student": student, "teacher": name, "model_mb": round(size, 2), "rounds": rounds}

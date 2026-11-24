@@ -265,7 +265,7 @@ def test_the_teacher_runs_sealed_with_only_its_folder_and_the_hands_mounted(ws, 
     assert found[found.index("--network") : found.index("--network") + 2] == ["--network", "none"]
     assert "--read-only" in found and "--cap-drop" in found and f"{ws / 'hands'}:{teacher.HANDS}:ro" in found
     assert found[-2:] == [teacher.image(), "benchmark"] and teacher.image().startswith("byosm-poker-teacher:757f7692-")
-    assert f"{teacher.HANDS}:ro" not in " ".join(teacher.command(ws, None, ["spots"]))
+    assert f"{teacher.HANDS}:ro" not in " ".join(teacher.command(ws, None, ["spots"])) and "--init" in found
 
 
 def test_teacher_training_resumes_from_its_checkpoint_and_names_the_strategy_by_its_recipe(ws, monkeypatch):
@@ -390,3 +390,22 @@ def test_poker_results_come_from_the_stored_reports_and_an_archived_specialist_l
     Project("gone").ensure()
     set_archived(ws, "gone", True)
     assert "gone" not in page.reported()
+
+
+def test_a_teacher_run_refuses_a_nearly_full_disk_and_a_strategys_files_can_be_removed(ws, monkeypatch):
+    import shutil
+
+    from byosm.games.poker import teacher
+
+    folder = teacher.work_dir(ws)
+    for name in ("old.bin", "old.bin.ckpt", "old.infosets", "old-student.bin"):
+        (folder / name).write_text("")
+    usage = shutil.disk_usage(folder)
+    monkeypatch.setattr(shutil, "disk_usage", lambda path: usage._replace(free=5 * teacher.GIB))
+    monkeypatch.setattr(teacher, "run", lambda *a: pytest.fail("the run must not start"))
+    with pytest.raises(RuntimeError, match="only 5 GiB free"):
+        teacher.train(ws, ws, teacher.Recipe(iters=10), print)
+    assert teacher.remove(ws, "old") == ["old.bin", "old.bin.ckpt", "old.infosets"]
+    assert [p.name for p in folder.iterdir()] == ["old-student.bin"]
+    result = CliRunner().invoke(app, ["poker", "teacher-remove", "old"])
+    assert result.exit_code != 0 and "nothing stored" in result.output

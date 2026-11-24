@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ FOLDER = "poker-teacher"
 SPARE_CPUS = 2
 RESERVE_GIB = 3
 GIB = 1024**3
+FREE_GIB = 40
 TMPFS = "/tmp:size=1g"
 HANDS = "/data/pluribus"
 WORK = "/work"
@@ -87,6 +89,7 @@ def command(
     flags: tuple[str, ...] = (),
 ) -> list[str]:
     sealed = [
+        "--init",
         "--network",
         "none",
         "--read-only",
@@ -118,6 +121,24 @@ def run(ws: Path, hands: Path | None, args: list[str], log: Log) -> list[str]:
     return said
 
 
+def room(ws: Path) -> None:
+    free = shutil.disk_usage(work_dir(ws)).free // GIB
+    if free < FREE_GIB:
+        raise RuntimeError(
+            f"only {free} GiB free on the disk holding {work_dir(ws)}: a teacher run writes checkpoints of 10 GiB "
+            f"and more, so it needs {FREE_GIB} GiB. byosm poker teacher-remove NAME deletes a strategy's files"
+        )
+
+
+def remove(ws: Path, name: str) -> list[str]:
+    found = sorted(p for p in work_dir(ws).iterdir() if p.name.startswith(f"{name}."))
+    if not found:
+        raise ValueError(f"nothing stored for a strategy named {name!r}")
+    for path in found:
+        path.unlink()
+    return [p.name for p in found]
+
+
 def strategy(ws: Path, name: str) -> str:
     if not (work_dir(ws) / f"{name}{STRATEGY}").exists():
         known = sorted(p.name.removesuffix(STRATEGY) for p in work_dir(ws).glob(f"*{STRATEGY}"))
@@ -136,6 +157,7 @@ def continued(ws: Path, name: str, start: str) -> None:
 def train(ws: Path, hands: Path, recipe: Recipe, log: Log, start: str | None = None) -> str:
     name = recipe.name()
     saved = f"{name}{CHECKPOINT}"
+    room(ws)
     if start:
         continued(ws, name, start)
     resume = ["--resume", saved] if (work_dir(ws) / saved).exists() else []

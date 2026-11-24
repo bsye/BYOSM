@@ -62,13 +62,19 @@ def test_building_a_student_trains_it_writes_its_table_and_asks_the_engine_for_a
     rows.tofile(folder / "old.infosets")
     (folder / "old.infosets.json").write_text(json.dumps({"records": len(rows), "width": WIDTH, "hist": HIST}))
     (folder / "old.bin").write_text("")
-    asked = []
-    monkeypatch.setattr(distill, "run", lambda ws, hands, args, log: asked.append(args))
+    asked, tables = [], []
+
+    def engine(ws, hands, args, log):
+        asked.append(args)
+        if args[0] == "student":
+            tables.append((folder / "old-student.probs").stat().st_size)
+
+    monkeypatch.setattr(distill, "run", engine)
     monkeypatch.setattr("byosm.train.gpu.gpu_slot", lambda device, log: contextlib.nullcontext("cpu"))
     monkeypatch.setattr(student, "EPOCHS", 2)
     made = distill.build(ws, ws, "old", lambda _: None)
     assert made["student"] == "old-student" and made["teacher"] == "old" and made["model_mb"] > 0
-    assert (folder / "old-student.probs").stat().st_size == len(rows) * WIDTH * 4
+    assert tables == [len(rows) * WIDTH * 4] and not (folder / "old-student.probs").exists()
     assert asked[0][:7] == ["student", "--like", "old.bin", "--records", "old.infosets", "--probs", "old-student.probs"]
     assert asked[0][7:] == ["--width", "3", "--hist", "4", "--out", "old-student.bin"]
     assert workspace_report(ws, "poker-student:old-student") == made

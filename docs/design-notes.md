@@ -3176,6 +3176,15 @@ blueprints are not published, so we train one here, and its native code never ru
   in the same byte layout; the upstream loader reads the file back (5,049,327 strategies on a 300,000-iteration run,
   matching its per-street counts). The same run now peaks at 1.1 GiB, down from 2.1 before the checkpoint and
   strategy fixes.
+- **What the first long run broke, and the three fixes.** The 1-billion-iteration run printed nothing for 90
+  minutes (its progress bar needs a terminal), so the app's watchdog stopped the job as stuck. The container did not
+  stop with it: the trainer ran as process 1, which ignores the stop signal, and went on unseen for 40 minutes until
+  its checkpoint filled the disk to the last gigabyte, which took Docker down with it. The teacher folder held
+  102 GB of checkpoints by then. Fixes: the trainer prints a progress line after every twentieth of a run
+  (iterations, infosets, rate); containers start with `--init`, so stopping the job stops the container within a
+  second (checked); every run that writes large files first checks for 40 GiB free and says how to make room;
+  `byosm poker teacher-remove NAME` deletes a strategy's files, and a student's 2.8 GB table is deleted once its
+  strategy file is built.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's

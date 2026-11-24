@@ -110,6 +110,19 @@ def teacher_versus(focal: str, field: str, hands: int = typer.Option(200_000, he
         raise typer.BadParameter(str(e)) from e
 
 
+@poker_app.command("teacher-remove")
+def teacher_remove(name: str) -> None:
+    """Delete every file stored for a trained strategy: its strategy, checkpoint, exports and labels."""
+    from ..config import find_workspace
+    from ..games.poker.teacher import remove
+
+    try:
+        gone = remove(find_workspace(), name)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    log(f"removed {len(gone)} files of {name}: {', '.join(gone)}")
+
+
 @poker_app.command("teacher-infosets")
 def teacher_infosets(
     name: str = _strategy_option(),

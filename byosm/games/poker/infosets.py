@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .teacher import run, strategy, work_dir
+from .teacher import room, run, strategy, work_dir
 
 RECORDS = ".infosets"
 META = ".infosets.json"
@@ -45,6 +45,7 @@ def layout(width: int, hist: int) -> np.dtype:
 
 def export(ws: Path, hands_dir: Path, name: str, hands: int, log: Log) -> dict[str, int]:
     out = f"{name}{RECORDS}"
+    room(ws)
     said = run(ws, hands_dir, ["infosets", "--blueprint", strategy(ws, name), "--hands", str(hands), "--out", out], log)
     meta = {**parsed(said), ORDERED: True}
     (work_dir(ws) / f"{name}{META}").write_text(json.dumps(meta))
