@@ -3193,8 +3193,10 @@ blueprints are not published, so we train one here, and its native code never ru
   it uses plain HTTP, measured at 72 to 76 MB/s on this line.
 - **A published blueprint runs in its own sealed container.** SHARINGAN's code is built from a pinned commit
   (`docker/poker-sharingan.Dockerfile`) and runs like our teacher: no network, read-only, non-root, capabilities
-  dropped, the weights and the card buckets mounted read-only. The sealing flags, the CPU and memory limits and the
-  one-container-at-a-time lock are shared with the teacher (`byosm/games/poker/sealed.py`). Its score counts only
+  dropped, the weights and the card buckets mounted read-only. The sealing flags and the CPU and memory limits are
+  shared with the teacher (`byosm/games/poker/sealed.py`). Arena runs take turns among themselves, not with the
+  teacher: they hold little memory (the blueprint is memory-mapped), so a table test does not wait hours behind a
+  training run. Its score counts only
   after `byosm poker blueprint-gauntlet` reproduces what its model card publishes against its own six simple bots:
   a field is reproduced when the two estimates differ by less than their joint 95% interval.
 - **Our student sits at an outside table through one small file.** `byosm/games/poker/seat.py` needs only numpy,

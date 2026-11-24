@@ -6,7 +6,6 @@ from pathlib import Path
 from ....deploy import DOCKER_DIR, build_image, docker
 from ..sealed import Log
 from ..teacher import TURN
-from ..teacher import work_dir as teacher_dir
 from . import BUCKETS, CODE, COMMIT, DATA, WEIGHTS, Blueprint, work_dir
 
 DOCKERFILE = DOCKER_DIR / "poker-sharingan.Dockerfile"
@@ -40,4 +39,4 @@ def stored(ws: Path, found: Blueprint) -> None:
 
 
 def turn(ws: Path) -> Path:
-    return teacher_dir(ws) / TURN
+    return work_dir(ws) / TURN
