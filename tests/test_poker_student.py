@@ -107,7 +107,7 @@ def test_extra_rounds_add_what_the_seated_student_reaches_and_refuse_an_unordere
     trained_on.clear()
     made = distill.build(ws, ws, "old", lambda _: None, rounds=1)
     assert made["student"] == "old-student-r1" and made["rounds"] == 1
-    assert asked == ["student", "reach", "student"] and trained_on[1] == len(rows) > trained_on[0]
+    assert asked == ["student", "reach", "student", "abstraction"] and trained_on[1] == len(rows) > trained_on[0]
 
 
 class Engine:

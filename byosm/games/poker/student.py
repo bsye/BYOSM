@@ -7,9 +7,8 @@ import numpy as np
 import torch
 from torch import nn
 
-from .infosets import PAD
+from .infosets import PAD, SLOTS
 
-SLOTS = 11
 SEPARATOR = 15
 PAD_TOKEN = 16
 START = 17

@@ -14,8 +14,7 @@ REPO = "https://github.com/conorarmstrong/pluribus.git"
 COMMIT = "757f7692738069522195d2b486eec60a8b010c0c"
 DOCKERFILE = DOCKER_DIR / "poker-teacher.Dockerfile"
 PATCH = DOCKER_DIR / "poker-teacher.patch"
-BUILD = hashlib.sha256(DOCKERFILE.read_bytes() + PATCH.read_bytes()).hexdigest()[:8]
-IMAGE = f"byosm-poker-teacher:{COMMIT[:8]}-{BUILD}"
+IMAGE = "byosm-poker-teacher"
 FOLDER = "poker-teacher"
 CPUS = "16"
 MEMORY = "28g"
@@ -53,6 +52,11 @@ class Recipe:
 DEFAULT = Recipe().name()
 
 
+def image() -> str:
+    build = hashlib.sha256(DOCKERFILE.read_bytes() + PATCH.read_bytes()).hexdigest()[:8]
+    return f"{IMAGE}:{COMMIT[:8]}-{build}"
+
+
 def work_dir(ws: Path) -> Path:
     found = ws / STATE_DIR / FOLDER
     found.mkdir(parents=True, exist_ok=True)
@@ -60,12 +64,12 @@ def work_dir(ws: Path) -> Path:
 
 
 def ensure_image(log: Log) -> None:
-    if docker("image", "inspect", IMAGE).returncode != 0:
-        build_image(DOCKERFILE, DOCKER_DIR, IMAGE, log, {"REPO": REPO, "COMMIT": COMMIT})
+    if docker("image", "inspect", image()).returncode != 0:
+        build_image(DOCKERFILE, DOCKER_DIR, image(), log, {"REPO": REPO, "COMMIT": COMMIT})
 
 
 def command(
-    ws: Path, hands: Path, args: list[str], cpus: str = CPUS, memory: str = MEMORY, flags: tuple[str, ...] = ()
+    ws: Path, hands: Path | None, args: list[str], cpus: str = CPUS, memory: str = MEMORY, flags: tuple[str, ...] = ()
 ) -> list[str]:
     sealed = [
         "--network",
@@ -78,11 +82,11 @@ def command(
         "--security-opt=no-new-privileges",
     ]
     limits = ["--cpus", cpus, "--memory", memory]
-    mounts = ["-v", f"{work_dir(ws)}:{WORK}", "-v", f"{hands}:{HANDS}:ro"]
-    return [docker_cli(), "run", "--rm", *flags, *sealed, *limits, *mounts, IMAGE, *args]
+    mounts = ["-v", f"{work_dir(ws)}:{WORK}", *(["-v", f"{hands}:{HANDS}:ro"] if hands else [])]
+    return [docker_cli(), "run", "--rm", *flags, *sealed, *limits, *mounts, image(), *args]
 
 
-def run(ws: Path, hands: Path, args: list[str], log: Log) -> list[str]:
+def run(ws: Path, hands: Path | None, args: list[str], log: Log) -> list[str]:
     ensure_image(log)
     said: list[str] = []
     piped = {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT, "text": True}

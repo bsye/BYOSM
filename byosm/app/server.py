@@ -18,6 +18,7 @@ from .config_routes import config_router
 from .data_routes import data_router
 from .errors import missing
 from .forecast_routes import forecast_router
+from .games_routes import games_router
 from .hub import Hub
 from .improve_routes import improve_router
 from .jobs import Runner
@@ -186,6 +187,8 @@ def create_app(
     ):
         app.include_router(r, dependencies=[Depends(check)])
     for r in (resources_router(ws), opendata_router(ws), forecast_router(ws), publish_router(ws), archive_router(ws)):
+        app.include_router(r, dependencies=[Depends(check)])
+    for r in (games_router(ws),):
         app.include_router(r, dependencies=[Depends(check)])
     for r in (data_router(ws), panel_routes.router(ws), improve_router(ws, runner), measure_router(ws, runner)):
         app.include_router(r, dependencies=[Depends(check)])

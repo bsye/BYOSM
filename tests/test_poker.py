@@ -258,7 +258,8 @@ def test_the_teacher_runs_sealed_with_only_its_folder_and_the_hands_mounted(ws):
     found = teacher.command(ws, ws / "hands", ["benchmark"])
     assert found[found.index("--network") : found.index("--network") + 2] == ["--network", "none"]
     assert "--read-only" in found and "--cap-drop" in found and f"{ws / 'hands'}:{teacher.HANDS}:ro" in found
-    assert found[-2:] == [teacher.IMAGE, "benchmark"]
+    assert found[-2:] == [teacher.image(), "benchmark"] and teacher.image().startswith("byosm-poker-teacher:757f7692-")
+    assert f"{teacher.HANDS}:ro" not in " ".join(teacher.command(ws, None, ["spots"]))
 
 
 def test_teacher_training_resumes_from_its_checkpoint_and_names_the_strategy_by_its_recipe(ws, monkeypatch):

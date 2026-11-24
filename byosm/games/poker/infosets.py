@@ -14,6 +14,7 @@ SUMMARY = "infosets:"
 REACH = ".reach"
 ORDERED = "ordered"
 PAD = 255
+SLOTS = 11
 BEFORE = ("records", "visited", "hands", "skipped")
 AFTER = ("width", "hist")
 Log = Callable[[str], None]

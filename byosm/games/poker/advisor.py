@@ -9,18 +9,17 @@ from typing import Any
 
 import numpy as np
 
-from .distill import MODEL
+from .distill import ABSTRACTION, MODEL
 from .infosets import PAD, layout
 from .teacher import command, ensure_image, run, strategy, work_dir
 
-ABSTRACTION = ".abs"
 CPUS = "2"
 MEMORY = "1g"
 STAY_OPEN = ("-i",)
 Log = Callable[[str], None]
 
 
-def abstraction(ws: Path, hands_dir: Path, name: str, log: Log) -> str:
+def abstraction(ws: Path, hands_dir: Path | None, name: str, log: Log) -> str:
     saved = f"{name}{ABSTRACTION}"
     if not (work_dir(ws) / saved).exists():
         run(ws, hands_dir, ["abstraction", "--blueprint", strategy(ws, name), "--out", saved], log)
@@ -47,7 +46,7 @@ class Advisor:
     engine: Any
 
     @classmethod
-    def start(cls, ws: Path, hands_dir: Path, name: str, log: Log) -> Advisor:
+    def start(cls, ws: Path, hands_dir: Path | None, name: str, log: Log) -> Advisor:
         ensure_image(log)
         args = ["spots", "--abs", abstraction(ws, hands_dir, name, log)]
         piped = {"stdin": subprocess.PIPE, "stdout": subprocess.PIPE, "text": True}
@@ -56,7 +55,10 @@ class Advisor:
     def spot(self, hand: str) -> dict:
         self.engine.stdin.write(json.dumps(hand) + "\n")
         self.engine.stdin.flush()
-        found = json.loads(self.engine.stdout.readline())
+        answered = self.engine.stdout.readline()
+        if not answered:
+            raise OSError("the engine closed its output")
+        found = json.loads(answered)
         if "error" in found:
             raise ValueError(found["error"])
         return found

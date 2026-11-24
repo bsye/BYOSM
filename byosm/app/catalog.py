@@ -90,6 +90,7 @@ def summary(ws: Path, name: str) -> dict[str, Any]:
 
 
 def specialists(ws: Path) -> list[dict[str, Any]]:
+    from ..games.poker.bot import summaries as game_bots
     from ..series.board import reports
     from ..series.specialist import summary as forecaster
     from ..tabular.specialist import summary as risk
@@ -102,6 +103,7 @@ def specialists(ws: Path) -> list[dict[str, Any]]:
         + [team_summary(ws, t) for t in team_names(ws)]
         + [forecaster(r) for r in reports(ws) if r["at"]]
         + [risk(r) for r in forecasts(ws)]
+        + game_bots(ws)
     )
     return [{**s, "archived": s["name"] in shelved} for s in every]
 

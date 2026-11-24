@@ -11,6 +11,7 @@ ROUND = "-r"
 REACH_HANDS = 2_000_000
 MODEL = ".pt"
 TABLE = ".probs"
+ABSTRACTION = ".abs"
 REPORT = "poker-student:"
 MB = 1024 * 1024
 Log = Callable[[str], None]
@@ -41,6 +42,7 @@ def build(ws: Path, hands_dir: Path, name: str, log: Log, rounds: int = 0) -> di
             table(net, found, folder / f"{student}{TABLE}", dev)
         torch.save(net.state_dict(), folder / f"{student}{MODEL}")
         run(ws, hands_dir, ["student", *files, *shape, "--out", f"{student}{STRATEGY}"], log)
+    run(ws, hands_dir, ["abstraction", "--blueprint", f"{student}{STRATEGY}", "--out", f"{student}{ABSTRACTION}"], log)
     size = (folder / f"{student}{MODEL}").stat().st_size / MB
     result = {**score, "student": student, "teacher": name, "model_mb": round(size, 2), "rounds": rounds}
     save_workspace_report(ws, f"{REPORT}{student}", result)
