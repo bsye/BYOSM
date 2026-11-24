@@ -35,6 +35,7 @@ def teacher_train(
         False, help="store later rounds as the mean of strategy snapshots, as Pluribus did"
     ),
     linear_cap: int = typer.Option(None, help="stop growing the weight of later traversals after this many"),
+    start_from: str = typer.Option(None, help="continue this strategy's training instead of starting over"),
 ) -> None:
     """Train the open-source Pluribus rebuild's strategy in a sealed container; it resumes from its checkpoint."""
     from ..benchmarks.pluribus import root
@@ -42,7 +43,10 @@ def teacher_train(
     from ..games.poker.teacher import Recipe, train
 
     recipe = Recipe(iters, buckets, snapshot_avg, linear_cap)
-    log(f"saved {train(find_workspace(), root(), recipe, log)}")
+    try:
+        log(f"saved {train(find_workspace(), root(), recipe, log, start_from)}")
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
 
 
 def _strategy_option() -> str:

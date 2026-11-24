@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -16,8 +17,9 @@ DOCKERFILE = DOCKER_DIR / "poker-teacher.Dockerfile"
 PATCH = DOCKER_DIR / "poker-teacher.patch"
 IMAGE = "byosm-poker-teacher"
 FOLDER = "poker-teacher"
-CPUS = "16"
-MEMORY = "28g"
+SPARE_CPUS = 2
+RESERVE_GIB = 3
+GIB = 1024**3
 TMPFS = "/tmp:size=1g"
 HANDS = "/data/pluribus"
 WORK = "/work"
@@ -68,8 +70,21 @@ def ensure_image(log: Log) -> None:
         build_image(DOCKERFILE, DOCKER_DIR, image(), log, {"REPO": REPO, "COMMIT": COMMIT})
 
 
+def limits() -> tuple[str, str]:
+    found = docker("info", "--format", "{{.NCPU}} {{.MemTotal}}")
+    if found.returncode:
+        raise RuntimeError("the poker teacher needs Docker running")
+    cpus, memory = found.stdout.split()
+    return str(max(1, int(cpus) - SPARE_CPUS)), f"{int(memory) // GIB - RESERVE_GIB}g"
+
+
 def command(
-    ws: Path, hands: Path | None, args: list[str], cpus: str = CPUS, memory: str = MEMORY, flags: tuple[str, ...] = ()
+    ws: Path,
+    hands: Path | None,
+    args: list[str],
+    cpus: str | None = None,
+    memory: str | None = None,
+    flags: tuple[str, ...] = (),
 ) -> list[str]:
     sealed = [
         "--network",
@@ -81,9 +96,10 @@ def command(
         "ALL",
         "--security-opt=no-new-privileges",
     ]
-    limits = ["--cpus", cpus, "--memory", memory]
+    most = limits() if cpus is None or memory is None else (cpus, memory)
+    capped = ["--cpus", cpus or most[0], "--memory", memory or most[1]]
     mounts = ["-v", f"{work_dir(ws)}:{WORK}", *(["-v", f"{hands}:{HANDS}:ro"] if hands else [])]
-    return [docker_cli(), "run", "--rm", *flags, *sealed, *limits, *mounts, image(), *args]
+    return [docker_cli(), "run", "--rm", *flags, *sealed, *capped, *mounts, image(), *args]
 
 
 def run(ws: Path, hands: Path | None, args: list[str], log: Log) -> list[str]:
@@ -109,9 +125,19 @@ def strategy(ws: Path, name: str) -> str:
     return f"{name}{STRATEGY}"
 
 
-def train(ws: Path, hands: Path, recipe: Recipe, log: Log) -> str:
+def continued(ws: Path, name: str, start: str) -> None:
+    source, target = (work_dir(ws) / f"{n}{CHECKPOINT}" for n in (start, name))
+    if not source.exists():
+        raise ValueError(f"no checkpoint for {start!r} to continue from")
+    if not target.exists():
+        os.link(source, target)
+
+
+def train(ws: Path, hands: Path, recipe: Recipe, log: Log, start: str | None = None) -> str:
     name = recipe.name()
     saved = f"{name}{CHECKPOINT}"
+    if start:
+        continued(ws, name, start)
     resume = ["--resume", saved] if (work_dir(ws) / saved).exists() else []
     run(ws, hands, ["train", *recipe.flags(), "--out", f"{name}{STRATEGY}", "--checkpoint", saved, *resume], log)
     return name

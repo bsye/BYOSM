@@ -252,8 +252,14 @@ def test_templated_inputs_drop_only_exact_copies_from_held_out_splits():
     assert dedupe([near, train[0]], against=train, near=near_limit(s)) == [near]
 
 
-def test_the_teacher_runs_sealed_with_only_its_folder_and_the_hands_mounted(ws):
+def test_the_teacher_runs_sealed_with_only_its_folder_and_the_hands_mounted(ws, monkeypatch):
+    import subprocess
+
     from byosm.games.poker import teacher
+
+    said = subprocess.CompletedProcess([], 0, stdout="18 51539607552\n")
+    monkeypatch.setattr(teacher, "docker", lambda *args: said)
+    assert teacher.limits() == ("16", "45g")
 
     found = teacher.command(ws, ws / "hands", ["benchmark"])
     assert found[found.index("--network") : found.index("--network") + 2] == ["--network", "none"]
@@ -276,6 +282,12 @@ def test_teacher_training_resumes_from_its_checkpoint_and_names_the_strategy_by_
     assert teacher.train(ws, ws, finer, print) == "blueprint-1000-b50-snap-cap400"
     assert calls[2][:8] == ["train", "--iters", "1000", "--buckets", "50", "--snapshot-avg", "--linear-cap", "400"]
     assert teacher.DEFAULT == "blueprint-200000000"
+    longer = teacher.Recipe(iters=5000)
+    with pytest.raises(ValueError, match="no checkpoint for 'missing'"):
+        teacher.train(ws, ws, longer, print, start="missing")
+    teacher.train(ws, ws, longer, print, start="blueprint-1000")
+    assert calls[3][-2:] == ["--resume", "blueprint-5000.bin.ckpt"]
+    assert (teacher.work_dir(ws) / "blueprint-5000.bin.ckpt").samefile(teacher.work_dir(ws) / "blueprint-1000.bin.ckpt")
 
 
 def test_a_strategy_plays_a_six_player_table_and_its_winrate_is_stored(ws, monkeypatch):

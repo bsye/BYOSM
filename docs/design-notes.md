@@ -3167,6 +3167,11 @@ blueprints are not published, so we train one here, and its native code never ru
   engine. Amounts are chips at blinds 50 and 100, the unit the answer uses. The engine names players as the history
   does: a hand that stops at someone else's turn answers "it is BB's turn to act, and the history does not show
   their cards", and the advice says who is to act.
+- **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
+  (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
+- **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's
+  checkpoint under the new strategy's name (a hard link, no copy of the 9 GB) and trains only the iterations still
+  missing. Checkpoints are replaced by rename, so the shorter strategy's checkpoint is never rewritten.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.

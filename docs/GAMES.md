@@ -338,7 +338,8 @@ measured that its search loses more to Slumbot than its blueprint does, so D may
 Decisions for the owner:
 
 1. Raise Docker's memory (step A waits on it): `orb config set memory_mib 49152`, then restart OrbStack when the other
-   containers can stop.
+   containers can stop. The teacher then takes the extra room by itself; step A is one command,
+   `byosm poker teacher-train --iters 1000000000 --start-from blueprint-200000000`.
 2. Allow the `slumbot` command network access for step B? It talks only to Slumbot's public API. *Recommendation: yes.*
 3. A budget ceiling for step C, to be spent only if step A shows a gain. *Recommendation: $300 first (a 50-bucket
    run of about three days), then decide on the 200-bucket run.*
