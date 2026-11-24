@@ -552,6 +552,30 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 | sharingan-2 | pluribus, 10,000 | street:preflop | 61,700 | 91.0% | 0.903 | 0.0% |
 | sharingan-2 | pluribus, 10,000 | street:river | 6,385 | 75.8% | 0.733 | 0.0% |
 | sharingan-2 | pluribus, 10,000 | street:turn | 9,194 | 73.0% | 0.719 | 0.0% |
+| sharingan-2 | pluribus-showdown, 10,000 | Pluribus | 2,554 | 78.9% | 0.764 | 0.0% |
+| sharingan-2 | pluribus-showdown, 10,000 | all | 14,956 | 76.8% | 0.745 | 0.0% |
+| sharingan-2 | pluribus-showdown, 10,000 | professionals | 12,402 | 76.4% | 0.741 | 0.0% |
+| sharingan-2 | pluribus-showdown, 10,000 | street:flop | 3,926 | 74.9% | 0.725 | 0.0% |
+| sharingan-2 | pluribus-showdown, 10,000 | street:preflop | 3,897 | 80.1% | 0.779 | 0.0% |
+| sharingan-2 | pluribus-showdown, 10,000 | street:river | 3,525 | 77.3% | 0.742 | 0.0% |
+| sharingan-2 | pluribus-showdown, 10,000 | street:turn | 3,608 | 74.8% | 0.733 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | all | 65,594 | 63.9% | 0.624 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | site:ABS | 3,983 | 61.6% | 0.600 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | site:FTP | 2,571 | 62.3% | 0.611 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | site:ONG | 13,325 | 65.8% | 0.642 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | site:PS | 29,809 | 63.5% | 0.620 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | site:PTY | 15,906 | 63.8% | 0.625 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | stake:00025 | 28,061 | 62.6% | 0.612 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | stake:00050 | 6,014 | 63.2% | 0.616 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | stake:00100 | 1,277 | 59.7% | 0.587 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | stake:00200 | 3,608 | 64.8% | 0.631 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | stake:00400 | 13,765 | 64.7% | 0.634 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | stake:00600 | 7,275 | 64.9% | 0.637 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | stake:01000 | 5,594 | 67.9% | 0.658 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | street:flop | 18,125 | 62.0% | 0.608 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | street:preflop | 18,744 | 60.1% | 0.589 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | street:river | 13,150 | 70.6% | 0.681 | 0.0% |
+| sharingan-2 | real-0.02, 458,567 | street:turn | 15,575 | 64.8% | 0.638 | 0.0% |
 
 | strategy | Pluribus's move, all streets | preflop | flop | turn | river | mean probability on it | covered |
 |---|---|---|---|---|---|---|---|

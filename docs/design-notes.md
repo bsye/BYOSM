@@ -3235,6 +3235,22 @@ blueprints are not published, so we train one here, and its native code never ru
   (15,169 of them Pluribus's own, the published count), none by a fallback: the same kind of move as Pluribus
   88.2% of the time and as the five professionals 85.2%; 91.0% before the flop, 75.3% on the flop, 73.0% on the
   turn, 75.8% on the river. Agreement is not strength: it says how alike two players choose, not who wins.
+- **Against real online players' moves (2026-11-24).** The University of Toronto's
+  [hand-history dataset](https://zenodo.org/records/13997158) (CC BY 4.0, 1.88 GB, fetched and checked by
+  `byosm poker real-hands-fetch`) holds 21,605,687 real no-limit hold'em hands from six sites in July 2009, 25NL to
+  1000NL. `byosm poker blueprint-real-hands` reads a fixed 2% of its files straight from the archive (462 files,
+  458,567 hands). Usable were hands with three to six players, a small and a big blind, no antes and logged stacks
+  (163,189, 4,543, 2,597 and 105,275 hands failed those); 32,268 showed cards. Real logs show a player's cards only
+  at a showdown, so only the moves of players who got there can be asked: 65,695 decisions by players who started
+  the hand with 80 to 120 big blinds, of which the inference server refused 101. SHARINGAN-2 made the same kind of
+  move as the real player 63.9% of the time: 62.6% at 25NL, 63.2% at 50NL, 59.7% at 100NL (1,277 decisions), 64.8%
+  at 200NL, 64.7% at 400NL, 64.9% at 600NL, 67.9% at 1000NL; 60.1% before the flop, 62.0% on the flop, 64.8% on
+  the turn, 70.6% on the river. The like-for-like baseline is Pluribus's 10,000 hands cut down to the same kind of
+  sample (`blueprint-decisions --showdown`): 76.4% with the professionals over 12,402 decisions and 78.9% with
+  Pluribus over 2,554, and 80.1% before the flop. So it chooses much more like professionals than like 2009 online
+  players, most of all before the flop, and a little more like players at higher stakes. This sample never contains
+  a fold by the player asked, the stacks around them are not all 100 big blinds, and agreement says who plays
+  alike, not who wins.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's

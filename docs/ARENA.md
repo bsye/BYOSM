@@ -95,6 +95,28 @@ What it says:
 
 The next build is therefore a small student of SHARINGAN-2, measured at this same table, and the table itself.
 
+## SHARINGAN-2 against logged real games (2026-11-24)
+
+A logged hand cannot be played again with other moves, so the test is move by move: at each logged decision whose
+cards are known, what would SHARINGAN-2 do? The kind of move is compared (fold, check, call, bet or raise).
+
+| Whose moves | Sample | Decisions | Same kind of move |
+|---|---|---|---|
+| Pluribus | all its decisions in its 10,000 hands | 15,169 | 88.2% |
+| Five professionals | all their decisions in those hands | 76,187 | 85.2% |
+| Pluribus | only when it reached a showdown | 2,554 | 78.9% |
+| Five professionals | only when they reached a showdown | 12,402 | 76.4% |
+| Real online players, July 2009 | only when they reached a showdown (all a real log shows), 80 to 120 big blinds | 65,594 | 63.9% |
+
+| Real players by stake | 25NL | 50NL | 100NL | 200NL | 400NL | 600NL | 1000NL |
+|---|---|---|---|---|---|---|---|
+| Same kind of move | 62.6% | 63.2% | 59.7% | 64.8% | 64.7% | 64.9% | 67.9% |
+| Decisions | 28,061 | 6,014 | 1,277 | 3,608 | 13,765 | 7,275 | 5,594 |
+
+It chooses much more like the professionals than like the online players of 2009, and somewhat more like players at
+higher stakes. That is a measure of likeness, not of winnings. The measure of winnings is to seat it against
+players that imitate those 21.6 million hands; that model is not built.
+
 ## The table: reuse SHARINGAN's table server, build only the page and the seats
 
 SHARINGAN ships a table server (`sharingan-arena`, Apache-2.0,
