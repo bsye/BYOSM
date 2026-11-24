@@ -122,6 +122,17 @@ def asked(hand_id: str, hand: dict[str, Any]) -> list[Asked]:
     return [replace(a, showdown=len(stayed) > 1 and a.request["hero_seat"] in stayed) for a in found]
 
 
+def shown_seats(hand: dict[str, Any]) -> list[int]:
+    return sorted(holes(steps(hand["actions"])))
+
+
+def pending(hand_id: str, hand: dict[str, Any], seat: int) -> Asked:
+    if seat not in shown_seats(hand):
+        raise ValueError(f"the history does not show the cards of p{seat + 1}")
+    probed = {**hand, "actions": [*hand["actions"], f"p{seat + 1} {FOLD}"]}
+    return asked(hand_id, probed)[-1]
+
+
 def judged(logged: Asked, response: dict[str, Any]) -> dict[str, Any]:
     weight = sum(p["p"] for p in response.get("probs", []) if kind_of(p["type"]) == logged.kind)
     return {

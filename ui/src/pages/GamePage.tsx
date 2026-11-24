@@ -117,7 +117,7 @@ export function GamePage({ g }: { g: Game }) {
         </CardDescription>
       </div>
       <Stats g={g} />
-      <GameTry name={g.name} />
+      <GameTry name={g.name} blueprints={g.blueprints} />
       <Health h={g.health} />
       {g.played.length > 0 && <AtTheTable rows={g.played} />}
       {g.agreement.length > 0 && <WithPluribus rows={g.agreement} />}

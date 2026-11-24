@@ -46,21 +46,35 @@ def answered(batch: list[dict]) -> list[dict]:
     return [{"key": item["key"], **result} for item, result in zip(batch, results, strict=True)]
 
 
+def filed(requests: str, answers: str) -> None:
+    asked = [json.loads(line) for line in Path(requests).read_text().splitlines() if line]
+    batches = [asked[i : i + BATCH] for i in range(0, len(asked), BATCH)]
+    with ThreadPoolExecutor(THREADS) as pool, Path(answers).open("w") as out:
+        for done, results in enumerate(pool.map(answered, batches), start=1):
+            out.writelines(json.dumps(result) + "\n" for result in results)
+            if done % REPORT_EVERY == 0 or done == len(batches):
+                print(f"progress: {min(done * BATCH, len(asked))} of {len(asked)} decisions", flush=True)
+
+
+def conversed() -> None:
+    for line in sys.stdin:
+        print(json.dumps(answered([json.loads(line)])[0]), flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    for name in ("requests", "answers", "blueprint", "buckets", "sizing"):
+    for name in ("blueprint", "buckets", "sizing"):
         parser.add_argument(f"--{name}", required=True)
+    for name in ("requests", "answers"):
+        parser.add_argument(f"--{name}")
     args = parser.parse_args()
-    asked = [json.loads(line) for line in Path(args.requests).read_text().splitlines() if line]
-    batches = [asked[i : i + BATCH] for i in range(0, len(asked), BATCH)]
     server = started(args.blueprint, args.buckets, args.sizing)
     try:
         ready(server)
-        with ThreadPoolExecutor(THREADS) as pool, Path(args.answers).open("w") as out:
-            for done, results in enumerate(pool.map(answered, batches), start=1):
-                out.writelines(json.dumps(result) + "\n" for result in results)
-                if done % REPORT_EVERY == 0 or done == len(batches):
-                    print(f"progress: {min(done * BATCH, len(asked))} of {len(asked)} decisions", flush=True)
+        if args.requests:
+            filed(args.requests, args.answers)
+        else:
+            conversed()
     finally:
         server.terminate()
 

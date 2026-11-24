@@ -21,6 +21,13 @@ STUDENT, TEACHER = "Student", "Teacher"
 RIVAL = "its teacher"
 
 
+def fetched(ws: Path) -> list[str]:
+    from .sharingan import BLUEPRINTS, WEIGHTS
+    from .sharingan import work_dir as blueprint_dir
+
+    return [name for name, held in BLUEPRINTS.items() if (blueprint_dir(ws) / WEIGHTS / held.file).exists()]
+
+
 def stored(ws: Path) -> tuple[dict, dict, dict]:
     from ...db.workspace import workspace_reports
 
@@ -81,4 +88,5 @@ def detail(ws: Path, name: str) -> dict[str, Any] | None:
     played = [seated(k, r, roles) for k, r in sorted(here.items())]
     found = ((role, agreements.get(f"{AGREEMENT}{n}")) for n, role in roles.items())
     agreed = [{**a, "who": role} for role, a in found if a]
-    return {"name": name, "title": TITLE, "student": student, "played": played, "agreement": agreed}
+    made = {"name": name, "title": TITLE, "student": student, "played": played, "agreement": agreed}
+    return {**made, "blueprints": fetched(ws)}

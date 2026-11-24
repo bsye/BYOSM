@@ -66,10 +66,12 @@ def entrant(ws: Path, name: str) -> tuple[str, list[str]]:
     return seated(ws, name), []
 
 
-def sealed_run(mounts: dict[Path, str], args: list[str], writable: tuple[str, ...] = ()) -> list[str]:
+def sealed_run(
+    mounts: dict[Path, str], args: list[str], writable: tuple[str, ...] = (), flags: tuple[str, ...] = ()
+) -> list[str]:
     cpus, memory = limits()
     held = ["--cpus", cpus, "--memory", memory, *mounted(mounts, writable)]
-    return [docker_cli(), "run", "--rm", *SEALED, *held, image(), *args]
+    return [docker_cli(), "run", "--rm", *flags, *SEALED, *held, image(), *args]
 
 
 def blueprint_mounts(ws: Path) -> dict[Path, str]:

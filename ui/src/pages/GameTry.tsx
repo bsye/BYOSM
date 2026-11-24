@@ -14,6 +14,7 @@ import { HandBuilder } from "./HandBuilder"
 
 const BUILD = "build"
 const PASTE = "paste"
+const STUDENT = "student"
 const FORMAT = "Six players, 100 big blinds each, blinds 50 and 100. Amounts are chips; a raise is the total put in on that street."
 
 function Moves({ advice }: { advice: Advice }) {
@@ -48,8 +49,9 @@ function Moves({ advice }: { advice: Advice }) {
   )
 }
 
-export function GameTry({ name }: { name: string }) {
+export function GameTry({ name, blueprints }: { name: string; blueprints: string[] }) {
   const [mode, setMode] = useState(BUILD)
+  const [advisor, setAdvisor] = useState(blueprints[0] ?? STUDENT)
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const [pasted, setPasted] = useState("")
   const [advice, setAdvice] = useState<Advice | null>(null)
@@ -59,7 +61,8 @@ export function GameTry({ name }: { name: string }) {
   const ask = () => {
     setBusy(true)
     setError("")
-    post<Advice>(`/games/${encodeURIComponent(name)}/advise`, { hand: building ? history(draft) : pasted })
+    const path = advisor === STUDENT ? `/games/${encodeURIComponent(name)}/advise` : `/blueprints/${encodeURIComponent(advisor)}/advise`
+    post<Advice>(path, { hand: building ? history(draft) : pasted })
       .then(setAdvice, (e) => {
         setAdvice(null)
         setError(e instanceof Error ? e.message : String(e))
@@ -82,7 +85,17 @@ export function GameTry({ name }: { name: string }) {
             <TooltipContent>{FORMAT}</TooltipContent>
           </Tooltip>
         </CardTitle>
-        <CardAction className="flex gap-2">
+        <CardAction className="flex flex-wrap justify-end gap-2">
+          {blueprints.length > 0 && (
+            <ToggleGroup type="single" size="sm" variant="outline" value={advisor} onValueChange={(v) => v && setAdvisor(v)} aria-label="Who answers">
+              {blueprints.map((b) => (
+                <ToggleGroupItem key={b} value={b} className="uppercase">
+                  {b}
+                </ToggleGroupItem>
+              ))}
+              <ToggleGroupItem value={STUDENT}>Student</ToggleGroupItem>
+            </ToggleGroup>
+          )}
           <ToggleGroup type="single" size="sm" variant="outline" value={mode} onValueChange={(v) => v && setMode(v)}>
             <ToggleGroupItem value={BUILD}>Build</ToggleGroupItem>
             <ToggleGroupItem value={PASTE}>Paste</ToggleGroupItem>

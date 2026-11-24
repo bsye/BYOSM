@@ -206,3 +206,59 @@ def test_our_student_is_asked_the_same_decisions_through_the_hand_as_logged_so_f
     assert made["groups"]["all"]["decisions"] == 10
     assert made["groups"]["all"]["same_kind"] == pytest.approx(1 / 10)
     assert made["groups"]["all"]["mean_weight"] == pytest.approx((4 * 0.2 + 1 * 0.2 + 1 * 0.6) / 10)
+
+
+SPOT = """variant = 'NT'
+antes = [0, 0, 0, 0, 0, 0]
+blinds_or_straddles = [50, 100, 0, 0, 0, 0]
+min_bet = 100
+starting_stacks = [10000, 10000, 10000, 10000, 10000, 10000]
+actions = ['d dh p1 TcQc', 'd dh p2 ????', 'd dh p3 ????', 'd dh p4 Ah4h', 'd dh p5 ????', 'd dh p6 ????', 'p3 cbr 210']
+players = ['SB', 'BB', 'UTG', 'HJ', 'CO', 'BTN']
+"""
+
+
+def test_one_hand_is_answered_by_the_blueprint_for_the_player_to_act(ws, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from byosm.app import create_app
+    from byosm.games.poker.sharingan import advice
+
+    asked = []
+    turn = {"ok": False, "error": {"code": "not_hero_turn", "message": "not yours", "details": {"to_act_seat": 3}}}
+    legal = {"call": {"to": 210, "added": 210}, "raise": {"min_to": 420, "max_to": 10000}}
+    probs = [
+        {"type": "fold", "p": 0.5},
+        {"type": "call", "to": 210, "p": 0.2},
+        {"type": "raise", "to": 700, "p": 0.2},
+        {"type": "raise", "to": 10000, "p": 0.1},
+    ]
+    said = {"ok": True, "response": {"street": "preflop", "probs": probs, "legal": legal}}
+
+    def answering(request):
+        asked.append(request["hero_seat"])
+        return turn if request["hero_seat"] == 0 else said
+
+    advisor = advice.BlueprintAdvisor(None)
+    monkeypatch.setattr(advisor, "asked", answering)
+    monkeypatch.setattr(advisor, "close", lambda: None)
+    found = advisor.advise(SPOT)
+    assert asked == [0, 3] and found["seat"] == 4 and found["player"] == "HJ" and found["street"] == "preflop"
+    assert {m["move"]: m["probability"] for m in found["moves"]} == {
+        "fold": 0.5,
+        "call 210": 0.2,
+        "raise to 700": 0.2,
+        "all in for 10000": 0.1,
+    }
+    with pytest.raises(ValueError, match="antes"):
+        advisor.advise(SPOT.replace("antes = [0, 0, 0, 0, 0, 0]", "antes = [5, 5, 5, 5, 5, 5]"))
+    with pytest.raises(ValueError, match="nobody's cards"):
+        advisor.advise(SPOT.replace("TcQc", "????").replace("Ah4h", "????"))
+    with pytest.raises(ValueError, match="not yours"):
+        advisor.advise(SPOT.replace("Ah4h", "????"))
+    monkeypatch.setattr(advice.BlueprintAdvisor, "start", classmethod(lambda cls, ws, name, log: advisor))
+    headers = {"Authorization": "Bearer t"}
+    with TestClient(create_app(ws, "t"), base_url="http://127.0.0.1") as c:
+        ok = c.post("/api/blueprints/sharingan-2/advise", headers=headers, json={"hand": SPOT})
+        assert ok.status_code == 200 and ok.json()["ms"] >= 0 and ok.json()["player"] == "HJ"
+        assert c.post("/api/blueprints/sharingan-2/advise", headers=headers, json={"hand": "x = ["}).status_code == 422

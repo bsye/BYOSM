@@ -18,6 +18,7 @@ class Hand(BaseModel):
 def games_router(ws: Path) -> APIRouter:
     router = APIRouter()
     advisors: dict[str, Any] = {}
+    blueprints: dict[str, Any] = {}
     starting = threading.Lock()
 
     def advisor(name: str) -> Any:
@@ -50,8 +51,28 @@ def games_router(ws: Path) -> APIRouter:
             raise HTTPException(503, ENGINE_GONE) from e
         return {**found, "ms": (time.perf_counter() - started) * 1000}
 
+    def blueprint_advisor(name: str) -> Any:
+        from ..games.poker.sharingan.advice import BlueprintAdvisor
+
+        with starting:
+            if name not in blueprints:
+                blueprints[name] = BlueprintAdvisor.start(ws, name, lambda _: None)
+            return blueprints[name]
+
+    @router.post("/api/blueprints/{name}/advise")
+    def blueprint_advise(name: str, body: Hand) -> dict[str, Any]:
+        started = time.perf_counter()
+        try:
+            found = blueprint_advisor(name).advise(body.hand)
+        except (ValueError, SyntaxError) as e:
+            raise HTTPException(422, str(e)) from e
+        except OSError as e:
+            blueprints.pop(name, None)
+            raise HTTPException(503, ENGINE_GONE) from e
+        return {**found, "ms": (time.perf_counter() - started) * 1000}
+
     def close() -> None:
-        for running in advisors.values():
+        for running in (*advisors.values(), *blueprints.values()):
             running.close()
 
     router.on_shutdown.append(close)

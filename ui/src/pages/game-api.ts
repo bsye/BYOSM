@@ -7,7 +7,15 @@ export type Played = { who: Who; field: string; against: string; mbb_per_hand: n
 export type Street = { decisions: number; covered: number; top_move: number; mean_prob: number }
 export type Agreement = { who: Who; total: Street; preflop?: Street; flop?: Street; turn?: Street; river?: Street }
 export type Student = { student: string; teacher: string; model_mb: number; kl: number; top_move: number; rounds: number }
-export type Game = { name: string; title: string; student: Student; played: Played[]; agreement: Agreement[]; health: HealthReport | null }
+export type Game = {
+  name: string
+  title: string
+  student: Student
+  played: Played[]
+  agreement: Agreement[]
+  health: HealthReport | null
+  blueprints: string[]
+}
 export type Move = { move: string; probability: number }
 export type Advice = { seat: number; player: string; street: string; moves: Move[]; ms: number }
 
