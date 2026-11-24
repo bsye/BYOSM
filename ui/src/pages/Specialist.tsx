@@ -2,6 +2,8 @@ import { Forecaster } from "./Forecaster"
 import { useForecaster } from "./forecaster-api"
 import { ForecastPage } from "./ForecastPage"
 import { useForecasts } from "./forecast-api"
+import { GamePage } from "./GamePage"
+import { useGame } from "./game-api"
 import { RunningHere } from "./RunningHere"
 import { Archive, ArchiveRestore, Gauge, Hammer, Info, Lightbulb, Package, Trash2, type LucideIcon, Wand2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
@@ -50,7 +52,9 @@ export function Specialist({ name, tab }: { name: string; tab?: string }) {
   const team = useTeam(name)
   const forecaster = useForecaster(name)
   const [risks] = useForecasts()
-  if (team === undefined || forecaster === undefined || risks == null) return <PageSkeleton />
+  const game = useGame(name)
+  if (team === undefined || forecaster === undefined || risks == null || game === undefined) return <PageSkeleton />
+  if (game) return <GamePage g={game} />
   if (team) return <Team view={team} />
   if (forecaster) return <Forecaster f={forecaster} tab={tab} />
   if (risks.some((r) => r.name === name)) return <ForecastPage name={name} />

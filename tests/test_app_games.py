@@ -30,13 +30,13 @@ def test_a_game_bot_is_listed_as_a_specialist_and_its_page_shows_only_its_own_ta
         stored(ws)
         [listed] = c.get("/api/specialists", headers=AUTH).json()
         assert listed["name"] == "big-student" and listed["kind"] == "game" and listed["created"]
-        assert listed["score"] == 0.716 and listed["rival"] == {"name": "big", "score": 0.698}
+        assert listed["score"] == 0.716 and listed["rival"] == {"name": "its teacher", "score": 0.698}
         found = c.get("/api/games/big-student", headers=AUTH).json()
-        assert [(r["strategy"], r["against"]) for r in found["played"]] == [
-            ("big-student", "copies of big"),
-            ("big", "always-call bots"),
+        assert [(r["who"], r["against"]) for r in found["played"]] == [
+            ("Student", "copies of the teacher"),
+            ("Teacher", "always-call bots"),
         ]
-        assert [a["strategy"] for a in found["agreement"]] == ["big-student", "big"]
+        assert [a["who"] for a in found["agreement"]] == ["Student", "Teacher"]
         assert found["student"] == TAUGHT
         assert c.get("/api/games/missing", headers=AUTH).status_code == 404
         assert c.get("/api/games/big-student").status_code == 401

@@ -3148,6 +3148,13 @@ blueprints are not published, so we train one here, and its native code never ru
   count file lines up with the records row for row; an export from before that ordering is refused. Bucketing is
   Monte Carlo and cached across threads, so two exports agree on order and probabilities but differ by a few visits.
   A student and its files are named after the rounds: `NAME-student`, `NAME-student-r2`.
+- **The bot is a specialist in the app.** Each built student joins the specialists list as a card of kind Game
+  (`games/poker/bot.py`, `app/games_routes.py`): its score on the card is its agreement with Pluribus's logged moves
+  against its teacher's, the one number comparable outside our own table. Its page (`ui/src/pages/GamePage.tsx`)
+  leads with the table result against five teacher copies, then Try it: paste a hand history, get each legal move
+  with its chip amount and how often to play it. The server keeps one sealed engine container per bot and starts it
+  on the first question; the first answer took 287 ms and the next 7. The page says Student and Teacher, never the
+  strategy file names. Checked in the browser in light and dark and at phone width.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.

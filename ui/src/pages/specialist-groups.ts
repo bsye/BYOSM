@@ -1,4 +1,4 @@
-import { AudioLines, ChartLine, FileText, Highlighter, type LucideIcon, Tags, TrendingUp, Users } from "lucide-react"
+import { AudioLines, ChartLine, FileText, Highlighter, type LucideIcon, Spade, Tags, TrendingUp, Users } from "lucide-react"
 import type { Summary } from "@/api"
 
 export type Kind = { label: string; plural: string; icon: LucideIcon }
@@ -11,8 +11,9 @@ const KINDS: Record<string, Kind> = {
   text: { label: "Text", plural: "Text classification", icon: Tags },
   forecast: { label: "Forecast", plural: "Forecasting", icon: ChartLine },
   risk: { label: "Event risk", plural: "Event risk", icon: TrendingUp },
+  game: { label: "Game", plural: "Games", icon: Spade },
 }
-const KIND_ORDER = ["text", "tagging", "document", "audio", "forecast", "risk", "team"]
+const KIND_ORDER = ["text", "tagging", "document", "audio", "forecast", "risk", "game", "team"]
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_DAYS = 7
@@ -22,6 +23,7 @@ export function kindOf(s: Summary): Kind {
   if (s.kind === "team") return KINDS.team
   if (s.kind === "forecast") return KINDS.forecast
   if (s.kind === "risk") return KINDS.risk
+  if (s.kind === "game") return KINDS.game
   if (s.modality === "audio") return KINDS.audio
   if (s.modality === "document" || s.modality === "image") return KINDS.document
   return s.task_type === "frame" ? KINDS.tagging : KINDS.text

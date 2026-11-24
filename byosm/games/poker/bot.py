@@ -8,7 +8,7 @@ from .distill import MODEL
 from .distill import REPORT as STUDENTS
 from .infosets import SLOTS
 from .results import against
-from .table import AGREEMENT, REPORT, TOTAL
+from .table import AGREEMENT, REPORT, TOTAL, VERSUS
 from .teacher import work_dir
 
 KIND = "game"
@@ -17,6 +17,8 @@ DESCRIPTION = "A small student of a self-play teacher: paste a hand and get how 
 METRIC = "agreement with Pluribus"
 SUITE = "pluribus"
 BENCHMARK = "Pluribus's logged decisions"
+STUDENT, TEACHER = "Student", "Teacher"
+RIVAL = "its teacher"
 
 
 def stored(ws: Path) -> tuple[dict, dict, dict]:
@@ -55,7 +57,7 @@ def summaries(ws: Path) -> list[dict[str, Any]]:
                 "benchmark": BENCHMARK,
                 "promoted": None,
                 "score": top_move(agreements, s["student"]),
-                "rival": {"name": s["teacher"], "score": teacher} if teacher is not None else None,
+                "rival": {"name": RIVAL, "score": teacher} if teacher is not None else None,
                 "experiments": [],
                 "exported": True,
                 "part_of": None,
@@ -64,12 +66,18 @@ def summaries(ws: Path) -> list[dict[str, Any]]:
     return out
 
 
+def seated(key: str, r: dict, roles: dict[str, str]) -> dict[str, Any]:
+    others = f"copies of the {roles[r['field']].lower()}" if VERSUS in key and r["field"] in roles else against(key, r)
+    return {**r, "who": roles[r["strategy"]], "against": others}
+
+
 def detail(ws: Path, name: str) -> dict[str, Any] | None:
     students, agreements, tables = stored(ws)
     student = students.get(f"{STUDENTS}{name}")
     if not student:
         return None
-    seated = (name, student["teacher"])
-    played = [{**r, "against": against(k, r)} for k, r in sorted(tables.items()) if r["strategy"] in seated]
-    agreed = [agreements[k] for k in (f"{AGREEMENT}{n}" for n in seated) if k in agreements]
+    roles = {name: STUDENT, student["teacher"]: TEACHER}
+    played = [seated(k, r, roles) for k, r in sorted(tables.items()) if r["strategy"] in roles]
+    found = ((role, agreements.get(f"{AGREEMENT}{n}")) for n, role in roles.items())
+    agreed = [{**a, "who": role} for role, a in found if a]
     return {"name": name, "title": TITLE, "student": student, "played": played, "agreement": agreed}
