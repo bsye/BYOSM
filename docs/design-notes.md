@@ -3197,6 +3197,15 @@ blueprints are not published, so we train one here, and its native code never ru
   one-container-at-a-time lock are shared with the teacher (`byosm/games/poker/sealed.py`). Its score counts only
   after `byosm poker blueprint-gauntlet` reproduces what its model card publishes against its own six simple bots:
   a field is reproduced when the two estimates differ by less than their joint 95% interval.
+- **Our student sits at an outside table through one small file.** `byosm/games/poker/seat.py` needs only numpy,
+  onnxruntime and our engine binary: it turns the table's request (cards, chips, every action so far) into the hand
+  history our engine reads, asks the engine for the situation, runs the student as an ONNX graph and answers with a
+  move in chips. `byosm/games/poker/portable.py` writes the graph (5.64 MB) and its encoding beside the model; on 200
+  random situations it differs from the torch student by 2.4e-7 at most. `docker/poker-table.Dockerfile` puts our
+  engine, SHARINGAN's bench tool and that runtime in one sealed image, so `byosm poker arena-versus` and
+  `arena-gauntlet` seat a student, a published blueprint or one of the arena's six simple bots against each other
+  with duplicate deals. A table where our seat failed to answer more than 0.1% of its decisions is not scored. A job
+  that waits for its turn at the container says so every ten minutes, so the app does not take it for stuck.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's

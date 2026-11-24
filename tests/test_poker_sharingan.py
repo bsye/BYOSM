@@ -74,34 +74,75 @@ def test_an_unknown_blueprint_is_refused_by_name(ws):
 
 
 SAID = [
-    "== compact vs each built-in, 6-max (hero rotates through every seat) ==",
-    "  vs random   raw +4100.0 ± 400.0  aivat +3950.0 ± 150.0  var-ratio 7.1x",
-    "  vs nit      raw +300.0 ± 200.0  aivat +420.0 ± 30.0  var-ratio 44.4x",
-    "== compact vs each built-in, 2-max (hero rotates through every seat) ==",
-    "  vs random   raw -9000.0 ± 400.0  aivat -9100.0 ± 150.0  var-ratio 7.1x",
+    "500 deals, 3000 hands",
+    "  byosm                  raw +90.0 ± 400.0 mbb/g  aivat +120.5 ± 60.0  var-ratio hand 2.6x deal 1.9x",
+    "    by seat (SB,BB,..): -6948 +15270 +14571 +9189 +12878 +9108",
+    "  compact                raw -18.0 ± 80.0 mbb/g  aivat -24.1 ± 12.0  var-ratio hand 2.6x deal 1.9x",
+    'report byosm: {"bot":"byosm","fallbacks":2,"requests":4000,"restarts":0}',
 ]
 
 
-def test_the_gauntlet_runs_sealed_and_says_which_published_scores_it_reproduced(ws, monkeypatch):
-    from byosm.db.workspace import workspace_reports
-    from byosm.games.poker.sharingan import engine, gauntlet
+@pytest.fixture
+def table(ws, monkeypatch):
+    from byosm.games.poker.sharingan import arena
 
-    root = sharingan.work_dir(ws)
+    asked = []
+    monkeypatch.setattr(arena, "limits", lambda: ("4", "8g"))
+    monkeypatch.setattr(arena, "ensure_image", lambda log: None)
+    monkeypatch.setattr(arena, "seated", lambda ws, student: f"ext:byosm=[{student}]")
+    monkeypatch.setattr(arena, "streamed", lambda command, turn, who, args, log: asked.append(command) or SAID)
+    return arena, asked
+
+
+def test_a_student_is_seated_against_five_copies_of_a_blueprint_in_a_sealed_container(ws, table):
+    from byosm.db.workspace import workspace_reports
+
+    arena, asked = table
     with pytest.raises(ValueError, match="blueprint-fetch"):
-        gauntlet.gauntlet(ws, "sharingan-2", 100, lambda _: None)
-    (root / sharingan.WEIGHTS).mkdir()
+        arena.versus(ws, "my-student", "sharingan-2", 500, lambda _: None)
+    root = sharingan.work_dir(ws)
+    (root / sharingan.WEIGHTS).mkdir(exist_ok=True)
     (root / sharingan.WEIGHTS / "sharingan-2.plcp").write_bytes(b"")
     (root / sharingan.DATA / sharingan.BUCKETS).mkdir(parents=True)
-    asked, said = [], []
-    monkeypatch.setattr(gauntlet, "run", lambda ws, args, log: asked.append(args) or SAID)
+    made = arena.versus(ws, "my-student", "sharingan-2", 500, lambda _: None)
+    sent = asked[0]
+    played = sent[sent.index("bench") :]
+    assert played[:6] == ["bench", "match", "--a", "ext:byosm=[my-student]", "--b", "compact:/weights/sharingan-2.plcp"]
+    assert played[6:14] == [
+        "--players",
+        "6",
+        "--deals",
+        "500",
+        "--bucketer",
+        "tables:/data/buckets-200",
+        "--sizing",
+        "medium",
+    ]
+    assert "none" in sent and "--read-only" in sent and f"{root / sharingan.WEIGHTS}:/weights:ro" in sent
+    assert made["mbb_per_hand"] == 120.5 and made["ci95"] == 60.0 and made["corrected"] and made["hands"] == 3000
+    assert made["raw"] == {"mbb_per_hand": 90.0, "ci95": 400.0} and made["fallbacks"] == 2
+    assert workspace_reports(ws, "poker-table:")["poker-table:my-student:vs:sharingan-2"]["field"] == "sharingan-2"
+
+
+def test_a_table_where_our_seat_often_failed_to_answer_is_not_scored(ws, table, monkeypatch):
+    arena, _ = table
+    monkeypatch.setattr(arena, "MOST_FALLBACKS", 0.0001)
+    with pytest.raises(RuntimeError, match="failed to answer 2 of 4000"):
+        arena.played(ws, "my-student", "station", 500, lambda _: None)
+
+
+def test_the_gauntlet_says_which_published_scores_it_reproduced(ws, monkeypatch):
+    from byosm.db.workspace import workspace_reports
+    from byosm.games.poker.sharingan import gauntlet
+
+    scores = {"random": 3950.0, "nit": 420.0}
+    monkeypatch.setattr(
+        gauntlet, "played", lambda ws, hero, field, deals, log: {"mbb_per_hand": scores.get(field, 0.0), "ci95": 30.0}
+    )
+    said = []
     made = gauntlet.gauntlet(ws, "sharingan-2", 100, said.append)
-    assert asked[0][:4] == ["bench", "gauntlet", "--hero", "compact:/weights/sharingan-2.plcp"]
-    assert asked[0][4:] == ["--bucketer", "tables:/data/buckets-200", "--sizing", "medium", "--deals", "100"]
-    assert made["fields"]["random"]["aivat"] == {"mbb_per_hand": 3950.0, "ci95": 150.0} and made["hands"] == 600
+    assert list(made["fields"]) == list(gauntlet.HOUSE) and made["hands"] == 600
     assert made["checks"]["random"]["reproduced"] and not made["checks"]["nit"]["reproduced"]
-    assert any("against nit" in line and "NOT reproduced" in line for line in said)
+    assert any("five nit" in line and "NOT reproduced" in line for line in said)
     assert workspace_reports(ws, "poker-gauntlet:")["poker-gauntlet:sharingan-2"]["deals"] == 100
-    monkeypatch.setattr(engine, "limits", lambda: ("4", "8g"))
-    sealed = engine.command(ws, ["bench"])
-    assert "none" in sealed and "--read-only" in sealed and f"{root / sharingan.WEIGHTS}:/weights:ro" in sealed
-    assert sealed[-2].startswith("byosm-poker-sharingan:6a11d9b4-")
+    assert gauntlet.gauntlet(ws, "my-student", 100, said.append)["checks"] == {}
