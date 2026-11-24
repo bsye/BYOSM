@@ -153,15 +153,23 @@ def detail(ws: Path, name: str) -> dict[str, Any]:
 
 
 def health_of(ws: Path, name: str) -> dict[str, Any] | None:
+    from ..games.poker.health import of_bot
     from ..series.health import of_domain
 
-    return found if (found := of_domain(ws, name)) is not None else health(p := project(ws, name), p.spec())
+    for other in (of_domain, of_bot):
+        if (found := other(ws, name)) is not None:
+            return found
+    return health(p := project(ws, name), p.spec())
 
 
 def steps_of(ws: Path, name: str) -> list[dict[str, Any]]:
+    from ..games.poker.health import steps_of_bot
     from ..series.steps import of_domain
 
-    return found if (found := of_domain(ws, name)) is not None else suggestions(project(ws, name).name, ws)
+    for other in (of_domain, steps_of_bot):
+        if (found := other(ws, name)) is not None:
+            return found
+    return suggestions(project(ws, name).name, ws)
 
 
 def save_spec(ws: Path, name: str, body: dict) -> dict[str, Any]:

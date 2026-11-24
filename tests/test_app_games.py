@@ -37,7 +37,7 @@ def test_a_game_bot_is_listed_as_a_specialist_and_its_page_shows_only_its_own_ta
             ("Teacher", "always-call bots"),
         ]
         assert [a["who"] for a in found["agreement"]] == ["Student", "Teacher"]
-        assert found["student"] == TAUGHT
+        assert found["student"] == TAUGHT and found["health"]["score"] > 0
         assert c.get("/api/games/missing", headers=AUTH).status_code == 404
         assert c.get("/api/games/big-student").status_code == 401
 
@@ -74,3 +74,26 @@ def test_advice_comes_from_one_engine_kept_running_and_says_why_a_hand_is_refuse
         assert started == [("big-student", None)]
         assert c.post("/api/games/big-student/advise", headers=AUTH, json={"hand": "a hand"}).status_code == 200
         assert len(started) == 2
+
+
+def test_a_game_bots_health_names_the_step_that_fixes_what_is_not_measured(ws):
+    with TestClient(create_app(ws, "t"), base_url="http://127.0.0.1") as c:
+        save_workspace_report(ws, "poker-student:big-student", TAUGHT)
+        health = c.get("/api/health/big-student", headers=AUTH).json()
+        assert not health["ready"] and {x["id"]: x["status"] for x in health["checks"]}["table"] == "unknown"
+        steps = c.get("/api/next-steps/big-student", headers=AUTH).json()
+        assert steps[0]["args"] == ["poker", "teacher-versus", "big-student", "big"]
+        assert ["poker", "teacher-benchmark", "--strategy", "big-student"] in [x["args"] for x in steps]
+        stored(ws)
+        save_workspace_report(ws, table.key("big-student", "caller", False), {**WON, "mbb_per_hand": 2900.0})
+        (teacher.work_dir(ws) / "big-student.abs").write_text("")
+        health = c.get("/api/health/big-student", headers=AUTH).json()
+        assert (
+            health["ready"]
+            and health["score"] == 100
+            and c.get("/api/next-steps/big-student", headers=AUTH).json() == []
+        )
+        wide = {**WON, "strategy": "big-student", "field": "big", "mbb_per_hand": -80.0, "ci95": 70.0, "hands": 1000}
+        save_workspace_report(ws, "poker-table:big-student:vs:big", wide)
+        [step] = c.get("/api/next-steps/big-student", headers=AUTH).json()
+        assert step["args"] == ["poker", "teacher-versus", "big-student", "big", "--hands", "2000"]

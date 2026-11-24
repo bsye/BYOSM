@@ -2,6 +2,7 @@ import { STAT_GRID, StatCard } from "@/components/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { GameTry } from "./GameTry"
+import { Health } from "./Health"
 import { mbb, percent, STREETS, type Agreement, type Game, type Played } from "./game-api"
 
 const interval = (r: Played) => `95% CI ${mbb(r.mbb_per_hand - r.ci95)} to ${mbb(r.mbb_per_hand + r.ci95)}`
@@ -117,6 +118,7 @@ export function GamePage({ g }: { g: Game }) {
       </div>
       <Stats g={g} />
       <GameTry name={g.name} />
+      <Health h={g.health} />
       {g.played.length > 0 && <AtTheTable rows={g.played} />}
       {g.agreement.length > 0 && <WithPluribus rows={g.agreement} />}
     </div>

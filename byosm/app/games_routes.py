@@ -31,11 +31,12 @@ def games_router(ws: Path) -> APIRouter:
     @router.get("/api/games/{name}")
     def game(name: str) -> dict[str, Any]:
         from ..games.poker.bot import detail
+        from ..games.poker.health import of_bot
 
         found = detail(ws, name)
         if not found:
             raise HTTPException(404, f"no game bot named {name}")
-        return found
+        return {**found, "health": of_bot(ws, name)}
 
     @router.post("/api/games/{name}/advise")
     def advise(name: str, body: Hand) -> dict[str, Any]:

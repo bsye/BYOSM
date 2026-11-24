@@ -3172,6 +3172,12 @@ blueprints are not published, so we train one here, and its native code never ru
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's
   checkpoint under the new strategy's name (a hard link, no copy of the 9 GB) and trains only the iterations still
   missing. Checkpoints are replaced by rename, so the shorter strategy's checkpoint is never rewritten.
+- **The bot has health checks whose fix is a command** (`games/poker/health.py`, served by the same `/api/health`
+  and `/api/next-steps` as every specialist): it holds its seat against its teacher (the low end of the interval
+  above -100 mbb/hand; an unmeasured or too-wide result proposes `teacher-versus`, with twice the hands when the
+  interval is the problem), it beats always-call bots, it matches Pluribus's moves within 2 points of its teacher,
+  its model and card file are on disk, and it stays under 50 MB. The v1 student scores 100. The checks are not yet in
+  the techniques catalogue, which the proposer reads for text specialists only.
 - **A strategy is named by its recipe** (`teacher.Recipe`: iterations, card buckets, snapshot averaging, linear cap):
   `blueprint-200000000` is the first one, `blueprint-200000000-b50-snap` a finer one. Every teacher command takes
   that name, and an unknown name lists the ones trained here.
