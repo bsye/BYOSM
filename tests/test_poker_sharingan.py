@@ -71,3 +71,37 @@ def test_a_fetch_refuses_a_disk_that_cannot_hold_the_blueprint(ws, hub, monkeypa
 def test_an_unknown_blueprint_is_refused_by_name(ws):
     result = CliRunner().invoke(app, ["poker", "blueprint-fetch", "nothing-like-it"])
     assert result.exit_code != 0 and "no published blueprint" in result.output
+
+
+SAID = [
+    "== compact vs each built-in, 6-max (hero rotates through every seat) ==",
+    "  vs random   raw +4100.0 ± 400.0  aivat +3950.0 ± 150.0  var-ratio 7.1x",
+    "  vs nit      raw +300.0 ± 200.0  aivat +420.0 ± 30.0  var-ratio 44.4x",
+    "== compact vs each built-in, 2-max (hero rotates through every seat) ==",
+    "  vs random   raw -9000.0 ± 400.0  aivat -9100.0 ± 150.0  var-ratio 7.1x",
+]
+
+
+def test_the_gauntlet_runs_sealed_and_says_which_published_scores_it_reproduced(ws, monkeypatch):
+    from byosm.db.workspace import workspace_reports
+    from byosm.games.poker.sharingan import engine, gauntlet
+
+    root = sharingan.work_dir(ws)
+    with pytest.raises(ValueError, match="blueprint-fetch"):
+        gauntlet.gauntlet(ws, "sharingan-2", 100, lambda _: None)
+    (root / sharingan.WEIGHTS).mkdir()
+    (root / sharingan.WEIGHTS / "sharingan-2.plcp").write_bytes(b"")
+    (root / sharingan.DATA / sharingan.BUCKETS).mkdir(parents=True)
+    asked, said = [], []
+    monkeypatch.setattr(gauntlet, "run", lambda ws, args, log: asked.append(args) or SAID)
+    made = gauntlet.gauntlet(ws, "sharingan-2", 100, said.append)
+    assert asked[0][:4] == ["bench", "gauntlet", "--hero", "compact:/weights/sharingan-2.plcp"]
+    assert asked[0][4:] == ["--bucketer", "tables:/data/buckets-200", "--sizing", "medium", "--deals", "100"]
+    assert made["fields"]["random"]["aivat"] == {"mbb_per_hand": 3950.0, "ci95": 150.0} and made["hands"] == 600
+    assert made["checks"]["random"]["reproduced"] and not made["checks"]["nit"]["reproduced"]
+    assert any("against nit" in line and "NOT reproduced" in line for line in said)
+    assert workspace_reports(ws, "poker-gauntlet:")["poker-gauntlet:sharingan-2"]["deals"] == 100
+    monkeypatch.setattr(engine, "limits", lambda: ("4", "8g"))
+    sealed = engine.command(ws, ["bench"])
+    assert "none" in sealed and "--read-only" in sealed and f"{root / sharingan.WEIGHTS}:/weights:ro" in sealed
+    assert sealed[-2].startswith("byosm-poker-sharingan:6a11d9b4-")

@@ -3191,6 +3191,12 @@ blueprints are not published, so we train one here, and its native code never ru
   records how many whole parts are joined, so a restart resumes and a torn append is cut back. The joined file takes
   its name only after its own checksum matches. The repository revision is pinned, the download is anonymous, and
   it uses plain HTTP, measured at 72 to 76 MB/s on this line.
+- **A published blueprint runs in its own sealed container.** SHARINGAN's code is built from a pinned commit
+  (`docker/poker-sharingan.Dockerfile`) and runs like our teacher: no network, read-only, non-root, capabilities
+  dropped, the weights and the card buckets mounted read-only. The sealing flags, the CPU and memory limits and the
+  one-container-at-a-time lock are shared with the teacher (`byosm/games/poker/sealed.py`). Its score counts only
+  after `byosm poker blueprint-gauntlet` reproduces what its model card publishes against its own six simple bots:
+  a field is reproduced when the two estimates differ by less than their joint 95% interval.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's

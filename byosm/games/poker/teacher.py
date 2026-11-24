@@ -3,14 +3,12 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
-import subprocess
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 from ...config import STATE_DIR
 from ...deploy import DOCKER_DIR, build_image, docker, docker_cli
-from ...locks import exclusive
+from .sealed import GIB, SEALED, Log, limits, streamed
 
 REPO = "https://github.com/conorarmstrong/pluribus.git"
 COMMIT = "757f7692738069522195d2b486eec60a8b010c0c"
@@ -18,11 +16,7 @@ DOCKERFILE = DOCKER_DIR / "poker-teacher.Dockerfile"
 PATCH = DOCKER_DIR / "poker-teacher.patch"
 IMAGE = "byosm-poker-teacher"
 FOLDER = "poker-teacher"
-SPARE_CPUS = 2
-RESERVE_GIB = 3
-GIB = 1024**3
 FREE_GIB = 40
-TMPFS = "/tmp:size=1g"
 HANDS = "/data/pluribus"
 WORK = "/work"
 STRATEGY = ".bin"
@@ -31,7 +25,6 @@ LABELS = ".labels.jsonl"
 TURN = ".turn"
 ITERS = 200_000_000
 BUCKETS = 12
-Log = Callable[[str], None]
 
 
 @dataclass(frozen=True)
@@ -72,14 +65,6 @@ def ensure_image(log: Log) -> None:
         build_image(DOCKERFILE, DOCKER_DIR, image(), log, {"REPO": REPO, "COMMIT": COMMIT})
 
 
-def limits() -> tuple[str, str]:
-    found = docker("info", "--format", "{{.NCPU}} {{.MemTotal}}")
-    if found.returncode:
-        raise RuntimeError("the poker teacher needs Docker running")
-    cpus, memory = found.stdout.split()
-    return str(max(1, int(cpus) - SPARE_CPUS)), f"{int(memory) // GIB - RESERVE_GIB}g"
-
-
 def command(
     ws: Path,
     hands: Path | None,
@@ -88,37 +73,15 @@ def command(
     memory: str | None = None,
     flags: tuple[str, ...] = (),
 ) -> list[str]:
-    sealed = [
-        "--init",
-        "--network",
-        "none",
-        "--read-only",
-        "--tmpfs",
-        TMPFS,
-        "--cap-drop",
-        "ALL",
-        "--security-opt=no-new-privileges",
-    ]
     most = limits() if cpus is None or memory is None else (cpus, memory)
     capped = ["--cpus", cpus or most[0], "--memory", memory or most[1]]
     mounts = ["-v", f"{work_dir(ws)}:{WORK}", *(["-v", f"{hands}:{HANDS}:ro"] if hands else [])]
-    return [docker_cli(), "run", "--rm", *flags, *sealed, *capped, *mounts, image(), *args]
+    return [docker_cli(), "run", "--rm", *flags, *SEALED, *capped, *mounts, image(), *args]
 
 
 def run(ws: Path, hands: Path | None, args: list[str], log: Log) -> list[str]:
     ensure_image(log)
-    said: list[str] = []
-    piped = {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT, "text": True}
-    with (
-        exclusive(work_dir(ws) / TURN, lambda: log("  waiting for the running teacher container to finish")),
-        subprocess.Popen(command(ws, hands, args), **piped) as p,
-    ):
-        for line in p.stdout or []:
-            said.append(line.rstrip())
-            log(f"  {said[-1]}")
-    if p.returncode:
-        raise RuntimeError(f"the poker teacher stopped with code {p.returncode}: {' '.join(args)}")
-    return said
+    return streamed(command(ws, hands, args), work_dir(ws) / TURN, "the poker teacher", args, log)
 
 
 def room(ws: Path) -> None:

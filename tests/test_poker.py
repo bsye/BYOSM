@@ -255,10 +255,10 @@ def test_templated_inputs_drop_only_exact_copies_from_held_out_splits():
 def test_the_teacher_runs_sealed_with_only_its_folder_and_the_hands_mounted(ws, monkeypatch):
     import subprocess
 
-    from byosm.games.poker import teacher
+    from byosm.games.poker import sealed, teacher
 
     said = subprocess.CompletedProcess([], 0, stdout="18 51539607552\n")
-    monkeypatch.setattr(teacher, "docker", lambda *args: said)
+    monkeypatch.setattr(sealed, "docker", lambda *args: said)
     assert teacher.limits() == ("16", "45g")
 
     found = teacher.command(ws, ws / "hands", ["benchmark"])
