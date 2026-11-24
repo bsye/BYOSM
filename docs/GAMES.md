@@ -315,3 +315,31 @@ machine has 18 cores and 64 GB; Docker is limited to 32 GiB today and can be rai
 200 card buckets, Pluribus-length training, and the search rebuilt to track exact ranges, each step kept only on a
 measured gain. Its outcome is uncertain and v1 does not depend on it.
 
+## v1 is done; the Pluribus push, step by step (proposed 2026-11-24)
+
+v1 stands as measured above: the first blueprint as teacher, a 5.38 MB student that ties it at the table
+(+5.2 ±49.3 mbb/hand over 2,000,000 hands) and matches 71.6% of Pluribus's logged moves, advice on a pasted hand in
+under a millisecond, in the CLI and in the app. Only the Slumbot yardstick is open; it needs network access.
+
+Each step below is kept only on a measured gain at the table, and each is cheaper than the one after it.
+
+| Step | What | Where | Kept when | Cost |
+|---|---|---|---|---|
+| A | A longer 12-bucket teacher: resume the 200M checkpoint to 1 to 2 billion iterations. The rebuild's 2 billion run held 209M infosets in 36 to 45 GB | This Mac, after Docker is raised to about 48 GiB | It beats five copies of the current teacher over 2M hands, CI above zero | A night of this machine |
+| B | An outside opponent: a heads-up 200 big blind teacher against [Slumbot](https://www.slumbot.com/) through its public API | This Mac, one command with network access | Recorded either way; it is the only public bot we can play | Free; needs the owner's OK for network access |
+| C | Finer cards at Pluribus length: 50, then 200 buckets, billions of iterations | A rented machine with 512 GiB, for example AWS r7i.16xlarge (64 vCPU, 512 GiB) at about [$4.23 an hour on demand](https://instances.vantage.sh/aws/ec2/r7i.16xlarge) | Each size beats the one before it at the table | About $100 a day on demand, so $800 for Pluribus's 8 days; less on spot |
+| D | The search rebuilt the way Pluribus did it: exact reach probabilities for every player instead of assuming they play our blueprint, lossless cards on the current round | Rust, in our patch or a fork of the rebuild | The gain among five teacher copies is above zero AND it no longer loses to a different blueprint or to Slumbot | Engineering time; the uncertain step |
+| E | A student of the teacher with search, if D holds | This Mac | It beats the v1 student at the table | Hours |
+
+Why this order: A and B cost nothing and tell us whether length alone moves strength and how far we are from a known
+bot. C spends money only once A shows that a longer run pays. D is the research step: the rebuild's own author
+measured that its search loses more to Slumbot than its blueprint does, so D may take several attempts or fail.
+
+Decisions for the owner:
+
+1. Raise Docker's memory (step A waits on it): `orb config set memory_mib 49152`, then restart OrbStack when the other
+   containers can stop.
+2. Allow the `slumbot` command network access for step B? It talks only to Slumbot's public API. *Recommendation: yes.*
+3. A budget ceiling for step C, to be spent only if step A shows a gain. *Recommendation: $300 first (a 50-bucket
+   run of about three days), then decide on the 200-bucket run.*
+
