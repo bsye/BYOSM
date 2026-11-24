@@ -345,4 +345,6 @@ Decisions for the owner:
    run of about three days), then decide on the 200-bucket run.*
    *Owner, 2026-11-24: $300, after a baseline at a real table. That baseline found an open 200-bucket blueprint
    trained to the Pluribus paper's budget, which may replace step C: see [the arena plan](ARENA.md).*
+   *Same day: at that outside table the v1 student loses to every rule-based bot (-674 to -1,757 mbb/hand), so
+   steps A and C as written, more of the same teacher, are not worth their cost.*
 

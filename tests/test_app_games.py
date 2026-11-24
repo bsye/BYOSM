@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from byosm.app import create_app
 from byosm.db.workspace import save_workspace_report
 from byosm.games.poker import advisor, table, teacher
+from byosm.games.poker.results import ARENA
 
 AUTH = {"Authorization": "Bearer t"}
 TAUGHT = {"student": "big-student", "teacher": "big", "model_mb": 5.38, "kl": 0.0727, "top_move": 0.89, "rounds": 0}
@@ -87,6 +88,17 @@ def test_a_game_bots_health_names_the_step_that_fixes_what_is_not_measured(ws):
         stored(ws)
         save_workspace_report(ws, table.key("big-student", "caller", False), {**WON, "mbb_per_hand": 2900.0})
         (teacher.work_dir(ws) / "big-student.abs").write_text("")
+        health = c.get("/api/health/big-student", headers=AUTH).json()
+        assert not health["ready"] and health["score"] < 100
+        [step] = c.get("/api/next-steps/big-student", headers=AUTH).json()
+        assert step["args"] == ["poker", "arena-gauntlet", "big-student"]
+        for field in ARENA:
+            save_workspace_report(ws, f"poker-table:big-student:vs:{field}", {**WON, "mbb_per_hand": 300.0})
+        lost = {**WON, "mbb_per_hand": -600.0, "ci95": 60.0}
+        save_workspace_report(ws, "poker-table:big-student:vs:nit", lost)
+        failed = {x["id"]: x for x in c.get("/api/health/big-student", headers=AUTH).json()["checks"]}["rules"]
+        assert failed["status"] == "fail" and "-600.0 ±60.0 mbb/hand against five tight bots" in failed["value"]
+        save_workspace_report(ws, "poker-table:big-student:vs:nit", {**WON, "mbb_per_hand": 300.0})
         health = c.get("/api/health/big-student", headers=AUTH).json()
         assert (
             health["ready"]

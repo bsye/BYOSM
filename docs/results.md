@@ -513,6 +513,12 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 | blueprint-200000000-student-r2 | copies of blueprint-200000000 | -20.0 [-69.2, +29.2] | 2,000,000 |
 | blueprint-200000000-student | always-call bots | +2907.7 [+2725.5, +3089.9] | 200,000 |
 | blueprint-200000000-student | copies of blueprint-200000000 | +5.2 [-44.1, +54.5] | 2,000,000 |
+| blueprint-200000000-student | the arena's loose-aggressive bots | -1375.1 [-1506.8, -1243.4] | 120,000 |
+| blueprint-200000000-student | the arena's maniac bots | -1756.9 [-1898.5, -1615.3] | 120,000 |
+| blueprint-200000000-student | the arena's tight bots | -674.0 [-738.8, -609.2] | 120,000 |
+| blueprint-200000000-student | the arena's random bots | +3262.0 [+3018.6, +3505.4] | 120,000 |
+| blueprint-200000000-student | the arena's calling-station bots | +6905.5 [+6493.9, +7317.1] | 120,000 |
+| blueprint-200000000-student | the arena's tight-aggressive bots | -944.9 [-1039.8, -850.0] | 120,000 |
 | blueprint-200000000 | always-call bots | +3410.2 [+3220.5, +3599.9] | 200,000 |
 | blueprint-200000000 | always-call bots, it searches | +12243.0 [+10165.6, +14320.4] | 20,000 |
 | blueprint-200000000 | copies of itself; it searches, they do not | -25.7 [-53.2, +1.8] | 400,000 |
@@ -531,7 +537,7 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 | blueprint-200000000-student | blueprint-200000000 | 5.38 MB | 0.0727 | 89.0% | 0 |
 | blueprint-200000000-student-r2 | blueprint-200000000 | 5.38 MB | 0.0928 | 82.5% | 2 |
 
-Six seats, 100 big blinds, mbb/hand = thousandths of a big blind a hand. Against copies of a strategy the result is the plain mean; against callers and random players the engine's AIVAT estimate. The Pluribus rows count its exact move in the strategy's bet menu, over the logged decisions the strategy has an answer for (covered).
+Six seats, 100 big blinds, mbb/hand = thousandths of a big blind a hand. Against copies of a strategy the result is the plain mean; against callers and random players the engine's AIVAT estimate. Rows against the arena's bots or a published blueprint are played in SHARINGAN's bench tool with duplicate deals, each deal from every seat, and show its AIVAT estimate. The Pluribus rows count its exact move in the strategy's bet menu, over the logged decisions the strategy has an answer for (covered).
 <!-- /report:poker -->
 
 - A strategy is kept only when it beats five copies of the one before it with its whole interval above zero; none of

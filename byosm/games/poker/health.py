@@ -7,6 +7,7 @@ from ...health_score import FAIL, OK, UNKNOWN, WARN, check, report
 from .bot import stored
 from .distill import ABSTRACTION, MODEL
 from .distill import REPORT as STUDENTS
+from .results import ARENA
 from .table import AGREEMENT, REPORT, TOTAL, VERSUS, key
 from .teacher import work_dir
 
@@ -18,6 +19,7 @@ CALLER = "caller"
 TITLES = {
     "table": "Holds its seat against its teacher",
     "bots": "Beats simple bots",
+    "rules": "Beats rule-based bots",
     "pluribus": "Matches Pluribus's moves like its teacher",
     "advice": "Answers a hand",
     "size": "Small",
@@ -25,6 +27,7 @@ TITLES = {
 STEPS = {
     "table": "Seat it against five copies of its teacher",
     "bots": "Seat it against five always-call bots",
+    "rules": "Seat it against the arena's six rule-based bots",
     "pluribus": "Score it on Pluribus's logged moves",
     "advice": "Rebuild the student",
 }
@@ -55,6 +58,19 @@ def bots(name: str, tables: dict) -> dict:
             "bots", TITLES["bots"], 1, UNKNOWN, "not seated yet", why, ["poker", "teacher-play", "--strategy", name]
         )
     return check("bots", TITLES["bots"], 1, OK if r["mbb_per_hand"] - r["ci95"] > 0 else FAIL, won(r), why)
+
+
+def rules(name: str, tables: dict) -> dict:
+    why = (
+        "What it wins against five copies of each of the arena's rule-based bots: every interval should be above zero."
+    )
+    found = {field: tables.get(f"{REPORT}{name}{VERSUS}{field}") for field in ARENA}
+    if not all(found.values()):
+        seated = ["poker", "arena-gauntlet", name]
+        return check("rules", TITLES["rules"], 3, UNKNOWN, "not seated yet", why, seated)
+    field, worst = min(found.items(), key=lambda scored: scored[1]["mbb_per_hand"] - scored[1]["ci95"])
+    status = OK if worst["mbb_per_hand"] - worst["ci95"] > 0 else FAIL
+    return check("rules", TITLES["rules"], 3, status, f"{won(worst)} against five {ARENA[field]} bots", why)
 
 
 def pluribus(name: str, teacher: str, agreements: dict) -> dict:
@@ -96,6 +112,7 @@ def checks(ws: Path, name: str) -> list[dict] | None:
     return [
         table(name, teacher, tables),
         bots(name, tables),
+        rules(name, tables),
         pluribus(name, teacher, agreements),
         advice(ws, name, teacher),
         size(student),

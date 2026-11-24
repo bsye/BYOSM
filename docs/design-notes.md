@@ -3208,6 +3208,15 @@ blueprints are not published, so we train one here, and its native code never ru
   `arena-gauntlet` seat a student, a published blueprint or one of the arena's six simple bots against each other
   with duplicate deals. A table where our seat failed to answer more than 0.1% of its decisions is not scored. A job
   that waits for its turn at the container says so every ten minutes, so the app does not take it for stuck.
+- **At an outside table v1 loses to rule-based bots (2026-11-24).** One student against five copies of each of
+  the arena's bots, 20,000 deals from every seat (120,000 hands), AIVAT, mbb/hand: tight -674.0 ±64.8,
+  tight-aggressive -944.9 ±94.9, loose-aggressive -1,375.1 ±131.7, maniac -1,756.9 ±141.6, calling station
+  +6,905.5 ±411.6, random +3,262.0 ±243.4. Every decision was answered. A recorded 2,400-hand match showed the
+  seat plays what the student says: weak hands folded, premium hands raised or limped, 12% opened under the gun
+  and 25% on the button, but 64 of 2,278 decisions before the flop were all-in. Until then the student had only
+  met copies of its teacher, always-call bots and random players, and none of those folds to a bet or bets for
+  value. So the bot's health gained a check, "Beats rule-based bots", which fails; a table measure counts only
+  with an opponent that folds and bets for value.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's
