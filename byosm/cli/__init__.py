@@ -1,6 +1,7 @@
 from . import (
     ablate,
     benchmarks,
+    blueprints,
     datasets,
     db,
     define,
@@ -27,6 +28,7 @@ __all__ = [
     "ablate",
     "app",
     "benchmarks",
+    "blueprints",
     "datasets",
     "db",
     "define",

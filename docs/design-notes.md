@@ -3185,6 +3185,12 @@ blueprints are not published, so we train one here, and its native code never ru
   second (checked); every run that writes large files first checks for 40 GiB free and says how to make room;
   `byosm poker teacher-remove NAME` deletes a strategy's files, and a student's 2.8 GB table is deleted once its
   strategy file is built.
+- **A published blueprint is fetched part by part.** [SHARINGAN-2](https://huggingface.co/markokraemer/sharingan-2)
+  is 169.9 GB in seven parts. `byosm poker blueprint-fetch` downloads one part, checks it against the published
+  SHA-256, appends it to the joined file and deletes it, so the disk holds the file once, not twice; a marker
+  records how many whole parts are joined, so a restart resumes and a torn append is cut back. The joined file takes
+  its name only after its own checksum matches. The repository revision is pinned, the download is anonymous, and
+  it uses plain HTTP, measured at 72 to 76 MB/s on this line.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's
