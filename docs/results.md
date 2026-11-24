@@ -11,7 +11,7 @@ Rivals and benchmarks: [methodology](methodology.md).
 |---|---|---|---|---|---|---|---|
 | Which words of a request fill an action's arguments, and their type (MASSIVE slots) | AmazonScience/massive (span_f1) | v2 (70.73M) | 0.734 [0.717, 0.751] | no outside baseline scored yet | - | - | - |
 | Which of the assistant's 60 actions a request asks for (MASSIVE intents) | AmazonScience/massive (accuracy) | stream (22.74M) | 0.890 [0.877, 0.901] | jev (-) | 0.815 [0.799, 0.831] | +0.075, P(better) = 1.00 | 0.894 vs 0.824 (ahead) |
-| 77-way banking intent classification | mteb/banking77 (accuracy) | v1 (22.74M) | 0.797 [0.780, 0.812] | llm (-) | 0.811 [0.796, 0.826] | -0.015, P(better) = 0.04 | 0.747 vs 0.812 (behind) |
+| 77-way banking intent classification | mteb/banking77 (accuracy) | v2-soup (22.74M) | 0.823 [0.807, 0.837] | llm (-) | 0.811 [0.796, 0.826] | +0.011, P(better) = 0.94 | 0.789 vs 0.812 (behind) |
 | Route a member's request about insurance or benefits to one of 39 support intents | benefits-intent-builtin (accuracy) | v1 (22.73M) | 0.997 [0.996, 0.999] | jev (-) | 0.910 [0.903, 0.919] | +0.087, P(better) = 1.00 | 0.999 vs 0.909 (ahead) |
 | Categorise a card or bank transaction description into one of 17 spending categories | card-spend-builtin (accuracy) | v1 (22.72M) | 0.999 [0.999, 1.000] | llm (-) | 0.886 [0.877, 0.894] | +0.114, P(better) = 1.00 | 0.998 vs 0.877 (ahead) |
 | 16-way document type classification (RVL-CDIP classes) | chainyo/rvl-cdip (accuracy) | v2-ditft (109.55M) | 0.948 [0.941, 0.956] | hf:microsoft/dit-base-finetuned-rvlcdip (85.82M) | 0.940 [0.932, 0.948] | +0.008, P(better) = 1.00 | 0.935 vs 0.936 (behind) |
@@ -20,7 +20,9 @@ Rivals and benchmarks: [methodology](methodology.md).
 | ASSUMPTION, NOT VERIFIED: I could not look up convaiinnovations/laya, so its exact label set is unconfirmed. This spec guesses it is a 3-way sentiment classifier (negative / neutral / positive) for short user text in English, Hindi and romanized Hindi-English (Hinglish), which fits the publisher's Indic focus. Check the model card's id2label and replace the labels if they differ. The goal is a much smaller student model that matches or beats laya's macro-F1 on a held-out multilingual sentiment test set, with laya itself as the main baseline. | laya-sentiment-builtin (macro_f1) | v1 (117.66M) | 0.788 [0.760, 0.818] | hf:cardiffnlp/twitter-xlm-roberta-base-sentiment (278.05M) | 0.700 [0.665, 0.733] | +0.089, P(better) = 1.00 | 0.789 vs 0.693 (ahead) |
 | Token-tag every token in a lease-agreement text to identify spans of DATE, AMOUNT, and PARTY (landlord, tenant, guarantor, or other named signatory) using BIO tagging. | lease-entities-builtin (span_f1) | v1 (70.69M) | 0.514 [0.389, 0.651] | hf:Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 (183.92M) | 0.301 [0.178, 0.432] | +0.213, P(better) = 1.00 | 0.632 vs 0.370 (ahead) |
 | Named entity recognition (CoNLL-2003 tags) | BramVanroy/conll2003 (span_f1) | v3 (70.69M) | 0.913 [0.903, 0.921] | hf:dslim/bert-base-NER (107.73M) | 0.910 [0.900, 0.918] | +0.003, P(better) = 0.86 | 0.928 vs 0.925 (ahead) |
+| Pick the solver's move among the ones offered in a 6-max no-limit hold'em spot. | RZ412/PokerBench (accuracy) | v1 (22.72M) | 0.857 [0.850, 0.865] | llm (-) | 0.445 [0.434, 0.456] | +0.413, P(better) = 1.00 | 0.857 vs 0.356 (ahead) |
 | Decide whether one offered tool should be used for a request; the chosen tools are the ones that fit. | tool-choice-builtin (f1) | v3 (22.71M) | 0.960 [0.951, 0.969] | llm:rival-claude-haiku-5-5 (-) | 0.995 [0.991, 0.998] | -0.034, P(better) = 0.00 | 0.971 vs 0.975 (behind) |
+| Decide whether one offered tool should be used for a request; the chosen tools are the ones that fit. | tool-choice-args-builtin (f1) | v1 (394.79M) | 0.940 [0.930, 0.951] | no outside baseline scored yet | - | - | - |
 | Decide whether one offered tool should be used for a request; the chosen tools are the ones that fit. | tool-choice-held-builtin (f1) | v1 (394.79M) | 0.924 [0.912, 0.935] | no outside baseline scored yet | - | - | - |
 | Classify an English news-headline+summary pair into one of four topics: world, sports, business, science/technology, with an explicit 'other' catch-all for items that fit none of the four. | fancyzhx/ag_news (accuracy) | v3 (22.72M) | 0.947 [0.937, 0.955] | hf:mrm8488/bert-mini-finetuned-age_news-classification (11.17M) | 0.930 [0.919, 0.939] | +0.017, P(better) = 1.00 | 0.955 vs 0.934 (ahead) |
 | From the incremental transcript of a speaker's current turn (text so far, may end mid-word), decide whether the speaker has finished their conversational turn (finished = true) or is still speaking / likely to say more (finished = false). The model is called repeatedly as tokens arrive; this spec is a single binary classification of a partial-utterance. | turn-completion-builtin (recall_at_precision) | v15 (22.71M) | 0.895 [0.861, 0.924] | livekit-turn-multilingual (-) | 0.000 [0.000, 0.000] | +0.895, P(better) = 1.00 | 0.753 vs 0.722 (ahead) |
@@ -111,14 +113,25 @@ Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses cali
 <!-- report:bank-panel -->
 | model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
 |---|---|---|---|---|---|---|
+| v2 | v1 + lab-gemma2-nce-hinge-trajectory-merge | 5566 (+70 builtin test) | 22.74M | 21.74ms | 0.827 [0.812, 0.842] | 0.792 |
+| **v2-soup** (promoted) | v2 + soup | 5566 (+70 builtin test) | 22.74M | 29.27ms | 0.823 [0.807, 0.837] | 0.789 |
 | llm | outside baseline | - | - | - | 0.811 [0.796, 0.826] | 0.812 |
 | jev | outside baseline | - | - | 374.56ms | 0.807 [0.792, 0.822] | 0.776 |
-| **v1** (promoted) | no recorded parent | 4228 (+70 builtin test) | 22.74M | 2.38ms | 0.797 [0.780, 0.812] | 0.747 |
+| v1 | no recorded parent | 4228 (+70 builtin test) | 22.74M | 2.38ms | 0.797 [0.780, 0.812] | 0.747 |
 | panel | outside baseline | - | - | - | 0.779 [0.763, 0.794] | 0.750 |
 | gold | spec.yaml + `data.teachers=[]` | 416 (+70 builtin test) | 22.74M | 2.54ms | 0.749 [0.731, 0.767] | 0.734 |
 
-Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+Suite `b77` (mteb/banking77): 2460 test and 616 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 4 seed replicates off the promoted lineage, which are summarised in the recipe table (`bank-panel:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:bank-panel -->
+
+<!-- report:bank-panel:seeds -->
+| recipe | seeds | train rows | lab_method | test accuracy % | calib accuracy % |
+|---|---|---|---|---|---|
+| v2 | 3 | 5566 (+70 builtin test) | ddcec08979 | 82.22 ± 0.51 | 78.63 ± 0.52 |
+| v1 | 3 | 4228 (+70 builtin test) | - | 79.70 ± 0.05 | 75.60 ± 0.80 |
+
+A recipe and its runs named `<recipe>-s<seed>` (the recipe itself is the first seed; a soup is not a seed) on suite `b77`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `v2`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+<!-- /report:bank-panel:seeds -->
 
 - The same task as above, but the specialist sees only 6 human-labelled rows per intent. Qwen and Jev label rows
   from the Banking77 train split whose gold labels are hidden; each teacher is weighted by its accuracy on the
@@ -270,12 +283,22 @@ Suite `massive` (AmazonScience/massive): 2379 test and 595 calib items. Selectio
 <!-- report:assistant-args -->
 | model | built from | train rows | params | CPU | test span_f1 [95% CI] | calib span_f1 |
 |---|---|---|---|---|---|---|
+| v4 | v2 + lab-trajectory-merge-rare-span-oversample | 12136 (+1977 builtin test) | 70.73M | 114.55ms | 0.739 [0.722, 0.754] | 0.758 |
 | v3 | v1 + train-longer | 12136 (+1977 builtin test) | 70.73M | 11.08ms | 0.734 [0.717, 0.751] | 0.756 |
 | **v2** (promoted) | v1 + train-longer | 12136 (+1977 builtin test) | 70.73M | 14.91ms | 0.734 [0.717, 0.751] | 0.756 |
 | v1 | no recorded parent | 12136 (+1977 builtin test) | 70.73M | 12.87ms | 0.691 [0.673, 0.708] | 0.710 |
 
-Suite `massive` (AmazonScience/massive): 2379 test and 595 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+Suite `massive` (AmazonScience/massive): 2379 test and 595 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 4 seed replicates off the promoted lineage, which are summarised in the recipe table (`assistant-args:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
 <!-- /report:assistant-args -->
+
+<!-- report:assistant-args:seeds -->
+| recipe | seeds | train rows | lab_method | test span_f1 % | calib span_f1 % |
+|---|---|---|---|---|---|
+| v4 | 3 | 12136 (+1977 builtin test) | 19533d50ff | 74.31 ± 0.52 | 75.84 ± 1.04 |
+| **v2** | 3 | 12136 (+1977 builtin test) | - | 74.01 ± 0.88 | 75.25 ± 0.37 |
+
+A recipe and its runs named `<recipe>-s<seed>` (the recipe itself is the first seed; a soup is not a seed) on suite `massive`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `v4`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran). +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+<!-- /report:assistant-args:seeds -->
 
 ## Dates, amounts and parties in a lease: one sentence, LLM-written data
 
@@ -378,7 +401,6 @@ A recipe and its runs named `<recipe>-s<seed>` (the recipe itself is the first s
   on **test** means. That breaks [bet 2](assumptions.md#the-bet); re-picking it on calib with more seeds is open.
 - The differences between recipes are within about one seed's noise: no recipe is a clear winner yet.
 
-<p align="center"><a href="../README.md">Tour</a> · <a href="assumptions.md">Goal and bet</a> · <a href="methodology.md">Methodology</a> · <b>Results</b> · <a href="details.md">Details</a></p>
 
 <!-- report:emotion:seeds -->
 | recipe | seeds | train rows | pretrain_steps | test accuracy % | calib accuracy % |
@@ -431,21 +453,99 @@ The same task with whole tool families and option layouts held out of training, 
 <!-- report:tool-choice-held -->
 | model | built from | train rows | params | CPU | test f1 [95% CI] | calib f1 |
 |---|---|---|---|---|---|---|
+| v5-r1 | v5 + rung | 8263 | 394.79M | 229.01ms | 0.968 [0.959, 0.975] | 0.962 |
 | v2-r1 | v2 + rung | 16622 | 394.79M | 677.13ms | 0.967 [0.958, 0.975] | 0.958 |
 | v4-r1 | v4 + rung | 16476 | 394.79M | 197.76ms | 0.963 [0.954, 0.971] | 0.957 |
+| v6-r1 | v6 + rung | 8252 | 394.79M | 125.76ms | 0.963 [0.954, 0.971] | 0.961 |
 | near-miss | v1 + `data.pairs.near_misses=[nearest, same_category, missing_parameter, removed]` | 16622 | 394.79M | 596.28ms | 0.958 [0.949, 0.967] | 0.959 |
 | v3-r1 | v3 + rung | 8263 | 394.79M | 938.70ms | 0.955 [0.946, 0.964] | 0.943 |
+| v13 | v1 + hard-cases | 11263 | 394.79M | 315.82ms | 0.942 [0.931, 0.953] | 0.933 |
+| v8-r1 | v8 + rung | 8263 | 394.79M | 384.56ms | 0.932 [0.919, 0.944] | 0.931 |
+| near-miss-labels | no recorded parent | 16620 | 394.79M | 253.37ms | 0.931 [0.919, 0.943] | 0.941 |
 | **v1** (promoted) | no recorded parent | 8263 | 394.79M | 625.02ms | 0.924 [0.912, 0.935] | 0.913 |
+| v7-r1 | v7 + rung | 8263 | 22.71M | 100.49ms | 0.783 [0.763, 0.804] | 0.780 |
 
-Suite `builtin` (tool-choice-held-builtin): 1616 test and 1624 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 1 seed replicate off the promoted lineage, which are summarised in the recipe table (`tool-choice-held:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+Suite `builtin` (tool-choice-held-builtin): 1616 test and 1624 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 4 seed replicates off the promoted lineage, which are summarised in the recipe table (`tool-choice-held:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
 <!-- /report:tool-choice-held -->
 
-<p align="center"><a href="../README.md">Tour</a> · <a href="assumptions.md">Goal and bet</a> · <a href="methodology.md">Methodology</a> · <b>Results</b> · <a href="details.md">Details</a></p>
 
 <!-- report:tool-choice-held:seeds -->
 | recipe | seeds | train rows | test f1 % | calib f1 % |
 |---|---|---|---|---|
-| near-miss | 2 | 16622 | 94.67 ± 1.56 | 94.52 ± 1.98 |
+| near-miss | 3 | 16622 | 95.02 ± 1.26 | 94.48 ± 1.40 |
+| **v1** | 3 | 8263 | 94.20 ± 1.60 | 93.32 ± 1.74 |
 
 A recipe and its runs named `<recipe>-s<seed>` (the recipe itself is the first seed; a soup is not a seed) on suite `builtin`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `near-miss`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran).
 <!-- /report:tool-choice-held:seeds -->
+
+## Tool choice with arguments
+
+<!-- report:tool-choice-args -->
+| model | built from | train rows | params | CPU | test f1 [95% CI] | calib f1 |
+|---|---|---|---|---|---|---|
+| near-miss | no recorded parent | 16613 | 394.79M | 96.84ms | 0.956 [0.946, 0.966] | 0.957 |
+| v2 | v1 + hard-cases | 11263 | 394.79M | 102.53ms | 0.943 [0.933, 0.954] | 0.941 |
+| **v1** (promoted) | no recorded parent | 8263 | 394.79M | 71.16ms | 0.940 [0.930, 0.951] | 0.942 |
+
+Suite `builtin` (tool-choice-args-builtin): 1616 test and 1624 calib items. Selection uses calib; test is only reported. Every scored experiment is listed, except 1 seed replicate off the promoted lineage, which are summarised in the recipe table (`tool-choice-args:seeds`). CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison.
+<!-- /report:tool-choice-args -->
+
+<!-- report:tool-choice-args:seeds -->
+| recipe | seeds | train rows | test f1 % | calib f1 % |
+|---|---|---|---|---|
+| near-miss | 2 | 16613 | 94.71 ± 1.33 | 94.58 ± 1.58 |
+
+A recipe and its runs named `<recipe>-s<seed>` (the recipe itself is the first seed; a soup is not a seed) on suite `builtin`, mean ± sample sd over seeds, sorted by calib (the selection split); only seeds scored on the same suite version are averaged (a recipe scored on several gets one row per version, `@<fingerprint>`; a seed alone on its version stays in the main table; † rows are listed last and never ranked against the promoted version); top on calib: `near-miss`. Columns after train rows are the `train` settings that differ between recipes; - = not set (the code default when it ran).
+<!-- /report:tool-choice-args:seeds -->
+
+## Poker: a six-player table
+
+The teacher is the [open-source Pluribus rebuild](https://github.com/conorarmstrong/pluribus), trained here by self-play
+in a sealed container; the student is a small model of it that answers in under a millisecond. Strength is measured by
+play at six seats. Neither is at Pluribus's level: [plan, measurements and caveats](GAMES.md).
+
+<!-- report:poker -->
+| strategy | the other five seats | mbb/hand [95% CI] | hands |
+|---|---|---|---|
+| blueprint-200000000-cap7000000 | copies of blueprint-200000000 | -6.5 [-55.9, +42.9] | 2,000,000 |
+| blueprint-200000000-snap | copies of blueprint-200000000 | -17.8 [-66.6, +31.0] | 2,000,000 |
+| blueprint-200000000-student | always-call bots | +2907.7 [+2725.5, +3089.9] | 200,000 |
+| blueprint-200000000-student | copies of blueprint-200000000 | +5.2 [-44.1, +54.5] | 2,000,000 |
+| blueprint-200000000 | always-call bots | +3410.2 [+3220.5, +3599.9] | 200,000 |
+| blueprint-200000000 | always-call bots, it searches | +12243.0 [+10165.6, +14320.4] | 20,000 |
+| blueprint-200000000 | copies of itself; it searches, they do not | -25.7 [-53.2, +1.8] | 400,000 |
+| blueprint-200000000 | random players | +4602.8 [+4397.9, +4807.7] | 200,000 |
+| blueprint-25000000-b24 | copies of blueprint-25000000 | -66.2 [-190.2, +57.8] | 1,000,000 |
+| blueprint-25000000-b50 | copies of blueprint-25000000 | -96.9 [-221.2, +27.4] | 1,000,000 |
+
+| strategy | Pluribus's move, all streets | preflop | flop | turn | river | mean probability on it | covered |
+|---|---|---|---|---|---|---|---|
+| blueprint-200000000 | 69.8% | 73.4% | 63.5% | 61.4% | 59.9% | 0.633 | 99.6% |
+| blueprint-200000000-student | 71.6% | 74.5% | 66.3% | 64.8% | 63.7% | 0.635 | 99.6% |
+
+| student | teacher | model | held-out KL to the teacher | same top move | rounds on its own reach |
+|---|---|---|---|---|---|
+| blueprint-200000000-student | blueprint-200000000 | 5.38 MB | 0.0727 | 89.0% | 0 |
+
+Six seats, 100 big blinds, mbb/hand = thousandths of a big blind a hand. Against copies of a strategy the result is the plain mean; against callers and random players the engine's AIVAT estimate. The Pluribus rows count its exact move in the strategy's bet menu, over the logged decisions the strategy has an answer for (covered).
+<!-- /report:poker -->
+
+- A strategy is kept only when it beats five copies of the one before it with its whole interval above zero; none of
+  the finer or differently stored teachers did.
+- The student ties its 4 GB teacher at the table and agrees with Pluribus's logged moves more often than the teacher.
+
+### PokerBench: the solver's move from a written spot
+
+A text classifier, not the table bot: it reads a spot as a sentence with its card facts and picks among the offered
+moves on [PokerBench](https://arxiv.org/abs/2501.08328).
+
+<!-- report:poker-300k -->
+| model | built from | train rows | params | CPU | test accuracy [95% CI] | calib accuracy |
+|---|---|---|---|---|---|---|
+| **v1** (promoted) | no recorded parent | 292035 (+15169 builtin test) | 22.72M | 8.05ms | 0.857 [0.850, 0.865] | 0.857 |
+| llm | outside baseline | - | - | - | 0.445 [0.434, 0.456] | 0.356 |
+
+Suite `pokerbench` (RZ412/PokerBench): 8801 test and 2199 calib items. Selection uses calib; test is only reported. Every scored experiment is listed. CPU is PyTorch time per input, or per streaming chunk, timed when the row was last scored, so rows scored in different sessions are not a controlled speed comparison. +N builtin test = the builtin suite's held-out split was folded into training (`train.holdout_test`); the benchmark's own test split is never trained on.
+<!-- /report:poker-300k -->
+
+<p align="center"><a href="../README.md">Tour</a> · <a href="assumptions.md">Goal and bet</a> · <a href="methodology.md">Methodology</a> · <b>Results</b> · <a href="details.md">Details</a></p>
