@@ -93,7 +93,8 @@ What it says:
   commit, which is four days newer than the model card; the cause is not established. Nobody has measured it
   against strong players, and its own README names bet sizes off its menu as a weakness.
 
-The next build is therefore a small student of SHARINGAN-2, measured at this same table, and the table itself.
+The next build is therefore a small student of SHARINGAN-2, measured at this same table ([the plan](STUDENT.md)),
+and the table itself.
 
 ## SHARINGAN-2 against logged real games (2026-11-24)
 
