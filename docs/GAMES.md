@@ -349,4 +349,6 @@ Decisions for the owner:
    steps A and C as written, more of the same teacher, are not worth their cost.*
    *SHARINGAN-2 beat it from both sides (-555.5 ±62.1 and +480.4 ±53.6 mbb/hand), so the next teacher is
    SHARINGAN-2, not a longer run of ours: see [the arena plan](ARENA.md).*
+   *The owner stopped training the same afternoon: the 1-billion run was cancelled at 904 million iterations with
+   its checkpoint kept, and was never seated. The work moves to the live table.*
 
