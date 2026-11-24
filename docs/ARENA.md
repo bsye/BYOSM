@@ -50,6 +50,18 @@ score counts, our run of one of its published numbers must reproduce it. Open fo
 situations cannot be listed the way our 98 million were, so the student would learn from sampled play, and it must
 read 200 buckets or the cards themselves.
 
+## Status (2026-11-24)
+
+| Piece | State |
+|---|---|
+| Room for the 169.9 GB file | Done: the owner approved clearing Docker's build cache, three stopped Rust build volumes and 76 merged worktrees; 69 to 223 GiB free |
+| `byosm poker blueprint-fetch` | Built and running: parts checked against the published SHA-256 and joined one at a time |
+| SHARINGAN's code in a sealed container | Built from commit `6a11d9b4` on this Mac (ARM); its bench tool runs with no network |
+| Our student at its table | Built: `seat.py` answers the bench tool's requests with the student as a 5.64 MB ONNX graph; 3,618 decisions in a 1,800-hand trial, none failed |
+| `byosm poker arena-gauntlet NAME` | Built; queued for our student, then for SHARINGAN-2 as the protocol check |
+| `byosm poker arena-versus HERO FIELD` | Built; queued both ways between our student and SHARINGAN-2 |
+| Hosted table | Not started |
+
 ## Two pieces, in this order
 
 1. **Local arena (the baseline that answers the money question).** Our student and our teacher against a SHARINGAN
