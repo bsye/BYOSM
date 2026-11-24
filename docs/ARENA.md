@@ -60,7 +60,7 @@ read 200 buckets or the cards themselves.
 | Our student at its table | Built: `seat.py` answers the bench tool's requests with the student as a 5.64 MB ONNX graph; 3,618 decisions in a 1,800-hand trial, none failed |
 | `byosm poker arena-gauntlet NAME` | Run for our student and for SHARINGAN-2 (tables below) |
 | `byosm poker arena-versus HERO FIELD` | Run both ways between our student and SHARINGAN-2 (table below) |
-| The table (separate project, `poker-table`) | Built and running on this Mac as a Docker stack: six-bot tables with simulation and replay, live tables where a person takes a seat, results with intervals, the reveal; SHARINGAN's table server sealed on an internal network. 2,000 hands through the stack took 4.5 s. Not yet: our student's live seat, a tunnel or the AWS deploy, phone width |
+| The table (separate project, `poker-table`) | Built and running on this Mac as a Docker stack: six-bot tables with simulation and replay, live tables where a person takes a seat, results with intervals, the reveal, invitations (one link, a table per visitor, results pooled per kind of player), tables kept across restarts; SHARINGAN's table server sealed on an internal network. 2,000 hands through the stack took 4.5 s. Checked: two people at one table, phone width. Not yet: our student's live seat, a tunnel or the AWS deploy |
 | Training | Stopped by the owner on 2026-11-24: SHARINGAN-2 is the teacher to use |
 
 ## Result: SHARINGAN-2 is far stronger than our v1 (2026-11-24)
