@@ -3217,6 +3217,14 @@ blueprints are not published, so we train one here, and its native code never ru
   met copies of its teacher, always-call bots and random players, and none of those folds to a bet or bets for
   value. So the bot's health gained a check, "Beats rule-based bots", which fails; a table measure counts only
   with an opponent that folds and bets for value.
+- **SHARINGAN-2 beats v1 from both sides of the table (2026-11-24).** One v1 student against five SHARINGAN-2:
+  -555.5 ±62.1 mbb/hand; one SHARINGAN-2 against five v1 students: +480.4 ±53.6 (120,000 hands each, AIVAT, all
+  958,911 decisions of our seats answered). Against its own project's six simple bots SHARINGAN-2 scored here
+  +125.4 ±35.1, +339.9 ±56.0, +1,024.3 ±86.3, +982.3 ±104.7, +9,039.7 ±290.1 and +3,878.3 ±190.6 (tight,
+  tight-aggressive, loose-aggressive, maniac, calling station, random): four reproduce its model card, the maniac is
+  lower than published (+1,622 ±99) and the calling station higher (+2,572 ±118), on a commit four days newer than
+  the card. It plays from its 169.9 GB memory-mapped file at about 1,000 hands a second here. Decision that follows:
+  stop training our own teacher; distil the student from SHARINGAN-2.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's

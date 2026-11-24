@@ -517,6 +517,7 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 | blueprint-200000000-student | the arena's maniac bots | -1756.9 [-1898.5, -1615.3] | 120,000 |
 | blueprint-200000000-student | the arena's tight bots | -674.0 [-738.8, -609.2] | 120,000 |
 | blueprint-200000000-student | the arena's random bots | +3262.0 [+3018.6, +3505.4] | 120,000 |
+| blueprint-200000000-student | copies of sharingan-2 | -555.5 [-617.6, -493.4] | 120,000 |
 | blueprint-200000000-student | the arena's calling-station bots | +6905.5 [+6493.9, +7317.1] | 120,000 |
 | blueprint-200000000-student | the arena's tight-aggressive bots | -944.9 [-1039.8, -850.0] | 120,000 |
 | blueprint-200000000 | always-call bots | +3410.2 [+3220.5, +3599.9] | 200,000 |
@@ -525,6 +526,22 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 | blueprint-200000000 | random players | +4602.8 [+4397.9, +4807.7] | 200,000 |
 | blueprint-25000000-b24 | copies of blueprint-25000000 | -66.2 [-190.2, +57.8] | 1,000,000 |
 | blueprint-25000000-b50 | copies of blueprint-25000000 | -96.9 [-221.2, +27.4] | 1,000,000 |
+| sharingan-2 | copies of blueprint-200000000-student | +480.4 [+426.8, +534.0] | 120,000 |
+| sharingan-2 | the arena's loose-aggressive bots | +1024.3 [+938.0, +1110.6] | 120,000 |
+| sharingan-2 | the arena's maniac bots | +982.3 [+877.6, +1087.0] | 120,000 |
+| sharingan-2 | the arena's tight bots | +125.4 [+90.3, +160.5] | 120,000 |
+| sharingan-2 | the arena's random bots | +3878.3 [+3687.7, +4068.9] | 120,000 |
+| sharingan-2 | the arena's calling-station bots | +9039.7 [+8749.6, +9329.8] | 120,000 |
+| sharingan-2 | the arena's tight-aggressive bots | +339.9 [+283.9, +395.9] | 120,000 |
+
+| published blueprint | the other five seats | mbb/hand here | published | reproduced |
+|---|---|---|---|---|
+| sharingan-2 | the arena's tight bots | +125.4 ±35.1 | +125 ±35 | yes |
+| sharingan-2 | the arena's tight-aggressive bots | +339.9 ±56.0 | +303 ±56 | yes |
+| sharingan-2 | the arena's loose-aggressive bots | +1024.3 ±86.3 | +933 ±85 | yes |
+| sharingan-2 | the arena's maniac bots | +982.3 ±104.7 | +1622 ±99 | no |
+| sharingan-2 | the arena's calling-station bots | +9039.7 ±290.1 | +2572 ±118 | no |
+| sharingan-2 | the arena's random bots | +3878.3 ±190.6 | +4004 ±197 | yes |
 
 | strategy | Pluribus's move, all streets | preflop | flop | turn | river | mean probability on it | covered |
 |---|---|---|---|---|---|---|---|

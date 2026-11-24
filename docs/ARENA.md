@@ -55,30 +55,44 @@ read 200 buckets or the cards themselves.
 | Piece | State |
 |---|---|
 | Room for the 169.9 GB file | Done: the owner approved clearing Docker's build cache, three stopped Rust build volumes and 76 merged worktrees; 69 to 223 GiB free |
-| `byosm poker blueprint-fetch` | Built and running: parts checked against the published SHA-256 and joined one at a time |
+| `byosm poker blueprint-fetch` | Done: 169.9 GB, every part and the joined file match the published SHA-256 |
 | SHARINGAN's code in a sealed container | Built from commit `6a11d9b4` on this Mac (ARM); its bench tool runs with no network |
 | Our student at its table | Built: `seat.py` answers the bench tool's requests with the student as a 5.64 MB ONNX graph; 3,618 decisions in a 1,800-hand trial, none failed |
-| `byosm poker arena-gauntlet NAME` | Run for our student: it loses to every rule-based bot (table below). Queued for SHARINGAN-2 as the protocol check |
-| `byosm poker arena-versus HERO FIELD` | Built; queued both ways between our student and SHARINGAN-2 |
+| `byosm poker arena-gauntlet NAME` | Run for our student and for SHARINGAN-2 (tables below) |
+| `byosm poker arena-versus HERO FIELD` | Run both ways between our student and SHARINGAN-2 (table below) |
 | Hosted table | Not started |
 
-## First result: our student against the arena's simple bots
+## Result: SHARINGAN-2 is far stronger than our v1 (2026-11-24)
 
-One seat against five copies of each bot, 120,000 hands each, mbb/hand with a 95% interval
-([all results](results.md)).
+SHARINGAN's bench tool, 20,000 deals each played from every seat (120,000 hands), AIVAT, mbb/hand with a 95%
+interval ([all results](results.md)). Every decision of our seat was answered.
 
-| The other five seats | Our v1 student | SHARINGAN-2, as published |
+| One seat | The other five | Result |
 |---|---|---|
-| tight | -674.0 ±64.8 | +125 ±35 |
-| tight-aggressive | -944.9 ±94.9 | +303 ±56 |
-| loose-aggressive | -1,375.1 ±131.7 | +933 ±85 |
-| maniac | -1,756.9 ±141.6 | +1,622 ±99 |
-| calling station | +6,905.5 ±411.6 | +2,572 ±118 |
-| random | +3,262.0 ±243.4 | +4,004 ±197 |
+| Our v1 student | SHARINGAN-2 | -555.5 ±62.1 |
+| SHARINGAN-2 | our v1 student | +480.4 ±53.6 |
 
-Our teacher was only ever measured against itself, callers and random players. Against anything that folds and bets
-for value it loses, and the student copies it. A longer run of the same teacher or a rented week would not close a
-gap of this size. What is left to check is the right-hand column: whether SHARINGAN-2 scores here what it publishes.
+| The other five seats | Our v1 student | SHARINGAN-2 here | SHARINGAN-2 as published | Reproduced |
+|---|---|---|---|---|
+| tight | -674.0 ±64.8 | +125.4 ±35.1 | +125 ±35 | yes |
+| tight-aggressive | -944.9 ±94.9 | +339.9 ±56.0 | +303 ±56 | yes |
+| loose-aggressive | -1,375.1 ±131.7 | +1,024.3 ±86.3 | +933 ±85 | yes |
+| maniac | -1,756.9 ±141.6 | +982.3 ±104.7 | +1,622 ±99 | no, lower here |
+| calling station | +6,905.5 ±411.6 | +9,039.7 ±290.1 | +2,572 ±118 | no, higher here |
+| random | +3,262.0 ±243.4 | +3,878.3 ±190.6 | +4,004 ±197 | yes |
+
+What it says:
+
+- **Our own teacher is not worth more compute.** It was only ever measured against itself, callers and random
+  players. Against anything that folds and bets for value it loses, and the student copies it. More rounds of the
+  same 12-bucket teacher, here or on a rented machine, would not close a gap of this size.
+- **SHARINGAN-2 is the teacher to use.** It beats all six simple bots and beats our bot by about half a big blind a
+  hand from either side of the table. Its licence (Apache-2.0) allows it.
+- **Its published scores hold for four of six bots.** The two that differ were run here on the repository's latest
+  commit, which is four days newer than the model card; the cause is not established. Nobody has measured it
+  against strong players, and its own README names bet sizes off its menu as a weakness.
+
+The next build is therefore a small student of SHARINGAN-2, measured at this same table, and the table itself.
 
 ## Two pieces, in this order
 

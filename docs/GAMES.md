@@ -347,4 +347,6 @@ Decisions for the owner:
    trained to the Pluribus paper's budget, which may replace step C: see [the arena plan](ARENA.md).*
    *Same day: at that outside table the v1 student loses to every rule-based bot (-674 to -1,757 mbb/hand), so
    steps A and C as written, more of the same teacher, are not worth their cost.*
+   *SHARINGAN-2 beat it from both sides (-555.5 ±62.1 and +480.4 ±53.6 mbb/hand), so the next teacher is
+   SHARINGAN-2, not a longer run of ours: see [the arena plan](ARENA.md).*
 
