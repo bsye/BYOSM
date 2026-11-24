@@ -347,3 +347,33 @@ def test_a_strategys_situations_are_exported_and_read_back_record_by_record(ws, 
     np.zeros(1, infosets.layout(3, 4)).tofile(teacher.work_dir(ws) / "old.infosets")
     with pytest.raises(ValueError, match="holds 1 records"):
         infosets.records(ws, "old")
+
+
+def test_poker_results_come_from_the_stored_reports_and_an_archived_specialist_leaves_the_results_page(ws):
+    from byosm.archive import set_archived
+    from byosm.db.workspace import save_workspace_report
+    from byosm.games.poker import results, table
+    from byosm.report import page
+
+    assert results.block(ws) is None and "poker" not in page.played()
+    won = {"mbb_per_hand": 5.2, "ci95": 49.3, "hands": 2000000, "strategy": "small", "field": "big"}
+    save_workspace_report(ws, "poker-table:small:vs:big", won)
+    save_workspace_report(
+        ws, table.key("big", "itself", True), {**won, "strategy": "big", "field": "itself", "search": True}
+    )
+    said = ["street decisions covered top-1 mean", "preflop 10 100.0% 70.0% 0.600", "TOTAL 10 99.6% 71.6% 0.635"]
+    save_workspace_report(ws, "poker-agreement:small", {"strategy": "small", **table.agreed(said)})
+    taught = {"student": "small", "teacher": "big", "model_mb": 5.38, "kl": 0.0727, "top_move": 0.89, "rounds": 0}
+    save_workspace_report(ws, "poker-student:small", taught)
+    save_workspace_report(ws, table.key("big", "caller", False), {**won, "strategy": "big", "field": "caller"})
+    found = page.played()["poker"]
+    assert "| small | copies of big | +5.2 [-44.1, +54.5] | 2,000,000 |" in found
+    assert "| big | copies of itself; it searches, they do not |" in found
+    assert "| big | always-call bots |" in found
+    assert "| small | 71.6% | 70.0% | - | - | - | 0.635 | 99.6% |" in found
+    assert "| small | big | 5.38 MB | 0.0727 | 89.0% | 0 |" in found
+    with pytest.raises(RuntimeError, match="no agreement table"):
+        table.agreed(["nothing here"])
+    Project("gone").ensure()
+    set_archived(ws, "gone", True)
+    assert "gone" not in page.reported()

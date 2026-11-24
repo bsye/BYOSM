@@ -56,12 +56,15 @@ def teacher_benchmark(name: str = _strategy_option()) -> None:
     """Score a trained strategy on how often it agrees with Pluribus's 15,169 decisions, and write its labels."""
     from ..benchmarks.pluribus import root
     from ..config import find_workspace
-    from ..games.poker.teacher import benchmark
+    from ..games.poker.table import TOTAL, agreement
 
     try:
-        benchmark(find_workspace(), root(), name, log)
+        found = agreement(find_workspace(), root(), name, log)[TOTAL]
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
+    log(
+        f"{found['top_move']:.1%} of Pluribus's moves on the {found['covered']:.1%} of {found['decisions']} decisions covered"
+    )
 
 
 def _won(won: dict, against: str) -> str:

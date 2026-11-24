@@ -3,13 +3,16 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from .teacher import run, strategy
+from .teacher import benchmark, run, strategy
 
 SEATS = 6
 ITSELF = "itself"
 FIELDS = ("caller", "random", ITSELF)
 REPORT = "poker-table:"
 VERSUS = ":vs:"
+AGREEMENT = "poker-agreement:"
+STREETS = ("preflop", "flop", "turn", "river")
+TOTAL = "total"
 WINRATE = "winrate:"
 UNIT = "mbb/hand"
 INTERVAL = "(95% CI ±"
@@ -56,4 +59,28 @@ def versus(ws: Path, hands_dir: Path, focal: str, field: str, hands: int, log: L
     args = ["crossplay", "--focal", strategy(ws, focal), "--field", strategy(ws, field), "--hands", str(hands)]
     result = {**parsed(run(ws, hands_dir, args, log)), "seats": SEATS, "strategy": focal, "field": field}
     save_workspace_report(ws, f"{REPORT}{focal}{VERSUS}{field}", result)
+    return result
+
+
+def share(text: str) -> float:
+    return float(text.rstrip("%")) / 100
+
+
+def agreed(said: list[str]) -> dict[str, dict[str, float]]:
+    rows = {}
+    for line in said:
+        words = line.split()
+        if len(words) == 5 and words[0].lower() in (*STREETS, TOTAL):
+            decisions, covered, top, prob = int(words[1]), share(words[2]), share(words[3]), float(words[4])
+            rows[words[0].lower()] = {"decisions": decisions, "covered": covered, "top_move": top, "mean_prob": prob}
+    if TOTAL not in rows:
+        raise RuntimeError("the poker teacher printed no agreement table")
+    return rows
+
+
+def agreement(ws: Path, hands_dir: Path, name: str, log: Log) -> dict:
+    from ...db.workspace import save_workspace_report
+
+    result = {"strategy": name, **agreed(benchmark(ws, hands_dir, name, log))}
+    save_workspace_report(ws, f"{AGREEMENT}{name}", result)
     return result

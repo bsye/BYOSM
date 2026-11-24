@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ..archive import archived
+from ..config import find_workspace
 from ..project import Project, list_projects
 from .seeds import SEEDS, seeds_block
 from .systems import SYSTEM, reported_systems, system_block
@@ -14,7 +16,15 @@ CLOSE = " -->"
 
 
 def reported() -> list[str]:
-    return [n for n in list_projects() if Project(n).board()]
+    hidden = archived(find_workspace())
+    return [n for n in list_projects() if n not in hidden and Project(n).board()]
+
+
+def played() -> dict[str, str]:
+    from ..games.poker.results import BLOCK, block
+
+    found = block(find_workspace())
+    return {BLOCK: found} if found else {}
 
 
 def blocks() -> dict[str, str]:
@@ -23,6 +33,7 @@ def blocks() -> dict[str, str]:
     out.update({n: specialist_block(n) for n in names})
     out.update({f"{n}:{SEEDS}": t for n in names if (t := seeds_block(n))})
     out.update({f"{SYSTEM}:{n}": system_block(n) for n in reported_systems()})
+    out.update(played())
     return out
 
 
