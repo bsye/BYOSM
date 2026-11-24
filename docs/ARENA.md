@@ -94,13 +94,28 @@ What it says:
 
 The next build is therefore a small student of SHARINGAN-2, measured at this same table, and the table itself.
 
-## Two pieces, in this order
+## The table: reuse SHARINGAN's table server, build only the page and the seats
 
-1. **Local arena (the baseline that answers the money question).** Our student and our teacher against a SHARINGAN
-   checkpoint in its own arena, inside a sealed container like our teacher's.
-2. **Hosted table (to watch and to play).** A Cloudflare Worker serves the table page; a Durable Object holds each
-   table's state and the hidden seat list; a Cloudflare Container runs our engine and the 5 MB student, so the model
-   never reaches the browser; D1 keeps each session's results.
+SHARINGAN ships a table server (`sharingan-arena`, Apache-2.0,
+[its API](https://github.com/markokraemer/poker-sharingan/blob/main/docs/TABLE_API.md)): six seats, the rules,
+seeded deals, a WebSocket seat protocol with the legal moves in chips, its blueprint and six simple bots as house
+players, matches of a planned number of hands, standings, and every hand's history. We do not write a rules engine.
+
+```mermaid
+flowchart LR
+  page[Table page, React and shadcn] --> api[Table API: sessions, hidden seats, reveal]
+  api --> server[sharingan-arena in a sealed container]
+  seat[Our student's seat: engine and ONNX graph] --> server
+  server --> blueprint[(SHARINGAN-2, 170 GB, local only)]
+```
+
+| Step | Where | What |
+|---|---|---|
+| 1 | This Mac | The table server sealed on an internal Docker network, reachable only from this machine; SHARINGAN-2, its simple bots and our student seated; the page to simulate hands, to play a seat, to see every seat's result and to reveal who was who |
+| 2 | Cloudflare | The same page and API as a Worker with a Durable Object per session and the table server in a Cloudflare Container. SHARINGAN-2 cannot go there (a container has at most 20 GB of disk), so the hosted seats are the simple bots, our student, and later a student of SHARINGAN-2 |
+
+The table is its own project beside this one (TypeScript, the platform's language on Workers). BYOSM keeps the
+measuring commands and exports the student's seat.
 
 ## Hosted table: acceptance
 
@@ -124,12 +139,11 @@ The next build is therefore a small student of SHARINGAN-2, measured at this sam
 | The container is asleep | The page says it is waking the bots; the first hand waits for it |
 | Unequal stacks after a hand | Stacks reset to 100 big blinds every hand, the format every bot here was trained for |
 
-## What the engine still needs
+## What BYOSM still owes the table
 
-- Settling a finished hand (showdown, side pots, payouts) through the stdin interface that already describes a
-  decision, and dealing from a seed so a session can be replayed.
-- The student read as an ONNX file by the engine's container, so the container needs no PyTorch.
-- `byosm poker export`: the student, its card abstraction and the engine image reference as one bundle.
+- The student's seat for the table server's live protocol (`your_turn` in, a move in chips out), reusing `seat.py`.
+- `byosm poker export`: the student's graph, its encoding, its card abstraction and the engine binary as one bundle.
+- A student distilled from SHARINGAN-2.
 
 ## Cost
 
@@ -144,9 +158,6 @@ Real money, public sign-up, hosting a 28 GB or larger opponent on Cloudflare, mo
 
 ## Needs the owner
 
-1. Download for the local arena, built and run only in a sealed container: `B-local-2e10.plcp` (28.3 GB, 2 parts)
-   and `buckets-200.tar` (0.28 GB) from Hugging Face, and the SHARINGAN code from GitHub.
-2. Where SHARINGAN-2's 169.9 GB should live if the small checkpoint proves worth it: freed space on this Mac, an
-   external disk, or a rented machine.
-3. G5 as the hosted open-source opponent: built in a container from its GitHub repository.
-4. The deploy itself: the owner runs the `wrangler` commands; nothing is deployed from here.
+1. The deploy itself: the owner runs the `wrangler` commands; nothing is deployed from here.
+2. G5 as a further hosted opponent: yes or no to building it from its GitHub repository.
+3. Whether his own seat counts in a session's results when he plays along.
