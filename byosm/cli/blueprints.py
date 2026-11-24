@@ -88,6 +88,28 @@ def blueprint_decisions(
         raise typer.BadParameter(str(e)) from e
 
 
+@poker_app.command("student-decisions")
+def student_decisions(
+    student: str = typer.Option(None, help="which student, by the name poker student saved (default the v1 student)"),
+    hands: int = typer.Option(None, help="how many of Pluribus's 10,000 hands to replay (default all)"),
+    showdown: bool = typer.Option(False, help="only the moves of players who reached a showdown"),
+) -> None:
+    """Compare our student's move with the logged move at every decision of Pluribus's hands."""
+    from ..config import find_workspace
+    from ..games.poker.distill import STUDENT
+    from ..games.poker.own_decisions import answers
+    from ..games.poker.sharingan.compare import against_pluribus, compared, everyone, pluribus_hands, shown_down
+    from ..games.poker.teacher import DEFAULT
+
+    name = student or f"{DEFAULT}{STUDENT}"
+    source, kept = ("pluribus-showdown", shown_down) if showdown else ("pluribus", everyone)
+    try:
+        made = compared(find_workspace(), name, source, pluribus_hands(hands), against_pluribus, log, kept, answers)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    _told(made)
+
+
 @poker_app.command("real-hands-fetch")
 def real_hands_fetch() -> None:
     """Download 21.6 million real online hands from Zenodo (1.88 GB, CC BY 4.0) and check the published checksum."""

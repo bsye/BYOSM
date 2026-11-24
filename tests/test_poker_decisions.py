@@ -177,3 +177,32 @@ def test_real_hands_are_read_from_the_archive_by_site_and_stake_and_only_shown_c
     assert asked[0].request["players"][2]["stack_start"] == 11000
     with pytest.raises(ValueError, match="not the published"):
         real_hands.fetched(ws, lambda _: None)
+
+
+def test_our_student_is_asked_the_same_decisions_through_the_hand_as_logged_so_far(ws, monkeypatch):
+    from byosm.games.poker import advisor, own_decisions
+
+    seen = []
+
+    class Advising:
+        def advise(self, text):
+            seen.append(parse(text))
+            if len(seen) == 2:
+                raise ValueError("the engine refused this hand")
+            moves = [("fold", 0.2), ("raise to 300", 0.5), ("all in for 9000", 0.1), ("call 100", 0.2)]
+            return {"moves": [{"move": m, "probability": p} for m, p in moves]}
+
+        def close(self):
+            seen.append("closed")
+
+    monkeypatch.setattr(advisor.Advisor, "start", classmethod(lambda cls, *a: Advising()))
+    hands = [("100/0", parse(HAND))]
+    made = compare.compared(
+        ws, "my-student", "pluribus", hands, compare.against_pluribus, lambda _: None, answerer=own_decisions.answers
+    )
+    assert made["asked"] == 11 and made["errors"] == {"refused": 1} and seen[-1] == "closed"
+    assert seen[0]["actions"][-1] == "d dh p6 6c7s" and seen[0]["starting_stacks"] == [10000] * 6
+    assert seen[2]["actions"][4] == "d dh p5 KsKd" and seen[2]["actions"][-1] == "p4 cbr 210"
+    assert made["groups"]["all"]["decisions"] == 10
+    assert made["groups"]["all"]["same_kind"] == pytest.approx(1 / 10)
+    assert made["groups"]["all"]["mean_weight"] == pytest.approx((4 * 0.2 + 1 * 0.2 + 1 * 0.6) / 10)

@@ -17,6 +17,7 @@ CHIPS_PER_BIG_BLIND = 100
 FEWEST, MOST = 3, 6
 CARD = 2
 OPTIONS = {"sample": False, "search": False}
+LOGGED = ("variant", "antes", "blinds_or_straddles", "min_bet", "starting_stacks", "players")
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class Asked:
     kind: str
     street: str
     request: dict[str, Any]
+    logged: str = ""
     showdown: bool = False
 
 
@@ -60,6 +62,13 @@ def holes(steps_: list[list[str]]) -> dict[int, str]:
         if (dealt or shown) and step[-1] != HIDDEN:
             found[seat_of(step[2] if dealt else step[0])] = step[-1]
     return found
+
+
+def logged_until(hand: dict[str, Any], index: int, seat: int, shown: str) -> str:
+    dealt = f"d {DEAL_HOLE} p{seat + 1} "
+    actions = [f"{dealt}{shown}" if a.startswith(dealt) else a for a in hand["actions"][:index]]
+    kept = {key: hand[key] for key in LOGGED}
+    return "".join(f"{key} = {value!r}\n" for key, value in {**kept, "actions": actions}.items())
 
 
 def moved(table: Table, seat: int, move: str, to: int) -> dict[str, Any]:
@@ -104,7 +113,9 @@ def asked(hand_id: str, hand: dict[str, Any]) -> list[Asked]:
                 "options": OPTIONS,
             }
             street = STREETS[len(table.board)]
-            found.append(Asked(request["hand_id"], hand["players"][seat], kind_of(entry["type"]), street, request))
+            text = logged_until(hand, index, seat, known[seat])
+            player = hand["players"][seat]
+            found.append(Asked(request["hand_id"], player, kind_of(entry["type"]), street, request, text))
         history.append(entry)
         table.act(seat, move, to)
     stayed = set(range(len(chips))) - table.folded

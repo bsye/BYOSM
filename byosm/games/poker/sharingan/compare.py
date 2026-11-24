@@ -27,6 +27,7 @@ SITE = "site:"
 FULL_STACK = (8_000, 12_000)
 Group = Callable[[Asked], list[str]]
 Kept = Callable[[Asked], bool]
+Answerer = Callable[[Path, str, str, list[Asked], Log], Iterable[dict[str, Any]]]
 Hands = Iterable[tuple[str, dict[str, Any]]]
 
 
@@ -76,6 +77,7 @@ def collected(hands: Hands, kept: Kept) -> tuple[list[Asked], dict[str, int], Co
 
 def answers(ws: Path, name: str, source: str, found: list[Asked], log: Log) -> list[dict[str, Any]]:
     held = blueprint(name)
+    rival.stored(ws, held)
     work = work_dir(ws) / WORK
     work.mkdir(exist_ok=True)
     sent, got = f"{source}.requests.jsonl", f"{source}.answers.jsonl"
@@ -91,17 +93,23 @@ def answers(ws: Path, name: str, source: str, found: list[Asked], log: Log) -> l
 
 
 def compared(
-    ws: Path, name: str, source: str, hands: Hands, group: Group, log: Log, kept: Kept = everyone
+    ws: Path,
+    name: str,
+    source: str,
+    hands: Hands,
+    group: Group,
+    log: Log,
+    kept: Kept = everyone,
+    answerer: Answerer = answers,
 ) -> dict[str, Any]:
     from ....db.workspace import save_workspace_report
 
-    rival.stored(ws, blueprint(name))
     found, counts, skipped = collected(hands, kept)
     log(f"asking {name} for its move at {len(found):,} logged decisions of {counts.get('hands', 0):,} hands")
     by_key = {a.key: a for a in found}
     groups: dict[str, list] = defaultdict(list)
     errors: Counter = Counter()
-    for item in answers(ws, name, source, found, log):
+    for item in answerer(ws, name, source, found, log):
         logged = by_key[item["key"]]
         if not item["ok"]:
             errors[item["error"]["code"]] += 1
