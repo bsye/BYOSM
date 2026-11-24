@@ -545,6 +545,20 @@ play at six seats. Neither is at Pluribus's level: [plan, measurements and cavea
 
 | blueprint | logged hands | whose moves | decisions | same kind of move | weight on the logged kind | fell back |
 |---|---|---|---|---|---|---|
+| blueprint-200000000-student | pluribus, 10,000 | Pluribus | 15,169 | 76.5% | 0.706 | 0.0% |
+| blueprint-200000000-student | pluribus, 10,000 | all | 91,356 | 76.0% | 0.702 | 0.0% |
+| blueprint-200000000-student | pluribus, 10,000 | professionals | 76,187 | 75.9% | 0.702 | 0.0% |
+| blueprint-200000000-student | pluribus, 10,000 | street:flop | 14,077 | 71.6% | 0.599 | 0.0% |
+| blueprint-200000000-student | pluribus, 10,000 | street:preflop | 61,700 | 79.1% | 0.757 | 0.0% |
+| blueprint-200000000-student | pluribus, 10,000 | street:river | 6,385 | 70.3% | 0.609 | 0.0% |
+| blueprint-200000000-student | pluribus, 10,000 | street:turn | 9,194 | 65.7% | 0.561 | 0.0% |
+| blueprint-200000000-student | pluribus-showdown, 10,000 | Pluribus | 2,554 | 64.8% | 0.550 | 0.0% |
+| blueprint-200000000-student | pluribus-showdown, 10,000 | all | 14,956 | 63.3% | 0.550 | 0.0% |
+| blueprint-200000000-student | pluribus-showdown, 10,000 | professionals | 12,402 | 63.0% | 0.550 | 0.0% |
+| blueprint-200000000-student | pluribus-showdown, 10,000 | street:flop | 3,926 | 72.2% | 0.579 | 0.0% |
+| blueprint-200000000-student | pluribus-showdown, 10,000 | street:preflop | 3,897 | 40.9% | 0.466 | 0.0% |
+| blueprint-200000000-student | pluribus-showdown, 10,000 | street:river | 3,525 | 73.7% | 0.608 | 0.0% |
+| blueprint-200000000-student | pluribus-showdown, 10,000 | street:turn | 3,608 | 67.6% | 0.553 | 0.0% |
 | sharingan-2 | pluribus, 10,000 | Pluribus | 15,169 | 88.2% | 0.872 | 0.0% |
 | sharingan-2 | pluribus, 10,000 | all | 91,356 | 85.7% | 0.847 | 0.0% |
 | sharingan-2 | pluribus, 10,000 | professionals | 76,187 | 85.2% | 0.842 | 0.0% |

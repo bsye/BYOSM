@@ -100,13 +100,13 @@ The next build is therefore a small student of SHARINGAN-2, measured at this sam
 A logged hand cannot be played again with other moves, so the test is move by move: at each logged decision whose
 cards are known, what would SHARINGAN-2 do? The kind of move is compared (fold, check, call, bet or raise).
 
-| Whose moves | Sample | Decisions | Same kind of move |
-|---|---|---|---|
-| Pluribus | all its decisions in its 10,000 hands | 15,169 | 88.2% |
-| Five professionals | all their decisions in those hands | 76,187 | 85.2% |
-| Pluribus | only when it reached a showdown | 2,554 | 78.9% |
-| Five professionals | only when they reached a showdown | 12,402 | 76.4% |
-| Real online players, July 2009 | only when they reached a showdown (all a real log shows), 80 to 120 big blinds | 65,594 | 63.9% |
+| Whose moves | Sample | Decisions | SHARINGAN-2 | Our v1 student |
+|---|---|---|---|---|
+| Pluribus | all its decisions in its 10,000 hands | 15,169 | 88.2% | 76.5% |
+| Five professionals | all their decisions in those hands | 76,187 | 85.2% | 75.9% |
+| Pluribus | only when it reached a showdown | 2,554 | 78.9% | 64.8% |
+| Five professionals | only when they reached a showdown | 12,402 | 76.4% | 63.0% |
+| Real online players, July 2009 | only when they reached a showdown (all a real log shows), 80 to 120 big blinds | 65,594 | 63.9% | not asked: our engine needs equal stacks |
 
 | Real players by stake | 25NL | 50NL | 100NL | 200NL | 400NL | 600NL | 1000NL |
 |---|---|---|---|---|---|---|---|
@@ -114,7 +114,8 @@ cards are known, what would SHARINGAN-2 do? The kind of move is compared (fold, 
 | Decisions | 28,061 | 6,014 | 1,277 | 3,608 | 13,765 | 7,275 | 5,594 |
 
 It chooses much more like the professionals than like the online players of 2009, and somewhat more like players at
-higher stakes. That is a measure of likeness, not of winnings. The measure of winnings is to seat it against
+higher stakes. Our v1 student is 10 to 13 points further from Pluribus and the professionals than SHARINGAN-2 is; in
+hands they took to a showdown it makes their kind of move before the flop 40.9% of the time, SHARINGAN-2 80.1%. That is a measure of likeness, not of winnings. The measure of winnings is to seat it against
 players that imitate those 21.6 million hands; that model is not built.
 
 ## The table: reuse SHARINGAN's table server, build only the page and the seats

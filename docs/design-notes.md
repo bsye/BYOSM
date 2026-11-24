@@ -3251,6 +3251,12 @@ blueprints are not published, so we train one here, and its native code never ru
   players, most of all before the flop, and a little more like players at higher stakes. This sample never contains
   a fold by the player asked, the stacks around them are not all 100 big blinds, and agreement says who plays
   alike, not who wins.
+- **Our own student on the same logged decisions.** `byosm poker student-decisions` sends the hand as logged up to
+  each decision through the advisor (our engine and the student) and judges it the same way. Over all 91,356
+  decisions of Pluribus's hands the v1 student makes Pluribus's kind of move 76.5% of the time and the
+  professionals' 75.9% (SHARINGAN-2: 88.2% and 85.2%); over showdown-only decisions 64.8% and 63.0% (78.9% and
+  76.4%), and before the flop there 40.9% (80.1%). It is not asked the real online hands: our engine needs equal
+  starting stacks.
 - **The teacher sizes itself from Docker.** Its container takes Docker's CPUs less 2 and Docker's memory less 3 GiB
   (`teacher.limits`): 16 CPUs and 28 GB today, and whatever the owner raises Docker to later, with no code change.
 - **A longer teacher continues a shorter one.** `byosm poker teacher-train --iters N --start-from NAME` links NAME's
