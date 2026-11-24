@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -43,6 +44,8 @@ def refused(hand: dict[str, Any]) -> str | None:
         return f"not {FEWEST} to {MOST} players"
     if any(hand.get("antes", [])):
         return "antes"
+    if any(math.isinf(stack) for stack in hand.get("starting_stacks", [])):
+        return "stacks are not logged"
     if len(blinds) != seats or not blinds[0] or not blinds[1] or any(blinds[2:]):
         return "blinds are not a small and a big blind"
     return None

@@ -140,8 +140,8 @@ variant = 'NT'
 antes = [0, 0, 0]
 blinds_or_straddles = [0.25, 0.50, 0]
 min_bet = 0.50
-starting_stacks = [50.00, 50.00, 50.00]
-actions = ['d dh p1 ????', 'd dh p2 ????', 'd dh p3 ????', 'p3 f', 'p1 f']
+starting_stacks = [inf, inf, inf]
+actions = ['d dh p1 ????', 'd dh p2 ????', 'd dh p3 ????', 'p3 f', 'p1 f', 'p2 sm AsAd']
 players = ['a', 'b', 'c']
 """
 
@@ -167,7 +167,8 @@ def test_real_hands_are_read_from_the_archive_by_site_and_stake_and_only_shown_c
     ]
     assert list(real_hands.hands(ws, 0.0)) == []
     asked, counts, skipped = compare.collected(found, compare.full_stack)
-    assert counts == {"hands": 2, "hands_showing_cards": 1, "decisions_with_cards": 8} and not skipped
+    assert counts == {"hands": 2, "hands_showing_cards": 1, "decisions_with_cards": 8}
+    assert skipped == {"stacks are not logged": 1}
     assert [a.player for a in asked] == ["c", "c", "c", "c"]
     assert compare.by_stake(asked[0]) == ["stake:00050", "site:PS"]
     assert asked[0].request["players"][2]["stack_start"] == 11000

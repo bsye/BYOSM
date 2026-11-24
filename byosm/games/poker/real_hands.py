@@ -23,6 +23,8 @@ SETS = ".phhs"
 STAKE_SUFFIX = "NLH"
 SAMPLE_KEY = "real-hands:"
 WANTED = ("variant", "antes", "blinds_or_straddles", "starting_stacks", "actions", "players")
+AMOUNTS = ("antes", "blinds_or_straddles", "starting_stacks")
+NOT_LOGGED, AS_NUMBER = "inf", "1e999"
 SITES = {
     "ABS": "Absolute Poker",
     "FTP": "Full Tilt Poker",
@@ -74,7 +76,7 @@ def sections(text: str) -> Iterator[dict[str, Any]]:
             continue
         key, sep, value = line.partition(" = ")
         if sep and key in WANTED:
-            hand[key] = ast.literal_eval(value)
+            hand[key] = ast.literal_eval(value.replace(NOT_LOGGED, AS_NUMBER) if key in AMOUNTS else value)
     if hand:
         yield hand
 
