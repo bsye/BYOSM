@@ -60,6 +60,17 @@ def arena_versus(hero: str, field: str, deals: int = _deals_option()) -> None:
     )
 
 
+def _told(made: dict) -> None:
+    for label, found in sorted(made["groups"].items()):
+        if found["decisions"]:
+            log(
+                f"{label}: {found['decisions']:,} decisions, same kind of move {found['same_kind']:.1%}, "
+                f"probability on the logged move {found['mean_weight']:.3f}, fell back {found['fell_back']:.1%}"
+            )
+    shown = f"{made['hands_showing_cards']:,} of {made['hands']:,} hands show cards"
+    log(f"{shown}; {made['errors'] or 'no'} refused decisions; {made['skipped'] or 'no'} skipped hands")
+
+
 @poker_app.command("blueprint-decisions")
 def blueprint_decisions(
     name: str = _blueprint_argument(),
@@ -67,16 +78,35 @@ def blueprint_decisions(
 ) -> None:
     """Compare a published blueprint's move with the logged move at every decision of Pluribus's hands."""
     from ..config import find_workspace
-    from ..games.poker.sharingan.compare import ALL, against_pluribus, compared, pluribus_hands
+    from ..games.poker.sharingan.compare import against_pluribus, compared, pluribus_hands
 
     try:
-        made = compared(find_workspace(), name, "pluribus", pluribus_hands(hands), against_pluribus, log)
+        _told(compared(find_workspace(), name, "pluribus", pluribus_hands(hands), against_pluribus, log))
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
-    for label, found in sorted(made["groups"].items()):
-        if found["decisions"]:
-            log(
-                f"{label}: {found['decisions']:,} decisions, same kind of move {found['same_kind']:.1%}, "
-                f"probability on the logged move {found['mean_weight']:.3f}, fell back {found['fell_back']:.1%}"
-            )
-    log(f"{ALL}: {made['errors'] or 'no'} refused decisions, {made['skipped'] or 'no'} skipped hands")
+
+
+@poker_app.command("real-hands-fetch")
+def real_hands_fetch() -> None:
+    """Download 21.6 million real online hands from Zenodo (1.88 GB, CC BY 4.0) and check the published checksum."""
+    from ..config import find_workspace
+    from ..games.poker.real_hands import fetched
+
+    log(f"real hands are at {fetched(find_workspace(), log)}")
+
+
+@poker_app.command("blueprint-real-hands")
+def blueprint_real_hands(
+    name: str = _blueprint_argument(),
+    share: float = typer.Option(0.02, help="share of the archive's files to replay, picked by a fixed hash"),
+) -> None:
+    """Compare a published blueprint's move with what real online players did, by stake and by site."""
+    from ..config import find_workspace
+    from ..games.poker.real_hands import hands
+    from ..games.poker.sharingan.compare import by_stake, compared, full_stack
+
+    ws = find_workspace()
+    try:
+        _told(compared(ws, name, f"real-{share:g}", hands(ws, share), by_stake, log, full_stack))
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e

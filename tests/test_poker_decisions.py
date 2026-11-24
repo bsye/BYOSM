@@ -113,6 +113,7 @@ def test_the_comparison_runs_sealed_and_groups_the_moves_by_who_made_them(ws, mo
     hands = [("100/0", parse(HAND)), ("100/1", {**parse(HAND), "antes": [5] * 6})]
     made = compare.compared(ws, "sharingan-2", "pluribus", hands, compare.against_pluribus, lambda _: None)
     assert made["hands"] == 2 and made["asked"] == 11 and made["skipped"] == {"antes": 1}
+    assert made["hands_showing_cards"] == 1 and made["decisions_with_cards"] == 11
     assert made["errors"] == {"out_of_turn": 1}
     assert made["groups"]["Pluribus"] == {"decisions": 1, "same_kind": 1.0, "mean_weight": 1.0, "fell_back": 0.0}
     assert made["groups"]["professionals"]["decisions"] == 9 and made["groups"]["all"]["decisions"] == 10
@@ -121,3 +122,54 @@ def test_the_comparison_runs_sealed_and_groups_the_moves_by_who_made_them(ws, mo
     assert "none" in sent and f"{root / 'work'}:/work" in sent and f"{root / sharingan.WEIGHTS}:/weights:ro" in sent
     assert sent[sent.index("python3") :][:3] == ["python3", "-I", "/asker/asker.py"]
     assert workspace_reports(ws, "poker-decisions:")["poker-decisions:sharingan-2:pluribus"]["asked"] == 11
+
+
+SET = """[1]
+variant = 'NT'
+antes = [0, 0, 0]
+blinds_or_straddles = [0.25, 0.50, 0]
+min_bet = 0.50
+starting_stacks = [50.00, 25.00, 55.00]
+actions = ['d dh p1 ????', 'd dh p2 ????', 'd dh p3 ????', 'p3 cbr 1.50', 'p1 f', 'p2 cc', 'd db JdJcQh', 'p2 cc', 'p3 cc', 'd db 9d', 'p2 cc', 'p3 cc', 'd db 3d', 'p2 cc', 'p3 cc', 'p2 sm Qc8c', 'p3 sm Qd9s']
+venue = 'Somewhere'
+time = 20:05:48
+players = ['a', 'b', 'c']
+
+[2]
+variant = 'NT'
+antes = [0, 0, 0]
+blinds_or_straddles = [0.25, 0.50, 0]
+min_bet = 0.50
+starting_stacks = [50.00, 50.00, 50.00]
+actions = ['d dh p1 ????', 'd dh p2 ????', 'd dh p3 ????', 'p3 f', 'p1 f']
+players = ['a', 'b', 'c']
+"""
+
+
+def test_real_hands_are_read_from_the_archive_by_site_and_stake_and_only_shown_cards_are_asked(ws, monkeypatch):
+    import zipfile
+
+    from byosm.games.poker import real_hands
+
+    with pytest.raises(ValueError, match="real-hands-fetch"):
+        list(real_hands.hands(ws, 1.0))
+    path = real_hands.archive(ws)
+    path.parent.mkdir(parents=True)
+    entry = "data/handhq/PS-2009-07-01_2009-07-23_50NLH_OBFU/0.5/ps NLH handhq_1-OBFUSCATED.phhs"
+    with zipfile.ZipFile(path, "w") as made:
+        made.writestr(entry, SET)
+        made.writestr("data/pluribus/100/0.phh", HAND)
+    assert real_hands.named(entry) == ("PS", "50")
+    found = list(real_hands.hands(ws, 1.0))
+    assert [hand_id for hand_id, _ in found] == [
+        "PS-50/ps NLH handhq_1-OBFUSCATED#1",
+        "PS-50/ps NLH handhq_1-OBFUSCATED#2",
+    ]
+    assert list(real_hands.hands(ws, 0.0)) == []
+    asked, counts, skipped = compare.collected(found, compare.full_stack)
+    assert counts == {"hands": 2, "hands_showing_cards": 1, "decisions_with_cards": 8} and not skipped
+    assert [a.player for a in asked] == ["c", "c", "c", "c"]
+    assert compare.by_stake(asked[0]) == ["stake:00050", "site:PS"]
+    assert asked[0].request["players"][2]["stack_start"] == 11000
+    with pytest.raises(ValueError, match="not the published"):
+        real_hands.fetched(ws, lambda _: None)
